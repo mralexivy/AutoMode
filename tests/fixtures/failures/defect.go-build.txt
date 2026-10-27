@@ -1,0 +1,4 @@
+# github.com/example/app/src/setup
+src/setup/automode.go:52:9: undefined: fromV2
+src/setup/automode.go:61:2: declared and not used: changed
+FAIL	github.com/example/app/src/setup [build failed]

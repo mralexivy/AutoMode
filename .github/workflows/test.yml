@@ -1,0 +1,52 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  node-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # The tests import .ts files directly, so they need a Node version that strips types.
+      - name: Run the Node tests
+        run: node --test tests/*.test.mjs bench/*.test.mjs
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  private-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check that no private data entered the repository
+        run: |
+          set -u
+          # Reply text from a model can echo the name of the account that ran a check. Result files must not store it.
+          if grep -rIlE '"text":' bench/results/*.json 2>/dev/null; then
+            echo "A result file stores reply text. Remove the text field."; exit 1
+          fi
+          # Absolute paths of a person's machine.
+          if grep -rInE '/Users/[a-z][a-z0-9_-]+/|/home/[a-z][a-z0-9_-]+/' . \
+              --exclude-dir=.git --exclude-dir=upstream --exclude-dir=node_modules \
+              | grep -vE '/Users/(sam|a|u|x|you|name)/|/home/(u|runner)/'; then
+            echo "Found a personal path."; exit 1
+          fi
+          echo "ok"

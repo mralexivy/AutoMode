@@ -1,0 +1,23 @@
+# Changelog
+
+All notable changes are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow [Semantic Versioning](https://semver.org/).
+
+## [0.1.0] - Unreleased
+
+First open source release.
+
+### Added
+
+- The mod: a model and effort router with a Haiku judge, a five-step ladder, quality floors, and a cache-aware hold.
+- The `automode:run` workflow with six agents: explorer, architect, implementer, verifier, reviewer and diagnoser.
+- The guardian: secret redaction, risky-turn pauses, tool result shortening, task checkpoints, and a git guard for subagents.
+- The bar above the prompt, and the `/automode` command with `status`, `details`, `on`, `off`, `setup`, `settings`, `debug` and `help`. Also `/automode:usage`.
+- The `automode:Concise` output style, with an output style check in `bench/style-check.mjs`.
+- The benchmark harness in `bench/`: a task runner, a blind grader, a fixture check and offline cost tools.
+- The judge benchmark, with labeled cases from effortless.
+
+### Known limits
+
+- `bench/tasks/` has no tasks yet, so no public benchmark result is published.
+- The bar is not drawn in the VS Code extension. Use `/automode` there.
+- The images in the README are illustrations, not screenshots of a live session.

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 300" width="1100" height="300" role="img" aria-label="Five ways to contribute to AutoMode: a benchmark task, a judge case, a risk rule, docs and screenshots, a bug report">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+  </defs>
+  <style>
+    .f{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
+    .m{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .card{fill:#161a30;stroke:#2a3050;stroke-width:1.5}
+    .t{font-size:19px;font-weight:700;fill:#e8ebff}
+    .d{font-size:14px;fill:#a9b0d6}
+    .tag{font-size:12px;fill:#0d1020;font-weight:700}
+  </style>
+  <rect width="1100" height="300" rx="16" fill="#0d1020"/>
+  <rect x="0" y="0" width="1100" height="6" rx="3" fill="url(#g)"/>
+  <text x="550" y="50" text-anchor="middle" class="f" font-size="24" font-weight="700" fill="#e8ebff">Open source. Built with you.</text>
+  <text x="550" y="78" text-anchor="middle" class="f" font-size="15" fill="#a9b0d6">Five ways to help. Each one is small, and each one makes AutoMode better for everyone.</text>
+  <g class="f">
+    <g transform="translate(24 104)"><rect class="card" width="198" height="170" rx="14"/>
+      <text x="16" y="38" class="t">Benchmark task</text>
+      <text x="16" y="66" class="d">A public repo, a pinned</text><text x="16" y="86" class="d">commit, a hidden test.</text>
+      <rect x="16" y="130" width="92" height="24" rx="12" fill="#34d399"/><text x="62" y="147" text-anchor="middle" class="tag">bench</text></g>
+    <g transform="translate(230 104)"><rect class="card" width="198" height="170" rx="14"/>
+      <text x="16" y="38" class="t">Judge case</text>
+      <text x="16" y="66" class="d">A prompt and the efforts</text><text x="16" y="86" class="d">a careful person accepts.</text>
+      <rect x="16" y="130" width="112" height="24" rx="12" fill="#22d3ee"/><text x="72" y="147" text-anchor="middle" class="tag">good first issue</text></g>
+    <g transform="translate(436 104)"><rect class="card" width="198" height="170" rx="14"/>
+      <text x="16" y="38" class="t">Risk rule</text>
+      <text x="16" y="66" class="d">A pattern for a language</text><text x="16" y="86" class="d">or a framework, plus a test.</text>
+      <rect x="16" y="130" width="92" height="24" rx="12" fill="#8b5cf6"/><text x="62" y="147" text-anchor="middle" class="tag">hooks</text></g>
+    <g transform="translate(642 104)"><rect class="card" width="198" height="170" rx="14"/>
+      <text x="16" y="38" class="t">Docs, images</text>
+      <text x="16" y="66" class="d">Fix a sentence. Add a real</text><text x="16" y="86" class="d">screenshot or a GIF.</text>
+      <rect x="16" y="130" width="112" height="24" rx="12" fill="#22d3ee"/><text x="72" y="147" text-anchor="middle" class="tag">good first issue</text></g>
+    <g transform="translate(848 104)"><rect class="card" width="228" height="170" rx="14"/>
+      <text x="16" y="38" class="t">Bug report</text>
+      <text x="16" y="66" class="d">Tell us what the bar said</text><text x="16" y="86" class="d">and what you expected.</text>
+      <rect x="16" y="130" width="72" height="24" rx="12" fill="#fbbf24"/><text x="52" y="147" text-anchor="middle" class="tag">bug</text></g>
+  </g>
+</svg>

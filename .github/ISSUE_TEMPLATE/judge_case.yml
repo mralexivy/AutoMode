@@ -1,0 +1,35 @@
+name: Judge case
+description: Propose a prompt and the efforts a careful person would accept for it
+labels: [judge-case, good first issue]
+body:
+  - type: markdown
+    attributes:
+      value: Write the prompt yourself. Do not paste real chat history.
+  - type: textarea
+    id: message
+    attributes:
+      label: The prompt
+    validations:
+      required: true
+  - type: dropdown
+    id: model
+    attributes:
+      label: The model the chat runs on
+      options: [sonnet, opus, haiku]
+    validations:
+      required: true
+  - type: checkboxes
+    id: ok
+    attributes:
+      label: Efforts a careful person would accept
+      options:
+        - label: low
+        - label: medium
+        - label: high
+        - label: xhigh
+        - label: max
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: One or two sentences.

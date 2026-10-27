@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 360" width="1100" height="360" role="img" aria-label="The AutoMode ladder: five tiers from Haiku low to Opus max, each with an example prompt">
+  <style>
+    .f{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
+    .m{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .card{fill:#161a30;stroke:#2a3050;stroke-width:1.5}
+    .tier{font-size:15px;font-weight:700}
+    .name{font-size:21px;font-weight:700;fill:#e8ebff}
+    .eff{font-size:15px;fill:#8b93b8}
+    .ex{font-size:14px;fill:#c3c9ee}
+  </style>
+  <rect width="1100" height="360" rx="16" fill="#0d1020"/>
+  <text x="550" y="42" text-anchor="middle" class="f" font-size="22" font-weight="700" fill="#e8ebff">Every prompt gets the cheapest route that is still adequate</text>
+
+  <!-- bars: height grows with tier -->
+  <g class="f">
+    <g transform="translate(30 200)">
+      <rect class="card" width="196" height="120" rx="14" stroke="#34d399"/>
+      <rect x="0" y="0" width="196" height="6" rx="3" fill="#34d399"/>
+      <text x="16" y="34" class="tier m" fill="#34d399">T0</text>
+      <text x="16" y="62" class="name">Haiku</text><text x="16" y="82" class="eff">low effort</text>
+      <text x="16" y="106" class="ex">"yes", "thanks", a quick fact</text>
+    </g>
+    <g transform="translate(240 170)">
+      <rect class="card" width="196" height="150" rx="14" stroke="#22d3ee"/>
+      <rect x="0" y="0" width="196" height="6" rx="3" fill="#22d3ee"/>
+      <text x="16" y="34" class="tier m" fill="#22d3ee">T1</text>
+      <text x="16" y="62" class="name">Sonnet</text><text x="16" y="82" class="eff">medium effort</text>
+      <text x="16" y="108" class="ex">A small, clear edit</text>
+      <text x="16" y="130" class="ex">with a test to run</text>
+    </g>
+    <g transform="translate(450 140)">
+      <rect class="card" width="196" height="180" rx="14" stroke="#38bdf8"/>
+      <rect x="0" y="0" width="196" height="6" rx="3" fill="#38bdf8"/>
+      <text x="16" y="34" class="tier m" fill="#38bdf8">T2</text>
+      <text x="16" y="62" class="name">Sonnet</text><text x="16" y="82" class="eff">high effort</text>
+      <text x="16" y="108" class="ex">A feature across</text>
+      <text x="16" y="130" class="ex">a few files</text>
+    </g>
+    <g transform="translate(660 110)">
+      <rect class="card" width="196" height="210" rx="14" stroke="#8b5cf6"/>
+      <rect x="0" y="0" width="196" height="6" rx="3" fill="#8b5cf6"/>
+      <text x="16" y="34" class="tier m" fill="#8b5cf6">T3</text>
+      <text x="16" y="62" class="name">Opus</text><text x="16" y="82" class="eff">high effort</text>
+      <text x="16" y="108" class="ex">Design, security,</text>
+      <text x="16" y="130" class="ex">migrations, payments</text>
+      <text x="16" y="164" class="ex" fill="#8b93b8">+ mandatory review</text>
+    </g>
+    <g transform="translate(870 80)">
+      <rect class="card" width="196" height="240" rx="14" stroke="#f472b6"/>
+      <rect x="0" y="0" width="196" height="6" rx="3" fill="#f472b6"/>
+      <text x="16" y="34" class="tier m" fill="#f472b6">T4</text>
+      <text x="16" y="62" class="name">Opus</text><text x="16" y="82" class="eff">max effort</text>
+      <text x="16" y="108" class="ex">A focused attempt</text>
+      <text x="16" y="130" class="ex">already failed</text>
+    </g>
+  </g>
+</svg>

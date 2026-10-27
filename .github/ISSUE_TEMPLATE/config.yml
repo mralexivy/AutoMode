@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Ask a question
+    url: https://github.com/mralexivy/AutoMode/discussions
+    about: Use Discussions for questions and ideas.
+  - name: Report a security problem
+    url: https://github.com/mralexivy/AutoMode/security/advisories/new
+    about: Do not open a public issue for a vulnerability.

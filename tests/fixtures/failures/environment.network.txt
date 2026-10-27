@@ -1,0 +1,2 @@
+go: github.com/charmbracelet/huh@v0.5.1: Get "https://proxy.golang.org/github.com/charmbracelet/huh/@v/v0.5.1.mod": dial tcp: lookup proxy.golang.org: no such host
+Error: getaddrinfo ENOTFOUND registry.npmjs.org

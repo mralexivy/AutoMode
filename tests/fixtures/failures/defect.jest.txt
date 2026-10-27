@@ -1,0 +1,7 @@
+ FAIL  src/router.test.ts
+  ● routes lookups to haiku
+    expect(received).toBe(expected) // Object.is equality
+    Expected: "T0"
+    Received: "T1"
+      at Object.<anonymous> (src/router.test.ts:42:23)
+Tests:       1 failed, 11 passed, 12 total

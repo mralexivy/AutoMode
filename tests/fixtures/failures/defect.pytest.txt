@@ -1,0 +1,7 @@
+=================================== FAILURES ===================================
+______________________________ test_parse_scopes _______________________________
+    def test_parse_scopes():
+>       assert parse("a b") == ["a", "b"]
+E       AssertionError: assert ['a b'] == ['a', 'b']
+tests/test_scopes.py:12: AssertionError
+=========================== 1 failed, 8 passed in 0.31s ===========================

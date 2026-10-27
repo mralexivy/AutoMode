@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest a change or a new capability
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem do you want to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like AutoMode to do?
+    validations:
+      required: true
+  - type: textarea
+    id: alt
+    attributes:
+      label: What did you try instead?
+    validations:
+      required: false

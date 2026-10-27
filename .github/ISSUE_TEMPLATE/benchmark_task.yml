@@ -1,0 +1,40 @@
+name: Benchmark task
+description: Propose a real change from a public repository as a benchmark task
+labels: [benchmark]
+body:
+  - type: markdown
+    attributes:
+      value: See [bench/tasks/README.md](../blob/main/bench/tasks/README.md) for the task format.
+  - type: input
+    id: repo
+    attributes:
+      label: Repository URL
+      description: A public repository.
+    validations:
+      required: true
+  - type: dropdown
+    id: license
+    attributes:
+      label: Repository license
+      options: [MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC]
+    validations:
+      required: true
+  - type: input
+    id: commits
+    attributes:
+      label: Base and reference commits
+      description: Two full 40-character SHAs.
+    validations:
+      required: true
+  - type: dropdown
+    id: cohort
+    attributes:
+      label: Cohort
+      options: [trivial, feature, refactor, security, migration, longctx]
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why this change
+      description: The hidden tests fail at the base commit and pass at the reference commit. Say how long they take to run.

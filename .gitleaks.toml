@@ -1,0 +1,20 @@
+# Secret scan rules for AutoMode. Run: gitleaks detect --source . --config .gitleaks.toml
+title = "AutoMode gitleaks config"
+
+[extend]
+useDefault = true
+
+# The guardian redacts secrets. Its tests use fake, secret-shaped values to prove that. They are not real keys.
+[[allowlists]]
+description = "Fake secret-shaped values in the guardian redaction tests"
+paths = [
+  '''tests/guardian-lib\.test\.mjs''',
+  '''tests/guardian\.test\.ts''',
+]
+
+# Third-party sources kept as received, with their own checksums.
+[[allowlists]]
+description = "Vendored upstream sources"
+paths = [
+  '''bench/external/.*/upstream/.*''',
+]

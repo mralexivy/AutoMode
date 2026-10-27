@@ -1,0 +1,36 @@
+name: Bug report
+description: Something in AutoMode did not work as the README says
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for the report. Please do not paste prompts, code or keys from a private project.
+  - type: textarea
+    id: debug
+    attributes:
+      label: Output of /automode debug
+      description: Run `/automode debug` in the session and paste the result. It holds no prompt text.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did the bar show, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: false
+  - type: input
+    id: claude
+    attributes:
+      label: Claude Code version and app
+      description: The output of `claude --version`, and where you run it (terminal, Desktop app, VS Code).
+    validations:
+      required: true

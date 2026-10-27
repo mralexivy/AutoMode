@@ -1,0 +1,5 @@
+--- FAIL: TestMergeAutoModeSettings_UpgradesV1 (0.00s)
+    automode_upgrade_test.go:41: model=claude-sonnet-5-5, want the V1 row moved to claude-sonnet-5-5[1m]
+FAIL
+FAIL	github.com/example/app/src/setup	1.460s
+FAIL

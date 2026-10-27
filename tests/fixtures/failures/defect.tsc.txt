@@ -1,0 +1,2 @@
+hooks/lib/policy.ts(48,7): error TS2322: Type 'string' is not assignable to type 'Tier'.
+Found 1 error in hooks/lib/policy.ts:48

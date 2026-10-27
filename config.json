@@ -1,0 +1,33 @@
+{
+  "profileName": "AutoMode",
+  "router": "v4",
+  "pickerModel": "claude-sonnet-5-5[1m]",
+  "workflowName": "automode:run",
+  "standardMode": "discover",
+  "defaultPath": "direct",
+  "reviewPolicy": "risk",
+  "maxConcurrency": 1,
+  "taskGraph": true,
+  "sonnetPlanSmall": false,
+  "debugLog": false,
+  "blockGitWritesWhenActive": true,
+  "mode": "auto",
+  "judgeModel": "haiku",
+  "judgeVersion": 2,
+  "judgeTimeoutMs": 8000,
+  "compactWith": "haiku",
+  "compactModel": "claude-haiku-5-5",
+  "redirectExplore": true,
+  "workerTools": true,
+  "workerDeadlineMs": 180000,
+  "recordDecisions": true,
+  "policy": "auto",
+  "subagentsEverySession": true,
+  "guardian": {
+    "mode": "auto",
+    "everySession": true,
+    "autoCompact": true,
+    "reduceOutputs": true,
+    "hardPause": true
+  }
+}

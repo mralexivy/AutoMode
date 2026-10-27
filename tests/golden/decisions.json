@@ -1,0 +1,249 @@
+{
+  "about": "Golden decisions for the joint model x effort optimizer and the switch check. Inputs are judge verdicts plus a cache state; the expected route follows from the ASSUMED capability bands and retry rates in hooks/lib/optimizer.ts and the measured token priors. They pin behavior, they do not prove quality. A change to the assumptions that moves a case must update the case on purpose. Revised 2026-10-21 for adequacy bands; the judge's effort hint no longer raises difficulty.",
+  "optimizer": [
+    {
+      "name": "lookup at session start: Haiku medium (Haiku low is only 'likely' adequate, and its retry costs more)",
+      "verdict": {
+        "tier": "T0",
+        "complexity": "trivial",
+        "effort": "low",
+        "risk": "none"
+      },
+      "prefix": 0,
+      "expect": "haiku/medium"
+    },
+    {
+      "name": "lookup in a 20k session: Haiku medium",
+      "verdict": {
+        "tier": "T0",
+        "complexity": "trivial",
+        "effort": "low",
+        "risk": "none"
+      },
+      "prefix": 20000,
+      "expect": "haiku/medium"
+    },
+    {
+      "name": "lookup above 80k context: Sonnet, Haiku ruled out",
+      "verdict": {
+        "tier": "T0",
+        "complexity": "trivial",
+        "effort": "low",
+        "risk": "none"
+      },
+      "prefix": 120000,
+      "expectFamily": "sonnet"
+    },
+    {
+      "name": "bounded feature: Sonnet medium",
+      "verdict": {
+        "tier": "T1",
+        "complexity": "standard",
+        "effort": "medium",
+        "risk": "none"
+      },
+      "prefix": 20000,
+      "expect": "sonnet/medium"
+    },
+    {
+      "name": "bounded feature, critical consequence: Sonnet high (floor T2), not Opus; review required",
+      "verdict": {
+        "tier": "T1",
+        "complexity": "standard",
+        "effort": "medium",
+        "risk": "critical"
+      },
+      "prefix": 20000,
+      "floor": "T2",
+      "expect": "sonnet/high",
+      "verification": "review"
+    },
+    {
+      "name": "hard bounded fix: Sonnet high",
+      "verdict": {
+        "tier": "T2",
+        "complexity": "standard",
+        "effort": "medium",
+        "risk": "none"
+      },
+      "prefix": 20000,
+      "expect": "sonnet/high"
+    },
+    {
+      "name": "hard multi-file fix: Sonnet xhigh beats Opus",
+      "verdict": {
+        "tier": "T2",
+        "complexity": "complex",
+        "effort": "medium",
+        "risk": "none"
+      },
+      "prefix": 20000,
+      "expect": "sonnet/xhigh"
+    },
+    {
+      "name": "unknown-cause bug, standard: Sonnet max is 'likely' and cheaper than Opus high",
+      "verdict": {
+        "tier": "T3",
+        "complexity": "standard",
+        "effort": "medium",
+        "risk": "none"
+      },
+      "prefix": 20000,
+      "expect": "sonnet/max"
+    },
+    {
+      "name": "unknown-cause bug, low judge confidence: only 'sufficient' configurations, Opus high",
+      "verdict": {
+        "tier": "T3",
+        "complexity": "standard",
+        "effort": "medium",
+        "risk": "none",
+        "confidence": 0.6
+      },
+      "prefix": 20000,
+      "expect": "opus/high"
+    },
+    {
+      "name": "unknown-cause bug, critical: Opus high, Sonnet max's lower bound does not reach the need",
+      "verdict": {
+        "tier": "T3",
+        "complexity": "standard",
+        "effort": "medium",
+        "risk": "critical"
+      },
+      "prefix": 20000,
+      "floor": "T2",
+      "expect": "opus/high"
+    },
+    {
+      "name": "architecture, complex: Opus xhigh (Opus high is only 'likely' and its retry costs more)",
+      "verdict": {
+        "tier": "T3",
+        "complexity": "complex",
+        "effort": "medium",
+        "risk": "none"
+      },
+      "prefix": 20000,
+      "expect": "opus/xhigh"
+    },
+    {
+      "name": "architecture, judge says high effort: still Opus xhigh, not max",
+      "verdict": {
+        "tier": "T3",
+        "complexity": "complex",
+        "effort": "high",
+        "risk": "none"
+      },
+      "prefix": 20000,
+      "expect": "opus/xhigh"
+    },
+    {
+      "name": "last resort: Opus max",
+      "verdict": {
+        "tier": "T4",
+        "complexity": "complex",
+        "effort": "medium",
+        "risk": "none"
+      },
+      "prefix": 20000,
+      "expect": "opus/max"
+    },
+    {
+      "name": "escalation floor T3 lifts a bounded task to Opus",
+      "verdict": {
+        "tier": "T1",
+        "complexity": "standard",
+        "effort": "medium",
+        "risk": "none"
+      },
+      "prefix": 20000,
+      "floor": "T3",
+      "expectFamily": "opus"
+    },
+    {
+      "name": "two repeated failures make Opus pay on a Sonnet-band task",
+      "verdict": {
+        "tier": "T3",
+        "complexity": "standard",
+        "effort": "medium",
+        "risk": "none"
+      },
+      "prefix": 20000,
+      "failures": 2,
+      "expectFamily": "opus"
+    }
+  ],
+  "switch": [
+    {
+      "name": "upgrade, first vote, warm large prefix: hold",
+      "current": "T1",
+      "target": "T3",
+      "votes": 1,
+      "prefix": 60000,
+      "warm": true,
+      "expect": "hold",
+      "gate": "votes"
+    },
+    {
+      "name": "upgrade, second vote: switch",
+      "current": "T1",
+      "target": "T3",
+      "votes": 2,
+      "prefix": 60000,
+      "warm": true,
+      "expect": "switch"
+    },
+    {
+      "name": "downgrade, warm, same task, no dwell: hold",
+      "current": "T3",
+      "target": "T1",
+      "votes": 1,
+      "prefix": 60000,
+      "warm": true,
+      "sameTask": true,
+      "expect": "hold",
+      "gate": "dwell"
+    },
+    {
+      "name": "downgrade at a cold cache: switch",
+      "current": "T3",
+      "target": "T1",
+      "votes": 1,
+      "prefix": 60000,
+      "warm": false,
+      "sameTask": true,
+      "expect": "switch"
+    },
+    {
+      "name": "effort only, same model, shared cache: switch",
+      "current": "T1",
+      "target": "T2",
+      "votes": 1,
+      "prefix": 60000,
+      "warm": true,
+      "expect": "switch"
+    },
+    {
+      "name": "effort only on Vertex, warm: hold",
+      "current": "T1",
+      "target": "T2",
+      "votes": 1,
+      "prefix": 60000,
+      "warm": true,
+      "effortShared": false,
+      "expect": "hold",
+      "gate": "provider-effort"
+    },
+    {
+      "name": "mandatory floor on Vertex: switch",
+      "current": "T1",
+      "target": "T3",
+      "votes": 1,
+      "prefix": 60000,
+      "warm": true,
+      "effortShared": false,
+      "mandatory": true,
+      "expect": "switch"
+    }
+  ]
+}
