@@ -1,0 +1,54 @@
+{
+  "generatedAt": "2026-10-27T16:42:32.849Z",
+  "cost": "$0: no inference; transcripts and records read locally",
+  "prices": "anthropic 2026-10-17; models of older generations priced at the 5.5 row of their family",
+  "coverage": {
+    "sessions": 0,
+    "prompts": 0,
+    "covered": 0,
+    "judged": 0,
+    "switches": 0,
+    "measuredUsd": 0,
+    "measuredCoveredUsd": 0,
+    "replayedCoveredUsd": 0,
+    "coveredShare": 0
+  },
+  "measured": {
+    "basis": "measured",
+    "byModelEffort": {},
+    "subagentsByRole": {},
+    "judge": "in-mod judge calls write no transcript lines; their measured cost is in the decision records (judge.usd)"
+  },
+  "economics": {
+    "basis": "counterfactual policy arithmetic on measured prefixes and gaps",
+    "prompts": 0,
+    "rulesCriticalShare": 0,
+    "compactions": 0,
+    "expiredAtBoundary": 0,
+    "opusBoundaryDowngrade": {},
+    "writePenaltyUsd": {
+      "n": 0,
+      "p25": null,
+      "median": null,
+      "p75": null,
+      "p95": null
+    }
+  },
+  "reconciliation": {
+    "runs": 0,
+    "withinTolerance": 0,
+    "tolerance": 0.02
+  },
+  "replayed": {
+    "basis": "estimate (counterfactual)",
+    "byModelEffort": {},
+    "owners": {},
+    "sessions": []
+  },
+  "verdicts": null,
+  "outcomes": {
+    "label": "exploratory: the six tasks were used while tuning V3 and V4; no confirmatory claim",
+    "runs": [],
+    "summary": {}
+  }
+}

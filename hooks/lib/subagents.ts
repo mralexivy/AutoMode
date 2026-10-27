@@ -1,4 +1,4 @@
-// Subagent model policy. bench/subagents.mjs measures, on your own transcripts, how much subagent spend comes from
+// Subagent model policy. bench/subagents.mts measures, on your own transcripts, how much subagent spend comes from
 // built-in general-purpose and Explore subagents that inherited Opus from the main session. A subagent gets a scoped task and returns to a
 // session that checks its work, so Sonnet (or Haiku for read-only search) is adequate for these built-in
 // types. The policy touches only built-in types with no model chosen: a plugin or user agent may pin its

@@ -1,5 +1,5 @@
 // AutoMode's documented changes to the effortless judge input. The verbatim port is effortless.ts; every change
-// to what the judge reads lives here, with its reason. Each one has a test in tests/auto-lib.test.mjs or tests/auto.test.ts.
+// to what the judge reads lives here, with its reason. Each one has a test in tests/auto-lib.test.mts or tests/auto.test.ts.
 //
 //   A1 <system-reminder> blocks are removed from the message and from the context (upstream PR #43, open at the
 //      pinned commit: the desktop app puts them in the text, and the judge then rated almost every prompt low).
@@ -17,7 +17,7 @@
 //      stale effort from a finished task (found in the replay: a question two hours after xhigh work went to xhigh).
 //   A8 One closing line after the message: do not answer it, reply with the verdict only. Upstream ends the input on the
 //      message itself. On real prompts that ask for work ("draft the Slack reply", "fix the query"), Haiku did the work
-//      instead of judging it: 14 of 27 calls returned no verdict (bench/retro-judge.mjs, 2026-10-26), and the router
+//      instead of judging it: 14 of 27 calls returned no verdict (bench/retro-judge.mts, 2026-10-26), and the router
 //      fell back. The line names no model and no effort.
 // Kept from upstream: the call settings (Haiku 5.5, 160 tokens, low effort, 6 s) and the second attempt on the alias.
 // Upstream's skill note ("This is a slash command that runs a skill") is not needed: a slash command is not routed.

@@ -44,7 +44,7 @@ export function adequacy(cap: Band, req: number): Adequacy {
 export const RETRY: Record<Adequacy, Band> = { sufficient: b(0.05, 0.15), likely: b(0.15, 0.35), uncertain: b(0.35, 0.65), insufficient: b(0.65, 0.95) }
 
 // Remaining main requests in a prompt after k were made: measured on the author's transcripts
-// (bench/calibrate.mjs, 1,369 prompts, 2026-10-21). The distribution is heavy-tailed: the longer a
+// (bench/calibrate.mts, 1,369 prompts, 2026-10-21). The distribution is heavy-tailed: the longer a
 // prompt has run, the more it has left. Cost decisions read quantiles from here, never one mean.
 export interface Remaining { k: number; n: number; p25: number; median: number; p75: number }
 export const REMAINING: Remaining[] = [
@@ -86,7 +86,7 @@ export const DEFAULT_PRIORS: Priors = {
   newInputPerStep: 983,
   remainingRequests: REMAINING[0].median,
   basis: 'estimate',
-  source: 'bench/calibrate.mjs on the author transcripts, 2026-10-21; effort ratios uncontrolled',
+  source: 'bench/calibrate.mts on the author transcripts, 2026-10-21; effort ratios uncontrolled',
 }
 
 // The demand on the implementer, and the controls the consequence requires.

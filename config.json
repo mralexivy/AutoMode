@@ -1,6 +1,7 @@
 {
   "profileName": "AutoMode",
   "router": "v4",
+  "activation": "always",
   "pickerModel": "claude-sonnet-5-5[1m]",
   "workflowName": "automode:run",
   "standardMode": "discover",

@@ -41,7 +41,8 @@ export interface Ledger {
 export interface RouterSnap {
   enabled: boolean              // config.json router v4
   killed: boolean               // AUTOMODE_ROUTER=off
-  active: boolean               // the session runs on the AutoMode picker row
+  activation: 'always' | 'picker' // config.json activation: AutoMode starts with the session, or only on the model ID in pickerModel
+  active: boolean               // AutoMode is running in this session (always: yes, unless killed; picker: the model ID matches)
   mode: Mode                    // in effect for this session (config, env, provider guard, session selector)
   configMode: Mode              // before the session selector
   sessionMode: Mode | null      // the bar's selector, this session only

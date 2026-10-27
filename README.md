@@ -23,7 +23,7 @@
 **A free, open source mod for Claude Code that picks the right model and the right effort for every prompt.**
 
 Quick questions stay cheap. Hard jobs get the strongest model. Risky changes always get a review.
-You pick one model row, and you never touch the model or the Effort control again.
+Install it and it starts. You never touch the model or the Effort control again.
 
 > **AutoMode is open source, and we want your help.**
 > It is MIT licensed. Every line is in this repository, and there is no key, no account and no server.
@@ -81,21 +81,21 @@ claude plugin marketplace add mralexivy/AutoMode; claude plugin install automode
 
 Then run `/reload-plugins`, or restart Claude Code.
 
-### Turn it on
+### It starts on its own
 
-AutoMode runs when the session model is the AutoMode model ID, `claude-sonnet-5-5[1m]`. Claude Code strips the suffix and runs Sonnet 5.5 with its 1M context. Plain Sonnet, Opus and Haiku sessions are not touched.
+There is nothing to turn on. AutoMode starts with every session after you install it and run `/reload-plugins`. It routes on whatever model the session uses, so you do not pick a special model.
 
-```bash
-claude --model 'claude-sonnet-5-5[1m]'
-```
-
-You can also set `"model": "claude-sonnet-5-5[1m]"` in your Claude Code settings. The ID is the `pickerModel` key in [`config.json`](config.json).
+- **Stop it for one session:** `/automode off`. Start it again with `/automode on`.
+- **Stop it everywhere:** set `"mode": "off"` in your `config.json`, or set `AUTOMODE_ROUTER=off`.
+- **Check it is running:** `/automode setup`.
 
 **Requires** Claude Code **2.1.287 or later** in the terminal. Mods are on by default from that version. The Desktop app needs 2.1.286 or later, and the VS Code extension needs 2.1.299 or later. Tested with Claude Code 2.1.311.
 
 If you set `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` in an early build, remove it. Claude Code 2.1.287 and later ignores it.
 
-If the mod does not load, you get plain Sonnet and nothing breaks. To check that it loaded, run `/plugin`. A line under the tabs reads `1 mod active · automode`.
+If the mod does not load, Claude Code runs as usual and nothing breaks. To check that it loaded, run `/plugin`. A line under the tabs reads `1 mod active · automode`.
+
+> **Why no special model?** AutoMode used to start only when the model ID ended in `[1m]`. Claude Code 2.1.311 removes that suffix before a mod sees the model, so the rule never fired. The old rule is still there as `"activation": "picker"` in `config.json`, for builds that keep the suffix.
 
 ### Remove
 
@@ -193,7 +193,8 @@ Defaults live in [`config.json`](config.json). To override them, put a `config.j
 
 | Key | Default | Meaning |
 |---|---|---|
-| `pickerModel` | `claude-sonnet-5-5[1m]` | The model ID that turns AutoMode on |
+| `activation` | `always` | `always`: AutoMode starts with every session. `picker`: only when the model ID is `pickerModel` |
+| `pickerModel` | `claude-sonnet-5-5[1m]` | The model ID for `activation: picker`. Claude Code 2.1.311 strips the suffix, so use `always` |
 | `policy` | `auto` | The routing policy |
 | `defaultPath` | `direct` | `workflow` sends every standard task through the workflow |
 | `reviewPolicy` | `risk` | `always` adds an Opus review to every change |
@@ -213,7 +214,7 @@ Type `/automode` and a subcommand. With no subcommand, you get the bar as text.
 | `/automode details` (or `stats`) | Routing, workflow stages, guardian and usage as text. |
 | `/automode on` | Turn routing on for this session. |
 | `/automode off` | Turn routing off for this session. Your own model and effort run as set. Nothing is written to your settings. |
-| `/automode setup` | A live checklist: mod loaded, router on, session on the AutoMode model, routing mode, bar shown. It ends with the one next step. |
+| `/automode setup` | A live checklist: mod loaded, router on, activation, routing mode, bar shown. It ends with the one next step. |
 | `/automode settings` | The settings in force, and where to change each one. |
 | `/automode debug` | A report to paste into a bug issue. It holds no prompt text, and it masks your home folder. |
 | `/automode help` | The subcommands, the `am:` prompt commands and tips. |
@@ -221,7 +222,7 @@ Type `/automode` and a subcommand. With no subcommand, you get the bar as text.
 
 **Prompt commands.** Start a prompt with `am:` to steer one prompt: `am:haiku`, `am:sonnet`, `am:opus`, `am:low` to `am:max`, `am:direct`, `am:run`, `am:explore`, `am:new` and `am:reset`. When the guardian pauses a turn, reply `am:continue`. After `/clear`, `am:handoff` restores the task checkpoint.
 
-**Benchmarks run from a terminal,** not from the chat: `node bench/judge-bench.mjs` and `node bench/style-check.mjs --dry`. See [Benchmarks](#benchmarks).
+**Benchmarks run from a terminal,** not from the chat: `node bench/judge-bench.mts` and `node bench/style-check.mts --dry`. See [Benchmarks](#benchmarks).
 
 Filing a bug? Run `/automode debug` and paste the result.
 
@@ -229,7 +230,7 @@ Filing a bug? Run `/automode debug` and paste the result.
 
 An optional output style, `automode:Concise`. Switch to it with `/output-style automode:Concise`. It writes prose at 80% of the way to ASD-STE100 Simplified Technical English: short sentences, active voice, the answer first. It keeps code, commands, file paths and quoted text exactly as they are. It has nothing to do with routing.
 
-We checked that it saves output tokens without damaging anything that is not prose. [`bench/style-check.mjs`](bench/style-check.mjs) runs 20 prompts three times each, with and without the style, on Sonnet 5.5, and checks the answers with code. The reports are [`run 1`](bench/results/style-check-2026-10-27-run1.md) and [`the rerun of three cases`](bench/results/style-check-2026-10-27-rerun.md).
+We checked that it saves output tokens without damaging anything that is not prose. [`bench/style-check.mts`](bench/style-check.mts) runs 20 prompts three times each, with and without the style, on Sonnet 5.5, and checks the answers with code. The reports are [`run 1`](bench/results/style-check-2026-10-27-run1.md) and [`the rerun of three cases`](bench/results/style-check-2026-10-27-rerun.md).
 
 | What we checked | Result |
 |---|---|
@@ -249,11 +250,11 @@ What it does not show:
 
 The harness is in [`bench/`](bench/). A task names a public repository, a pinned base commit and a pinned reference commit, plus hidden tests and a test command. The runner lets an agent try the task, then runs the hidden tests and reports cost, tokens, turns and time. A blind grader scores the change against the reference.
 
-**Honest status: v0.1.0 ships the harness and no tasks.** `bench/tasks/` is empty, so `node bench/run.mjs` has nothing to run yet. We will not quote a saving until a public run, with at least three repeats per arm, produces one. What works today:
+**Honest status: v0.1.0 ships the harness and no tasks.** `bench/tasks/` is empty, so `node bench/run.mts` has nothing to run yet. We will not quote a saving until a public run, with at least three repeats per arm, produces one. What works today:
 
-- `node bench/style-check.mjs`: the output style check, with [its results](#the-concise-output-style).
-- `node bench/judge-bench.mjs`: how often the judge picks a sensible effort, on [labeled cases](bench/judge-cases.json).
-- `bench/replay.mjs`, `bench/spend-audit.mjs` and the other offline tools read your own Claude Code transcripts and cost nothing to run.
+- `node bench/style-check.mts`: the output style check, with [its results](#the-concise-output-style).
+- `node bench/judge-bench.mts`: how often the judge picks a sensible effort, on [labeled cases](bench/judge-cases.json).
+- `bench/replay.mts`, `bench/spend-audit.mts` and the other offline tools read your own Claude Code transcripts and cost nothing to run.
 
 Want to help us get the first numbers? [Add a benchmark task](#contribute).
 
@@ -270,13 +271,13 @@ AutoMode gets better when more people use it on more kinds of work. No contribut
 | Report a bug | Open an issue. Say what the bar showed and what you expected. | 2 min |
 | Add a judge case | Add a prompt and the efforts a careful person accepts to `bench/judge-cases.json`. | 10 min |
 | Add a risk rule | Add a pattern to `hooks/lib/risk.ts` and a test in `tests/`. | 30 min |
-| Add a benchmark task | Pick a public MIT or Apache-2.0 repository, pin two commits, and add a task file. See [`bench/tasks/README.md`](bench/tasks/README.md). Run `node bench/validate-fixture.mjs`. | 1 to 2 hours |
+| Add a benchmark task | Pick a public MIT or Apache-2.0 repository, pin two commits, and add a task file. See [`bench/tasks/README.md`](bench/tasks/README.md). Run `node bench/validate-fixture.mts`. | 1 to 2 hours |
 | Improve the docs | Fix a sentence, or add a real screenshot or GIF to `docs/readme/`. | 5 min |
 
 **Your first contribution:**
 
 1. Fork this repository and clone your fork.
-2. Run `node --test tests/*.test.mjs`. Every test passes on `main`.
+2. Run `npm install`, then `npm run check`. Every check passes on `main`.
 3. Make one small change, and add or update a test.
 4. Open a pull request. Say what changed and why.
 
@@ -325,7 +326,7 @@ An administrator can run AutoMode as an organization mod, so these hooks run. Se
 |---|---|
 | Nothing changes after install | Run `/reload-plugins`. Then run `/plugin` and look for `1 mod active · automode`. |
 | The mod is not listed | Check `claude --version` is 2.1.287 or later. Run `claude plugin test` in a folder that holds no mod: the message says whether mods can load. |
-| The bar says AutoMode is idle | The session is not on the AutoMode model. Run `/automode setup`. |
+| The bar says AutoMode is idle | You set `"activation": "picker"` and the model ID does not match. Use `"always"`, or run `/automode setup`. |
 | The bar is missing in VS Code | Expected. Use `/automode`. |
 | A hook seems skipped | Start with `claude --debug` and search the log for `automode`. See [Troubleshoot a mod](https://code.claude.com/docs/en/plugins/mods/troubleshoot). |
 | Filing a bug | Run `/automode debug` and paste the result. |
@@ -333,11 +334,14 @@ An administrator can run AutoMode as an organization mod, so these hooks run. Se
 ## Develop
 
 ```bash
-node --test tests/*.test.mjs
+npm install                          # TypeScript and Node types, for the checks only
+npm run check                        # type check, then the Node tests
 claude plugin validate . --strict
 claude plugin test .
-claude --plugin-dir . --model 'claude-sonnet-5-5[1m]'
+claude --plugin-dir .
 ```
+
+The mod itself has no install step and no build step. Node 23.6 or later runs the tests and bench scripts as TypeScript. [CONTRIBUTING.md](CONTRIBUTING.md) explains which files are JavaScript and why.
 
 The mod is a function-hooks module. [`hooks/hooks.json`](hooks/hooks.json) names one file, [`hooks/register.ts`](hooks/register.ts), and that file exports `register`. Develop with `--plugin-dir`, not an installed copy: Claude Code caches an installed plugin by version, so raise `version` in [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) before you release a change. Read the [mods overview](https://code.claude.com/docs/en/plugins/mods/overview) first if mods are new to you.
 

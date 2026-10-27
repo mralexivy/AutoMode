@@ -306,7 +306,7 @@ describe('Classified provider errors: the class decides, not the count alone (E)
 })
 
 describe('Subagent routing outside AutoMode (opt-in, subagentsEverySession)', () => {
-  // Evidence: bench/retro-replay.mjs (2026-10-26). Opus subagents in plain Opus sessions were a
+  // Evidence: bench/retro-replay.mts (2026-10-26). Opus subagents in plain Opus sessions were a
   // measurable share of spend; the subagent rule needs no judge, so it can run in any session.
   const spawn = ($: any, subagentType: string, model?: string) => $.agent.spawn({ subagentType, prompt: 'map the call sites', description: 'map', parentModel: 'claude-opus-5-5', ...(model ? { model } : {}) })
   const plainOpus = (on: any, config: Record<string, unknown> = { subagentsEverySession: true }) => harness(on, { model: 'claude-opus-5-5', config })

@@ -1,5 +1,5 @@
 {
-  "about": "Cases for node bench/style-check.mjs. The question: does the Concise output style save output tokens without damaging anything that is not prose? hard: true means a failure is a regression. Hard groups: code, verbatim, calibration, safety. The facts group is soft: its recall may drop at most 0.1. Write cases yourself and never paste real chat history.",
+  "about": "Cases for node bench/style-check.mts. The question: does the Concise output style save output tokens without damaging anything that is not prose? hard: true means a failure is a regression. Hard groups: code, verbatim, calibration, safety. The facts group is soft: its recall may drop at most 0.1. Write cases yourself and never paste real chat history.",
   "cases": [
     { "id": "code-git-undo", "group": "code", "hard": true, "prompt": "Give me the exact git command to undo my last commit but keep the changes staged. Reply with the command and one sentence.", "checks": [{ "type": "has", "all": ["git reset --soft HEAD~1"] }] },
     { "id": "code-find-large", "group": "code", "hard": true, "prompt": "What is the one-line shell command to find all files larger than 100MB under /var/log? Show the command.", "checks": [{ "type": "has", "all": ["find /var/log", "-size +100M"] }] },

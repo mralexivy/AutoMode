@@ -67,7 +67,7 @@ export function harness(on: any, setup: Setup) {
   on('ui.status', (_$: unknown, e: unknown) => { statuses.push(JSON.stringify(e)); return { value: undefined } })
   on('ui.toast', (_$: unknown, e: unknown) => { toasts.push(JSON.stringify(e)); return { value: undefined } })
   on('fs.read', (_$: unknown, e: { path: string }) => String(e.path).endsWith('config.json')
-    ? { value: JSON.stringify({ router: 'v4', mode, pickerModel: HM, recordDecisions: true, ...(setup.config ?? {}) }) }
+    ? { value: JSON.stringify({ router: 'v4', mode, activation: 'picker', pickerModel: HM, recordDecisions: true, ...(setup.config ?? {}) }) }
     : { value: writes[e.path] ?? '' })
   on('fs.exists', (_$: unknown, e: { path: string }) => ({ value: e.path in writes }))
   on('fs.write', (_$: unknown, e: { path: string; text: string }) => { if (setup.failWrites?.test(e.path)) throw new Error('disk full'); writes[e.path] = e.text; return { value: undefined } })

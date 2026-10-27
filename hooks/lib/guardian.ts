@@ -31,7 +31,7 @@ export const atLeast = (m: GuardianMode, floor: GuardianMode) => MODE_RANK[m] >=
 export interface GuardianConfig {
   mode: GuardianMode
   everySession: boolean              // also outside AutoMode (the plain Opus picker)
-  // Progress gates, calibrated from 30 days of turns (bench/guardian-replay.mjs, 2026-10-26): the p90 of requests and
+  // Progress gates, calibrated from 30 days of turns (bench/guardian-replay.mts, 2026-10-26): the p90 of requests and
   // of API-equivalent USD between two outcomes. Vertex period (n 445): p90 45 requests / $3.36, p95 56 / $4.65;
   // held out, first party (n 85): p90 33 / $2.49. The gates sit at about p95, so a productive stretch rarely crosses them.
   warnRequests: number

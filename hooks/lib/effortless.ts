@@ -7,7 +7,7 @@
 // Rules for this file:
 //   - Every declaration below is copied from upstream without a change to its code. Only the type names are
 //     local (upstream imports `Effort` and `ModelKey` from its own types/index.d.ts, which define them the same way).
-//   - tests/effortless-fidelity.test.mjs extracts each declaration from the vendored register.tsx and fails when
+//   - tests/effortless-fidelity.test.mts extracts each declaration from the vendored register.tsx and fails when
 //     the code here differs from it (whitespace and comments aside).
 //   - Changes AutoMode needs live in effortless-adapt.ts, never here, so this file stays comparable to upstream.
 //   - Pure: no `$`, no I/O.

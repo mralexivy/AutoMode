@@ -1,5 +1,5 @@
 // /automode:usage --routes: what the V4 router decided and sent, per request, from its own records,
-// checked against the transcript. Measured values only; counterfactual estimates live in bench/replay.mjs.
+// checked against the transcript. Measured values only; counterfactual estimates live in bench/replay.mts.
 //
 //   node am-routes.mjs [sessionId | --all] [--json]
 //
@@ -110,7 +110,7 @@ const policy = {
     deferredEffort: requests.filter((r) => r.application?.deferred).length,
     rules: count(promptDecisions.filter((d) => d.auto), (d) => d.auto.rule),
   },
-  alert: compared.length >= 10 && differ.length / compared.length >= 0.3 ? `the other policy differs on ${differ.length} of ${compared.length} prompts: review the traces (node bench/policy-trace.mjs) before changing any default` : null,
+  alert: compared.length >= 10 && differ.length / compared.length >= 0.3 ? `the other policy differs on ${differ.length} of ${compared.length} prompts: review the traces (node bench/policy-trace.mts) before changing any default` : null,
 }
 const sessions = [...new Set(requests.map((r) => r.sessionId))]
 const confirmations = sessions.map((s) => ({ sessionId: s, ...confirm(s, requests.filter((r) => r.sessionId === s)) }))

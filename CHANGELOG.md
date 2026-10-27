@@ -12,9 +12,14 @@ First open source release.
 - The `automode:run` workflow with six agents: explorer, architect, implementer, verifier, reviewer and diagnoser.
 - The guardian: secret redaction, risky-turn pauses, tool result shortening, task checkpoints, and a git guard for subagents.
 - The bar above the prompt, and the `/automode` command with `status`, `details`, `on`, `off`, `setup`, `settings`, `debug` and `help`. Also `/automode:usage`.
-- The `automode:Concise` output style, with an output style check in `bench/style-check.mjs`.
+- The `automode:Concise` output style, with an output style check in `bench/style-check.mts`.
 - The benchmark harness in `bench/`: a task runner, a blind grader, a fixture check and offline cost tools.
 - The judge benchmark, with labeled cases from effortless.
+- Development in TypeScript: bench scripts and Node tests are `.mts`, with a type check that every new file must pass.
+
+### Changed
+
+- AutoMode starts with every session. It no longer needs a special model ID: Claude Code 2.1.311 removes the `[1m]` suffix, so that rule never fired. The old rule stays as `"activation": "picker"`.
 
 ### Known limits
 

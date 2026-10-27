@@ -9,16 +9,37 @@ permissions:
   contents: read
 
 jobs:
-  node-tests:
+  node:
+    name: type check and Node tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      # The tests import .ts files directly, so they need a Node version that strips types.
-      - name: Run the Node tests
-        run: node --test tests/*.test.mjs bench/*.test.mjs
+          cache: npm
+      # Node 24 strips TypeScript types, so the tests and bench scripts run as .mts without a build step.
+      - run: npm ci
+      - name: Type check
+        run: npm run typecheck
+      - name: Node tests
+        run: npm test
+
+  mod:
+    name: claude plugin validate and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # These two commands read and test the mod itself. They need no sign-in and no network.
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Validate the mod
+        run: claude plugin validate . --strict
+      - name: Test the mod
+        run: claude plugin test .
 
   secrets:
     runs-on: ubuntu-latest
@@ -45,7 +66,7 @@ jobs:
           fi
           # Absolute paths of a person's machine.
           if grep -rInE '/Users/[a-z][a-z0-9_-]+/|/home/[a-z][a-z0-9_-]+/' . \
-              --exclude-dir=.git --exclude-dir=upstream --exclude-dir=node_modules \
+              --exclude-dir=.git --exclude-dir=upstream --exclude-dir=node_modules --exclude=package-lock.json \
               | grep -vE '/Users/(sam|a|u|x|you|name)/|/home/(u|runner)/'; then
             echo "Found a personal path."; exit 1
           fi

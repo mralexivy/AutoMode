@@ -1,6 +1,6 @@
 # Benchmark tasks
 
-A task is one JSON file in this folder. The runner (`node bench/run.mjs`), the grader (`bench/grade.mjs`) and the fixture check (`node bench/validate-fixture.mjs`) read every `*.json` file here.
+A task is one JSON file in this folder. The runner (`node bench/run.mts`), the grader (`bench/grade.mts`) and the fixture check (`node bench/validate-fixture.mts`) read every `*.json` file here.
 
 **This folder has no tasks yet.** Adding the first six is the most useful contribution to AutoMode. Without them, we cannot publish a result.
 
@@ -41,7 +41,7 @@ A task is one JSON file in this folder. The runner (`node bench/run.mjs`), the g
 ## Check your task
 
 ```bash
-node bench/validate-fixture.mjs your-task-id
+node bench/validate-fixture.mts your-task-id
 ```
 
 The check validates the task file, clones the repository into `bench/.cache/` (ignored by git), and runs `accept` at `base` and at `reference`. It makes no model call and costs nothing. A valid task prints `"valid":true`.

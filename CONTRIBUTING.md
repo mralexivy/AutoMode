@@ -6,8 +6,8 @@ Thank you for your help. This guide takes five minutes to read.
 
 1. Fork the repository and clone your fork.
 2. Install Claude Code 2.1.287 or later. Check with `claude --version`.
-3. Run the Node tests: `node --test tests/*.test.mjs bench/*.test.mjs`. They need Node 23.6 or later, because they import `.ts` files directly.
-4. Load the mod from your working tree: `claude --plugin-dir . --model 'claude-sonnet-5-5[1m]'`
+3. Install the dev tools with `npm install`, then run all checks with `npm run check`. You need Node 23.6 or later. It runs TypeScript directly, so there is no build step.
+4. Load the mod from your working tree: `claude --plugin-dir .`
 
 AutoMode is a Claude Code **mod**: a plugin whose code registers event handlers. If mods are new to you, read the [mods overview](https://code.claude.com/docs/en/plugins/mods/overview) and [Create a mod](https://code.claude.com/docs/en/plugins/mods/create).
 
@@ -18,16 +18,35 @@ The entry point is [`hooks/register.ts`](hooks/register.ts), declared in [`hooks
 Run these before you open a pull request:
 
 ```bash
-node --test tests/*.test.mjs bench/*.test.mjs
-claude plugin validate . --strict
-claude plugin test .
+npm run typecheck                    # tsc: types of the tests and bench scripts
+npm test                             # node:test: the .test.mts files
+claude plugin validate . --strict    # reads the mod the way Claude Code does
+claude plugin test .                 # the .test.ts files, in the Claude Code test harness
 ```
 
 `claude plugin validate` reads the mod the way Claude Code does and lists the `hooks:` and `calls:` of the mod. Follow its rules: write every mods API call in full (`$.fs.read(...)`, never `const fs = $.fs`), pass an event name as a string literal, and pass a literal name to `$.env.get`.
 
+## TypeScript, not JavaScript
+
+All code here is TypeScript, except two groups of files that must stay JavaScript:
+
+- **`scripts/*.mjs`** run on a user's machine through `node`, and a user's Node may be older than 23.6. They need no build step and no type stripping.
+- **`workflows/run.js`** is loaded by Claude Code itself.
+
+Two kinds of test file exist, and the extension tells them apart:
+
+| File | Runs with | Why |
+|---|---|---|
+| `tests/*.test.ts` | `claude plugin test .` | They use the Claude Code test harness, `claude-code/testing`. |
+| `tests/*.test.mts` and `bench/*.test.mts` | `npm test` (`node --test`) | Plain Node tests. The `.mts` extension keeps `claude plugin test` from picking them up, and it means ES module. |
+
+Bench scripts are `.mts`. Write erasable TypeScript only: no `enum`, no `namespace`, no constructor parameter properties. `tsc` enforces this.
+
+**The type check is a ratchet.** Every `.mts` file is checked by default, so a new file must pass. Thirty-three older files start with `// @ts-nocheck TODO(types): N errors`. To fix one, delete that line, run `npm run typecheck`, and fix what it reports. `grep -l ts-nocheck -r bench tests` lists what is left.
+
 ## Where to help
 
-- **Benchmark task.** Add a file to `bench/tasks/` with a public repository (MIT, Apache-2.0, BSD or ISC), two pinned commits, hidden tests and a test command. Read [`bench/tasks/README.md`](bench/tasks/README.md), then run `node bench/validate-fixture.mjs <id>`.
+- **Benchmark task.** Add a file to `bench/tasks/` with a public repository (MIT, Apache-2.0, BSD or ISC), two pinned commits, hidden tests and a test command. Read [`bench/tasks/README.md`](bench/tasks/README.md), then run `node bench/validate-fixture.mts <id>`.
 - **Judge case.** Add an entry to the `cases` list in `bench/judge-cases.json`. Use an id that starts at `c01`. The format is `{ "id", "kind", "current": { "model", "effort" }, "message", "ok": [efforts a careful person accepts] }`. Write the prompt yourself. Do not paste real chat history.
 - **Risk rule.** Add a pattern in `hooks/lib/risk.ts` and a test in `tests/`.
 - **Docs and images.** Fix a sentence, or add a real screenshot to `docs/readme/`.

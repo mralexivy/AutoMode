@@ -21,7 +21,7 @@
     "mode": {
       "type": "string",
       "title": "AutoMode: Router mode",
-      "description": "default: follow config.json (auto as shipped). auto routes model and effort in AutoMode sessions. shadow only records what it would route. off does not route. AUTOMODE_ROUTER still wins.",
+      "description": "default: follow config.json (auto as shipped). auto routes model and effort in every session. shadow only records what it would route. off does not route. AUTOMODE_ROUTER still wins.",
       "default": "default",
       "options": [
         "default",

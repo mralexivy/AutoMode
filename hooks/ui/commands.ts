@@ -38,13 +38,22 @@ export function usageLine(): string {
   return `/automode [${SUBCOMMANDS.map((c) => c.name).join('|')}]`
 }
 
+// helpRows: one aligned line for each command. The column is as wide as the longest label, so no label runs into its text.
+function helpRows(): string[] {
+  const rows: [string, string][] = [
+    ...SUBCOMMANDS.map((c): [string, string] => [`  /automode ${c.name === 'status' ? '' : c.name}`.trimEnd(), c.line]),
+    ['  /automode:usage [--trace]', 'model calls, tokens, cache use and estimated API cost'],
+  ]
+  const width = Math.max(...rows.map(([label]) => label.length)) + 2
+  return rows.map(([label, line]) => label.padEnd(width) + line)
+}
+
 export function helpText(): string {
   return [
     'AutoMode picks the model and effort for each prompt.',
     '',
     'Commands:',
-    ...SUBCOMMANDS.map((c) => `  /automode ${c.name === 'status' ? '' : c.name}`.trimEnd().padEnd(24) + c.line),
-    '  /automode:usage [--trace]'.padEnd(24) + 'model calls, tokens, cache use and estimated API cost',
+    ...helpRows(),
     '',
     'The bar: model · effort · context · cache time left · session cost, then why it was chosen.',
     'For one prompt, start it with: am:haiku | am:sonnet | am:opus, am:low | am:medium | am:high | am:xhigh | am:max,',
@@ -70,14 +79,16 @@ export function setupText(v: View, f: Facts): string {
   if (!r.enabled) lines.push('✗ The router is off in config.json (router is not "v4"). AutoMode does not route.')
   else if (r.killed) lines.push('✗ AUTOMODE_ROUTER=off is set. Unset it to route.')
   else lines.push('✓ The router is enabled.')
-  lines.push(r.active
+  if (r.activation === 'always') lines.push('✓ AutoMode starts with every session (activation: always).')
+  else lines.push(r.active
     ? `✓ This session runs on the AutoMode model (${picker}).`
-    : `✗ This session runs on ${r.sessionModel ?? 'an unknown model'}, so AutoMode is idle.`)
+    : `✗ This session runs on ${r.sessionModel ?? 'an unknown model'}, so AutoMode is idle (activation: picker).`)
   lines.push(r.mode === 'off' ? '✗ Routing is off for this session. Run /automode on.' : `✓ Routing mode: ${r.mode}.`)
   lines.push(f.env.AUTOMODE_UI === 'off' ? '• The bar is hidden (AUTOMODE_UI=off).' : '✓ The bar is shown above the prompt.')
   lines.push('')
   if (!r.active) {
-    lines.push('Next step: start Claude Code on the AutoMode model, or set it as your model in settings:', `  claude --model '${picker}'`)
+    lines.push('Next step: set "activation": "always" in config.json so AutoMode starts with every session.',
+      `Or start Claude Code on the AutoMode model (picker mode, needs a Claude Code build that keeps the suffix): claude --model '${picker}'`)
   } else if (r.mode === 'off') {
     lines.push('Next step: /automode on')
   } else {
@@ -90,7 +101,7 @@ export function setupText(v: View, f: Facts): string {
 // settingsText: the values in force and where they come from. It names the way to change each one.
 export function settingsText(v: View, f: Facts): string {
   const r = v.router, g = v.guard, c = f.config
-  const row = (k: string, val: unknown, how: string) => `  ${k.padEnd(22)}${String(val).padEnd(24)}${how}`
+  const row = (k: string, val: unknown, how: string) => `  ${k.padEnd(27)}${String(val).padEnd(24)}${how}`
   const modeHow = r.sessionMode ? '/automode on|off (this session)' : r.killed ? 'AUTOMODE_ROUTER' : 'config.json or /plugin configure'
   return [
     'AutoMode settings',
@@ -99,7 +110,8 @@ export function settingsText(v: View, f: Facts): string {
     row('policy', r.policy, 'config.json: policy'),
     row('route models', yes(r.routeModels), 'config.json: routeModels'),
     row('subagents, every session', yes(r.subagentsEverySession), 'config.json: subagentsEverySession'),
-    row('AutoMode model', c.pickerModel ?? 'claude-sonnet-5-5[1m]', 'config.json: pickerModel'),
+    row('activation', r.activation, 'config.json: activation (always or picker)'),
+    row('picker model', c.pickerModel ?? 'claude-sonnet-5-5[1m]', 'config.json: pickerModel (picker mode only)'),
     row('review policy', c.reviewPolicy ?? 'risk', 'config.json: reviewPolicy'),
     row('default path', c.defaultPath ?? 'direct', 'config.json: defaultPath'),
     row('max concurrency', c.maxConcurrency ?? 1, 'config.json: maxConcurrency'),
@@ -123,7 +135,7 @@ export function debugText(v: View, f: Facts, now: number): string {
     `version          ${f.version}`,
     `plugin root      ${home(f.root, f.home)}`,
     `session model    ${r.sessionModel ?? 'unknown'}`,
-    `active           ${yes(r.active)}`,
+    `active           ${yes(r.active)} (activation ${r.activation})`,
     `enabled / killed ${yes(r.enabled)} / ${yes(r.killed)}`,
     `mode             ${r.mode} (config ${r.configMode}, session ${r.sessionMode ?? 'none'})`,
     `policy           ${r.policy}`,
@@ -133,7 +145,7 @@ export function debugText(v: View, f: Facts, now: number): string {
     `judge            ${v.judge.state}${r.judgeDown.length ? `, down: ${r.judgeDown.join(', ')}` : ''}`,
     `breakers         ${r.breakers.length ? r.breakers.map((b) => `${b.model}${b.cls ? ` (${b.cls})` : ''}`).join(', ') : 'none'}`,
     `plan mode        ${yes(!!r.planMode)}`,
-    `stage            ${r.stage ?? 'none'}`,
+    `stage            ${r.active ? (r.stage ?? 'none') : 'idle'}`,
     `guardian         ${g.mode}, level ${g.level}${g.paused ? ', PAUSED' : ''}${g.killed ? ', killed by env' : ''}`,
     `context          ${v.context.percent === null ? 'unknown' : `${Math.round(v.context.percent)}%`} (${v.context.level})`,
     `cache            ${v.cache.state}`,

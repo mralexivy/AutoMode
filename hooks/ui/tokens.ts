@@ -1,5 +1,5 @@
 // AutoMode design tokens: one palette per appearance and theme, named for what a colour means. Every drawing in
-// hooks/ui takes its colours from here; nothing else holds a hex. tests/ui-view.test.mjs checks WCAG contrast for every
+// hooks/ui takes its colours from here; nothing else holds a hex. tests/ui-view.test.mts checks WCAG contrast for every
 // text colour on both surfaces (4.5:1), so a token change that does not read fails the build.
 //
 // Roles: route (electric blue: the model router), cyan (the routing gradient's far end), effort (violet: reasoning

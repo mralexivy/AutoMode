@@ -1,0 +1,19 @@
+{
+  "name": "automode-dev",
+  "private": true,
+  "type": "module",
+  "description": "Development tools for AutoMode, a Claude Code mod. The mod itself needs no install step and no build step.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=23.6"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mts bench/*.test.mts",
+    "typecheck": "tsc -p .",
+    "check": "npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}

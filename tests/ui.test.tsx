@@ -4,7 +4,7 @@
 // `automode.view` (a test's hooks sit beneath the plugin).
 import { test, describe, expect, mock } from 'claude-code/testing'
 import { buildView } from '../hooks/ui/view.ts'
-import { stateOf, STATES, NOW } from './fixtures/ui-states.mjs'
+import { stateOf, STATES, NOW } from './fixtures/ui-states.mts'
 
 const SURFACES = ['terminal', 'desktop', 'vscode'] as const
 const BAND = (surface: string, cols = 100, extra: Record<string, unknown> = {}) => ({

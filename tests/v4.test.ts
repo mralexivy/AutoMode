@@ -522,3 +522,50 @@ describe('V4 auto: user-tier signals', () => {
   ignored('shadow mode', { mode: 'shadow' })
   ignored('plain Sonnet', { model: 'claude-sonnet-5-5' })
 })
+
+// Claude Code 2.1.311 removes the [1m] suffix before a mod sees the model, so a model ID cannot turn AutoMode on.
+// activation 'always' (the shipped default) starts AutoMode with the session, on whatever model the session runs.
+describe('V4: activation always (the shipped default)', () => {
+  test('a plain Sonnet session is routed: the judge runs and the decision is recorded', async ($, on) => {
+    const h = harness(on, { model: 'claude-sonnet-5-5', policy: 'auto', mode: 'auto', config: { activation: 'always' }, judge: judge({ tier: 'T0', complexity: 'trivial', effort: 'low' }) })
+    await h.submit($, 'where is the output folder written?')
+    await h.step($)
+    await h.complete($)
+    expect(h.judged.length).toBe(1)
+    expect(records(h.writes).some((x) => x.kind === 'decision')).toBe(true)
+  })
+
+  test('a session on any other model is routed too', async ($, on) => {
+    const h = harness(on, { model: 'claude-opus-5-5', policy: 'auto', mode: 'auto', config: { activation: 'always' }, judge: judge({ tier: 'T0', complexity: 'trivial', effort: 'low' }) })
+    await h.submit($, 'where is the output folder written?')
+    expect(h.judged.length).toBe(1)
+  })
+
+  test('picker activation keeps the old rule: a plain Sonnet session stays untouched', async ($, on) => {
+    const h = harness(on, { model: 'claude-sonnet-5-5', policy: 'auto', mode: 'auto', config: { activation: 'picker' }, judge: judge({ tier: 'T0', complexity: 'trivial', effort: 'low' }) })
+    const out = await h.submit($, 'add retries to the uploader')
+    await h.step($)
+    expect(h.judged.length).toBe(0)
+    expect(out.context.length).toBe(0)
+    expect(records(h.writes).length).toBe(0)
+  })
+
+  test('picker activation still turns on for the AutoMode model ID', async ($, on) => {
+    const h = harness(on, { model: 'claude-sonnet-5-5[1m]', policy: 'auto', mode: 'auto', config: { activation: 'picker' }, judge: judge({ tier: 'T0', complexity: 'trivial', effort: 'low' }) })
+    await h.submit($, 'where is the output folder written?')
+    expect(h.judged.length).toBe(1)
+  })
+
+  test('the kill switch and mode off still stop it, whatever the activation', async ($, on) => {
+    const killed = harness(on, { model: 'claude-sonnet-5-5', mode: 'auto', config: { activation: 'always' }, env: { AUTOMODE_ROUTER: 'off' } })
+    await killed.submit($, 'add retries')
+    expect(killed.judged.length).toBe(0)
+  })
+
+  test('mode off in config stops it with activation always', async ($, on) => {
+    const h = harness(on, { model: 'claude-sonnet-5-5', mode: 'off', config: { activation: 'always' } })
+    const out = await h.submit($, 'add retries')
+    expect(h.judged.length).toBe(0)
+    expect(out.context.length).toBe(0)
+  })
+})

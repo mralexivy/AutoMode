@@ -49,11 +49,11 @@ import { publish } from './ui/publish.ts'
 import type { AgentSnap, Ledger, RouterSnap } from './ui/view.ts'
 
 const V4_DEFAULTS = {
-  router: 'classic', mode: 'shadow' as Mode, pickerModel: 'claude-sonnet-5-5[1m]', workflowName: 'automode:run',
+  router: 'classic', mode: 'shadow' as Mode, activation: 'always' as 'always' | 'picker', pickerModel: 'claude-sonnet-5-5[1m]', workflowName: 'automode:run',
   standardMode: 'discover', reviewPolicy: 'risk', maxConcurrency: 1, judgeModel: 'haiku', judgeVersion: 2, judgeTimeoutMs: 8000,
   compactWith: 'haiku', compactModel: 'claude-haiku-5-5', redirectExplore: true, workerTools: true, workerDeadlineMs: 180_000,
   // Opt-in: route built-in subagents (lib/subagents.ts) in every session, not only while AutoMode is the model. Needs no
-  // judge. bench/retro-replay.mjs measures what this saves on your own transcripts.
+  // judge. bench/retro-replay.mts measures what this saves on your own transcripts.
   subagentsEverySession: false,
   blockGitWritesWhenActive: true, recordDecisions: true, signals: true,
   // Decision semantics. `legacy` is the interval optimizer; `auto` is AutoMode Auto (lib/auto.ts: the effortless
@@ -285,7 +285,7 @@ function routingCache(): CacheState {
   return !S.cache && S.prefixEstimate ? { ...c, prefixTokens: S.prefixEstimate } : c
 }
 
-// loadPriors reads this user's calibration (bench/calibrate.mjs writes it next to the records). A
+// loadPriors reads this user's calibration (bench/calibrate.mts writes it next to the records). A
 // missing or malformed file keeps the labeled estimates; a calibrated value replaces only its own key.
 async function loadPriors($: EngineInterface): Promise<Priors> {
   try {
@@ -315,8 +315,10 @@ async function activeV4($: EngineInterface): Promise<boolean> {
   if (S.restored && id !== S.sessionId) { Object.assign(S, freshSession()); resetU(); S.loaded = false }
   if (!S.loaded) await loadV4($)
   if (S.mode === 'off') return false
-  let on = false
-  try { on = (await $.session.model()).trim() === S.cfg.pickerModel } catch { return false }
+  // activation 'always': AutoMode starts with the session. Claude Code 2.1.311 removes the [1m] suffix before a mod sees the
+  // model, so a model ID cannot be the switch. 'picker' keeps the old rule for builds that pass the suffix on.
+  let on = S.cfg.activation !== 'picker'
+  if (!on) { try { on = (await $.session.model()).trim() === S.cfg.pickerModel } catch { return false } }
   if (on && !S.restored) {
     await restore($)
     // A switch set before a reload comes back with the snapshot: apply it before this prompt routes.
@@ -2125,7 +2127,8 @@ function noteVerdict(d: Decision) {
 export function v4Snapshot(sessionModel: string | null, now: number): RouterSnap {
   const r = S.pending
   return {
-    enabled: S.cfg.router === 'v4', killed: U.killed, active: !!sessionModel && sessionModel.trim() === S.cfg.pickerModel,
+    enabled: S.cfg.router === 'v4', killed: U.killed, activation: S.cfg.activation === 'picker' ? 'picker' : 'always',
+    active: S.cfg.activation !== 'picker' || (!!sessionModel && sessionModel.trim() === S.cfg.pickerModel),
     mode: S.mode, configMode: U.configMode, sessionMode: S.sessionMode, policy: S.policy, providerGuard: S.providerGuard, provider: S.provider,
     routeModels: (S.cfg as { routeModels?: boolean }).routeModels !== false, subagentsEverySession: !!(S.cfg as { subagentsEverySession?: boolean }).subagentsEverySession, sessionModel,
     requested: r ? { family: r.family, model: r.model, effort: r.effort, owner: r.owner, reason: r.reason, floor: r.floor?.tier ?? '—' } : null,
