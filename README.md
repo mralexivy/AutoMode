@@ -348,7 +348,7 @@ The mod is a function-hooks module. [`hooks/hooks.json`](hooks/hooks.json) names
 ## Contributors
 
 <a href="https://github.com/mralexivy/AutoMode/graphs/contributors">
-  <img alt="Contributors" src="https://contrib.rocks/image?repo=mralexivy/AutoMode">
+  <img alt="Contributors" src="docs/readme/contributors.jpg" width="64" height="64" style="border-radius:50%">
 </a>
 
 ## Credits
