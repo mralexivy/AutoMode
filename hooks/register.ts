@@ -1,4 +1,4 @@
-// Generated from hooks/ at commit d256714dc44a731576f6ca359932bf78303be0c8 by tools/release.mts. The readable source is hooks/ on the main branch.
+// Generated from hooks/ at commit 765aa8a1d4c0baf6c1c5769efda76519bc0f6569 by tools/release.mts. The readable source is hooks/ on the main branch.
 // hooks/register.ts
 import { COMPACT_SYSTEM as COMPACT_SYSTEM2, transcriptOf as transcriptOf2 } from "./lib/compact.ts";
 
@@ -1732,7 +1732,7 @@ async function loadV4($) {
 var FIRST_PREFIX_KEEP = 20;
 var projectKey = (cwd) => cwd ? fnv1a(cwd) : "unknown";
 var nums = (v) => (Array.isArray(v) ? v : []).filter((x) => typeof x === "number" && Number.isFinite(x) && x > 0);
-async function readFirstFile($) {
+async function firstFile($) {
   try {
     const file = `${await dataDir2($)}/first-prefix.json`;
     if (!await $.fs.exists(file)) return { byProject: {}, ratios: [] };
@@ -1758,7 +1758,7 @@ async function preflightRaw($) {
 }
 var FIRST_PREFIX_HEADROOM = 4e3;
 async function loadPrefixEstimate($) {
-  const { byProject: by, ratios } = await readFirstFile($);
+  const { byProject: by, ratios } = await firstFile($);
   if (!S.cache && S.preflight === void 0) S.preflight = await preflightRaw($);
   const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor((xs.length - 1) / 2)];
   if (!S.cache && S.preflight && ratios.length >= PREFLIGHT_MIN_RATIOS) {
@@ -1784,7 +1784,7 @@ async function loadPrefixEstimate($) {
 }
 async function saveFirstPrefix($, tokens) {
   try {
-    const { byProject: by, ratios } = await readFirstFile($);
+    const { byProject: by, ratios } = await firstFile($);
     const k = projectKey(S.cwd);
     const ratio = S.preflight ? tokens / S.preflight : null;
     const nextRatios = ratio && ratio >= 0.5 && ratio <= 20 ? [...ratios, Math.round(ratio * 1e3) / 1e3].slice(-FIRST_PREFIX_KEEP) : ratios;
@@ -4021,7 +4021,7 @@ async function uiSessionStart($) {
   } catch {
   }
 }
-async function commandFacts($) {
+async function cmdFacts($) {
   const safe = async (p, fallback) => {
     try {
       return await p;
@@ -4095,11 +4095,11 @@ function registerUi(on) {
           return { text: `${head}
 ${detailsText(v, now3)}` };
         case "setup":
-          return { text: setupText(v, await commandFacts($)) };
+          return { text: setupText(v, await cmdFacts($)) };
         case "settings":
-          return { text: settingsText(v, await commandFacts($)) };
+          return { text: settingsText(v, await cmdFacts($)) };
         case "debug":
-          return { text: debugText(v, await commandFacts($), now3) };
+          return { text: debugText(v, await cmdFacts($), now3) };
         case "on":
         case "off": {
           const wantOn = name === "on";
@@ -4305,7 +4305,11 @@ async function debug($, entry) {
   if (!cfg.debugLog) return;
   const file = `${$.plugin.root}/judge-log.jsonl`;
   try {
-    const before = await $.fs.exists(file) ? await $.fs.read(file) : "";
+    let before = "";
+    try {
+      before = await $.fs.read(file);
+    } catch {
+    }
     await $.fs.write(file, before + JSON.stringify({ at: await $.clock.now(), ...entry }) + "\n");
   } catch {
   }
@@ -4318,7 +4322,7 @@ async function limitShare($) {
     return null;
   }
 }
-async function coldCacheHint($) {
+async function coldHint($) {
   if (lastAnswerAt === null) return null;
   try {
     const now3 = await $.clock.now();
@@ -4341,7 +4345,7 @@ async function routePrompt($, e, next) {
   const byPerson = e.origin.kind === "composer" || e.origin.kind === "bridge" || e.origin.kind === "sdk";
   if (!byPerson || e.command || e.isMeta || text.startsWith("/") || text.startsWith("!")) return next(e);
   if (!await active($)) return next(e);
-  const hint = await coldCacheHint($);
+  const hint = await coldHint($);
   if (hint) $.ui.toast(hint);
   const risks = risksOf(text);
   const named = namedEffort(text);
