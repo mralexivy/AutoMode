@@ -32,7 +32,7 @@ async function run(args, answer) {
   const calls = []
   const agent = async (prompt, opts) => {
     const role = opts.agentType.split(':')[1]
-    calls.push({ role, model: opts.model, label: opts.label, prompt })
+    calls.push({ role, model: opts.model, effort: opts.effort, label: opts.label, prompt })
     return answer(role, opts, prompt, calls)
   }
   const parallel = (fns) => Promise.all(fns.map((f) => f()))
@@ -44,6 +44,15 @@ const defaults = (over = {}) => (role, opts) => {
   return { explorer: DISC(), architect: opts.label?.startsWith('escalate') ? { answer: 'use v2', plan_changes: [], stop: false, stop_reason: '' } : PLAN(), implementer: IMPL('main'), verifier: PASS, reviewer: REVIEW }[role]
 }
 const seq = (calls) => calls.map((c) => `${c.role}/${c.model}`)
+
+test('every role runs its pinned model and effort; no agent runs below medium', async () => {
+  const { calls } = await run({ task: 'add retries to the uploader', reviewPolicy: 'always' }, defaults())
+  const pairs = Object.fromEntries(calls.map((c) => [c.role, `${c.model}/${c.effort}`]))
+  assert.deepEqual(pairs, { explorer: 'haiku/medium', architect: 'opus/high', implementer: 'sonnet/high', verifier: 'sonnet/medium', reviewer: 'opus/high' })
+  const { calls: small } = await run({ task: 'add retries to the uploader', sonnetPlanSmall: true }, defaults())
+  assert.equal(small.find((c) => c.label === 'plan').effort, 'high', 'the Sonnet planner')
+  assert.ok([...calls, ...small].every((c) => c.effort !== 'low'))
+})
 
 test('default: S1 plans on Opus even for a small change', async () => {
   const { calls } = await run({ task: 'add retries to the uploader', reviewPolicy: 'risk' }, defaults())

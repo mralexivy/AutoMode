@@ -63,6 +63,40 @@ test('selection: the cheapest eligible pair; no retry charge, no score', () => {
   for (const x of [...c.candidates, ...d.candidates]) assert.equal('robustUsd' in x, false)
 })
 
+test('hard work never runs Opus below high: T4 and a Fable verdict, whatever the verdict effort', () => {
+  const t4 = optimizeAuto(base({ hm: hmOf('T4', 'complex'), verdicts: { opus: v('sonnet', 'medium') } }))
+  assert.equal(`${t4.best.family}/${t4.best.effort}`, 'opus/high')
+  assert.ok(t4.best.why.includes('floor high'), 'the floor is recorded')
+  const fable = optimizeAuto(base({ hm: hmOf('T3', 'complex'), verdicts: { opus: v('fable', 'medium') } }))
+  assert.equal(`${fable.best.family}/${fable.best.effort}`, 'opus/high')
+  const higher = optimizeAuto(base({ hm: hmOf('T4', 'complex'), verdicts: { opus: v('opus', 'xhigh') } }))
+  assert.equal(higher.best.effort, 'xhigh', 'the floor never lowers a verdict')
+})
+
+test('the hard-work floor also holds when Opus is the strongest available without an eligible pair', () => {
+  const c = optimizeAuto(base({ allowed: ['opus'], hm: hmOf('T4', 'complex'), verdicts: { sonnet: v('fable', 'low') } }))
+  assert.equal(`${c.best.family}/${c.best.effort}`, 'opus/high')
+  const none = optimizeAuto(base({ allowed: ['opus'], hm: null, verdicts: { sonnet: v('fable', 'low') }, current: { family: 'opus', effort: 'medium' } }))
+  assert.equal(`${none.best.family}/${none.best.effort}`, 'opus/high', 'a Fable verdict counts without the AutoMode judge')
+})
+
+test('the hard-work floor stays narrow: T3 and a user effort are not lifted', () => {
+  const t3 = optimizeAuto(base({ hm: hmOf('T3', 'complex'), verdicts: { opus: v('opus', 'medium') } }))
+  assert.equal(`${t3.best.family}/${t3.best.effort}`, 'opus/medium')
+  const user = optimizeAuto(base({ hm: hmOf('T4', 'complex'), verdicts: { opus: v('opus', 'medium') }, floors: { fixedEffort: 'low', because: [] } }))
+  assert.equal(user.best.effort, 'low', 'an explicit user effort wins')
+  const sonnet = optimizeAuto(base({ hm: hmOf('T2'), verdicts: { sonnet: v('sonnet', 'medium') } }))
+  assert.equal(`${sonnet.best.family}/${sonnet.best.effort}`, 'sonnet/medium', 'the floor is for Opus only')
+})
+
+test('T3 and T4 never run at low on the last model standing', () => {
+  const c = optimizeAuto(base({ allowed: ['sonnet'], hm: hmOf('T3', 'complex'), verdicts: { sonnet: v('sonnet', 'low') } }))
+  assert.equal(`${c.best.family}/${c.best.effort}`, 'sonnet/medium')
+  assert.equal(c.inadequate, true, 'still labeled inadequate')
+  const user = optimizeAuto(base({ allowed: ['sonnet'], hm: hmOf('T3', 'complex'), verdicts: { sonnet: v('sonnet', 'low') }, floors: { fixedEffort: 'low', because: [] } }))
+  assert.equal(user.best.effort, 'low', 'an explicit user effort wins')
+})
+
 test('each model gets its own verdict effort: no conversion between models', () => {
   const c = optimizeAuto(base({ hm: hmOf('T2'), verdicts: { sonnet: v('sonnet', 'xhigh'), opus: v('sonnet', 'low') } }))
   assert.equal(c.candidates.find((x) => x.family === 'sonnet').effort, 'xhigh')

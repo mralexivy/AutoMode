@@ -31,6 +31,13 @@ describe('Two judges, one joint choice', () => {
     expect(d.costTotal.judgeUsd).toBeGreaterThan(0) // judge overhead is part of the decision's cost
   })
 
+  test('critical work gets an Opus floor: an Opus low verdict runs at medium', async ($, on) => {
+    const h = harness(on, auto({ judge: judge({ tier: 'T2', complexity: 'standard', risk: 'critical', riskWhy: 'payment path' }), effortJudge: perModel({ sonnet: ['opus', 'high'], opus: ['opus', 'low'] }) }))
+    await h.submit($, 'change how the payment webhook retries')
+    await h.step($)
+    expect(h.steps[0]).toMatchObject({ model: 'claude-opus-5-5', effort: 'medium' })
+  })
+
   test('a simple task in a new conversation: one effortless call, no Opus', async ($, on) => {
     const h = harness(on, auto({ judge: judge({ tier: 'T1', complexity: 'standard' }), effortJudge: perModel({ sonnet: ['sonnet', 'low'] }) }))
     await h.submit($, 'add a --verbose flag to the usage script')
@@ -197,7 +204,7 @@ describe('Application at the request: requested, legal and effective effort', ()
     expect(h.steps[1].effort).toBe('xhigh') // the running task is not weakened
     await h.complete($, 'claude-opus-5-5')
     await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2' })
-    expect(h.steps[2].effort).toBe('low') // applied when the turn ended
+    expect(h.steps[2].effort).toBe('medium') // applied when the turn ended; a deadlock is critical, so the low pick meets the Opus floor
   })
 
   test('a lower effort chosen inside a turn without new input is requested at once and takes effect at the next new input', async ($, on) => {
