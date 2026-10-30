@@ -1,4 +1,5 @@
 node_modules/
+dist/
 .DS_Store
 bench/.cache/
 bench/results/ledger.jsonl

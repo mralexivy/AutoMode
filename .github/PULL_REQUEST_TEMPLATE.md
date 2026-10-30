@@ -1,12 +1,13 @@
 ## What changed and why
 
-<!-- Two or three short sentences. Link the issue. -->
+<!-- Two or three short sentences. -->
+
+Closes #
 
 ## How you checked it
 
-- [ ] `npm run check` passes (type check and Node tests)
-- [ ] `claude plugin validate . --strict` passes
-- [ ] `claude plugin test .` passes (if you changed `hooks/`)
+<!-- CI runs the type check, the tests and the validator. Say what else you tried. -->
+
 - [ ] I added or updated a test for the change
 
 ## Privacy
@@ -15,6 +16,6 @@
 - [ ] No saved model reply text in `bench/results/`
 - [ ] If I added a benchmark task, the repository is public, the license is MIT or Apache-2.0 (or BSD, ISC), and `node bench/validate-fixture.mts` says `valid`
 
-## Release notes
+## Changelog
 
-<!-- One line for CHANGELOG.md, or "none". If this changes the mod, raise `version` in .claude-plugin/plugin.json. -->
+<!-- If this changes the mod, add a line under [Unreleased] in CHANGELOG.md. The heading sets the next version. Do not change `version` in plugin.json. -->

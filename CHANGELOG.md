@@ -4,6 +4,14 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- New installs come from the `stable` branch, which moves only after a release passes its checks. They no longer get unreleased work from `main`.
+
+### Added
+
+- GitHub Releases carry a bundle, checksums and a build attestation.
+
 ## [0.1.2] - 2026-10-30
 
 ### Added

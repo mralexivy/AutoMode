@@ -11,6 +11,6 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["bench/**/*.mts", "tests/**/*.mts", "bench/stubs.d.ts"],
+  "include": ["bench/**/*.mts", "tests/**/*.mts", "tools/**/*.mts", "bench/stubs.d.ts"],
   "exclude": ["bench/external", "node_modules"]
 }
