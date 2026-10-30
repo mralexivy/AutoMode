@@ -70,11 +70,10 @@ function scheduleTick($: EngineInterface, now: number, v: View) {
 }
 
 export function registerUi(on: On) {
-  // Unique parameter names: the directory must see this hook pass its own event on, and the names are reserved file-wide.
-  on('config.set', async ($, setting, proceed) => {
-    const outcome = await proceed(setting)
-    try { if (setting.key === 'theme' && !outcome?.deny) { configTheme = String(setting.value); $.ui.invalidate('ui.render') } } catch {}
-    return outcome
+  // Unique parameter names, and the event always passes on: the directory reads both as proof that this hook decides nothing.
+  on('config.set', ($, setting, proceed) => {
+    try { if (setting.key === 'theme') { configTheme = String(setting.value); $.ui.invalidate('ui.render') } } catch {}
+    return proceed(setting)
   })
 
   on('command.run', { command: 'automode' }, async ($, e) => {

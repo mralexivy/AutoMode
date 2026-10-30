@@ -1,10 +1,10 @@
 // The release tools (tools/release.mts): the decision, the file rewrites and the PR rules.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 
 import {
-  BUNDLE, DIRECTORY, SHIPPED, bumpFor, compareVersions, decide, finishBundle, isDocs, pureLibs, isShipped, nextVersion, prNumbers, releaseNotes,
+  BUNDLE, DIRECTORY, SHIPPED, bumpFor, compareVersions, decide, finishBundle, isDocs, linkDemo, pureLibs, isShipped, nextVersion, prNumbers, releaseNotes,
   releaseVersionOf, rewriteChangelog, rewritePlugin, rewriteReadme, ruleErrors, sectionBody,
   type Facts, type PullRequest,
 } from '../tools/release.mts'
@@ -212,4 +212,14 @@ test('a lib file stays separate only if it and its local imports never touch $',
     'e.ts': "import type { C } from './c.ts'\nexport const e = 1\n",
   })
   assert.deepEqual([...pure].sort(), ['a.ts', 'b.ts', 'e.ts'])
+})
+
+test('the listing links the recording', () => {
+  assert.equal(linkDemo('<img src="docs/readme/demo.gif">'), '<img src="https://raw.githubusercontent.com/mralexivy/AutoMode/main/docs/readme/demo.gif">')
+})
+
+// The directory reserves these names in a file that declares a hook, and the bundle is one such file.
+test('no file in hooks declares a variable named on or next', () => {
+  const files = readdirSync('hooks', { recursive: true, encoding: 'utf8' }).filter(f => /\.tsx?$/.test(f))
+  for (const f of files) assert.doesNotMatch(readFileSync(`hooks/${f}`, 'utf8'), /\b(?:const|let|var) (?:on|next)\b/, f)
 })

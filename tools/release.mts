@@ -2,7 +2,6 @@
 // The functions at the top are pure, so tests/release.test.mts can pin them. The commands at the bottom own git and the
 // file system. This file is a dev tool and stays out of the bundle.
 import { execFileSync } from 'node:child_process'
-import { build } from 'esbuild'
 import { appendFileSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
@@ -237,6 +236,9 @@ export function finishBundle(code: string, sha: string): string {
   return `// Generated from hooks/ at commit ${sha} by tools/release.mts. The readable source is hooks/ on the main branch.\n${body}`
 }
 
+export const linkDemo = (readme: string) =>
+  readme.replaceAll('docs/readme/demo.gif', 'https://raw.githubusercontent.com/mralexivy/AutoMode/main/docs/readme/demo.gif')
+
 // pureLibs names the hooks/lib files that can stay separate: no use of $, and every local import is also pure. Each
 // keeps the bundle smaller, and the directory reads a file only up to 256 KiB.
 export function pureLibs(files: Record<string, string>): Set<string> {
@@ -258,6 +260,8 @@ async function commandDirectory(version: string) {
   try {
     mkdirSync(tree)
     execFileSync('sh', ['-c', `git archive HEAD -- ${DIRECTORY.join(' ')} | tar -x -C "${tree}"`], { stdio: 'inherit' })
+    // Loaded here because the other commands run where dev tools are not installed.
+    const { build } = await import('esbuild')
     const libs = Object.fromEntries(readdirSync('hooks/lib').map(f => [f, read(`hooks/lib/${f}`)]))
     const pure = pureLibs(libs)
     await build({
@@ -271,6 +275,9 @@ async function commandDirectory(version: string) {
         },
       }],
     })
+    // The scanner reads a download command into the GIF's bytes, so the listing links the recording instead of carrying it.
+    rmSync(join(tree, 'docs', 'readme', 'demo.gif'))
+    writeFileSync(join(tree, 'README.md'), linkDemo(read('README.md')))
     const hooksJson = readFileSync(join(tree, 'hooks', 'hooks.json'))
     rmSync(join(tree, 'hooks'), { recursive: true })
     mkdirSync(join(tree, 'hooks', 'lib'), { recursive: true })
