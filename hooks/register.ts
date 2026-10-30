@@ -1,4 +1,4 @@
-// Generated from hooks/ at commit 2d784151ec10e85cca69d7a365497ded92280a8d by tools/release.mts. The readable source is hooks/ on the main branch.
+// Generated from hooks/ at commit 0e613b2c5bc4773b4953eb92a425d50f058ee258 by tools/release.mts. The readable source is hooks/ on the main branch.
 // hooks/register.ts
 import { COMPACT_SYSTEM as COMPACT_SYSTEM2, transcriptOf as transcriptOf2 } from "./lib/compact.ts";
 
@@ -4069,16 +4069,15 @@ function scheduleTick($, now3, v) {
   }
 }
 function registerUi(on) {
-  on("config.set", async ($, setting, proceed) => {
-    const outcome = await proceed(setting);
+  on("config.set", ($, setting, proceed) => {
     try {
-      if (setting.key === "theme" && !outcome?.deny) {
+      if (setting.key === "theme") {
         configTheme = String(setting.value);
         $.ui.invalidate("ui.render");
       }
     } catch {
     }
-    return outcome;
+    return proceed(setting);
   });
   on("command.run", { command: "automode" }, async ($, e) => {
     try {

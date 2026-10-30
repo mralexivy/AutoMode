@@ -41,7 +41,7 @@ Install it and it starts. You never touch the model or the Effort control again.
 ```
 
 <p align="center">
-  <img src="docs/readme/demo.gif" alt="A real session: a quick question runs on Haiku at Low, then a JWT migration moves up to Opus because the risk floor rules out Haiku" width="100%">
+  <img src="https://raw.githubusercontent.com/mralexivy/AutoMode/main/docs/readme/demo.gif" alt="A real session: a quick question runs on Haiku at Low, then a JWT migration moves up to Opus because the risk floor rules out Haiku" width="100%">
   <br><sub>A real session on Claude Code 2.1.308, sped up 1.6 times. A quick question runs on Haiku at Low. A JWT migration moves up to Opus, because the risk floor rules out Haiku.</sub>
 </p>
 
