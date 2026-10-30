@@ -34,6 +34,11 @@ Install it and it starts. You never touch the model or the Effort control again.
   <img src="docs/readme/hero.svg" alt="The AutoMode bar: Deciding, then Low for a quick question, then High for a refactor" width="100%">
 </p>
 
+<p align="center">
+  <img src="docs/readme/session.png" alt="A real session: a quick question runs on Haiku at Low, and a risky migration moves up to Opus at High" width="100%">
+  <br><sub>A real session on Claude Code 2.1.314. A quick question runs on Haiku at Low. A risky migration moves up to Opus at High.</sub>
+</p>
+
 ## What AutoMode does, in one minute
 
 |  | Without AutoMode | With AutoMode |
