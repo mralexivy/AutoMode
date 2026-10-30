@@ -13,6 +13,7 @@
 </p>
 
 <p align="center">
+  <a href="https://mralexivy.github.io/AutoMode/"><b>Website</b></a> ·
   <a href="#install"><b>Install</b></a> ·
   <a href="#what-the-bar-shows"><b>The bar</b></a> ·
   <a href="#how-it-works"><b>How it works</b></a> ·
