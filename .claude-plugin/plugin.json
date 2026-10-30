@@ -8,7 +8,10 @@
   },
   "version": "0.2.0",
   "license": "MIT",
-  "homepage": "https://github.com/mralexivy/AutoMode",
+  "homepage": "https://mralexivy.github.io/AutoMode/",
+  "documentationUrl": "https://github.com/mralexivy/AutoMode#readme",
+  "supportUrl": "https://github.com/mralexivy/AutoMode/issues",
+  "privacyPolicyUrl": "https://github.com/mralexivy/AutoMode/blob/main/PRIVACY.md",
   "repository": "https://github.com/mralexivy/AutoMode",
   "keywords": [
     "automode",
