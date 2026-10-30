@@ -14,6 +14,7 @@ import { detailsText } from './details.tsx'
 import * as cmd from './commands.ts'
 import { toggleRouting } from './switch.ts'
 import type { View } from '../../types/index.d.ts'
+import { fsRead } from '../lib/io.ts'
 
 type On = Parameters<Register>[0]
 
@@ -43,7 +44,7 @@ export async function uiSessionStart($: EngineInterface) {
 // The engine facts the report subcommands print. Each read is best effort: a missing file is a blank, never an error.
 async function commandFacts($: EngineInterface): Promise<cmd.Facts> {
   const safe = async <T,>(p: Promise<T> | T, fallback: T): Promise<T> => { try { return await p } catch { return fallback } }
-  const json = async (file: string) => { try { return JSON.parse(await $.fs.read(file)) } catch { return {} } }
+  const json = async (file: string) => { try { return JSON.parse(await fsRead($, file)) } catch { return {} } }
   const str = (v: unknown) => (v ? String(v) : null)
   const root = String($.plugin.root)
   const manifest = await json(`${root}/.claude-plugin/plugin.json`)

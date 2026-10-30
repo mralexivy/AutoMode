@@ -2,6 +2,16 @@
 
 All notable changes are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-10-30
+
+### Changed
+
+- Four busy host calls go through `hooks/lib/io.ts`, so `claude plugin validate` prints the whole `calls:` line. Behavior does not change. The mods catalogue refuses a new seed when that line is cut.
+
+### Added
+
+- A CI check that fails if the `calls:` line is cut again.
+
 ## [0.1.0] - 2026-10-30
 
 First open source release.

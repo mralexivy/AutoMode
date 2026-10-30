@@ -26,6 +26,7 @@ import { guardianOverrides } from './lib/settings.ts'
 import { currentOptions, storedOptions } from './options.ts'
 import { publish } from './ui/publish.ts'
 import type { GuardSnap } from './ui/view.ts'
+import { sid, fsRead, sessionModel, fsWrite } from './lib/io.ts'
 
 const MAX_FILES_READ = 200
 const RECORDS_ROTATE_BYTES = 1_000_000
@@ -108,7 +109,7 @@ async function load($: EngineInterface, again = false) {
   G.loaded = true
   let cfg: GuardianConfig = { ...GUARDIAN_DEFAULTS }
   try {
-    const raw = JSON.parse(await $.fs.read(`${$.plugin.root}/config.json`))
+    const raw = JSON.parse(await fsRead($, `${$.plugin.root}/config.json`))
     cfg = { ...GUARDIAN_DEFAULTS, ...(raw.guardian ?? {}), mode: modeOf(raw.guardian?.mode ?? GUARDIAN_DEFAULTS.mode) }
     if (raw.pickerModel) G.picker = raw.pickerModel
   } catch {}
@@ -145,14 +146,14 @@ async function isEnabled($: EngineInterface): Promise<boolean> {
   // One process can host several sessions in turn (/clear, /resume): state belongs to one session id. A new id keeps
   // the configuration and the folder, and starts the rest over.
   let id = G.sessionId
-  try { id = await $.session.id() } catch {}
+  try { id = await sid($) } catch {}
   if (id !== G.sessionId) {
     if (G.sessionId !== 'unknown') { await flushRecords($); const keep = { loaded: G.loaded, cfg: G.cfg, picker: G.picker, cwd: G.cwd }; G = { ...fresh(), ...keep } }
     G.sessionId = id
     await restore($)
   }
   if (G.cfg.everySession) return true
-  try { return (await $.session.model()).trim() === G.picker } catch { return false }
+  try { return (await sessionModel($)).trim() === G.picker } catch { return false }
 }
 // Persistence: a resumed session (`--resume`, a CLI restart, a VS Code reload) runs in a new process, but its task does
 // not reset. The task-level state is saved per session at each turn end and read back once (live check L6, 2026-10-26:
@@ -168,7 +169,7 @@ async function persist($: EngineInterface) {
 }
 async function restore($: EngineInterface) {
   try {
-    const snap = JSON.parse(await $.fs.read(await stateFile($)))
+    const snap = JSON.parse(await fsRead($, await stateFile($)))
     if (snap?.v !== 1) return
     for (const k of PERSISTED) if (snap[k] !== undefined && !(k === 'cwd' && G.cwd)) (G as any)[k] = snap[k]
   } catch {}
@@ -188,15 +189,15 @@ async function tighten($: EngineInterface, path: string, mode: '600' | '700') {
 async function writeDurable($: EngineInterface, path: string, text: string): Promise<boolean> {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      await $.fs.write(path, text)
-      if ((await $.fs.read(path)) === text) { await tighten($, path, '600'); return true }
+      await fsWrite($, path, text)
+      if ((await fsRead($, path)) === text) { await tighten($, path, '600'); return true }
     } catch {}
   }
   return false
 }
 
 async function record($: EngineInterface, r: Record<string, unknown>) {
-  if (G.sessionId === 'unknown') { try { G.sessionId = await $.session.id() } catch {} }
+  if (G.sessionId === 'unknown') { try { G.sessionId = await sid($) } catch {} }
   G.records.push({ v: 1, kind: 'guardian', at: await now($), sessionId: G.sessionId, ...r })
 }
 // flushRecords appends to this session's records file; past 1 MB the session starts its next part, so no read-and-
@@ -207,9 +208,9 @@ async function flushRecords($: EngineInterface) {
     const base = `${await dataDir($)}/guardian/${safeName(G.sessionId)}`
     const file = G.recordsPart ? `${base}.${G.recordsPart}.jsonl` : `${base}.jsonl`
     let prev = ''
-    try { prev = await $.fs.read(file) } catch {}
+    try { prev = await fsRead($, file) } catch {}
     const add = G.records.map((r) => JSON.stringify(r)).join('\n') + '\n'
-    await $.fs.write(file, prev + add)
+    await fsWrite($, file, prev + add)
     // Owner-only, as every other guardian file (found live, 2026-10-26: the records file was 644).
     await tighten($, file, '600')
     G.recordsBytes = prev.length + add.length
@@ -222,11 +223,11 @@ async function flushRecords($: EngineInterface) {
 async function readCheckpoint($: EngineInterface, dir: string, id: string): Promise<{ cp: Checkpoint | null; problem: string | null; usedPrevious: boolean }> {
   const file = sessionFile(dir, G.cwd, id)
   let text: string | null = null
-  try { text = await $.fs.read(file) } catch {}
+  try { text = await fsRead($, file) } catch {}
   const main = openCheckpoint(text)
   if (main.cp) return { cp: main.cp, problem: null, usedPrevious: false }
   let prevText: string | null = null
-  try { prevText = await $.fs.read(file.replace(/\.json$/, '.prev.json')) } catch {}
+  try { prevText = await fsRead($, file.replace(/\.json$/, '.prev.json')) } catch {}
   const prev = openCheckpoint(prevText)
   return { cp: prev.cp, problem: main.problem, usedPrevious: !!prev.cp }
 }
@@ -269,7 +270,7 @@ export async function guardianSessionStart($: EngineInterface, e: any, next: any
 
 async function afterStart($: EngineInterface, e: any, res: any) {
   if (!(await enabled($))) return
-  try { G.sessionId = await $.session.id() } catch {}
+  try { G.sessionId = await sid($) } catch {}
   G.cwd = res?.cwd ?? e.cwd ?? G.cwd
   await loadPending($)
   if (assisting()) await cleanup($)
@@ -284,7 +285,7 @@ async function loadPending($: EngineInterface) {
   G.pendingChecked = true
   try {
     const dir = await dataDir($)
-    const pending = JSON.parse(await $.fs.read(pendingFile(dir, G.cwd)))
+    const pending = JSON.parse(await fsRead($, pendingFile(dir, G.cwd)))
     if (!pending?.sessionId || pending.sessionId === G.sessionId) return
     const read = await readCheckpoint($, dir, pending.sessionId)
     if (read.problem) await record($, { event: 'checkpoint-corrupt', problem: read.problem, usedPrevious: read.usedPrevious })
@@ -294,7 +295,7 @@ async function loadPending($: EngineInterface) {
     if (v.ok && pending.sum !== undefined && read.cp && pending.sum !== checkpointSum(read.cp)) v.missing.push('the checkpoint named by the clear')
     v.ok = v.missing.length === 0
     if (v.ok) { G.handoff = read.cp; G.handoffSuccessor = typeof pending.at === 'number' && (await now($)) - pending.at <= 120_000 }
-    else { await record($, { event: 'handoff-rejected', missing: v.missing }); await $.fs.write(pendingFile(dir, G.cwd), '{}') }
+    else { await record($, { event: 'handoff-rejected', missing: v.missing }); await fsWrite($, pendingFile(dir, G.cwd), '{}') }
   } catch {}
 }
 
@@ -371,7 +372,7 @@ async function beforePrompt($: EngineInterface, e: any): Promise<string[]> {
       await record($, { event: 'handoff-not-needed', from: G.handoff.sessionId, successor: G.handoffSuccessor })
     }
     G.handoff = null
-    if (consumed) { try { await $.fs.write(pendingFile(await dataDir($), G.cwd), '{}') } catch {} }
+    if (consumed) { try { await fsWrite($, pendingFile(await dataDir($), G.cwd), '{}') } catch {} }
     await flushRecords($)
   }
   // A cold cache on a large context: recorded with the economics, for the person's records and the replay.
@@ -588,7 +589,7 @@ async function writeCheckpoint($: EngineInterface, status: 'open' | 'closed', ne
   if (!assisting()) { await record($, { event: 'checkpoint-would-write', status: cp.status }); G.view.checkpoint = { at: cp.at, status: cp.status, sum: checkpointSum(cp).slice(0, 8), written: false }; return cp }
   const dir = await dataDir($)
   const file = sessionFile(dir, G.cwd, G.sessionId)
-  try { const prev = await $.fs.read(file); if (openCheckpoint(prev).cp) await writeDurable($, file.replace(/\.json$/, '.prev.json'), prev) } catch {}
+  try { const prev = await fsRead($, file); if (openCheckpoint(prev).cp) await writeDurable($, file.replace(/\.json$/, '.prev.json'), prev) } catch {}
   if (!(await writeDurable($, file, sealCheckpoint(cp)))) { await record($, { event: 'checkpoint-write-failed' }); return null }
   await tighten($, projectDir(dir, G.cwd), '700')
   await record($, { event: 'checkpoint', status: cp.status })

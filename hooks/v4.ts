@@ -47,6 +47,7 @@ import { routerOverrides } from './lib/settings.ts'
 import { currentOptions, storedOptions } from './options.ts'
 import { publish } from './ui/publish.ts'
 import type { AgentSnap, Ledger, RouterSnap } from './ui/view.ts'
+import { sid, fsRead, sessionModel, fsWrite } from './lib/io.ts'
 
 const V4_DEFAULTS = {
   router: 'classic', mode: 'shadow' as Mode, activation: 'always' as 'always' | 'picker', pickerModel: 'claude-sonnet-5-5[1m]', workflowName: 'automode:run',
@@ -169,7 +170,7 @@ const resetU = () => { U.judging = false; U.deferred = null; U.verdict = null; U
 
 async function loadV4($: EngineInterface) {
   S.loaded = true
-  try { S.cfg = { ...V4_DEFAULTS, ...JSON.parse(await $.fs.read(`${$.plugin.root}/config.json`)) } } catch { S.cfg = V4_DEFAULTS }
+  try { S.cfg = { ...V4_DEFAULTS, ...JSON.parse(await fsRead($, `${$.plugin.root}/config.json`)) } } catch { S.cfg = V4_DEFAULTS }
   // Settings from the UI (userConfig, lib/settings.ts) sit over config.json; the environment still wins below.
   S.cfg = { ...S.cfg, ...routerOverrides(currentOptions(), storedOptions()) } as V4Config
   const safe = async (p: Promise<string | undefined>) => { try { return await p } catch { return undefined } }
@@ -208,7 +209,7 @@ async function loadV4($: EngineInterface) {
   let settings: unknown = {}
   try {
     const home = (await safe($.env.get('CLAUDE_CONFIG_DIR'))) || `${await safe($.env.get('HOME'))}/.claude`
-    settings = JSON.parse(await $.fs.read(`${home}/settings.json`))
+    settings = JSON.parse(await fsRead($, `${home}/settings.json`))
   } catch { /* no readable settings: no signal */ }
   S.thinkingRisk = thinkingRisk({ MAX_THINKING_TOKENS: await safe($.env.get('MAX_THINKING_TOKENS')), AUTOMODE_THINKING_GUARD: await safe($.env.get('AUTOMODE_THINKING_GUARD')) }, settings)
 }
@@ -226,7 +227,7 @@ async function readFirstFile($: EngineInterface): Promise<{ byProject: Record<st
   try {
     const file = `${await dataDir($)}/first-prefix.json`
     if (!(await $.fs.exists(file))) return { byProject: {}, ratios: [] }
-    const j = JSON.parse(await $.fs.read(file)) as { byProject?: Record<string, unknown>; ratios?: unknown }
+    const j = JSON.parse(await fsRead($, file)) as { byProject?: Record<string, unknown>; ratios?: unknown }
     return { byProject: Object.fromEntries(Object.entries(j.byProject ?? {}).map(([k, v]) => [k, nums(v)])), ratios: nums(j.ratios) }
   } catch { return { byProject: {}, ratios: [] } }
 }
@@ -275,7 +276,7 @@ async function saveFirstPrefix($: EngineInterface, tokens: number) {
     // The preflight's ratio to the measured size, bounded: it corrects the preflight on this machine next time.
     const ratio = S.preflight ? tokens / S.preflight : null
     const nextRatios = ratio && ratio >= 0.5 && ratio <= 20 ? [...ratios, Math.round(ratio * 1000) / 1000].slice(-FIRST_PREFIX_KEEP) : ratios
-    await $.fs.write(`${await dataDir($)}/first-prefix.json`, JSON.stringify({ byProject: { ...by, [k]: [...(by[k] ?? []), tokens].slice(-FIRST_PREFIX_KEEP) }, ratios: nextRatios }))
+    await fsWrite($, `${await dataDir($)}/first-prefix.json`, JSON.stringify({ byProject: { ...by, [k]: [...(by[k] ?? []), tokens].slice(-FIRST_PREFIX_KEEP) }, ratios: nextRatios }))
   } catch { /* an unwritable data folder only costs the estimate */ }
 }
 const prefixUnknown = () => !S.cache && S.prefixEstimate === null
@@ -291,7 +292,7 @@ async function loadPriors($: EngineInterface): Promise<Priors> {
   try {
     const file = `${await dataDir($)}/calibration.json`
     if (!(await $.fs.exists(file))) return DEFAULT_PRIORS
-    const c = JSON.parse(await $.fs.read(file)) as Partial<Priors> & { priors?: Partial<Priors> }
+    const c = JSON.parse(await fsRead($, file)) as Partial<Priors> & { priors?: Partial<Priors> }
     const p = c.priors ?? c
     const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : d)
     return {
@@ -311,14 +312,14 @@ async function activeV4($: EngineInterface): Promise<boolean> {
   // One process can host several sessions in turn (/resume, /clear): routing state belongs to one
   // session id. A new id starts from a clean state, re-reads the config, and restores its own snapshot.
   let id = S.sessionId
-  try { id = await $.session.id() } catch {}
+  try { id = await sid($) } catch {}
   if (S.restored && id !== S.sessionId) { Object.assign(S, freshSession()); resetU(); S.loaded = false }
   if (!S.loaded) await loadV4($)
   if (S.mode === 'off') return false
   // activation 'always': AutoMode starts with the session. Claude Code 2.1.311 removes the [1m] suffix before a mod sees the
   // model, so a model ID cannot be the switch. 'picker' keeps the old rule for builds that pass the suffix on.
   let on = S.cfg.activation !== 'picker'
-  if (!on) { try { on = (await $.session.model()).trim() === S.cfg.pickerModel } catch { return false } }
+  if (!on) { try { on = (await sessionModel($)).trim() === S.cfg.pickerModel } catch { return false } }
   if (on && !S.restored) {
     await restore($)
     // A switch set before a reload comes back with the snapshot: apply it before this prompt routes.
@@ -331,7 +332,7 @@ async function activeV4($: EngineInterface): Promise<boolean> {
 // routing state. The parent is the session's own model; a subagent with an explicit model is never touched.
 async function spawnOutsideAutoMode($: EngineInterface, e: any, next: any) {
   let parent = e.parentModel ?? ''
-  if (!parent) { try { parent = await $.session.model() } catch { return next(e) } }
+  if (!parent) { try { parent = await sessionModel($) } catch { return next(e) } }
   const sr = subagentRoute({ type: e.subagentType, explicitModel: e.model, parentFamily: familyOf(parent), demand: null })
   const res = sr ? await next({ ...e, model: sr.model }) : await next(e)
   noteAgent(res, e, sr?.model, !!sr)
@@ -343,7 +344,7 @@ async function spawnOutsideAutoMode($: EngineInterface, e: any, next: any) {
 const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier'] as const
 async function restore($: EngineInterface) {
   S.restored = true
-  try { S.sessionId = await $.session.id() } catch {}
+  try { S.sessionId = await sid($) } catch {}
   try {
     const snap = (await $.store.get(`hm4:${S.sessionId}`)) as Record<string, unknown> | undefined
     if (!snap || typeof snap !== 'object') return
@@ -403,10 +404,10 @@ async function flushNow($: EngineInterface) {
     const file = await recordsFile($)
     let before = ''
     if (await $.fs.exists(file)) {
-      before = await $.fs.read(file)
-      if (shouldRotate(before.length + lines.length)) { await $.fs.write(`${file}.1`, before); before = '' }
+      before = await fsRead($, file)
+      if (shouldRotate(before.length + lines.length)) { await fsWrite($, `${file}.1`, before); before = '' }
     }
-    await $.fs.write(file, before + lines)
+    await fsWrite($, file, before + lines)
   } catch {}
 }
 
@@ -1256,7 +1257,7 @@ function warmFor(f: Family, at: number): boolean {
 async function hashFiles($: EngineInterface, paths: string[]): Promise<Record<string, string>> {
   const out: Record<string, string> = {}
   for (const p of paths.slice(0, 40)) {
-    try { const text = await $.fs.read(p); if (text.length <= 400_000) out[p] = fnv1a(text) } catch {}
+    try { const text = await fsRead($, p); if (text.length <= 400_000) out[p] = fnv1a(text) } catch {}
   }
   return out
 }
@@ -2011,7 +2012,7 @@ async function syncSignals($: EngineInterface, late?: { turnId: string | undefin
   try {
     const file = await signalsFile($)
     if (!(await $.fs.exists(file))) return
-    const sig = JSON.parse(await $.fs.read(file))
+    const sig = JSON.parse(await fsRead($, file))
     // A different seq, not a higher one: a pruned or deleted file starts over at 1. A replay has the same seq.
     if (!sig || typeof sig.seq !== 'number' || sig.seq === S.signalSeq) return
     S.signalSeq = sig.seq
@@ -2149,7 +2150,7 @@ export function v4Snapshot(sessionModel: string | null, now: number): RouterSnap
 // setSessionMode: the bar's on/off switch, for this session only (never written to config). 'off' stops routing here;
 // null returns to the configured mode. Restores first, so a reloaded module never saves fresh state over the snapshot.
 export async function setSessionMode($: EngineInterface, m: Mode | null) {
-  try { if (!S.restored) { S.sessionId = await $.session.id(); await restore($) } } catch {}
+  try { if (!S.restored) { S.sessionId = await sid($); await restore($) } } catch {}
   S.sessionMode = m
   S.loaded = false
   await loadV4($)

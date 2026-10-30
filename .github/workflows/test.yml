@@ -40,6 +40,9 @@ jobs:
         run: claude plugin validate . --strict
       - name: Test the mod
         run: claude plugin test .
+      # The mods catalogue refuses a new seed with a cut calls line. See hooks/lib/io.ts.
+      - name: Keep the calls line whole
+        run: "! claude plugin validate . --strict | grep -E 'calls:.*\\[\\+[0-9]+ chars?\\]'"
 
   secrets:
     runs-on: ubuntu-latest

@@ -6,6 +6,7 @@
 import { atom, update } from 'claude-code'
 import type { EngineInterface } from 'claude-code'
 import { buildView, type Facts, type GuardSnap, type RouterSnap, type UsageSnap, type View } from './view.ts'
+import { sid, fsRead, sessionModel } from '../lib/io.ts'
 
 export const viewAtom = atom({ plugin: 'automode', key: 'view' } as const, null as View | null)
 
@@ -28,7 +29,7 @@ let facts: Facts = { outputStyle: null }
 export async function loadFacts($: EngineInterface): Promise<void> {
   try {
     const home = (await $.env.get('CLAUDE_CONFIG_DIR')) || `${await $.env.get('HOME')}/.claude`
-    const style = JSON.parse(await $.fs.read(`${home}/settings.json`))?.outputStyle
+    const style = JSON.parse(await fsRead($, `${home}/settings.json`))?.outputStyle
     facts = { outputStyle: typeof style === 'string' && style ? style : 'default' }
   } catch { facts = { outputStyle: null } }
 }
@@ -76,7 +77,7 @@ export async function snapshotView($: EngineInterface): Promise<View | null> {
   let now = Date.now()
   try { now = await $.clock.now() } catch {}
   let model: string | null = null
-  try { model = (await $.session.model()) ?? null } catch {}
+  try { model = (await sessionModel($)) ?? null } catch {}
   return gateTip($, buildView(sources.router(model, now), sources.guardian(), await usageSnap($), now, facts), now)
 }
 
@@ -93,7 +94,7 @@ export async function publish($: EngineInterface): Promise<void> {
     const v = await snapshotView($)
     if (!v) return
     let session = ''
-    try { session = await $.session.id() } catch {}
+    try { session = await sid($) } catch {}
     const k = keyOf(session, v)
     if (k === last) return
     last = k
