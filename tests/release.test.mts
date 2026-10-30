@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 import {
-  BUNDLE, DIRECTORY, SHIPPED, bumpFor, compareVersions, decide, isDocs, isShipped, nextVersion, prNumbers, releaseNotes,
+  BUNDLE, DIRECTORY, SHIPPED, bumpFor, compareVersions, decide, finishBundle, isDocs, isShipped, nextVersion, prNumbers, releaseNotes,
   releaseVersionOf, rewriteChangelog, rewritePlugin, rewriteReadme, ruleErrors, sectionBody,
   type Facts, type PullRequest,
 } from '../tools/release.mts'
@@ -195,4 +195,12 @@ test('the directory tree holds what users run and leaves out the dev files', () 
   for (const path of BUNDLE) assert.ok(DIRECTORY.includes(path), path)
   for (const path of ['PRIVACY.md', 'docs/readme']) assert.ok(DIRECTORY.includes(path), path)
   for (const path of ['bench', 'tests', 'tools', 'site', 'package.json', 'package-lock.json']) assert.ok(!DIRECTORY.includes(path), path)
+})
+
+test('the bundle exports register where it is declared, and nothing else', () => {
+  const out = finishBundle('var other = 1;\nvar register = (on, options) => {};\nexport {\n  other,\n  register\n};\n', 'abc')
+  assert.match(out, /^export const register = /m)
+  assert.doesNotMatch(out, /export \{/)
+  assert.match(out, /commit abc/)
+  assert.throws(() => finishBundle('var other = 1;\n', 'abc'))
 })

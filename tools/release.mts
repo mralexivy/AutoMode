@@ -228,18 +228,45 @@ function commandBuild() {
   }
 }
 
-// commandDirectory publishes DIRECTORY as one commit on the `directory` branch. It writes the tree through a temporary
-// index, so the work tree stays as it is. It never force-pushes: the new commit sits on top of the branch.
+// finishBundle turns esbuild's output into the form the directory reads: register exported where it is declared, and
+// no other export. The directory reads $ only inside one file, so the directory tree carries hooks/ as one module.
+export function finishBundle(code: string, sha: string): string {
+  const body = code.replace(/\nexport \{[^}]*\};?\s*$/, '\n').replace(/^var register = /m, 'export const register = ')
+  if (!/^export const register = /m.test(body)) throw new Error('The bundle does not declare register')
+  return `// Generated from hooks/ at commit ${sha} by tools/release.mts. Read the source at https://github.com/mralexivy/AutoMode/tree/main/hooks\n${body}`
+}
+
+// commandDirectory publishes DIRECTORY as one commit on the `directory` branch, with hooks/ bundled into one readable
+// module. It validates the tree first. It never force-pushes: the new commit sits on top of the branch.
 function commandDirectory(version: string) {
-  const index = join(mkdtempSync(join(tmpdir(), 'automode-index-')), 'index')
-  const env = { ...process.env, GIT_INDEX_FILE: index }
-  const entries = git('ls-tree', '-r', '--full-tree', 'HEAD', '--', ...DIRECTORY)
-  execFileSync('git', ['update-index', '--add', '--index-info'], { input: `${entries}\n`, env })
-  const tree = execFileSync('git', ['write-tree'], { env, encoding: 'utf8' }).trim()
-  let parent: string[] = []
-  try { parent = ['-p', git('rev-parse', '--verify', 'origin/directory')] } catch {}
-  const commit = git('commit-tree', tree, ...parent, '-m', `Directory tree for ${version}`)
-  git('push', 'origin', `${commit}:refs/heads/directory`)
+  const scratch = mkdtempSync(join(tmpdir(), 'automode-directory-'))
+  const tree = join(scratch, 'tree')
+  const out = join(scratch, 'bundle.ts')
+  try {
+    mkdirSync(tree)
+    execFileSync('sh', ['-c', `git archive HEAD -- ${DIRECTORY.join(' ')} | tar -x -C "${tree}"`], { stdio: 'inherit' })
+    execFileSync(join('node_modules', '.bin', 'esbuild'), [
+      'hooks/register.ts', '--bundle', '--format=esm', '--platform=neutral', '--target=es2023', '--external:claude-code',
+      '--jsx=transform', '--jsx-factory=h', '--charset=utf8', '--legal-comments=none', `--outfile=${out}`, '--log-level=warning',
+    ], { stdio: 'inherit' })
+    const hooksJson = readFileSync(join(tree, 'hooks', 'hooks.json'))
+    rmSync(join(tree, 'hooks'), { recursive: true })
+    mkdirSync(join(tree, 'hooks'))
+    writeFileSync(join(tree, 'hooks', 'hooks.json'), hooksJson)
+    writeFileSync(join(tree, 'hooks', 'register.ts'), finishBundle(readFileSync(out, 'utf8'), git('rev-parse', 'HEAD')))
+    execFileSync('claude', ['plugin', 'validate', tree, '--strict'], { stdio: 'inherit' })
+
+    const gitDir = git('rev-parse', '--absolute-git-dir')
+    const env = { ...process.env, GIT_DIR: gitDir, GIT_WORK_TREE: tree, GIT_INDEX_FILE: join(scratch, 'index') }
+    execFileSync('git', ['-C', tree, 'add', '-A', '-f', '.'], { env })
+    const written = execFileSync('git', ['-C', tree, 'write-tree'], { env, encoding: 'utf8' }).trim()
+    let parent: string[] = []
+    try { parent = ['-p', git('rev-parse', '--verify', 'origin/directory')] } catch {}
+    const commit = git('commit-tree', written, ...parent, '-m', `Directory tree for ${version}`)
+    git('push', 'origin', `${commit}:refs/heads/directory`)
+  } finally {
+    rmSync(scratch, { recursive: true, force: true })
+  }
 }
 
 function commandScope() {

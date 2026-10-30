@@ -434,9 +434,9 @@ export async function guardianStep($: EngineInterface, e: any) {
 }
 
 export async function guardianToolCall($: EngineInterface, e: any, next: any) {
-  let on = false
-  try { on = e.agentId === undefined && (await enabled($)) } catch {}
-  if (!on) return next(e)
+  let watching = false
+  try { watching = e.agentId === undefined && (await enabled($)) } catch {}
+  if (!watching) return next(e)
   const res = await next(e)
   // The tool has run: from here a guardian error returns the tool's own result, never a second run.
   try { return await afterTool($, e, res) } catch { return res }
@@ -602,11 +602,11 @@ async function writeCheckpoint($: EngineInterface, status: 'open' | 'closed', ne
 // guardianSnapshot: the guardian's state as the UI reads it. Copies; assesses nothing. An offer stops showing once the
 // context fell well below the size it was made at (a compaction or a /clear outside the guardian).
 export function guardianSnapshot(): GuardSnap {
-  const on = lastEnabled
+  const enabledNow = lastEnabled
   const a = G.view.assess
   const offer = G.view.offer && G.contextTokens >= G.view.offer.contextTokens * 0.8 ? G.view.offer : null
   return {
-    enabled: on, killed: killedByEnv, mode: G.cfg.mode, everySession: G.cfg.everySession,
+    enabled: enabledNow, killed: killedByEnv, mode: G.cfg.mode, everySession: G.cfg.everySession,
     level: a?.level ?? 'normal', reasons: a?.reasons ?? [], outcomes: G.turn?.outcomes.length ?? 0,
     sinceOutcome: { requests: G.turn?.sinceOutcome.requests ?? 0, usd: G.turn?.sinceOutcome.usd ?? 0 },
     gates: { requests: G.cfg.warnRequests, usd: G.cfg.warnUsd }, turnUsd: G.turn ? G.turn.usd : null,

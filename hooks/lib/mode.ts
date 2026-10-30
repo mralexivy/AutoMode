@@ -14,12 +14,12 @@ export interface ProviderEnv {
   ANTHROPIC_BASE_URL?: string; CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS?: string
 }
 
-const on = (v: string | undefined) => !!v && v !== '0' && v.toLowerCase() !== 'false'
+const truthy = (v: string | undefined) => !!v && v !== '0' && v.toLowerCase() !== 'false'
 
 export function providerOf(env: ProviderEnv): 'anthropic' | 'vertex' | 'bedrock' | 'foundry' | 'gateway' {
-  if (on(env.CLAUDE_CODE_USE_VERTEX)) return 'vertex'
-  if (on(env.CLAUDE_CODE_USE_BEDROCK)) return 'bedrock'
-  if (on(env.CLAUDE_CODE_USE_FOUNDRY)) return 'foundry'
+  if (truthy(env.CLAUDE_CODE_USE_VERTEX)) return 'vertex'
+  if (truthy(env.CLAUDE_CODE_USE_BEDROCK)) return 'bedrock'
+  if (truthy(env.CLAUDE_CODE_USE_FOUNDRY)) return 'foundry'
   if (env.ANTHROPIC_BASE_URL && !/^https:\/\/api\.anthropic\.com\/?$/.test(env.ANTHROPIC_BASE_URL)) return 'gateway'
   return 'anthropic'
 }
@@ -29,7 +29,7 @@ export function providerOf(env: ProviderEnv): 'anthropic' | 'vertex' | 'bedrock'
 // with experimental betas disabled. Foundry hosted on Anthropic may keep it; treated as not, to be safe.
 export function effortSharesCache(env: ProviderEnv, model: string): boolean {
   if (providerOf(env) !== 'anthropic') return false
-  if (on(env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS)) return false
+  if (truthy(env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS)) return false
   return /(opus|sonnet|haiku)-5-5|fable-5-1/.test(model)
 }
 
@@ -52,9 +52,9 @@ export function thinkingRisk(env: { MAX_THINKING_TOKENS?: string; AUTOMODE_THINK
 // ttlMs: the main conversation's cache lifetime. One hour on a Claude plan within its usage, five
 // minutes with an API key or a cloud provider, unless set explicitly.
 export function ttlMs(env: { CLAUDE_CODE_PROMPT_CACHE_TTL?: string; FORCE_PROMPT_CACHING_5M?: string; ENABLE_PROMPT_CACHING_1H?: string }, provider: string, onPlan: boolean): number {
-  if (on(env.FORCE_PROMPT_CACHING_5M)) return 300_000
+  if (truthy(env.FORCE_PROMPT_CACHING_5M)) return 300_000
   if (env.CLAUDE_CODE_PROMPT_CACHE_TTL === '1h') return 3_600_000
   if (env.CLAUDE_CODE_PROMPT_CACHE_TTL === '5m') return 300_000
-  if (on(env.ENABLE_PROMPT_CACHING_1H)) return 3_600_000
+  if (truthy(env.ENABLE_PROMPT_CACHING_1H)) return 3_600_000
   return provider === 'anthropic' && onPlan ? 3_600_000 : 300_000
 }

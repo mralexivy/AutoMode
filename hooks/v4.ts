@@ -318,14 +318,14 @@ async function activeV4($: EngineInterface): Promise<boolean> {
   if (S.mode === 'off') return false
   // activation 'always': AutoMode starts with the session. Claude Code 2.1.311 removes the [1m] suffix before a mod sees the
   // model, so a model ID cannot be the switch. 'picker' keeps the old rule for builds that pass the suffix on.
-  let on = S.cfg.activation !== 'picker'
-  if (!on) { try { on = (await sessionModel($)).trim() === S.cfg.pickerModel } catch { return false } }
-  if (on && !S.restored) {
+  let live = S.cfg.activation !== 'picker'
+  if (!live) { try { live = (await sessionModel($)).trim() === S.cfg.pickerModel } catch { return false } }
+  if (live && !S.restored) {
     await restore($)
     // A switch set before a reload comes back with the snapshot: apply it before this prompt routes.
     if (S.sessionMode) { await loadV4($); if (S.mode === 'off') return false }
   }
-  return on
+  return live
 }
 
 // Outside AutoMode only the deterministic subagent rule applies: no judge call, no redirect to a plugin agent, no
@@ -1390,8 +1390,8 @@ export async function v4PromptSubmit($: EngineInterface, e: any, next: any) {
   // The previous turn's outcome gets the satisfaction signal from this prompt.
   // Under-routing signal: the person corrects or retries the previous answer. Kept with the route it ran on.
   if (S.lastOutcome) {
-    const next = nextSignal(text)
-    S.records.push({ v: 1, kind: 'signal', at, sessionId: S.sessionId, turnId: S.lastOutcome.turnId, taskId: S.lastOutcome.taskId, next, route: S.current ? `${S.current.family}/${S.current.effort}` : null, underRouting: next !== 'moved-on' })
+    const signal = nextSignal(text)
+    S.records.push({ v: 1, kind: 'signal', at, sessionId: S.sessionId, turnId: S.lastOutcome.turnId, taskId: S.lastOutcome.taskId, next: signal, route: S.current ? `${S.current.family}/${S.current.effort}` : null, underRouting: next !== 'moved-on' })
     S.lastOutcome = null
   }
   if (S.providerGuard && !S.toldGuard) {

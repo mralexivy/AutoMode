@@ -173,6 +173,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          npm ci
           node tools/release.mts directory "$VERSION"
       - name: Tell each pull request it shipped
         if: env.DRY_RUN != 'true'
