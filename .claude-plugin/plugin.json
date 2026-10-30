@@ -1,0 +1,172 @@
+{
+  "name": "automode",
+  "displayName": "AutoMode",
+  "description": "AutoMode for Claude Code picks the model and the effort for each prompt, sets a risk floor, forces an Opus review on risky work, and checks whether a model switch is worth the cache rewrite. No key, no server.",
+  "author": {
+    "name": "Alex Ivy",
+    "url": "https://github.com/mralexivy"
+  },
+  "version": "0.2.0",
+  "license": "MIT",
+  "homepage": "https://github.com/mralexivy/AutoMode",
+  "repository": "https://github.com/mralexivy/AutoMode",
+  "keywords": [
+    "automode",
+    "claude-code",
+    "claude-code-plugin",
+    "claude-code-mod",
+    "model-routing",
+    "reasoning-effort",
+    "prompt-caching",
+    "context-management",
+    "agent-orchestration",
+    "code-review",
+    "developer-tools",
+    "workflow",
+    "output-style"
+  ],
+  "userConfig": {
+    "mode": {
+      "type": "string",
+      "title": "AutoMode: Router mode",
+      "description": "default: follow config.json (auto as shipped). auto routes model and effort in every session. shadow only records what it would route. off does not route. AUTOMODE_ROUTER still wins.",
+      "default": "default",
+      "options": [
+        "default",
+        "auto",
+        "shadow",
+        "off"
+      ]
+    },
+    "policy": {
+      "type": "string",
+      "title": "AutoMode: Routing policy",
+      "description": "default: follow config.json. auto: the effortless judges with the joint optimizer. legacy: the earlier rules. Applies while the mode is auto. AUTOMODE_POLICY still wins.",
+      "default": "default",
+      "options": [
+        "default",
+        "auto",
+        "legacy"
+      ]
+    },
+    "routeModels": {
+      "type": "string",
+      "title": "AutoMode: Route models",
+      "description": "default: follow config.json. off routes effort only and keeps the model you picked.",
+      "default": "default",
+      "options": [
+        "default",
+        "on",
+        "off"
+      ]
+    },
+    "subagentsEverySession": {
+      "type": "string",
+      "title": "AutoMode: Subagents in every session",
+      "description": "default: follow config.json. on: built-in subagents are routed in every session, not only AutoMode (Explore on Haiku; general-purpose on Sonnet under Opus). An explicit model is always kept.",
+      "default": "default",
+      "options": [
+        "default",
+        "on",
+        "off"
+      ]
+    },
+    "guardianMode": {
+      "type": "string",
+      "title": "AutoMode: Guardian",
+      "description": "default: follow config.json (auto as shipped). observe records only; recommend adds notes; assist adds checkpoints and one-key suggestions; auto may also pause, compact and shorten outputs where those are on. AUTOMODE_GUARDIAN still wins.",
+      "default": "default",
+      "options": [
+        "default",
+        "off",
+        "observe",
+        "recommend",
+        "assist",
+        "auto"
+      ]
+    },
+    "guardianEverySession": {
+      "type": "string",
+      "title": "AutoMode: Guardian in every session",
+      "description": "default: follow config.json. on: the guardian runs in every session, not only AutoMode.",
+      "default": "default",
+      "options": [
+        "default",
+        "on",
+        "off"
+      ]
+    },
+    "hardPause": {
+      "type": "string",
+      "title": "AutoMode: Hard pause",
+      "description": "default: follow config.json. on, in guardian auto: a turn that does not converge is ended between requests, never mid-write.",
+      "default": "default",
+      "options": [
+        "default",
+        "on",
+        "off"
+      ]
+    },
+    "autoCompact": {
+      "type": "string",
+      "title": "AutoMode: Auto compact",
+      "description": "default: follow config.json. on, in guardian auto: compacts between turns when it pays; otherwise /compact is suggested.",
+      "default": "default",
+      "options": [
+        "default",
+        "on",
+        "off"
+      ]
+    },
+    "reduceOutputs": {
+      "type": "string",
+      "title": "AutoMode: Reduce long outputs",
+      "description": "default: follow config.json. on, in guardian auto: long command output is saved in full and shortened in the chat, every error line kept.",
+      "default": "default",
+      "options": [
+        "default",
+        "on",
+        "off"
+      ]
+    },
+    "layout": {
+      "type": "string",
+      "title": "AutoMode: Layout",
+      "description": "expanded: the status bar above the prompt. minimal: one short line.",
+      "default": "expanded",
+      "options": [
+        "expanded",
+        "minimal"
+      ]
+    },
+    "theme": {
+      "type": "string",
+      "title": "AutoMode: Theme",
+      "description": "native (default): follows your Claude Code and editor theme, with no colours of its own. automode: blue routing, violet effort, teal guardian. mono: neutral accents. contrast: stronger text and edges.",
+      "default": "native",
+      "options": [
+        "native",
+        "automode",
+        "mono",
+        "contrast"
+      ]
+    },
+    "appearance": {
+      "type": "string",
+      "title": "AutoMode: Appearance",
+      "description": "auto follows your Claude Code theme. dark and light fix it.",
+      "default": "auto",
+      "options": [
+        "auto",
+        "dark",
+        "light"
+      ]
+    },
+    "metrics": {
+      "type": "string",
+      "title": "AutoMode: Bar metrics",
+      "description": "Comma-separated bar items: pending, context, cache, cost, guardian, stage. The mode, model and effort always show.",
+      "default": "pending,context,cache,cost,guardian,stage"
+    }
+  }
+}
