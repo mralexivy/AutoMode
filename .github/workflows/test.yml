@@ -4,62 +4,47 @@ on:
   push:
     branches: [main]
   pull_request:
+  # The release workflow starts this for the release PR, because a PR opened with GITHUB_TOKEN gets no normal CI.
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      gate:
+        description: Run as the release gate, so only the check job runs.
+        type: boolean
+        default: false
+      os:
+        type: string
+        default: ubuntu-latest
 
 permissions:
   contents: read
 
+# A gate run gets its own group, so its two operating systems do not cancel each other.
+concurrency:
+  group: ${{ inputs.gate && format('gate-{0}-{1}', github.run_id, inputs.os) || format('test-{0}', github.ref) }}
+  cancel-in-progress: ${{ !inputs.gate && github.ref != 'refs/heads/main' }}
+
 jobs:
-  node:
-    name: type check and Node tests
+  # The ruleset on main requires guard and check by name. Keep both names.
+  guard:
+    if: ${{ !inputs.gate }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      code: ${{ steps.scope.outputs.code }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      # Node 24 strips TypeScript types, so the tests and bench scripts run as .mts without a build step.
-      - run: npm ci
-      - name: Type check
-        run: npm run typecheck
-      - name: Node tests
-        run: npm test
-
-  mod:
-    name: claude plugin validate and test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      # These two commands read and test the mod itself. They need no sign-in and no network.
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
-      - name: Validate the mod
-        run: claude plugin validate . --strict
-      - name: Test the mod
-        run: claude plugin test .
-      # The mods catalogue refuses a new seed with a cut calls line. See hooks/lib/io.ts.
-      - name: Keep the calls line whole
-        run: "! claude plugin validate . --strict | grep -E 'calls:.*\\[\\+[0-9]+ chars?\\]'"
-
-  secrets:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
       - name: Scan for secrets
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
-
-  private-data:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
       - name: Check that no private data entered the repository
         run: |
           set -u
@@ -74,3 +59,47 @@ jobs:
             echo "Found a personal path."; exit 1
           fi
           echo "ok"
+      - name: Check the pull request rules
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_BRANCH: ${{ github.head_ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_FORK: ${{ github.event.pull_request.head.repo.fork }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: node tools/release.mts rules
+      - name: Find out whether code changed
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_REF: ${{ github.ref }}
+        run: node tools/release.mts scope
+
+  # This job skips with an if, not with paths-ignore. A required check under paths-ignore stays pending forever.
+  check:
+    needs: guard
+    if: ${{ !cancelled() && (needs.guard.result == 'skipped' && inputs.gate || needs.guard.result == 'success' && needs.guard.outputs.code == 'true') }}
+    runs-on: ${{ inputs.os || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      # Node 24 strips TypeScript types, so the tests and bench scripts run as .mts without a build step.
+      - run: npm ci
+      - name: Type check
+        run: npm run typecheck
+      - name: Node tests
+        run: npm test
+      # These two commands read and test the mod itself. They need no sign-in and no network.
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Validate the mod
+        run: claude plugin validate . --strict
+      - name: Test the mod
+        run: claude plugin test .
+      # The mods catalogue refuses a new seed with a cut calls line. See hooks/lib/io.ts.
+      - name: Keep the calls line whole
+        run: "! claude plugin validate . --strict | grep -E 'calls:.*\\[\\+[0-9]+ chars?\\]'"

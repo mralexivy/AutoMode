@@ -6,7 +6,7 @@ Thank you for your help. This guide takes five minutes to read.
 
 1. Fork the repository and clone your fork.
 2. Install Claude Code 2.1.287 or later. Check with `claude --version`.
-3. Install the dev tools with `npm install`, then run all checks with `npm run check`. You need Node 23.6 or later. It runs TypeScript directly, so there is no build step.
+3. Install the dev tools with `npm install`, then run all checks with `npm run check`. You need Node 23.6 or later. It runs TypeScript directly, so the mod has no build step. `npm run build` packages the release bundle and validates it.
 4. Load the mod from your working tree: `claude --plugin-dir .`
 
 AutoMode is a Claude Code **mod**: a plugin whose code registers event handlers. If mods are new to you, read the [mods overview](https://code.claude.com/docs/en/plugins/mods/overview) and [Create a mod](https://code.claude.com/docs/en/plugins/mods/create).
@@ -61,14 +61,28 @@ Bench scripts are `.mts`. Write erasable TypeScript only: no `enum`, no `namespa
 - Write comments and docs in short sentences. Active voice. One idea per sentence.
 - Do not claim a cost saving without a benchmark run that others can repeat.
 
-## Releases
-
-Claude Code caches an installed plugin by version. So raise `version` in [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) with every change to the mod, add a line to [`CHANGELOG.md`](CHANGELOG.md), and say in the README which Claude Code version you tested with.
-
 ## Pull requests
 
-1. Open an issue first for a large change.
-2. Run the checks above and fix any failure.
-3. Describe what changed and why. Link the issue.
+Nothing is pushed to `main` directly. Every change goes through this path, and the `guard` CI job enforces it:
+
+1. Open an issue first, so the work has a record. Search for a duplicate before you do.
+2. Branch from an up-to-date `main`. Name the branch `<type>/<short-name>`, such as `fix/bar-width`. The types are `feature`, `fix`, `docs`, `chore`, `refactor`, `test` and `bench`. Forks may use any name.
+3. Make the change. If it touches a shipped path, add a line under `[Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md). Use the `no-changelog` label if no line is needed.
+4. Run the checks above and fix any failure.
+5. Open the pull request. Describe what changed and why. The body must contain `Closes #N`.
+
+We squash merge, so the pull request title becomes the commit subject on `main`. Write it as a plain sentence.
+
+If you use Claude Code, the [`ship-change`](.claude/skills/ship-change/SKILL.md) skill follows these steps.
+
+## Releases
+
+Do not change `version` in [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json). The release flow does it:
+
+1. A merge that changes a shipped path makes a bot open or update a `Release x.y.z` pull request.
+2. The headings in `[Unreleased]` set the version. `Fixed` and `Security` give a patch. `Added`, `Changed`, `Removed` and `Deprecated` give a minor. A major is a manual run: `gh workflow run release.yml -f bump=major`.
+3. A maintainer merges that pull request. The release workflow tests on Linux and macOS, builds and attests the bundle, publishes the GitHub Release, and then moves `stable`.
+
+Users install from the `stable` branch, so `main` can hold unreleased work. Claude Code caches an installed plugin by version, so a new version is what reaches existing users. To undo a bad release, ship a new patch.
 
 By contributing, you agree that your work is released under the [MIT license](LICENSE).

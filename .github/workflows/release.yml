@@ -1,0 +1,176 @@
+name: release
+
+# CHANGELOG.md drives this. tools/release.mts decides what a run does:
+#   none     nothing to release
+#   pending  open or update the release PR
+#   ship     test, build, publish, and then move stable, which is what users install
+on:
+  push:
+    branches: [main]
+    paths:
+      - CHANGELOG.md
+      - .claude-plugin/plugin.json
+      - .claude-plugin/icon.png
+      - agents/**
+      - commands/**
+      - hooks/**
+      - output-styles/**
+      - scripts/**
+      - types/**
+      - workflows/**
+      - config.json
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump. auto reads the CHANGELOG.md headings.
+        type: choice
+        options: [auto, patch, minor, major]
+        default: auto
+      dry_run:
+        description: Test and build only. Publish nothing.
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      state: ${{ steps.plan.outputs.state }}
+      version: ${{ steps.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - id: plan
+        env:
+          BUMP: ${{ inputs.bump }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: node tools/release.mts plan
+
+  pending:
+    needs: plan
+    if: needs.plan.outputs.state == 'pending'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      # The bot never pushes to main. Its version bump reaches main when a person merges this PR.
+      - name: Write the release commit
+        run: |
+          node tools/release.mts prepare "$VERSION" "$(npm view @anthropic-ai/claude-code version)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -C release/next
+          git commit -am "Release $VERSION"
+      # An unchanged branch needs no new push and no new CI run.
+      - name: Compare with the open release branch
+        id: compare
+        run: |
+          if git fetch origin release/next 2>/dev/null && git diff --quiet FETCH_HEAD HEAD; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Open or update the release PR
+        if: steps.compare.outputs.changed == 'true'
+        run: |
+          git push --force origin release/next
+          {
+            echo "Merging this PR ships $VERSION to users. It runs the release gate, publishes the release, and moves \`stable\`."
+            echo
+            node tools/release.mts section "$VERSION"
+          } > pr-body.md
+          if [ -n "$(gh pr list --head release/next --state open --json number --jq '.[0].number')" ]; then
+            gh pr edit release/next --title "Release $VERSION" --body-file pr-body.md
+          else
+            gh pr create --base main --head release/next --title "Release $VERSION" --body-file pr-body.md
+          fi
+          gh workflow run test.yml --ref release/next
+
+  gate:
+    needs: plan
+    if: needs.plan.outputs.state == 'ship'
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/test.yml
+    with:
+      gate: true
+      os: ${{ matrix.os }}
+
+  # One job, so the zip needs no upload-artifact. Each step is safe to run again.
+  ship:
+    needs: [plan, gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+      attestations: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.plan.outputs.version }}
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Build and validate the bundle
+        run: node tools/release.mts build
+      - name: Attest the build
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/automode-${{ env.VERSION }}.zip
+      - name: Publish the release
+        if: env.DRY_RUN != 'true'
+        run: |
+          tested="$(claude --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+          node tools/release.mts notes "$VERSION" "$tested" "$GITHUB_REPOSITORY" > dist/notes.md
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            gh release upload "v$VERSION" "dist/automode-$VERSION.zip" dist/SHA256SUMS --clobber
+          else
+            gh release create "v$VERSION" "dist/automode-$VERSION.zip" dist/SHA256SUMS \
+              --target "$GITHUB_SHA" --title "AutoMode $VERSION" --notes-file dist/notes.md
+          fi
+      # Last, so a failure above leaves users where they were. A plain push fast-forwards or fails. It never rewrites.
+      - name: Move stable
+        if: env.DRY_RUN != 'true'
+        run: git push origin "$GITHUB_SHA:refs/heads/stable"
+      - name: Tell each pull request it shipped
+        if: env.DRY_RUN != 'true'
+        run: |
+          for pr in $(node tools/release.mts prs "$VERSION"); do
+            gh pr comment "$pr" --body "Shipped in [v$VERSION](https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VERSION)." || true
+          done
