@@ -1,4 +1,4 @@
-// Generated from hooks/ at commit 765aa8a1d4c0baf6c1c5769efda76519bc0f6569 by tools/release.mts. The readable source is hooks/ on the main branch.
+// Generated from hooks/ at commit 417dd17a870cb4e9a8940393e8181c5296def029 by tools/release.mts. The readable source is hooks/ on the main branch.
 // hooks/register.ts
 import { COMPACT_SYSTEM as COMPACT_SYSTEM2, transcriptOf as transcriptOf2 } from "./lib/compact.ts";
 
