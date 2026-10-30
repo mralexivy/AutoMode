@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-30
+
 ### Fixed
 
 - Host calls in the files that declare hooks are written in the plain form that the plugin directory reads.
