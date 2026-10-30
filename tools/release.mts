@@ -2,7 +2,8 @@
 // The functions at the top are pure, so tests/release.test.mts can pin them. The commands at the bottom own git and the
 // file system. This file is a dev tool and stays out of the bundle.
 import { execFileSync } from 'node:child_process'
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { build } from 'esbuild'
+import { appendFileSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
@@ -233,26 +234,48 @@ function commandBuild() {
 export function finishBundle(code: string, sha: string): string {
   const body = code.replace(/\nexport \{[^}]*\};?\s*$/, '\n').replace(/^var register = /m, 'export const register = ')
   if (!/^export const register = /m.test(body)) throw new Error('The bundle does not declare register')
-  return `// Generated from hooks/ at commit ${sha} by tools/release.mts. Read the source at https://github.com/mralexivy/AutoMode/tree/main/hooks\n${body}`
+  return `// Generated from hooks/ at commit ${sha} by tools/release.mts. The readable source is hooks/ on the main branch.\n${body}`
+}
+
+// pureLibs names the hooks/lib files that can stay separate: no use of $, and every local import is also pure. Each
+// keeps the bundle smaller, and the directory reads a file only up to 256 KiB.
+export function pureLibs(files: Record<string, string>): Set<string> {
+  const pure = new Set(Object.keys(files).filter(f => !/\$\.|EngineInterface/.test(files[f])))
+  const imports = (code: string) => [...code.matchAll(/^(?!import type)(?:import|export)\b.*from '\.\/([\w-]+\.ts)'/gm)].map(m => m[1])
+  for (let changed = true; changed;) {
+    changed = false
+    for (const f of [...pure]) if (imports(files[f]).some(i => !pure.has(i))) { pure.delete(f); changed = true }
+  }
+  return pure
 }
 
 // commandDirectory publishes DIRECTORY as one commit on the `directory` branch, with hooks/ bundled into one readable
 // module. It validates the tree first. It never force-pushes: the new commit sits on top of the branch.
-function commandDirectory(version: string) {
+async function commandDirectory(version: string) {
   const scratch = mkdtempSync(join(tmpdir(), 'automode-directory-'))
   const tree = join(scratch, 'tree')
   const out = join(scratch, 'bundle.ts')
   try {
     mkdirSync(tree)
     execFileSync('sh', ['-c', `git archive HEAD -- ${DIRECTORY.join(' ')} | tar -x -C "${tree}"`], { stdio: 'inherit' })
-    execFileSync(join('node_modules', '.bin', 'esbuild'), [
-      'hooks/register.ts', '--bundle', '--format=esm', '--platform=neutral', '--target=es2023', '--external:claude-code',
-      '--jsx=transform', '--jsx-factory=h', '--charset=utf8', '--legal-comments=none', `--outfile=${out}`, '--log-level=warning',
-    ], { stdio: 'inherit' })
+    const libs = Object.fromEntries(readdirSync('hooks/lib').map(f => [f, read(`hooks/lib/${f}`)]))
+    const pure = pureLibs(libs)
+    await build({
+      entryPoints: ['hooks/register.ts'], bundle: true, format: 'esm', platform: 'neutral', target: 'es2023',
+      external: ['claude-code'], jsx: 'transform', jsxFactory: 'h', charset: 'utf8', legalComments: 'none', outfile: out,
+      logLevel: 'warning',
+      plugins: [{
+        name: 'pure-libs',
+        setup(b) {
+          b.onResolve({ filter: /\/lib\/[\w-]+\.ts$/ }, a => pure.has(basename(a.path)) ? { path: `./lib/${basename(a.path)}`, external: true } : undefined)
+        },
+      }],
+    })
     const hooksJson = readFileSync(join(tree, 'hooks', 'hooks.json'))
     rmSync(join(tree, 'hooks'), { recursive: true })
-    mkdirSync(join(tree, 'hooks'))
+    mkdirSync(join(tree, 'hooks', 'lib'), { recursive: true })
     writeFileSync(join(tree, 'hooks', 'hooks.json'), hooksJson)
+    for (const f of pure) copyFileSync(`hooks/lib/${f}`, join(tree, 'hooks', 'lib', f))
     writeFileSync(join(tree, 'hooks', 'register.ts'), finishBundle(readFileSync(out, 'utf8'), git('rev-parse', 'HEAD')))
     execFileSync('claude', ['plugin', 'validate', tree, '--strict'], { stdio: 'inherit' })
 
@@ -320,5 +343,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.error(`Usage: node tools/release.mts <${Object.keys(commands).join('|')}>`)
     process.exit(2)
   }
-  commands[command]()
+  await commands[command]()
 }

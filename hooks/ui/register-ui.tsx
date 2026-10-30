@@ -70,10 +70,11 @@ function scheduleTick($: EngineInterface, now: number, v: View) {
 }
 
 export function registerUi(on: On) {
-  on('config.set', async ($, e, next) => {
-    const res = await next(e)
-    try { if (e.key === 'theme' && !res?.deny) { configTheme = String(e.value); $.ui.invalidate('ui.render') } } catch {}
-    return res
+  // Unique parameter names: the directory must see this hook pass its own event on, and the names are reserved file-wide.
+  on('config.set', async ($, setting, proceed) => {
+    const outcome = await proceed(setting)
+    try { if (setting.key === 'theme' && !outcome?.deny) { configTheme = String(setting.value); $.ui.invalidate('ui.render') } } catch {}
+    return outcome
   })
 
   on('command.run', { command: 'automode' }, async ($, e) => {

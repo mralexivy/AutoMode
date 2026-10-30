@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 import {
-  BUNDLE, DIRECTORY, SHIPPED, bumpFor, compareVersions, decide, finishBundle, isDocs, isShipped, nextVersion, prNumbers, releaseNotes,
+  BUNDLE, DIRECTORY, SHIPPED, bumpFor, compareVersions, decide, finishBundle, isDocs, pureLibs, isShipped, nextVersion, prNumbers, releaseNotes,
   releaseVersionOf, rewriteChangelog, rewritePlugin, rewriteReadme, ruleErrors, sectionBody,
   type Facts, type PullRequest,
 } from '../tools/release.mts'
@@ -203,4 +203,13 @@ test('the bundle exports register where it is declared, and nothing else', () =>
   assert.doesNotMatch(out, /export \{/)
   assert.match(out, /commit abc/)
   assert.throws(() => finishBundle('var other = 1;\n', 'abc'))
+})
+
+test('a lib file stays separate only if it and its local imports never touch $', () => {
+  const pure = pureLibs({
+    'a.ts': "import { b } from './b.ts'\n", 'b.ts': 'export const b = 1\n',
+    'c.ts': 'export const c = ($) => $.fs.read("x")\n', 'd.ts': "import { c } from './c.ts'\n",
+    'e.ts': "import type { C } from './c.ts'\nexport const e = 1\n",
+  })
+  assert.deepEqual([...pure].sort(), ['a.ts', 'b.ts', 'e.ts'])
 })
