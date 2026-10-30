@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "automode",
-  "description": "AutoMode, an open source mod for Claude Code: the right model and the right effort for every prompt.",
+  "description": "AutoMode for Claude Code: the right model and the right effort for every prompt.",
   "owner": {
     "name": "Alex Ivy",
     "url": "https://github.com/mralexivy"
@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "automode",
-      "description": "Routes each prompt to a model and an effort, runs a plan, build, verify and review workflow, and shows a bar with the prompt-cache countdown.",
+      "description": "AutoMode for Claude Code picks the model and the effort for each prompt, runs a plan, build, verify and review workflow, and shows a bar with the prompt-cache countdown.",
       "source": {
         "source": "url",
         "url": "https://github.com/mralexivy/AutoMode.git",

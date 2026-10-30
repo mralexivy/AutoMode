@@ -1,7 +1,7 @@
 {
   "name": "automode",
   "displayName": "AutoMode",
-  "description": "Routes coding work across models: Haiku explores, Opus plans and reviews, Sonnet builds and verifies. Also ships the Concise output style.",
+  "description": "AutoMode for Claude Code picks the model and the effort for each prompt, sets a risk floor, forces an Opus review on risky work, and checks whether a model switch is worth the cache rewrite. No key, no server.",
   "author": {
     "name": "Alex Ivy",
     "url": "https://github.com/mralexivy"

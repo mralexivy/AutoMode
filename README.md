@@ -19,9 +19,11 @@
   <a href="#open-source"><b>Open source</b></a>
 </p>
 
-# AutoMode
+# AutoMode for Claude Code
 
 **A free, open source mod for Claude Code that picks the right model and the right effort for every prompt.**
+
+<sub>A community project. It is not Claude Code's built-in auto permission mode, and Anthropic does not make it.</sub>
 
 Quick questions stay cheap. Hard jobs get the strongest model. Risky changes always get a review.
 Install it and it starts. You never touch the model or the Effort control again.
@@ -323,6 +325,7 @@ AutoMode does **not** call `$.http.fetch`, `$.mcp.*`, `$.env.set`, `$.prompt.sub
 
 - **No key.** It runs on your own Claude login.
 - **No server.** There is nothing to host and no account to make.
+- **Your data stays local.** See [PRIVACY.md](PRIVACY.md) for what AutoMode stores and for how long.
 
 ### Where an organization manages Claude Code
 

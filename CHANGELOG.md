@@ -7,6 +7,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ### Changed
 
 - New installs come from the `stable` branch, which moves only after a release passes its checks. They no longer get unreleased work from `main`.
+- The plugin description now says what AutoMode does today, under the name AutoMode for Claude Code.
 
 ### Added
 
