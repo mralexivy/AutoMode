@@ -18,6 +18,9 @@
 //           Haiku alone never makes Haiku eligible.
 // Among the eligible pairs whose effort is known, the cheapest attempt wins; resolve() then decides hold or switch
 // with the real cache economics. Nothing eligible: the strongest available model, labeled inadequate.
+// Hard work never runs Opus below high: T4 (a focused attempt failed) or a Fable verdict, which Opus must carry since
+// the router has no Fable route. A verdict's effort for Fable-level work is understated for Opus (the judge prompt
+// asks for lower effort on Fable). An explicit user effort still wins.
 // Pure: no `$`, no I/O.
 import type { Complexity, Effort, Family, Risk, Tier } from './types.ts'
 import { EFFORTS, tierRank } from './types.ts'
@@ -65,6 +68,13 @@ export const hmModel = (t: Tier): Family => (t === 'T0' ? 'haiku' : t === 'T1' |
 export function effortlessFloor(verdicts: AutoInput['verdicts']): number | null {
   const picks = Object.values(verdicts).filter((v): v is FamilyVerdict => !!v).map((v) => RANK[v.model])
   return picks.length ? Math.max(...picks) : null
+}
+
+// effortMinFor: the quality floor for one model, with the hard-work floor for Opus on top of the caller's floors.
+function effortMinFor(family: Family, i: Pick<AutoInput, 'verdicts' | 'hm' | 'floors'>): Effort | undefined {
+  const floor = i.floors.effortMin?.[family]
+  const hard = i.hm?.tier === 'T4' || effortlessFloor(i.verdicts) === RANK.fable
+  return family === 'opus' && hard ? maxEffort(floor ?? 'low', 'high') : floor
 }
 
 // eligibilityOf applies the rules above to one model. `effort` is that model's own verdict effort, when known.
@@ -120,7 +130,7 @@ export function optimizeAuto(i: AutoInput): AutoChoice {
     // Upstream bounded(): the verdict's effort within the quality floor for this model.
     let effort = v ? v.effort : i.floors.fixedEffort!
     const notes = [...e.why]
-    const min = i.floors.effortMin?.[family]
+    const min = effortMinFor(family, i)
     if (min && at(effort) < at(min)) { effort = bounded(effort, min, 'max'); notes.push(`floor ${min}`) }
     // The judges disagree on the effort: the AutoMode judge rates the task T3 or T4 and effortless says low.
     // The conservative side wins: medium. Recorded.
@@ -135,8 +145,10 @@ export function optimizeAuto(i: AutoInput): AutoChoice {
   // Nothing eligible with a known effort: the strongest available model, labeled inadequate when it was not eligible.
   const pool = candidates.filter((c) => c.eligibility !== 'unavailable')
   const strongest = (pool.length ? pool : candidates).slice().sort((a, b) => RANK[b.family] - RANK[a.family])[0]
-  const effort = i.floors.fixedEffort ?? maxEffort(i.verdicts[strongest.family]?.effort ?? i.current?.effort ?? 'high', i.floors.effortMin?.[strongest.family] ?? 'low')
-  const best = { ...strongest, effort, attemptUsd: i.cost(strongest.family, effort) }
+  const floored = maxEffort(i.verdicts[strongest.family]?.effort ?? i.current?.effort ?? 'high', effortMinFor(strongest.family, i) ?? 'low')
+  // The same rule as above: a T3 or T4 task never runs at low, on the last model standing either.
+  const effort = i.floors.fixedEffort ?? (i.hm && tierRank(i.hm.tier) >= 3 ? maxEffort(floored, 'medium') : floored)
+  const best ={ ...strongest, effort, attemptUsd: i.cost(strongest.family, effort) }
   const inadequate = strongest.eligibility !== 'eligible' && strongest.eligibility !== 'needs-verdict'
   return { best, candidates, inadequate, rule: inadequate ? 'no eligible model: the strongest available, labeled inadequate' : 'no effort verdict for an eligible model: the strongest available at its known or running effort' }
 }

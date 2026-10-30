@@ -94,10 +94,10 @@ function raiseBand(found, stage) {
 
 // ---------- roles: one model per role, set here and nowhere else ----------
 const ROLE = {
-  explorer:    { agentType: 'automode:explorer',    model: 'haiku',  effort: 'low',    stage: 'Discover' },
+  explorer:    { agentType: 'automode:explorer',    model: 'haiku',  effort: 'medium', stage: 'Discover' },
   architect:   { agentType: 'automode:architect',   model: 'opus',   effort: 'high',   stage: 'Plan' },
   planner:     { agentType: 'automode:architect',   model: 'sonnet', effort: 'high',   stage: 'Plan' },
-  implementer: { agentType: 'automode:implementer', model: 'sonnet', effort: 'medium', stage: 'Build' },
+  implementer: { agentType: 'automode:implementer', model: 'sonnet', effort: 'high',   stage: 'Build' },
   verifier:    { agentType: 'automode:verifier',    model: 'sonnet', effort: 'medium', stage: 'Verify' },
   reviewer:    { agentType: 'automode:reviewer',    model: 'opus',   effort: 'high',   stage: 'Review' },
 }

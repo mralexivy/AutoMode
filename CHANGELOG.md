@@ -7,6 +7,15 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ### Added
 
 - A capture of a real session in the README.
+- `tests/route-matrix.test.mts`: route invariants checked across every judge, consequence and allowed-model combination.
+
+### Changed
+
+- T4 work and a Fable verdict never run Opus below high. There is still no automatic Fable route.
+- Critical work that is not trivial gets an Opus medium floor, next to its Sonnet high floor.
+- T3 and T4 work never runs at low, also when only one model is left. An explicit user effort still wins.
+- The workflow implementer runs Sonnet high, for better results on multi-module work. Expect its Build stage to cost more, about 1.7 times on Anthropic's published numbers.
+- The workflow explorer declares Haiku medium, the effort it already ran at in auto mode.
 
 ## [0.1.1] - 2026-10-30
 

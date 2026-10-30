@@ -702,11 +702,12 @@ function autoFloors(env: TaskEnvelope, complexity: Complexity, allowed: Family[]
   const exclude: Partial<Record<Family, string>> = {}
   const because: string[] = []
   let tier: Floor = { tier: 'T0', because: [] }
-  // Consequence: critical work that is not trivial gets at least Sonnet high, the v4 implementer floor.
+  // Consequence: critical work that is not trivial gets at least Sonnet high, the v4 implementer floor, or Opus medium, its band.
   if (env.risk.effective === 'critical' && complexity !== 'trivial') {
     const why = `critical consequence: ${env.risk.prospective.reasons.slice(0, 2).join('; ') || 'observed'}`
     exclude.haiku = why
     effortMin.sonnet = 'high'
+    effortMin.opus = 'medium'
     because.push(why)
     tier = { tier: 'T2', because: [why] }
   }
