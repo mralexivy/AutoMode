@@ -202,7 +202,8 @@ async function debug($: EngineInterface, entry: Record<string, unknown>) {
   if (!cfg.debugLog) return
   const file = `${$.plugin.root}/judge-log.jsonl`
   try {
-    const before = (await $.fs.exists(file)) ? await $.fs.read(file) : ''
+    let before = ''
+    try { before = await $.fs.read(file) } catch {}
     await $.fs.write(file, before + JSON.stringify({ at: await $.clock.now(), ...entry }) + '\n')
   } catch {}
 }
@@ -215,9 +216,9 @@ async function limitShare($: EngineInterface): Promise<number | null> {
   } catch { return null }
 }
 
-// coldCacheHint returns a one-line hint when the cache went cold on a heavy chat and no agent is
+// coldHint returns a one-line hint when the cache went cold on a heavy chat and no agent is
 // still running (a compaction then would lose their answers), at most once per cold spell.
-async function coldCacheHint($: EngineInterface): Promise<string | null> {
+async function coldHint($: EngineInterface): Promise<string | null> {
   if (lastAnswerAt === null) return null
   try {
     const now = await $.clock.now()
@@ -241,7 +242,7 @@ async function routePrompt($: EngineInterface, e: any, next: any) {
   if (!byPerson || e.command || e.isMeta || text.startsWith('/') || text.startsWith('!')) return next(e)
   if (!(await active($))) return next(e)
 
-  const hint = await coldCacheHint($)
+  const hint = await coldHint($)
   if (hint) $.ui.toast(hint)
 
   const risks = risksOf(text)

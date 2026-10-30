@@ -41,7 +41,7 @@ export async function uiSessionStart($: EngineInterface) {
 }
 
 // The engine facts the report subcommands print. Each read is best effort: a missing file is a blank, never an error.
-async function commandFacts($: EngineInterface): Promise<cmd.Facts> {
+async function cmdFacts($: EngineInterface): Promise<cmd.Facts> {
   const safe = async <T,>(p: Promise<T> | T, fallback: T): Promise<T> => { try { return await p } catch { return fallback } }
   const json = async (file: string) => { try { return JSON.parse(await $.fs.read(file)) } catch { return {} } }
   const str = (v: unknown) => (v ? String(v) : null)
@@ -88,9 +88,9 @@ export function registerUi(on: On) {
       switch (name) {
         case 'help': return { text: cmd.helpText() }
         case 'details': return { text: `${head}\n${detailsText(v, now)}` }
-        case 'setup': return { text: cmd.setupText(v, await commandFacts($)) }
-        case 'settings': return { text: cmd.settingsText(v, await commandFacts($)) }
-        case 'debug': return { text: cmd.debugText(v, await commandFacts($), now) }
+        case 'setup': return { text: cmd.setupText(v, await cmdFacts($)) }
+        case 'settings': return { text: cmd.settingsText(v, await cmdFacts($)) }
+        case 'debug': return { text: cmd.debugText(v, await cmdFacts($), now) }
         case 'on':
         case 'off': {
           const wantOn = name === 'on'

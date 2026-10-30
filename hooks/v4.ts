@@ -223,7 +223,7 @@ async function loadV4($: EngineInterface) {
 const FIRST_PREFIX_KEEP = 20
 export const projectKey = (cwd: string | undefined) => (cwd ? fnv1a(cwd) : 'unknown')
 const nums = (v: unknown) => (Array.isArray(v) ? v : []).filter((x): x is number => typeof x === 'number' && Number.isFinite(x) && x > 0)
-async function readFirstFile($: EngineInterface): Promise<{ byProject: Record<string, number[]>; ratios: number[] }> {
+async function firstFile($: EngineInterface): Promise<{ byProject: Record<string, number[]>; ratios: number[] }> {
   try {
     const file = `${await dataDir($)}/first-prefix.json`
     if (!(await $.fs.exists(file))) return { byProject: {}, ratios: [] }
@@ -231,7 +231,7 @@ async function readFirstFile($: EngineInterface): Promise<{ byProject: Record<st
     return { byProject: Object.fromEntries(Object.entries(j.byProject ?? {}).map(([k, v]) => [k, nums(v)])), ratios: nums(j.ratios) }
   } catch { return { byProject: {}, ratios: [] } }
 }
-async function readFirstPrefixes($: EngineInterface): Promise<Record<string, number[]>> { return (await readFirstFile($)).byProject }
+async function readFirstPrefixes($: EngineInterface): Promise<Record<string, number[]>> { return (await firstFile($)).byProject }
 
 // Preflight: the first request's size, computed from what the engine will send before anything is sent. The system
 // prompt comes from $.prompt.compose(), the tools from $.tool.list() (names and descriptions; schemas are not visible).
@@ -255,7 +255,7 @@ const FIRST_PREFIX_HEADROOM = 4_000
 // Order of trust: a calibrated preflight (this session's real prompt and tools), this project's median, an uncalibrated
 // preflight scaled cautiously, the machine-wide p75, nothing.
 async function loadPrefixEstimate($: EngineInterface): Promise<number | null> {
-  const { byProject: by, ratios } = await readFirstFile($)
+  const { byProject: by, ratios } = await firstFile($)
   if (!S.cache && S.preflight === undefined) S.preflight = await preflightRaw($)
   const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor((xs.length - 1) / 2)]
   if (!S.cache && S.preflight && ratios.length >= PREFLIGHT_MIN_RATIOS) { S.prefixSource = 'preflight (calibrated)'; return Math.round(S.preflight * median(ratios)) + FIRST_PREFIX_HEADROOM }
@@ -271,7 +271,7 @@ async function loadPrefixEstimate($: EngineInterface): Promise<number | null> {
 }
 async function saveFirstPrefix($: EngineInterface, tokens: number) {
   try {
-    const { byProject: by, ratios } = await readFirstFile($)
+    const { byProject: by, ratios } = await firstFile($)
     const k = projectKey(S.cwd)
     // The preflight's ratio to the measured size, bounded: it corrects the preflight on this machine next time.
     const ratio = S.preflight ? tokens / S.preflight : null
