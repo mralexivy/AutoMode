@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-30
+
 ### Changed
 
 - New installs come from the `stable` branch, which moves only after a release passes its checks. They no longer get unreleased work from `main`.
