@@ -168,6 +168,13 @@ jobs:
       - name: Move stable
         if: env.DRY_RUN != 'true'
         run: git push origin "$GITHUB_SHA:refs/heads/stable"
+      - name: Update the directory branch
+        if: env.DRY_RUN != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          npm ci
+          node tools/release.mts directory "$VERSION"
       - name: Tell each pull request it shipped
         if: env.DRY_RUN != 'true'
         run: |

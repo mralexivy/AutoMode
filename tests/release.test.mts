@@ -1,10 +1,10 @@
 // The release tools (tools/release.mts): the decision, the file rewrites and the PR rules.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 
 import {
-  BUNDLE, SHIPPED, bumpFor, compareVersions, decide, isDocs, isShipped, nextVersion, prNumbers, releaseNotes,
+  BUNDLE, DIRECTORY, SHIPPED, bumpFor, compareVersions, decide, finishBundle, isDocs, linkDemo, pureLibs, isShipped, nextVersion, prNumbers, releaseNotes,
   releaseVersionOf, rewriteChangelog, rewritePlugin, rewriteReadme, ruleErrors, sectionBody,
   type Facts, type PullRequest,
 } from '../tools/release.mts'
@@ -189,4 +189,37 @@ test('dependabot branches are exempt from the name and the issue link', () => {
 test('prNumbers reads squash and merge subjects, skips release commits, and drops repeats', () => {
   const subjects = ['Fix the bar (#7)', 'Release 0.2.0 (#8)', 'Merge pull request #5 from x/y', 'Tune it', 'Again (#7)']
   assert.deepEqual(prNumbers(subjects), [7, 5])
+})
+
+test('the directory tree holds what users run and leaves out the dev files', () => {
+  for (const path of BUNDLE) assert.ok(DIRECTORY.includes(path), path)
+  for (const path of ['PRIVACY.md', 'docs/readme']) assert.ok(DIRECTORY.includes(path), path)
+  for (const path of ['bench', 'tests', 'tools', 'site', 'package.json', 'package-lock.json']) assert.ok(!DIRECTORY.includes(path), path)
+})
+
+test('the bundle exports register where it is declared, and nothing else', () => {
+  const out = finishBundle('var other = 1;\nvar register = (on, options) => {};\nexport {\n  other,\n  register\n};\n', 'abc')
+  assert.match(out, /^export const register = /m)
+  assert.doesNotMatch(out, /export \{/)
+  assert.match(out, /commit abc/)
+  assert.throws(() => finishBundle('var other = 1;\n', 'abc'))
+})
+
+test('a lib file stays separate only if it and its local imports never touch $', () => {
+  const pure = pureLibs({
+    'a.ts': "import { b } from './b.ts'\n", 'b.ts': 'export const b = 1\n',
+    'c.ts': 'export const c = ($) => $.fs.read("x")\n', 'd.ts': "import { c } from './c.ts'\n",
+    'e.ts': "import type { C } from './c.ts'\nexport const e = 1\n",
+  })
+  assert.deepEqual([...pure].sort(), ['a.ts', 'b.ts', 'e.ts'])
+})
+
+test('the listing links the recording', () => {
+  assert.equal(linkDemo('<img src="docs/readme/demo.gif">'), '<img src="https://raw.githubusercontent.com/mralexivy/AutoMode/main/docs/readme/demo.gif">')
+})
+
+// The directory reserves these names in a file that declares a hook, and the bundle is one such file.
+test('no file in hooks declares a variable named on or next', () => {
+  const files = readdirSync('hooks', { recursive: true, encoding: 'utf8' }).filter(f => /\.tsx?$/.test(f))
+  for (const f of files) assert.doesNotMatch(readFileSync(`hooks/${f}`, 'utf8'), /\b(?:const|let|var) (?:on|next)\b/, f)
 })

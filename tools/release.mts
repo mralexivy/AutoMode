@@ -2,7 +2,7 @@
 // The functions at the top are pure, so tests/release.test.mts can pin them. The commands at the bottom own git and the
 // file system. This file is a dev tool and stays out of the bundle.
 import { execFileSync } from 'node:child_process'
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { appendFileSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
@@ -14,6 +14,9 @@ export const SHIPPED = [
   'types', 'workflows', 'config.json',
 ]
 export const BUNDLE = [...SHIPPED, 'LICENSE', 'README.md', 'CHANGELOG.md', 'THIRD_PARTY_NOTICES.md']
+// The tree on the `directory` branch, which the Anthropic directory reads. It holds what users run and what the listing
+// shows, and leaves out bench/, tests/ and the lockfile, which nothing in the mod runs.
+export const DIRECTORY = [...BUNDLE, 'PRIVACY.md', 'SECURITY.md', 'docs/readme']
 
 export type Bump = 'patch' | 'minor' | 'major'
 export type State = 'none' | 'pending' | 'ship'
@@ -225,6 +228,77 @@ function commandBuild() {
   }
 }
 
+// finishBundle turns esbuild's output into the form the directory reads: register exported where it is declared, and
+// no other export. The directory reads $ only inside one file, so the directory tree carries hooks/ as one module.
+export function finishBundle(code: string, sha: string): string {
+  const body = code.replace(/\nexport \{[^}]*\};?\s*$/, '\n').replace(/^var register = /m, 'export const register = ')
+  if (!/^export const register = /m.test(body)) throw new Error('The bundle does not declare register')
+  return `// Generated from hooks/ at commit ${sha} by tools/release.mts. The readable source is hooks/ on the main branch.\n${body}`
+}
+
+export const linkDemo = (readme: string) =>
+  readme.replaceAll('docs/readme/demo.gif', 'https://raw.githubusercontent.com/mralexivy/AutoMode/main/docs/readme/demo.gif')
+
+// pureLibs names the hooks/lib files that can stay separate: no use of $, and every local import is also pure. Each
+// keeps the bundle smaller, and the directory reads a file only up to 256 KiB.
+export function pureLibs(files: Record<string, string>): Set<string> {
+  const pure = new Set(Object.keys(files).filter(f => !/\$\.|EngineInterface/.test(files[f])))
+  const imports = (code: string) => [...code.matchAll(/^(?!import type)(?:import|export)\b.*from '\.\/([\w-]+\.ts)'/gm)].map(m => m[1])
+  for (let changed = true; changed;) {
+    changed = false
+    for (const f of [...pure]) if (imports(files[f]).some(i => !pure.has(i))) { pure.delete(f); changed = true }
+  }
+  return pure
+}
+
+// commandDirectory publishes DIRECTORY as one commit on the `directory` branch, with hooks/ bundled into one readable
+// module. It validates the tree first. It never force-pushes: the new commit sits on top of the branch.
+async function commandDirectory(version: string) {
+  const scratch = mkdtempSync(join(tmpdir(), 'automode-directory-'))
+  const tree = join(scratch, 'tree')
+  const out = join(scratch, 'bundle.ts')
+  try {
+    mkdirSync(tree)
+    execFileSync('sh', ['-c', `git archive HEAD -- ${DIRECTORY.join(' ')} | tar -x -C "${tree}"`], { stdio: 'inherit' })
+    // Loaded here because the other commands run where dev tools are not installed.
+    const { build } = await import('esbuild')
+    const libs = Object.fromEntries(readdirSync('hooks/lib').map(f => [f, read(`hooks/lib/${f}`)]))
+    const pure = pureLibs(libs)
+    await build({
+      entryPoints: ['hooks/register.ts'], bundle: true, format: 'esm', platform: 'neutral', target: 'es2023',
+      external: ['claude-code'], jsx: 'transform', jsxFactory: 'h', charset: 'utf8', legalComments: 'none', outfile: out,
+      logLevel: 'warning',
+      plugins: [{
+        name: 'pure-libs',
+        setup(b) {
+          b.onResolve({ filter: /\/lib\/[\w-]+\.ts$/ }, a => pure.has(basename(a.path)) ? { path: `./lib/${basename(a.path)}`, external: true } : undefined)
+        },
+      }],
+    })
+    // The scanner reads a download command into the GIF's bytes, so the listing links the recording instead of carrying it.
+    rmSync(join(tree, 'docs', 'readme', 'demo.gif'))
+    writeFileSync(join(tree, 'README.md'), linkDemo(read('README.md')))
+    const hooksJson = readFileSync(join(tree, 'hooks', 'hooks.json'))
+    rmSync(join(tree, 'hooks'), { recursive: true })
+    mkdirSync(join(tree, 'hooks', 'lib'), { recursive: true })
+    writeFileSync(join(tree, 'hooks', 'hooks.json'), hooksJson)
+    for (const f of pure) copyFileSync(`hooks/lib/${f}`, join(tree, 'hooks', 'lib', f))
+    writeFileSync(join(tree, 'hooks', 'register.ts'), finishBundle(readFileSync(out, 'utf8'), git('rev-parse', 'HEAD')))
+    execFileSync('claude', ['plugin', 'validate', tree, '--strict'], { stdio: 'inherit' })
+
+    const gitDir = git('rev-parse', '--absolute-git-dir')
+    const env = { ...process.env, GIT_DIR: gitDir, GIT_WORK_TREE: tree, GIT_INDEX_FILE: join(scratch, 'index') }
+    execFileSync('git', ['-C', tree, 'add', '-A', '-f', '.'], { env })
+    const written = execFileSync('git', ['-C', tree, 'write-tree'], { env, encoding: 'utf8' }).trim()
+    let parent: string[] = []
+    try { parent = ['-p', git('rev-parse', '--verify', 'origin/directory')] } catch {}
+    const commit = git('commit-tree', written, ...parent, '-m', `Directory tree for ${version}`)
+    git('push', 'origin', `${commit}:refs/heads/directory`)
+  } finally {
+    rmSync(scratch, { recursive: true, force: true })
+  }
+}
+
 function commandScope() {
   const { BASE_SHA: base, HEAD_REF: ref } = process.env
   // The release gate tests a release commit, so its push does not test it again.
@@ -265,6 +339,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     plan: commandPlan,
     prepare: () => commandPrepare(args[0], args[1]),
     build: commandBuild,
+    directory: () => commandDirectory(args[0]),
     scope: commandScope,
     rules: commandRules,
     section: () => console.log(sectionBody(read('CHANGELOG.md'), args[0])),
@@ -275,5 +350,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.error(`Usage: node tools/release.mts <${Object.keys(commands).join('|')}>`)
     process.exit(2)
   }
-  commands[command]()
+  await commands[command]()
 }

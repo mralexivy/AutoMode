@@ -23,7 +23,6 @@ import { useV4, v4AgentSpawn, v4Append, v4Attachment, v4Compact, v4PromptSubmit,
 import { setOptions } from './options.ts'
 import { setSources } from './ui/publish.ts'
 import { registerUi, uiSessionStart } from './ui/register-ui.tsx'
-import { fsRead, sessionModel, fsWrite } from './lib/io.ts'
 
 export { COMPACT_SYSTEM, transcriptOf }
 
@@ -188,14 +187,14 @@ let coldHintAt = 0
 // session.start, on first use: a module on built-in defaults must never route beside the classic hook.
 async function load($: EngineInterface) {
   loaded = true
-  try { cfg = { ...DEFAULTS, ...JSON.parse(await fsRead($, `${$.plugin.root}/config.json`)) } } catch { cfg = DEFAULTS }
-  try { sourceVersion = JSON.parse(await fsRead($, `${$.plugin.root}/.claude-plugin/plugin.json`)).version || 'unknown' } catch {}
+  try { cfg = { ...DEFAULTS, ...JSON.parse(await $.fs.read(`${$.plugin.root}/config.json`)) } } catch { cfg = DEFAULTS }
+  try { sourceVersion = JSON.parse(await $.fs.read(`${$.plugin.root}/.claude-plugin/plugin.json`)).version || 'unknown' } catch {}
 }
 
 async function active($: EngineInterface) {
   if (!loaded) await load($)
   if (cfg.router !== 'judge') return false
-  try { return (await sessionModel($)).trim() === cfg.pickerModel } catch { return false }
+  try { return (await $.session.model()).trim() === cfg.pickerModel } catch { return false }
 }
 
 // debug appends one JSON line to the plugin's own folder, only with debugLog on.
@@ -203,8 +202,9 @@ async function debug($: EngineInterface, entry: Record<string, unknown>) {
   if (!cfg.debugLog) return
   const file = `${$.plugin.root}/judge-log.jsonl`
   try {
-    const before = (await $.fs.exists(file)) ? await fsRead($, file) : ''
-    await fsWrite($, file, before + JSON.stringify({ at: await $.clock.now(), ...entry }) + '\n')
+    let before = ''
+    try { before = await $.fs.read(file) } catch {}
+    await $.fs.write(file, before + JSON.stringify({ at: await $.clock.now(), ...entry }) + '\n')
   } catch {}
 }
 
@@ -216,9 +216,9 @@ async function limitShare($: EngineInterface): Promise<number | null> {
   } catch { return null }
 }
 
-// coldCacheHint returns a one-line hint when the cache went cold on a heavy chat and no agent is
+// coldHint returns a one-line hint when the cache went cold on a heavy chat and no agent is
 // still running (a compaction then would lose their answers), at most once per cold spell.
-async function coldCacheHint($: EngineInterface): Promise<string | null> {
+async function coldHint($: EngineInterface): Promise<string | null> {
   if (lastAnswerAt === null) return null
   try {
     const now = await $.clock.now()
@@ -242,7 +242,7 @@ async function routePrompt($: EngineInterface, e: any, next: any) {
   if (!byPerson || e.command || e.isMeta || text.startsWith('/') || text.startsWith('!')) return next(e)
   if (!(await active($))) return next(e)
 
-  const hint = await coldCacheHint($)
+  const hint = await coldHint($)
   if (hint) $.ui.toast(hint)
 
   const risks = risksOf(text)

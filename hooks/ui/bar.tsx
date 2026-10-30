@@ -36,9 +36,9 @@ export function drawSwitch($: EngineInterface, c: Ctx, v: View) {
   const { Button } = c.els
   const r = v.router
   if (!r.enabled || r.killed || !r.active) return null
-  const on = r.mode !== 'off'
+  const routing = r.mode !== 'off'
   // On is the host's filled button, off its outlined ghost (dimColor): the usual active and idle look, in the person's theme.
-  return <Button key="hm-switch" plain dimColor={!on} hotkey={c.term ? 'm' : undefined} label={on ? '● on' : '○ off'} onPress={() => toggleRouting($)} />
+  return <Button key="hm-switch" plain dimColor={!routing} hotkey={c.term ? 'm' : undefined} label={routing ? '● on' : '○ off'} onPress={() => toggleRouting($)} />
 }
 
 export function drawBar($: EngineInterface, c: Ctx, v: View, metrics: Metric[], minimal: boolean) {
