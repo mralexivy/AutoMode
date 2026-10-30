@@ -1,8 +1,9 @@
 <p align="center">
-  <img src="docs/readme/banner.svg" alt="AutoMode: the right model and the right effort for every prompt" width="100%">
+  <img src="docs/readme/banner.svg" alt="AutoMode for Claude Code: the right model and the right effort for every prompt" width="100%">
 </p>
 
 <p align="center">
+  <a href="https://github.com/mralexivy/AutoMode/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/mralexivy/AutoMode?style=flat&color=fbbf24"></a>
   <a href="https://github.com/mralexivy/AutoMode/actions/workflows/test.yml"><img alt="Test status" src="https://github.com/mralexivy/AutoMode/actions/workflows/test.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-22d3ee"></a>
   <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-34d399"></a>
@@ -23,24 +24,33 @@
 
 **A free, open source mod for Claude Code that picks the right model and the right effort for every prompt.**
 
-<sub>A community project. It is not Claude Code's built-in auto permission mode, and Anthropic does not make it.</sub>
-
 Quick questions stay cheap. Hard jobs get the strongest model. Risky changes always get a review.
 Install it and it starts. You never touch the model or the Effort control again.
 
-> **AutoMode is open source, and we want your help.**
-> It is MIT licensed. Every line is in this repository, and there is no key, no account and no server.
-> You can add a benchmark task, a judge case or a risk rule in under ten minutes.
-> [See how to contribute](#contribute).
+<sub>A community project. It is not Claude Code's built-in auto permission mode, and Anthropic does not make it.</sub>
+
+**Paste these into Claude Code, one at a time, then run `/reload-plugins`:**
+
+```text
+/plugin marketplace add mralexivy/AutoMode
+```
+
+```text
+/plugin install automode@automode
+```
 
 <p align="center">
-  <img src="docs/readme/hero.svg" alt="The AutoMode bar: Deciding, then Low for a quick question, then High for a refactor" width="100%">
+  <img src="docs/readme/demo.gif" alt="A real session: a quick question runs on Haiku at Low, then a JWT migration moves up to Opus because the risk floor rules out Haiku" width="100%">
+  <br><sub>A real session on Claude Code 2.1.308, sped up 1.6 times. A quick question runs on Haiku at Low. A JWT migration moves up to Opus, because the risk floor rules out Haiku.</sub>
 </p>
 
-<p align="center">
-  <img src="docs/readme/session.png" alt="A real session: a quick question runs on Haiku at Low, and a risky migration moves up to Opus at High" width="100%">
-  <br><sub>A real session on Claude Code 2.1.314. A quick question runs on Haiku at Low. A risky migration moves up to Opus at High.</sub>
-</p>
+<table>
+<tr>
+<td width="33%" valign="top"><b>No key. No server.</b><br>It runs on the Claude login you already have. There is nothing to host, and your data stays on your machine.</td>
+<td width="33%" valign="top"><b>Six small agents.</b><br>Open-ended work runs through plan, build, verify and review. Risky work always gets an Opus review.</td>
+<td width="33%" valign="top"><b>74 of 75 judge cases.</b><br>The judge picked an accepted effort on labeled cases. This measures the label, not cost. <a href="#benchmarks">See the limits</a>.</td>
+</tr>
+</table>
 
 ## What AutoMode does, in one minute
 
@@ -122,6 +132,11 @@ Every prompt takes the cheapest route that is still adequate. Code sets a floor 
 ## What the bar shows
 
 One quiet line above the prompt, in your theme's colors. It reports what actually ran.
+
+<p align="center">
+  <img src="docs/readme/session.png" alt="Two prompts in a real session, with the bar under each: Haiku Low, then Opus High" width="100%">
+  <br><sub>A real session on Claude Code 2.1.314. Each prompt shows the route it took.</sub>
+</p>
 
 | On the bar | Means |
 |---|---|
@@ -276,7 +291,7 @@ AutoMode is not the only router for Claude Code. [effortless](https://github.com
   <img src="docs/readme/contribute.svg" alt="Five ways to contribute: a benchmark task, a judge case, a risk rule, docs and images, a bug report" width="100%">
 </p>
 
-AutoMode gets better when more people use it on more kinds of work. No contribution is too small. A fixed sentence counts.
+AutoMode gets better when more people use it on more kinds of work. It is MIT licensed, every line is in this repository, and you can add a benchmark task, a judge case or a risk rule in under ten minutes. No contribution is too small. A fixed sentence counts.
 
 | You want to | Do this | Time |
 |---|---|---|
