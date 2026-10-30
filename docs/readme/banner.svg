@@ -1,40 +1,108 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 400" width="1280" height="400" role="img" aria-label="AutoMode: the right model and the right effort for every prompt">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 420" width="1280" height="420" role="img" aria-label="AutoMode for Claude Code: the right model and the right effort for every prompt. An animation sends three prompts to different rungs of the ladder, from Haiku low to Opus max.">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0d1020"/>
+      <stop offset="0" stop-color="#0b0e1c"/>
       <stop offset="1" stop-color="#171038"/>
     </linearGradient>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#8b5cf6"/>
       <stop offset="1" stop-color="#22d3ee"/>
     </linearGradient>
+    <linearGradient id="t" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#8b5cf6" stop-opacity=".38"/>
+      <stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-30%" y="-80%" width="160%" height="260%"><feGaussianBlur stdDeviation="12"/></filter>
   </defs>
-  <rect width="1280" height="400" fill="url(#bg)"/>
-  <g opacity=".12" stroke="#8b93b8">
-    <path d="M0 80H1280M0 160H1280M0 240H1280M0 320H1280"/>
-    <path d="M160 0V400M320 0V400M480 0V400M640 0V400M800 0V400M960 0V400M1120 0V400"/>
+  <style>
+    .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .a, .b, .c { opacity: 0; animation: 12s infinite both; }
+    .a { animation-name: sceneA; }
+    .b { animation-name: sceneB; }
+    .c { animation-name: sceneC; }
+    .drift { animation: drift 12s ease-in-out infinite; transform-origin: 980px 210px; }
+    .caret { animation: blink 1s steps(2) infinite; }
+    @keyframes sceneA { 0%, 2% { opacity: 0 } 5%, 29% { opacity: 1 } 32%, 100% { opacity: 0 } }
+    @keyframes sceneB { 0%, 35% { opacity: 0 } 38%, 62% { opacity: 1 } 65%, 100% { opacity: 0 } }
+    @keyframes sceneC { 0%, 68% { opacity: 0 } 71%, 96% { opacity: 1 } 99%, 100% { opacity: 0 } }
+    @keyframes drift { 0%, 100% { transform: scale(1) } 50% { transform: scale(1.14) } }
+    @keyframes blink { 0% { opacity: 1 } 100% { opacity: 0 } }
+    @media (prefers-reduced-motion: reduce) {
+      .a, .b, .drift, .caret { animation: none; }
+      .c { animation: none; opacity: 1; }
+    }
+  </style>
+  <rect width="1280" height="420" fill="url(#bg)"/>
+  <g opacity=".07" stroke="#aab2d8">
+    <path d="M0 60H1280M0 120H1280M0 180H1280M0 240H1280M0 300H1280M0 360H1280"/>
+    <path d="M80 0V420M160 0V420M240 0V420M320 0V420M400 0V420M480 0V420M560 0V420M640 0V420M720 0V420M800 0V420M880 0V420M960 0V420M1040 0V420M1120 0V420M1200 0V420"/>
   </g>
-  <g transform="translate(96 96)">
-    <rect width="96" height="96" rx="22" fill="url(#g)"/>
-    <rect x="19" y="55" width="14" height="21" rx="4" fill="#fff" opacity=".55"/>
-    <rect x="41" y="40" width="14" height="36" rx="4" fill="#fff" opacity=".8"/>
-    <rect x="63" y="19" width="14" height="57" rx="4" fill="#fff"/>
+  <ellipse class="drift" cx="980" cy="210" rx="340" ry="230" fill="url(#glow)"/>
+
+  <g transform="translate(72 74)">
+    <rect width="72" height="72" rx="17" fill="url(#g)"/>
+    <rect x="14" y="41" width="11" height="16" rx="3" fill="#fff" opacity=".55"/>
+    <rect x="31" y="30" width="11" height="27" rx="3" fill="#fff" opacity=".8"/>
+    <rect x="47" y="14" width="11" height="43" rx="3" fill="#fff"/>
   </g>
-  <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
-    <text x="224" y="166" font-size="84" font-weight="700" letter-spacing="-2" fill="#8b5cf6">Auto<tspan fill="#22d3ee">Mode</tspan></text>
-    <text x="226" y="214" font-size="30" fill="#e8ebff">The right model and the right effort for every prompt.</text>
-    <text x="226" y="256" font-size="22" fill="#8b93b8">An open source mod for Claude Code. Haiku explores. Opus plans and reviews. Sonnet builds.</text>
+  <text class="sans" x="160" y="134" font-size="76" font-weight="800" letter-spacing="-2.5" fill="url(#t)">AutoMode</text>
+  <text class="sans" x="74" y="198" font-size="36" font-weight="600" letter-spacing="-.5" fill="#f2f4ff">for Claude Code</text>
+  <text class="sans" x="74" y="246" font-size="23" fill="#c7cdea">The right model and the right effort</text>
+  <text class="sans" x="74" y="278" font-size="23" fill="#c7cdea">for every prompt.</text>
+
+  <rect x="72" y="312" width="540" height="52" rx="12" fill="#0a0d1b" stroke="#2c3360"/>
+  <text class="mono" x="92" y="344" font-size="18" fill="#6b7394">&gt;</text>
+  <g class="mono" font-size="18" fill="#f2f4ff">
+    <text class="a" x="114" y="344">what does -r do in cp?</text>
+    <text class="b" x="114" y="344">refactor the importer to stream rows</text>
+    <text class="c" x="114" y="344">move sessions to signed JWTs</text>
   </g>
-  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="20" fill="#e8ebff">
-    <rect x="96" y="300" width="132" height="44" rx="22" fill="#1d2244" stroke="#2a3050"/>
-    <text x="162" y="329" text-anchor="middle">T0 Haiku</text>
-    <rect x="240" y="300" width="148" height="44" rx="22" fill="#1d2244" stroke="#2a3050"/>
-    <text x="314" y="329" text-anchor="middle">T1 Sonnet</text>
-    <rect x="400" y="300" width="188" height="44" rx="22" fill="#1d2244" stroke="#2a3050"/>
-    <text x="494" y="329" text-anchor="middle">T2 Sonnet high</text>
-    <rect x="600" y="300" width="148" height="44" rx="22" fill="#2a1f5c" stroke="#8b5cf6"/>
-    <text x="674" y="329" text-anchor="middle">T3 Opus</text>
-    <rect x="760" y="300" width="148" height="44" rx="22" fill="#2a1f5c" stroke="#22d3ee"/>
-    <text x="834" y="329" text-anchor="middle">T4 Opus max</text>
+
+  <g class="sans">
+    <rect x="744" y="44" width="464" height="332" rx="20" fill="#0a0d1b" fill-opacity=".72" stroke="#2c3360"/>
+    <text x="772" y="82" font-size="15" font-weight="600" letter-spacing="1.6" fill="#8b93b8">THE LADDER</text>
+    <text x="1180" y="82" text-anchor="end" font-size="13" fill="#6b7394">illustration</text>
+  </g>
+
+  <g class="mono" font-size="19">
+    <g fill="#141831" stroke="#262c52">
+      <rect x="772" y="100" width="408" height="46" rx="11"/>
+      <rect x="772" y="154" width="408" height="46" rx="11"/>
+      <rect x="772" y="208" width="408" height="46" rx="11"/>
+      <rect x="772" y="262" width="408" height="46" rx="11"/>
+      <rect x="772" y="316" width="408" height="46" rx="11"/>
+    </g>
+
+    <rect class="a" x="772" y="100" width="408" height="46" rx="11" fill="#22d3ee" fill-opacity=".45" filter="url(#soft)"/>
+    <rect class="a" x="772" y="100" width="408" height="46" rx="11" fill="#10303f" stroke="#22d3ee" stroke-width="2"/>
+    <rect class="b" x="772" y="208" width="408" height="46" rx="11" fill="#60a5fa" fill-opacity=".45" filter="url(#soft)"/>
+    <rect class="b" x="772" y="208" width="408" height="46" rx="11" fill="#14284d" stroke="#60a5fa" stroke-width="2"/>
+    <rect class="c" x="772" y="262" width="408" height="46" rx="11" fill="#8b5cf6" fill-opacity=".5" filter="url(#soft)"/>
+    <rect class="c" x="772" y="262" width="408" height="46" rx="11" fill="#2a1f5c" stroke="#a78bfa" stroke-width="2"/>
+
+    <g fill="#e6e9f5">
+      <text x="794" y="130"><tspan fill="#6b7394">T0</tspan>  Haiku</text>
+      <text x="794" y="184"><tspan fill="#6b7394">T1</tspan>  Sonnet</text>
+      <text x="794" y="238"><tspan fill="#6b7394">T2</tspan>  Sonnet</text>
+      <text x="794" y="292"><tspan fill="#6b7394">T3</tspan>  Opus</text>
+      <text x="794" y="346"><tspan fill="#6b7394">T4</tspan>  Opus</text>
+    </g>
+    <g fill="#8b93b8" font-size="17">
+      <text x="986" y="130">low</text>
+      <text x="986" y="184">medium</text>
+      <text x="986" y="238">high</text>
+      <text x="986" y="292">high</text>
+      <text x="986" y="346">max</text>
+    </g>
+    <g font-size="15" text-anchor="end">
+      <text class="a" x="1164" y="129" fill="#67e8f9">quick fact</text>
+      <text class="b" x="1164" y="237" fill="#93c5fd">edit</text>
+      <text class="c" x="1164" y="291" fill="#c4b5fd">risk: review</text>
+    </g>
   </g>
 </svg>
