@@ -1,0 +1,1646 @@
+{
+ "batch": "2026-10-30",
+ "spentUsd": 0.05446635000000001,
+ "answers": [
+  {
+   "id": "t01",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "t01",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "t01",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "t01",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "t02",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "t02",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "t02",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "t02",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "t03",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "t03",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "t03",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "t03",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "t04",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "t04",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "t04",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "t04",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "t05",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "t05",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "t05",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "t05",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "t06",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "t06",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "t06",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "t06",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "t07",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "t07",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "t07",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "t07",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "t08",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "t08",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "t08",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "t08",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "n01",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "n01",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "n01",
+   "arm": "upstream",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "n01",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "n02",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "n02",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "n02",
+   "arm": "upstream",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "n02",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "n03",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "n03",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "n03",
+   "arm": "upstream"
+  },
+  {
+   "id": "n03",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "haiku"
+  },
+  {
+   "id": "n04",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "n04",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "n04",
+   "arm": "upstream",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "n04",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "n05",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "n05",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "n05",
+   "arm": "upstream",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "n05",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "n06",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "n06",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "n06",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "n06",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "n07",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "n07",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "n07",
+   "arm": "upstream",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "n07",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "n08",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "n08",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "n08",
+   "arm": "upstream",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "n08",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "n09",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "n09",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "n09",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "n09",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "n10",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "n10",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "n10",
+   "arm": "upstream",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "n10",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "b01",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "b01",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "b01",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "b01",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "b02",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "b02",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "b02",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "b02",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "b03",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "b03",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "b03",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "b03",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "b04",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "b04",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "b04",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "b04",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "b05",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "b05",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "b05",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "b05",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "b06",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "b06",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "b06",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "b06",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "s01",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "s01",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "s01",
+   "arm": "upstream"
+  },
+  {
+   "id": "s01",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "s02",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "s02",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "s02",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "s02",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "s03",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "s03",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "s03",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "s03",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "s04",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "s04",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "s04",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "s04",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "s05",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "s05",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "s05",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "s05",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "a01",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "a01",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "a01",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "a01",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "a02",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "a02",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "a02",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "a02",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "a03",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "a03",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "a03",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "a03",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "a04",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "a04",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "a04",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "a04",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "a05",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "a05",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "a05",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "a05",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "a06",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "a06",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "a06",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "a06",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "a07",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "a07",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "a07",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "a07",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "f01",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "f01",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "f01",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "f01",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "f02",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "f02",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "f02",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "f02",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "f03",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "f03",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "f03",
+   "arm": "upstream",
+   "effort": "medium"
+  },
+  {
+   "id": "f03",
+   "arm": "automode-auto",
+   "effort": "medium"
+  },
+  {
+   "id": "f04",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "f04",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "f04",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "f04",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "o01",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "o01",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "o01",
+   "arm": "upstream",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "o01",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "o02",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "o02",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "o02",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "o02",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "o03",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "o03",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "o03",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "o03",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "o04",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "o04",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "o04",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "o04",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "x01",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "x01",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "x01",
+   "arm": "upstream",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "x01",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "haiku"
+  },
+  {
+   "id": "x02",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "x02",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "x02",
+   "arm": "upstream",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "x02",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "x03",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "x03",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "x03",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "x03",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "x04",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "x04",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "x04",
+   "arm": "upstream",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "x04",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "x05",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "x05",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "x05",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "x05",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "m01",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "m01",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "m01",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "m01",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "m02",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "m02",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "m02",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "m02",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "m03",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "m03",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "m03",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "m03",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "h01",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h01",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h01",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "h01",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "h02",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h02",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h02",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "h02",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "h03",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h03",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h03",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "h03",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "h04",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h04",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h04",
+   "arm": "upstream",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "h04",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "h05",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h05",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h05",
+   "arm": "upstream",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "h05",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "h06",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h06",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h06",
+   "arm": "upstream",
+   "effort": "medium",
+   "model": "haiku"
+  },
+  {
+   "id": "h06",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "haiku"
+  },
+  {
+   "id": "h07",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h07",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h07",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "h07",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "h08",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h08",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h08",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "h08",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "h09",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h09",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h09",
+   "arm": "upstream",
+   "effort": "max",
+   "model": "opus"
+  },
+  {
+   "id": "h09",
+   "arm": "automode-auto",
+   "effort": "xhigh",
+   "model": "opus"
+  },
+  {
+   "id": "h10",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h10",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h10",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "h10",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "h11",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h11",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h11",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "h11",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "h12",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h12",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h12",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "h12",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "h13",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h13",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h13",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "h13",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "h14",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h14",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h14",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "h14",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "h15",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h15",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h15",
+   "arm": "upstream",
+   "effort": "high"
+  },
+  {
+   "id": "h15",
+   "arm": "automode-auto",
+   "effort": "high"
+  },
+  {
+   "id": "h16",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h16",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h16",
+   "arm": "upstream"
+  },
+  {
+   "id": "h16",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "h17",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h17",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h17",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "h17",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "h18",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h18",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h18",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "h18",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "h19",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h19",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h19",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "h19",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "h20",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "h20",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "h20",
+   "arm": "upstream",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "h20",
+   "arm": "automode-auto",
+   "effort": "low",
+   "model": "haiku"
+  },
+  {
+   "id": "a08",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "a08",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "a08",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "sonnet"
+  },
+  {
+   "id": "a08",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "a09",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "a09",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "a09",
+   "arm": "upstream",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "a09",
+   "arm": "automode-auto",
+   "effort": "high",
+   "model": "opus"
+  },
+  {
+   "id": "a10",
+   "arm": "always medium",
+   "effort": "medium"
+  },
+  {
+   "id": "a10",
+   "arm": "always high",
+   "effort": "high"
+  },
+  {
+   "id": "a10",
+   "arm": "upstream",
+   "effort": "medium",
+   "model": "sonnet"
+  },
+  {
+   "id": "a10",
+   "arm": "automode-auto",
+   "effort": "medium",
+   "model": "sonnet"
+  }
+ ]
+}

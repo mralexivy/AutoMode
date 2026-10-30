@@ -7,8 +7,9 @@ import os from 'node:os'
 import path from 'node:path'
 import { add, ensure } from './ledger.mts'
 
-const CLAUDE = path.join(os.homedir(), '.local', 'bin', 'claude')
-const PROFILE = path.join(os.homedir(), '.claude-ectest')
+// The claude on PATH and your own login, unless these name another binary or an isolated profile.
+const CLAUDE = process.env.CLAUDE_BIN || 'claude'
+const PROFILE = process.env.CLAUDE_BENCH_PROFILE
 let empty = null
 
 // haikuCall returns { text, usd, ok }. `estimate` is the per-call estimate the ledger checks first.
@@ -19,7 +20,7 @@ export function haikuCall(system, prompt, { cap, batch, what, estimate = 0.003 }
   // prompt. With project settings the CLI added context, and Haiku answered 15 of 73 judge prompts as questions.
   const r = spawnSync(CLAUDE, ['-p', prompt, '--model', 'claude-haiku-5-5', '--system-prompt', system, '--tools', '', '--disable-slash-commands', '--setting-sources', '', '--strict-mcp-config', '--output-format', 'json', '--no-session-persistence'], {
     cwd: empty, encoding: 'utf8', timeout: 60_000, maxBuffer: 1e7,
-    env: { ...process.env, CLAUDE_CONFIG_DIR: PROFILE, CLAUDE_CODE_USE_VERTEX: '0', PATH: `${path.dirname(CLAUDE)}:${process.env.PATH}` },
+    env: { ...process.env, ...(PROFILE ? { CLAUDE_CONFIG_DIR: PROFILE } : {}), CLAUDE_CODE_USE_VERTEX: '0' },
   })
   let j = {}
   try { j = JSON.parse(r.stdout) } catch {}

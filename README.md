@@ -45,14 +45,6 @@ Install it and it starts. You never touch the model or the Effort control again.
 | **Prompt cache** | A cold cache is a surprise bill | A countdown on the bar shows when the cache goes cold |
 | **Your setup** | | A login you already have. No key. No server. |
 
-## The ladder
-
-Every prompt takes the cheapest route that is still adequate. Code sets a floor for risky work, and the judge never lowers it.
-
-<p align="center">
-  <img src="docs/readme/ladder.svg" alt="The ladder: T0 Haiku low, T1 Sonnet medium, T2 Sonnet high, T3 Opus high, T4 Opus max" width="100%">
-</p>
-
 ## Install
 
 Three ways. Each takes about a minute.
@@ -110,6 +102,14 @@ State lives in `~/.claude/plugins/data/automode/`. Delete that folder to remove 
 - **AutoMode only:** run `/plugin` and disable it in the **Installed** tab. Or run `/automode off` for one session.
 - **Every mod, one session:** start Claude Code with `--safe-mode`.
 - **Every mod, every session:** set `"disableAllHooks": true` in `~/.claude/settings.json`.
+
+## The ladder
+
+Every prompt takes the cheapest route that is still adequate. Code sets a floor for risky work, and the judge never lowers it.
+
+<p align="center">
+  <img src="docs/readme/ladder.svg" alt="The ladder: T0 Haiku low, T1 Sonnet medium, T2 Sonnet high, T3 Opus high, T4 Opus max" width="100%">
+</p>
 
 ## What the bar shows
 
@@ -222,7 +222,7 @@ Type `/automode` and a subcommand. With no subcommand, you get the bar as text.
 
 **Prompt commands.** Start a prompt with `am:` to steer one prompt: `am:haiku`, `am:sonnet`, `am:opus`, `am:low` to `am:max`, `am:direct`, `am:run`, `am:explore`, `am:new` and `am:reset`. When the guardian pauses a turn, reply `am:continue`. After `/clear`, `am:handoff` restores the task checkpoint.
 
-**Benchmarks run from a terminal,** not from the chat: `node bench/judge-bench.mts` and `node bench/style-check.mts --dry`. See [Benchmarks](#benchmarks).
+**Benchmarks run from a terminal,** not from the chat: `node bench/judge-bench-effortless.mts` and `node bench/style-check.mts --dry`. See [Benchmarks](#benchmarks).
 
 Filing a bug? Run `/automode debug` and paste the result.
 
@@ -253,10 +253,14 @@ The harness is in [`bench/`](bench/). A task names a public repository, a pinned
 **Honest status: v0.1.0 ships the harness and no tasks.** `bench/tasks/` is empty, so `node bench/run.mts` has nothing to run yet. We will not quote a saving until a public run, with at least three repeats per arm, produces one. What works today:
 
 - `node bench/style-check.mts`: the output style check, with [its results](#the-concise-output-style).
-- `node bench/judge-bench.mts`: how often the judge picks a sensible effort, on [labeled cases](bench/judge-cases.json).
+- `node bench/judge-bench-effortless.mts`: how often the judge picks a sensible effort, on [labeled cases](bench/judge-cases.json). With no flags it is a dry run and spends nothing. [One run](bench/results/judge-bench-effortless-2026-10-30.json) got 74 of 75 cases right, and 20 of 20 held-out cases. Always medium got 34 of 75. This measures the effort label only, not cost or task quality. The cases are the effortless author's, and many accept two efforts, which raises every score.
 - `bench/replay.mts`, `bench/spend-audit.mts` and the other offline tools read your own Claude Code transcripts and cost nothing to run.
 
 Want to help us get the first numbers? [Add a benchmark task](#contribute).
+
+## How it compares
+
+AutoMode is not the only router for Claude Code. [effortless](https://github.com/HeyCubit/effortless) sets the effort, and AutoMode's effort rules are ported from it. [jev-router](https://github.com/gargpratyush/jev-router) and [claude-router](https://github.com/alexei-led/claude-router) route the model. AutoMode adds a risk floor, a mandatory Opus review for risky work, and a plan, build, verify and review workflow. effortless has a published cost result, and AutoMode does not. [See the full comparison](docs/compare.md), including how AutoMode decides when a model switch is worth a cache rewrite.
 
 ## Contribute
 

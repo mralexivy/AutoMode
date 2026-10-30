@@ -1,5 +1,5 @@
 {
-  "about": "Labeled prompts for the judge benchmark (node bench/judge-bench.mts). Cases t01 and up are copied from effortless by HeyCubit, MIT License, see bench/external/effortless/. Add your own cases with ids starting at c01. Each case lists the efforts a careful person would accept for that message on that model. Write the prompt yourself and never paste real chat history.",
+  "about": "Labeled prompts for the judge benchmark (node bench/judge-bench-effortless.mts). Cases t01 and up are copied from effortless by HeyCubit, MIT License, see bench/external/effortless/. Add your own cases with ids starting at c01. Each case lists the efforts a careful person would accept for that message on that model. Write the prompt yourself and never paste real chat history.",
   "cases": [
     {
       "id": "t01",

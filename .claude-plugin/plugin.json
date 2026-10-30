@@ -12,7 +12,16 @@
   "repository": "https://github.com/mralexivy/AutoMode",
   "keywords": [
     "automode",
-    "routing",
+    "claude-code",
+    "claude-code-plugin",
+    "claude-code-mod",
+    "model-routing",
+    "reasoning-effort",
+    "prompt-caching",
+    "context-management",
+    "agent-orchestration",
+    "code-review",
+    "developer-tools",
     "workflow",
     "output-style"
   ],

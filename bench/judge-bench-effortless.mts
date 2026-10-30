@@ -80,6 +80,8 @@ async function main() {
     const r = haikuCall(JUDGE_SYSTEM, input, { cap, batch, what: 'judge-bench-effortless', estimate: PER_CALL })
     inputs.set(input, r.ok ? parseVerdict(r.text) ?? null : null)
   }
+  // Every call failed: the table would read as a very bad judge, so stop and write no result.
+  if (![...inputs.values()].some(Boolean)) throw new Error('No judge call returned a verdict. Check that claude runs and is signed in. No result was written.')
   const answers = []
   for (const r of p) {
     for (const fixed of ['medium', 'high']) answers.push({ id: r.c.id, arm: `always ${fixed}`, effort: fixed })
