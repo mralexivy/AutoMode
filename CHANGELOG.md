@@ -4,6 +4,11 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Fixed
+
+- Host calls in the files that declare hooks are written in the plain form that the plugin directory reads.
+- `/automode:usage` pre-approves only its own script, not every `node` command.
+
 ## [0.2.0] - 2026-10-30
 
 ### Changed

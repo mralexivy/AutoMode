@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 import {
-  BUNDLE, SHIPPED, bumpFor, compareVersions, decide, isDocs, isShipped, nextVersion, prNumbers, releaseNotes,
+  BUNDLE, DIRECTORY, SHIPPED, bumpFor, compareVersions, decide, isDocs, isShipped, nextVersion, prNumbers, releaseNotes,
   releaseVersionOf, rewriteChangelog, rewritePlugin, rewriteReadme, ruleErrors, sectionBody,
   type Facts, type PullRequest,
 } from '../tools/release.mts'
@@ -189,4 +189,10 @@ test('dependabot branches are exempt from the name and the issue link', () => {
 test('prNumbers reads squash and merge subjects, skips release commits, and drops repeats', () => {
   const subjects = ['Fix the bar (#7)', 'Release 0.2.0 (#8)', 'Merge pull request #5 from x/y', 'Tune it', 'Again (#7)']
   assert.deepEqual(prNumbers(subjects), [7, 5])
+})
+
+test('the directory tree holds what users run and leaves out the dev files', () => {
+  for (const path of BUNDLE) assert.ok(DIRECTORY.includes(path), path)
+  for (const path of ['PRIVACY.md', 'docs/readme']) assert.ok(DIRECTORY.includes(path), path)
+  for (const path of ['bench', 'tests', 'tools', 'site', 'package.json', 'package-lock.json']) assert.ok(!DIRECTORY.includes(path), path)
 })

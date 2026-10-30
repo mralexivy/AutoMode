@@ -14,7 +14,6 @@ import { detailsText } from './details.tsx'
 import * as cmd from './commands.ts'
 import { toggleRouting } from './switch.ts'
 import type { View } from '../../types/index.d.ts'
-import { fsRead } from '../lib/io.ts'
 
 type On = Parameters<Register>[0]
 
@@ -44,7 +43,7 @@ export async function uiSessionStart($: EngineInterface) {
 // The engine facts the report subcommands print. Each read is best effort: a missing file is a blank, never an error.
 async function commandFacts($: EngineInterface): Promise<cmd.Facts> {
   const safe = async <T,>(p: Promise<T> | T, fallback: T): Promise<T> => { try { return await p } catch { return fallback } }
-  const json = async (file: string) => { try { return JSON.parse(await fsRead($, file)) } catch { return {} } }
+  const json = async (file: string) => { try { return JSON.parse(await $.fs.read(file)) } catch { return {} } }
   const str = (v: unknown) => (v ? String(v) : null)
   const root = String($.plugin.root)
   const manifest = await json(`${root}/.claude-plugin/plugin.json`)
@@ -64,10 +63,10 @@ function scheduleTick($: EngineInterface, now: number, v: View) {
   if (v.cache.state === 'warm' && v.cache.until !== null && v.cache.until > now) due.push(now + ((v.cache.until - now) % 60_000 || 60_000) + 20)
   if (v.tip && v.tip.until > now) due.push(v.tip.until + 20)
   if (!due.length) return
-  const next = Math.min(...due)
-  if (tickDue > now && tickDue <= next) return
-  tickDue = next
-  try { $.clock.after(Math.max(16, next - now), () => { tickDue = 0; $.ui.invalidate('ui.render') }) } catch {}
+  const soonest = Math.min(...due)
+  if (tickDue > now && tickDue <= soonest) return
+  tickDue = soonest
+  try { $.clock.after(Math.max(16, soonest - now), () => { tickDue = 0; $.ui.invalidate('ui.render') }) } catch {}
 }
 
 export function registerUi(on: On) {

@@ -25,7 +25,6 @@
     "workflow",
     "output-style"
   ],
-  "types": "./types/index.d.ts",
   "userConfig": {
     "mode": {
       "type": "string",

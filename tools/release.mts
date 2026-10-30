@@ -14,6 +14,9 @@ export const SHIPPED = [
   'types', 'workflows', 'config.json',
 ]
 export const BUNDLE = [...SHIPPED, 'LICENSE', 'README.md', 'CHANGELOG.md', 'THIRD_PARTY_NOTICES.md']
+// The tree on the `directory` branch, which the Anthropic directory reads. It holds what users run and what the listing
+// shows, and leaves out bench/, tests/ and the lockfile, which nothing in the mod runs.
+export const DIRECTORY = [...BUNDLE, 'PRIVACY.md', 'SECURITY.md', 'docs/readme']
 
 export type Bump = 'patch' | 'minor' | 'major'
 export type State = 'none' | 'pending' | 'ship'
@@ -225,6 +228,20 @@ function commandBuild() {
   }
 }
 
+// commandDirectory publishes DIRECTORY as one commit on the `directory` branch. It writes the tree through a temporary
+// index, so the work tree stays as it is. It never force-pushes: the new commit sits on top of the branch.
+function commandDirectory(version: string) {
+  const index = join(mkdtempSync(join(tmpdir(), 'automode-index-')), 'index')
+  const env = { ...process.env, GIT_INDEX_FILE: index }
+  const entries = git('ls-tree', '-r', '--full-tree', 'HEAD', '--', ...DIRECTORY)
+  execFileSync('git', ['update-index', '--add', '--index-info'], { input: `${entries}\n`, env })
+  const tree = execFileSync('git', ['write-tree'], { env, encoding: 'utf8' }).trim()
+  let parent: string[] = []
+  try { parent = ['-p', git('rev-parse', '--verify', 'origin/directory')] } catch {}
+  const commit = git('commit-tree', tree, ...parent, '-m', `Directory tree for ${version}`)
+  git('push', 'origin', `${commit}:refs/heads/directory`)
+}
+
 function commandScope() {
   const { BASE_SHA: base, HEAD_REF: ref } = process.env
   // The release gate tests a release commit, so its push does not test it again.
@@ -265,6 +282,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     plan: commandPlan,
     prepare: () => commandPrepare(args[0], args[1]),
     build: commandBuild,
+    directory: () => commandDirectory(args[0]),
     scope: commandScope,
     rules: commandRules,
     section: () => console.log(sectionBody(read('CHANGELOG.md'), args[0])),

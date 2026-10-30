@@ -337,6 +337,10 @@ The `hooks:` line lists the events AutoMode handles. The `calls:` line lists the
 | `$.session.*`, `$.agent.*`, `$.prompt.*`, `$.tool.list`, `$.turn.abort`, `$.config.list`, `$.clock.*` | Reads the session's model, usage and messages, and lists agents and tools. `$.agent.spawn` runs the six agents. `$.prompt.compose` and `$.session.compact` support handoff and compaction. `$.turn.abort` stops a turn when the guardian pauses it. |
 | `$.ui.*`, `$.command.register` | Draws the bar and adds `/automode`. |
 
+**What it writes.** Only files in its own data folder, plus `judge-log.jsonl` in the plugin folder with `debugLog` on. It never edits a build, start-up, settings or instructions file. Paths are computed from those two folders, so the directory cannot read them as fixed text.
+
+**Subagents.** The `agent.spawn` hook sets a subagent's model and effort. It does not change a permission mode.
+
 AutoMode does **not** call `$.http.fetch`, `$.mcp.*`, `$.env.set`, `$.prompt.submit` or `$.session.send`. It has no network code of its own: `grep -rnE "fetch\(|https?://" hooks scripts workflows` finds only two comments that credit effortless. It sees every prompt and tool call, because it hooks `prompt.submit` and `tool.call`. That is how routing works. Nothing leaves your machine except through Claude Code.
 
 - **No key.** It runs on your own Claude login.
