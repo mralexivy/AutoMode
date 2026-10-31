@@ -1087,3 +1087,10 @@ test('choose: a purpose enters the workflow on any hint but direct', () => {
   assert.equal(choose({ ...base, hint: 'direct' }, 0.9).chosen, 'direct')
   assert.equal(choose({ ...base, hint: 'engineering-workflow', workflowPurpose: null }, 0.9).chosen, 'direct')
 })
+
+test('a critical word with no hard evidence keeps the routing floor, and buys no Opus review', async () => {
+  const { prospectiveRisk } = await import('../hooks/lib/risk.ts')
+  const r = prospectiveRisk('add a payment refund endpoint', null)
+  assert.equal(r.level, 'elevated')
+  assert.equal(r.routing, 'critical')
+})

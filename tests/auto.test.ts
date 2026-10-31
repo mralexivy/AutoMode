@@ -356,7 +356,7 @@ describe('Application at the request: requested, legal and effective effort', ()
     expect(h.steps[1].effort).toBe('xhigh') // the running task is not weakened
     await h.complete($, 'claude-opus-5-5')
     await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't2' })
-    expect(h.steps[2].effort).toBe('low') // applied when the turn ended; a deadlock named in text alone sets no Opus floor
+    expect(h.steps[2].effort).toBe('medium') // applied when the turn ended; a deadlock is critical, so the low pick meets the Opus floor
   })
 
   test('a lower effort chosen inside a turn without new input is requested at once and takes effect at the next new input', async ($, on) => {

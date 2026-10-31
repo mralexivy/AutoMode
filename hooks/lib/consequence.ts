@@ -99,7 +99,7 @@ export interface ConsequenceInput {
 }
 export interface ConsequenceAssessment {
   level: Risk                  // what the controls act on
-  routing: Risk                // what model routing reads: the level, or critical where the judge alone says so
+  routing: Risk                // what model routing reads: the level, or critical where any layer says so
   review: 'opus' | 'sonnet' | null
   hard: string[]               // the evidence that needs no opinion
   layers: Record<string, Risk>
@@ -137,7 +137,8 @@ export function assess(i: ConsequenceInput): ConsequenceAssessment {
   const wordsCritical = t.level === 'critical' || i.pathLevel === 'critical'
   const agree = wordsCritical && judged === 'critical'
   const level: Risk = hard.length || agree ? 'critical' : top === 'critical' ? 'elevated' : top
-  const routing = judged === 'critical' ? 'critical' : level
+  // Hard evidence buys the review. The quality floor needs less: a critical word on any layer keeps Sonnet at high.
+  const routing = top === 'critical' ? 'critical' : level
   const review = level === 'critical' ? 'opus' : judged === 'critical' ? 'sonnet' : null
   const reasons = [...t.reasons, ...hard, ...(judged !== 'none' ? [`judge: ${judged}`] : []), ...(uncertain ? ['judge unavailable or unsure'] : [])]
   return { level, routing, review, hard, layers, reasons, uncertain }

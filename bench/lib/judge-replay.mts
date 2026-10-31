@@ -44,7 +44,8 @@ export function automodeRoute(c: LabeledCase, s: Slots, rule: Rule): Route {
   if (shortcutApplies(follow, c.message, { required: false }) && !approves) return { ...current, source: 'kept' }
   const j = s.get('automode')
   const hm = j?.parsed ? { tier: j.tier as 'T0', complexity: j.complexity ?? 'standard' as Complexity } : null
-  const risk = prospectiveRisk(c.message, j?.parsed ? { risk: maxRisk(j.risk ?? 'none', j.consequence ?? 'none'), why: '' } : null).level
+  const assessed = prospectiveRisk(c.message, j?.parsed ? { risk: maxRisk(j.risk ?? 'none', j.consequence ?? 'none'), why: '' } : null)
+  const risk = assessed.routing ?? assessed.level
   const complexity: Complexity = hm?.complexity ?? 'standard'
   const floors: AutoFloors = { effortMin: {}, exclude: {}, because: [] }
   if (risk === 'critical' && complexity !== 'trivial') { floors.exclude!.haiku = 'critical'; floors.effortMin = { sonnet: 'high', opus: 'medium' } }

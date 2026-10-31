@@ -73,7 +73,7 @@ export interface EffectiveRoute extends Route {
   overridden: { owner: Owner; reason: string }[]
 }
 
-// level: the consequence the controls act on. routing: what model routing reads, where it differs (judge-only critical).
+// level: the consequence the controls act on. routing: what model routing reads, where it differs (a critical word with no hard evidence).
 // review: 'sonnet' when a review runs without critical evidence. hard: the evidence that made the level critical.
 export interface RiskAssessment { level: Risk; reasons: string[]; source: 'judge' | 'rules' | 'plan' | 'diff' | 'user'; routing?: Risk; review?: 'sonnet'; hard?: string[] }
 
