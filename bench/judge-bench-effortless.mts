@@ -48,7 +48,7 @@ export function plan() {
     return {
       c,
       upstream: upKeeps ? { keep: true } : { input: judgeQuestion(c.message, c.current, ctx) },
-      auto: hmKeeps ? { keep: true } : { input: judgeInputFor(c.message, { family: c.current.model, effort: c.current.effort, messages: messagesOf(ctx) }) },
+      auto: hmKeeps ? { keep: true } : { input: judgeInputFor(c.message, { family: c.current.model, effort: c.current.effort, messages: messagesOf(ctx), closing: true }) },
     }
   })
 }

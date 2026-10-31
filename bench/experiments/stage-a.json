@@ -12,5 +12,8 @@
   "prompt_template": "repo-change-v1",
   "run_cap_usd": 3,
   "budget_usd": 10,
-  "window_usd": 10
+  "window_usd": 10,
+  "tasks": [
+    "trivial-bottle-if-none-match"
+  ]
 }

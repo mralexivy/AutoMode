@@ -26,7 +26,10 @@ function strata<T>(rows: T[], taskOf: (row: T) => string, cohortOf: (row: T) => 
     byCohort.set(cohortOf(row), cohort)
     cohort.set(taskOf(row), [...(cohort.get(taskOf(row)) ?? []), row])
   }
-  return [...byCohort.values()].map((c) => [...c.values()])
+  const groups = [...byCohort.values()].map((c) => [...c.values()])
+  // A stratum of one task always redraws that task, which gives an interval of zero width. Those tasks share one pool.
+  const lone = groups.filter((g) => g.length === 1).flat()
+  return [...groups.filter((g) => g.length > 1), ...(lone.length ? [lone] : [])]
 }
 
 export interface BootstrapOptions<T> { n?: number; seed?: number; cohortOf?: (row: T) => string }
@@ -47,7 +50,9 @@ export function bootstrapCI<T>(rows: T[], taskOf: (row: T) => string, stat: (sam
 // pairedDelta compares arm B minus arm A on the tasks both ran. Each draw keeps a task's two arms together, which is
 // what makes this a paired analysis. `value` turns one task's rows for one arm into a number.
 export function pairedDelta<T>(a: T[], b: T[], taskOf: (row: T) => string, value: (rows: T[]) => number | null, { n = 2000, seed = 42, cohortOf = () => '' }: BootstrapOptions<T> = {}) {
-  const shared = strata([...a, ...b], taskOf, cohortOf).map((tasks) => tasks.map((rows) => ({ a: rows.filter((x) => a.includes(x)), b: rows.filter((x) => b.includes(x)) })).filter((p) => p.a.length && p.b.length)).filter((t) => t.length)
+  const inB = new Set(b.map(taskOf)), inA = new Set(a.map(taskOf))
+  const both = [...a, ...b].filter((x) => inA.has(taskOf(x)) && inB.has(taskOf(x)))
+  const shared = strata(both, taskOf, cohortOf).map((tasks) => tasks.map((rows) => ({ a: rows.filter((x) => a.includes(x)), b: rows.filter((x) => b.includes(x)) })))
   const tasks = shared.reduce((s, t) => s + t.length, 0)
   const diff = (pairs: { a: T[]; b: T[] }[]) => {
     const d = pairs.map((p) => { const x = value(p.a), y = value(p.b); return x === null || y === null ? null : y - x }).filter((v) => v !== null)

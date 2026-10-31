@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "id": "stage-c-fixed",
+  "track": "automode-system",
+  "arms": [
+    "auto",
+    "auto-from-opus"
+  ],
+  "repeats": 3,
+  "parallel": 1,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 3,
+  "budget_usd": 80,
+  "window_usd": 100
+}

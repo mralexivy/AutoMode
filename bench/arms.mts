@@ -69,6 +69,7 @@ export interface Arm {
   context?: Omit<ContextSpec, 'policy' | 'maxTokens'> & { cap200k?: boolean }
   cache?: boolean
   caveat?: string
+  promptPrefix?: string // what a person types before the task, such as an AutoMode command
 }
 
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
@@ -90,6 +91,11 @@ export const EFFORT_ARMS: Record<string, Arm> = {
   'sonnet-auto-effort': { label: 'Sonnet 5.5, AutoMode Auto with routeModels false (effort only)', model: 'claude-sonnet-5-5', effort: 'medium', pinModel: 'claude-sonnet-5-5', v4: true, plugin: automode({ routeModels: false, pickerModel: 'claude-sonnet-5-5' }) },
   // The value users get. A native 1M model may drop the suffix; the row records what ran.
   'auto': { label: 'AutoMode Auto: model and effort routing', model: HM_MODEL, v4: true, plugin: automode({}) },
+  // The same router, for a person whose session starts on Opus. Does it move them down when Sonnet is enough?
+  'auto-from-opus': { label: 'AutoMode Auto, session started on Opus', model: 'claude-opus-5-5', v4: true, plugin: automode({}) },
+  // The specialized agents, asked for with the command a person uses: Haiku explorers, Opus plan and review, Sonnet build and verify.
+  // `claude -p` stops background work 10 minutes after the last turn, so a workflow needs the ceiling off.
+  'auto-workflow': { label: 'AutoMode workflow: six specialized agents', model: 'claude-opus-5-5', v4: true, plugin: automode({}), promptPrefix: 'am:run ', env: { CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: '0' } },
 }
 
 // The neutral track: the same loop, tools and prompt for every model (bench/runners/neutral-agent.mts). Ids come from
@@ -181,7 +187,7 @@ export function armInvocation(armId: string, dir: string, prompt: string) {
   const settingsFile = path.join(dir, 'settings.json')
   const env = armEnv(arm)
   fs.writeFileSync(settingsFile, JSON.stringify({ ...baseSettings, env: { ...baseSettings.env, ...env } }))
-  const args = ['-p', prompt, '--model', arm.model, '--output-format', 'json', '--setting-sources', 'project',
+  const args = ['-p', (arm.promptPrefix ?? '') + prompt, '--model', arm.model, '--output-format', 'json', '--setting-sources', 'project',
     '--settings', settingsFile, '--strict-mcp-config', '--permission-mode', 'bypassPermissions']
   if (arm.effort && arm.effort !== 'default') args.push('--effort', arm.effort)
   if (arm.plugin) args.push('--plugin-dir', arm.plugin.kind === 'effortless' ? effortlessPlugin() : v2Plugin(dir, arm.plugin.config))

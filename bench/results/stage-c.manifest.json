@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-31T17:30:38.626Z",
+  "files": [
+    {
+      "name": "stage-c.jsonl",
+      "sha256": "884c4281344ccf72bda033d1f924d7b519a5c7f49d5eef5168e37c77bf847226",
+      "rows": 144
+    }
+  ],
+  "experiments": [
+    "stage-c"
+  ],
+  "harness_revisions": [
+    "7ba5103c92434f0d29f2973a738c652e9bd3fcbc"
+  ],
+  "spec_hashes": 48,
+  "pricing_snapshots": [
+    "2026-10-17"
+  ],
+  "cost_basis": [
+    "api-list-equivalent"
+  ]
+}
