@@ -47,7 +47,7 @@ Run all four checks before you call a change to `hooks/` done: `npm run typechec
 
 1. Two Haiku judges give evidence: the effortless judge (`lib/effortless.ts`) and the AutoMode judge (`lib/classify.ts`).
 2. `lib/consequence.ts` and `lib/risk.ts` set quality floors.
-3. `optimizeAuto` in `lib/auto.ts` picks the cheapest eligible model and effort pair.
+3. `optimizeAuto` in `lib/auto.ts` picks the weakest eligible model, at that model's own effort. Eligibility reads one verdict asked with a fixed anchor, so the route follows the task, not the model the session started on.
 4. `resolve` in `lib/authority.ts` applies the order that matters: a user override or workflow role is final, the floor lifts the candidate, and the switch check in `lib/policy.ts` then holds or switches on cache cost. A hold never drops below the floor.
 
 Effort can change per prompt while the model holds, because an effort change keeps the cache where the provider shares it. `v4TurnStep` applies the route to each request.
