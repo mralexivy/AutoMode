@@ -576,3 +576,15 @@ test('auto-from-opus runs the same router as auto and starts the session on Opus
   assert.deepEqual(ARMS['auto-from-opus'].plugin, ARMS.auto.plugin)
   assert.equal(ARMS['auto-from-opus'].pinModel, undefined, 'the router must be free to move the model')
 })
+
+test('a workflow that claude -p stopped at its wait ceiling is a timeout, though the CLI exits 0', async () => {
+  const { classifyRun } = await import('./lib/outcome.mts')
+  const stopped = ['Background tasks still running 10m after the last turn (workflow "x"); stopping them. Set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 to wait indefinitely.']
+  assert.equal(classifyRun({ code: 0, json: { is_error: false }, timedOut: false, stderr_tail: stopped }), 'timeout')
+  assert.equal(classifyRun({ code: 0, json: { is_error: false }, timedOut: false, stderr_tail: [] }), 'done')
+})
+
+test('the workflow arm turns off the print-mode wait ceiling', async () => {
+  const { ARMS, armEnv } = await import('./arms.mts')
+  assert.equal(armEnv(ARMS['auto-workflow']).CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS, '0')
+})

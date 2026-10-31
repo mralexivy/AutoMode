@@ -94,7 +94,8 @@ export const EFFORT_ARMS: Record<string, Arm> = {
   // The same router, for a person whose session starts on Opus. Does it move them down when Sonnet is enough?
   'auto-from-opus': { label: 'AutoMode Auto, session started on Opus', model: 'claude-opus-5-5', v4: true, plugin: automode({}) },
   // The specialized agents, asked for with the command a person uses: Haiku explorers, Opus plan and review, Sonnet build and verify.
-  'auto-workflow': { label: 'AutoMode workflow: six specialized agents', model: 'claude-opus-5-5', v4: true, plugin: automode({}), promptPrefix: 'am:run ' },
+  // `claude -p` stops background work 10 minutes after the last turn, so a workflow needs the ceiling off.
+  'auto-workflow': { label: 'AutoMode workflow: six specialized agents', model: 'claude-opus-5-5', v4: true, plugin: automode({}), promptPrefix: 'am:run ', env: { CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: '0' } },
 }
 
 // The neutral track: the same loop, tools and prompt for every model (bench/runners/neutral-agent.mts). Ids come from

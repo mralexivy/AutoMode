@@ -19,8 +19,11 @@ export interface AgentExit {
 // before a long run. Only the class is saved, never the reply.
 const QUOTA = /usage limit|rate limit|limit reached|hit your .*limit/i
 
+// `claude -p` exits 0 when it stops background work at its wait ceiling, so a cut-off workflow looks finished.
+const BACKGROUND_STOPPED = /Background tasks still running .*stopping them/
+
 export function classifyRun(res: AgentExit): ExitReason {
-  if (res.timedOut) return 'timeout'
+  if (res.timedOut || BACKGROUND_STOPPED.test(res.stderr_tail.join('\n'))) return 'timeout'
   const failed = !res.json || res.json.is_error || res.code !== 0
   if (!failed) return 'done'
   return QUOTA.test(`${res.json?.result ?? ''}\n${res.stderr_tail.join('\n')}`) ? 'quota' : 'agent_error'
