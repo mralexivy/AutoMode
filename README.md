@@ -23,12 +23,12 @@
 
 # AutoMode for Claude Code
 
-**A free, open source mod for Claude Code that picks the right model and the right effort for every prompt.**
+**A free, open source model router for Claude Code. It picks the right model and the right effort for every prompt.**
 
 Quick questions stay cheap. Hard jobs get the strongest model. Risky changes always get a review.
 Install it and it starts. You never touch the model or the Effort control again.
 
-<sub>A community project. It is not Claude Code's built-in auto permission mode, and Anthropic does not make it.</sub>
+<sub>A community project. It is not Claude Code's built-in auto permission mode, and Anthropic does not make it. [See the difference](https://mralexivy.github.io/AutoMode/auto-mode-vs-automode/).</sub>
 
 **Paste these into Claude Code, one at a time, then run `/reload-plugins`:**
 

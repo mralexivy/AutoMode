@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How AutoMode Picks a Model and Effort in Claude Code</title>
+<meta name="description" content="How automatic model selection works in AutoMode: Haiku judges, code-set risk floors, a cost check on every switch, and a review workflow for risky work.">
+<link rel="canonical" href="https://mralexivy.github.io/AutoMode/how-it-works/">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="AutoMode">
+<meta property="og:title" content="How AutoMode Picks a Model and Effort in Claude Code">
+<meta property="og:description" content="How automatic model selection works in AutoMode: Haiku judges, code-set risk floors, a cost check on every switch, and a review workflow for risky work.">
+<meta property="og:image" content="https://mralexivy.github.io/AutoMode/social.png">
+<meta property="og:image:alt" content="AutoMode for Claude Code: the right model and the right effort for every prompt">
+<meta property="og:url" content="https://mralexivy.github.io/AutoMode/how-it-works/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../page.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"How AutoMode picks a model and effort","description":"How automatic model selection works in AutoMode: Haiku judges, code-set risk floors, a cost check on every switch, and a review workflow for risky work.","url":"https://mralexivy.github.io/AutoMode/how-it-works/","mainEntityOfPage":"https://mralexivy.github.io/AutoMode/how-it-works/","image":"https://mralexivy.github.io/AutoMode/social.png","datePublished":"2026-10-31","dateModified":"2026-10-31","author":{"@type":"Person","name":"Alex Ivy","url":"https://github.com/mralexivy"},"about":{"@type":"SoftwareApplication","name":"AutoMode","url":"https://mralexivy.github.io/AutoMode/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"AutoMode","item":"https://mralexivy.github.io/AutoMode/"},{"@type":"ListItem","position":2,"name":"How it works","item":"https://mralexivy.github.io/AutoMode/how-it-works/"}]}]}</script>
+</head>
+<body>
+<header><div class="wrap">
+    <nav>
+      <a class="brand" href="../"><img src="../mark.svg" alt="" width="28" height="28">AutoMode</a>
+      <div>
+        <a href="../how-it-works/">How it works</a>
+        <a href="../compare/">Compare</a>
+        <a href="https://github.com/mralexivy/AutoMode">GitHub</a>
+      </div>
+    </nav>
+</div></header>
+<main><article class="wrap">
+    <p class="crumb"><a href="../">AutoMode</a> / How it works</p>
+    <h1>How AutoMode picks a model and effort</h1>
+    <p class="byline">By <a href="https://github.com/mralexivy">Alex Ivy</a>, who makes AutoMode. Updated <time datetime="2026-10-31">October 31, 2026</time>.</p>
+    <p class="answer"><strong>AutoMode chooses the cheapest model and effort that are still adequate for each prompt.</strong> Two Haiku judges read the prompt, code sets a quality floor for risky work, and a cost check decides whether a switch is worth it. The judge can never lower a floor. The decision takes about a second.</p>
+
+    <h2>How a route is decided</h2>
+    <ol>
+      <li><strong>Judges give evidence.</strong> Two Haiku judges assess the prompt. A failed judge never blocks your prompt.</li>
+      <li><strong>Code sets a floor.</strong> Rules check for risk, such as security work or a migration. No model sets this floor.</li>
+      <li><strong>The optimizer picks a candidate.</strong> It takes the cheapest eligible pair of model and effort.</li>
+      <li><strong>Authority resolves the route.</strong> A user override or workflow role is final. The floor then lifts the candidate. The switch check holds or switches on cache cost, and a hold never drops below the floor.</li>
+    </ol>
+
+    <h2>The ladder</h2>
+    <div class="scroll"><table>
+      <tr><th>Rung</th><th>Model</th><th>Effort</th><th>Example prompt</th></tr>
+      <tr><td>T0</td><td>Haiku</td><td>Low</td><td>What does the -r flag do in cp?</td></tr>
+      <tr><td>T1</td><td>Sonnet</td><td>Medium</td><td>Rename this helper and update its tests</td></tr>
+      <tr><td>T2</td><td>Sonnet</td><td>High</td><td>Refactor the importer to stream rows</td></tr>
+      <tr><td>T3</td><td>Opus</td><td>High</td><td>Move sessions from cookies to signed JWTs</td></tr>
+      <tr><td>T4</td><td>Opus</td><td>Max</td><td>Any prompt where a focused attempt already failed</td></tr>
+    </table></div>
+    <p class="note">These are examples, not live output.</p>
+
+    <h2>What counts as risky work?</h2>
+    <p>Code sets a risk band from S0 to S3, using the task text, the file paths, the module count and the unknowns. The band only goes up. A prompt reaches S3 if it matches security or credentials, migrations or destructive operations, concurrency, external contracts, or payments and sensitive data. S3 work always gets an Opus review.</p>
+
+    <h2>What happens to each prompt</h2>
+    <ul>
+      <li><strong>Chat and non-code requests</strong> get a direct answer.</li>
+      <li><strong>Code changes with a clear goal:</strong> Sonnet does them, and must show a passing test or build before it says done.</li>
+      <li><strong>High-risk changes:</strong> after the checks pass, one Opus reviewer checks the diff.</li>
+      <li><strong>Open-ended work</strong> runs through the workflow below.</li>
+    </ul>
+
+    <h2>The workflow for big jobs</h2>
+    <div class="scroll"><table>
+      <tr><th>Stage</th><th>What runs</th></tr>
+      <tr><td>Risk band</td><td>Code, not a model. The band only goes up</td></tr>
+      <tr><td>Discover</td><td>Haiku. One agent for S1, three for S2 and S3</td></tr>
+      <tr><td>Plan</td><td>Opus. Workstreams, acceptance criteria and risks</td></tr>
+      <tr><td>Build</td><td>Sonnet. Workstreams that share files never run together</td></tr>
+      <tr><td>Verify</td><td>Sonnet runs the commands. Code decides pass or fail from exit codes</td></tr>
+      <tr><td>Review</td><td>Opus reads the diff. Mandatory for S2, S3, failed checks and unfinished work</td></tr>
+    </table></div>
+
+    <h2>How do I override a route?</h2>
+    <p>Start a prompt with <code>am:</code> to steer that one prompt. For example, use <code>am:opus</code>, <code>am:sonnet</code>, <code>am:haiku</code>, or <code>am:low</code> to <code>am:max</code>. Your override is final. Use <code>/automode off</code> to stop routing for a session, and <code>/automode on</code> to start it again.</p>
+
+    <h2>Where does it run?</h2>
+    <p>Routing runs in the terminal, the Code tab of the Desktop app, the VS Code extension, <code>claude -p</code> and the Agent SDK. The bar above the prompt appears in the terminal and the Desktop app. In VS Code, use <code>/automode</code> for the same facts. AutoMode does not run in a WSL session of the Desktop app.</p>
+
+    <h2>How well does it work?</h2>
+    <p>The judge picked an accepted effort on 74 of 75 labeled cases. This measures the label, not cost. AutoMode has no published cost result yet, so we quote no saving. <a href="../compare/">See how other routers compare</a>.</p>
+
+    <h2>Install AutoMode</h2>
+    <p>Paste these into Claude Code, one at a time, then run <code>/reload-plugins</code>.</p>
+    <pre><code>/plugin marketplace add mralexivy/AutoMode
+/plugin install automode@automode</code></pre>
+    <p>It is free. It needs no key and no server, and it starts on its own.</p>
+</article></main>
+<footer><div class="wrap">
+  <p><a href="../">Home</a> · <a href="../how-it-works/">How it works</a> · <a href="../compare/">Compare routers</a> · <a href="../prompt-cache/">Prompt cache</a> · <a href="../auto-mode-vs-automode/">AutoMode vs auto mode</a> · <a href="https://github.com/mralexivy/AutoMode">GitHub</a></p>
+  <p>AutoMode is a community project, MIT licensed, and not made by Anthropic. Claude and Claude Code are trademarks of Anthropic.</p>
+</div></footer>
+</body>
+</html>

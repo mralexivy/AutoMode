@@ -18,6 +18,14 @@ AutoMode is not independent of these projects. Its effort rules and bar techniqu
 
 "Not described" means the README does not mention it. It does not prove the feature is absent.
 
+## Other tools with similar names
+
+Read on 2026-10-31.
+
+- **[ClaudeRouter](https://github.com/0dust/ClaudeRouter)** classifies each prompt and delegates to Haiku, Sonnet or Opus. It installs from npm, and its README lists a Pro or Max plan as a requirement for delegation.
+- **[claude-model-router](https://github.com/jdogresorg/claude-model-router)** tracks token use and routes sub-tasks to subagents, rather than the main prompt.
+- **[Claude Code Router](https://github.com/musistudio/claude-code-router)** does a different job. It connects coding agents to the providers you choose, then routes and fails over between them.
+
 ## Where the others are ahead
 
 - **effortless has a cost result.** AutoMode does not. We will not quote a saving until a public run produces one. See [Benchmarks](../README.md#benchmarks).
