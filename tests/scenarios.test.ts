@@ -57,7 +57,7 @@ describe('Scenarios A-F', () => {
     expect(main(r)[1].owner).toBe('quality-escalation')
   })
 
-  test('C economic downgrade: Opus to Sonnet when the Opus cache went cold, so the switch costs nothing', async ($, on) => {
+  test('C economic downgrade: a new task on a cold Opus cache goes to Sonnet, and the rewrite is cheaper than staying', async ($, on) => {
     let n = 0
     const h = harness(on, { judge: () => judge(n++ === 0 ? { tier: 'T3', complexity: 'complex' } : { tier: 'T1', complexity: 'standard', newTask: true, confidence: 0.95 }) })
     h.setPrefix(60_000)
@@ -71,7 +71,7 @@ describe('Scenarios A-F', () => {
     const d = decisions(records(h.writes))[1]
     expect(d.effective.model).toBe('claude-sonnet-5-5')
     expect(d.effective.check).toMatchObject({ verdict: 'switch', lowPenaltyPoint: true })
-    expect(d.effective.check.economics.writePenaltyUsd).toBe(0)
+    expect(d.effective.check.economics.writePenaltyUsd).toBe(-0.24)
     expect(main(records(h.writes))[1].sent.model).toBe('claude-sonnet-5-5')
   })
 

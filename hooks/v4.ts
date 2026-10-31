@@ -27,6 +27,8 @@ import { BAND_OF, bandOf, demandBand, TIER_BAND } from './lib/bands.ts'
 import { interfaceChanges, observedRisk, prospectiveRisk } from './lib/risk.ts'
 import { textConsequence } from './lib/consequence.ts'
 import { DEFAULT_PARAMS, remainingFor } from './lib/policy.ts'
+import { continuity, noteDrop, observedDrop } from './lib/continuity.ts'
+import { accrueRent, type Rent } from './lib/rent.ts'
 import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, type StrategyChoice } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, summaryOf, withReview } from './lib/envelope.ts'
@@ -144,6 +146,8 @@ const S = {
   consultCounts: {} as Record<string, number>, // failures of that fingerprint when the consult ran
   resolvedCounts: {} as Record<string, number>, // policy auto: failures of that fingerprint when its command passed again
   switchesThisTask: 0,        // discretionary model switches in this task (anti-oscillation)
+  dropped: {} as Partial<Record<Family, number>>, // thinking tokens dropped since each family last ran (lib/continuity.ts)
+  rent: null as Rent | null,  // shadow only: the rent rule's running total (lib/rent.ts); it never picks a route
   lastDemand: null as Demand | null, // the demand the last judgment gave; triggers re-optimize on it
   stage: 'implement' as 'plan' | 'implement',
   lastWorkBand: undefined as number | undefined, // the band of the last real work, kept through a challenge so a second one keeps its floor
@@ -348,7 +352,7 @@ async function spawnOutsideAutoMode($: EngineInterface, e: any, next: any) {
 
 // Persistence: a headless --resume or a plugin reload starts a new module, but the session's cache
 // and task do not reset. The routing state is saved per session after each turn and read back once.
-const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'appModel', 'sessionModel', 'pinFamily', 'pinEffort', 'judgeRiskTask', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier'] as const
+const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'appModel', 'sessionModel', 'pinFamily', 'pinEffort', 'judgeRiskTask', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'dropped', 'rent', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier'] as const
 async function restore($: EngineInterface) {
   S.restored = true
   try { S.sessionId = await sid($) } catch {}
@@ -588,7 +592,8 @@ async function decide($: EngineInterface, text: string, midTurn: boolean, attach
       sameTask: !boundary && !S.planExited, risk: env.risk.effective, expectedOutputTokens: S.priors.outputPerStep[S.current?.family ?? 'sonnet'],
       prices: prices(), params: { ...DEFAULT_PARAMS, calibrated: S.priors.basis === 'calibrated' },
       requestsInPrompt: 0, newTaskSteps: boundary ? S.lastDemand?.steps : undefined, remainingTable: remainingTable(), switchesThisTask: S.switchesThisTask,
-      targetWarm: opt ? warmFor(opt.best.family, at) : false, resetPrefixTokens: S.compactedAt ? S.basePrefix : undefined,
+      targetWarm: opt ? warmFor(opt.best.family, at) : false, targetWarmPrefix: opt ? S.warm[opt.best.family]?.prefixTokens : undefined, resetPrefixTokens: S.compactedAt ? S.basePrefix : undefined,
+      ...continuityInput(S.compactedPending),
     },
   }, S.resetPending)
   S.planExited = false
@@ -1008,6 +1013,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
       prices: prices(), params: { ...DEFAULT_PARAMS, calibrated: S.priors.basis === 'calibrated' },
       requestsInPrompt: 0, newTaskSteps: boundary ? TASK_STEPS[complexity] : undefined, remainingTable: remainingTable(), switchesThisTask: S.switchesThisTask,
       targetWarm: warmFor(choice.best.family, at), targetWarmPrefix: S.warm[choice.best.family]?.prefixTokens, resetPrefixTokens: S.compactedAt ? S.basePrefix : undefined,
+      ...continuityInput(S.compactedPending),
     },
   }, S.resetPending)
   steps.push(`authority: ${route.owner} ${route.family}/${route.effort}${route.check?.gate ? ` (${route.check.gate})` : ''}`)
@@ -1094,6 +1100,7 @@ function reoptimizeAuto(t: Trigger, event: string, at: number, turnId: string | 
       sameTask: event !== 'plan-exit', risk: env.risk.effective, expectedOutputTokens: S.priors.outputPerStep[S.current?.family ?? 'sonnet'], prices: prices(),
       params: { ...DEFAULT_PARAMS, calibrated: S.priors.basis === 'calibrated' }, requestsInPrompt: S.requestsInPrompt, remainingTable: remainingTable(), switchesThisTask: S.switchesThisTask,
       targetWarm: warmFor(choice.best.family, at), targetWarmPrefix: S.warm[choice.best.family]?.prefixTokens, resetPrefixTokens: S.compactedAt ? S.basePrefix : undefined,
+      ...continuityInput(reset),
     },
   }, reset)
   S.pending = route
@@ -1243,6 +1250,7 @@ function reoptimize(t: Trigger, event: string, at: number, turnId: string | unde
       sameTask: event !== 'plan-exit', risk: env.risk.effective, expectedOutputTokens: S.priors.outputPerStep[S.current?.family ?? 'sonnet'], prices: prices(),
       params: { ...DEFAULT_PARAMS, calibrated: S.priors.basis === 'calibrated' }, requestsInPrompt: S.requestsInPrompt, remainingTable: remainingTable(), switchesThisTask: S.switchesThisTask,
       targetWarm: warmFor(opt.best.family, at), targetWarmPrefix: S.warm[opt.best.family]?.prefixTokens, resetPrefixTokens: S.compactedAt ? S.basePrefix : undefined,
+      ...continuityInput(reset),
     },
   }, reset)
   S.pending = route
@@ -1321,6 +1329,9 @@ function warmFor(f: Family, at: number): boolean {
   const w = S.warm[f]
   return !!w && w.until > at && familyOf(S.cache?.model ?? '') !== f
 }
+
+// continuityInput: what the switch check reads about thinking continuity and the shadow rent rule.
+const continuityInput = (compacted: boolean) => ({ provider: S.provider, compacted, dropped: S.dropped, rent: S.rent })
 
 // hashFiles reads covered files and hashes their content (FNV-1a, for change detection only). A file it
 // cannot read gets no hash, and the edit log alone decides for it. Capped to keep the hook cheap.
@@ -1610,7 +1621,7 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
   if (S.compactedPending) { S.compactedPending = false; if (S.compactionPricedAt !== S.compactedAt) reoptimize(trigger(trigState(), { kind: 'compacted' }), 'compacted', t, e.turnId, true) }
   else if (e.index > 0 && S.cache?.lastRequestAt) {
     const tr = trigger(trigState(), { kind: 'step-start', idleMs: t - S.cache.lastRequestAt, ttlMs: S.ttl })
-    if (tr.action === 'reoptimize') reoptimize(tr, 'cache-expired', t, e.turnId, true)
+    if (tr.action === 'reoptimize') reoptimize(tr, 'cache-expired', t, e.turnId) // cold by time: nothing was reset
   }
   noteAppChoice($, e)
   const r = pinned(S.pending!, e.model)
@@ -1695,9 +1706,11 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
     // estimated before that as three quarters of the session's first prompt (system prompt and tools).
     if (S.compactedAt && !S.basePrefixMeasured) { S.basePrefix = u.cache_read_input_tokens ?? S.basePrefix; S.basePrefixMeasured = true }
     else if (!S.basePrefix) S.basePrefix = Math.round(prefix * 0.75)
+    noteSwitch(r.family, u.model ?? model, prefix, shrank, t)
+    S.rent = accrueRent(S.rent, r.family, r.check?.rent, usdOf(u.model ?? model, usageOf(u)).value, prices().rates)
     // The first request of a fresh session: its size is the estimate for the next session's first prompt.
     if (!S.cache && !S.firstPrefixSaved) { S.firstPrefixSaved = true; await saveFirstPrefix($, prefix) }
-    S.cache = { model: u.model ?? model, effort: sentEffort, prefixTokens: prefix, lastRequestAt: t, ttlMs: S.ttl, effortSharesCache: S.effortShared }
+    S.cache = { model: u.model ?? model, effort: sentEffort, prefixTokens: prefix, lastRequestAt: t, ttlMs: S.ttl, effortSharesCache: S.effortShared, outputTokens: u.output_tokens ?? 0 }
   }
   markWarm(r.family, sentEffort, res, t)
   pushRequest(e, { model, effort: ef.sent }, r.owner, ef.applied, ef.why, res, t, application)
@@ -1706,10 +1719,22 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
   if (res?.stopReason && res.stopReason !== 'tool_use') await flush($)
   const ctx = trigger(trigState(), { kind: 'context', prefixTokens: S.cache?.prefixTokens ?? 0, family: r.family })
   if (ctx.action === 'reoptimize') reoptimize(ctx, 'context-growth', t, e.turnId)
-  else if (shrank) reoptimize(trigger(trigState(), { kind: 'compacted' }), 'compacted', t, e.turnId, true)
+  // With no noted compaction nothing proves a reset, so the shrink is priced and gated as a warm switch.
+  else if (shrank) reoptimize(trigger(trigState(), { kind: 'compacted' }), 'compacted', t, e.turnId, !!S.compactedAt)
   if (res?.answer) S.lastReply = res.answer
   await publish($)
   return res
+}
+
+// noteSwitch records a model change as the API saw it. The drop reads what the prompt lost on arrival. A compaction or
+// a shrink between the two requests hides it, so the drop is then unknown.
+function noteSwitch(family: Family, model: string, prefix: number, shrank: boolean, t: number) {
+  const was = S.cache
+  const moved = !!was?.model && familyOf(was.model) !== familyOf(model)
+  const known = moved && !shrank && !(S.compactedAt && S.compactedAt >= (was!.lastRequestAt ?? 0))
+  const drop = known ? observedDrop(was!.prefixTokens, was!.outputTokens ?? 0, prefix) : 0
+  S.dropped = noteDrop(S.dropped, family, drop)
+  if (moved) S.records.push({ v: 1, kind: 'model-switch', at: t, sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', from: was!.model, to: model, continuity: continuity(was!.model!, model, S.provider), prefixBefore: was!.prefixTokens, prefixAfter: prefix, droppedTokens: known ? drop : null })
 }
 
 // markWarm (effortless): a main response keeps its model's prefix cached for the cache lifetime.
@@ -2128,6 +2153,7 @@ async function noteCompaction($: EngineInterface, via: string) {
   S.basePrefixMeasured = false
   S.haikuOutUntilCompaction = false
   S.warm = {} // the summary replaced the history those caches held
+  S.dropped = {}
   S.records.push({ v: 1, kind: 'compaction', at: S.compactedAt, sessionId: S.sessionId, via })
   await persist($)
   await flush($)
@@ -2240,7 +2266,7 @@ function freshSession() {
     turnPrompt: new Map(), workers: new Map(), agents: new Map(), lastCheck: null, editedSinceCheck: false,
     toldJudgeDown: false, taskSeq: 0, lastOutcome: null, sessionId: 'unknown', restored: false, expectWorker: 0,
     warm: {}, turnRequests: new Map(), stayUp: 0, redoFloor: null, heldRoute: null, planMode: false, planExited: false, editLog: [],
-    consulted: [], consultCounts: {}, resolvedCounts: {}, switchesThisTask: 0, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
+    consulted: [], consultCounts: {}, resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
     judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, judgeRiskTask: undefined,

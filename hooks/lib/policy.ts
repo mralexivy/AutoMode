@@ -2,11 +2,13 @@
 // switch or hold for moving from the current route to the candidate. A mandatory floor always
 // switches; its cost is recorded, never a reason to wait. Payback math and context fit adapted from
 // claude-router (Alexei Ledenev, MIT) and jev-router (MIT).
-import type { Basis, CacheState, Candidate, Economics, Floor, Route, SwitchCheck, Tier } from './types.ts'
-import { REMAINING, remainingWork, type Remaining } from './optimizer.ts'
+import type { Basis, Boundary, CacheState, Candidate, Economics, Family, Floor, Route, SwitchCheck, Tier, Transition } from './types.ts'
+import { CAPABILITY, DEFAULT_PRIORS, mid, REMAINING, remainingWork, type Remaining } from './optimizer.ts'
 import { tierRank } from './types.ts'
 import type { PriceRow } from './prices.ts'
 import { cacheWriteX, rateAt } from './prices.ts'
+import { addedSince, continuity } from './continuity.ts'
+import type { Rent } from './rent.ts'
 
 export interface PolicyParams {
   upgradeVotes: number          // consecutive votes for a non-mandatory upgrade
@@ -57,6 +59,10 @@ export interface SwitchInput {
   targetWarmPrefix?: number      // what that cache holds: the turns added since then are not in it
   resetPrefixTokens?: number     // after compaction: the system-and-tools prefix that stays cached (measured live: 48,836 of 72,742)
   reworkUsd?: number             // expected rework difference (target minus current), when known
+  provider?: string              // where the session runs: it decides which models read each other's thinking (default anthropic)
+  compacted?: boolean            // a compaction since the last request: no earlier thinking survives it, so the continuity flag clears
+  dropped?: Partial<Record<Family, number>> // thinking tokens dropped since each family last ran (lib/continuity.ts)
+  rent?: Rent | null             // shadow only: what the running model has accrued toward the target
 }
 
 // lowPenaltyPoint: no warm cache to lose. Session start (no prefix yet), after /clear or compaction
@@ -78,17 +84,50 @@ export function switchCostUsd(cache: CacheState, from: Route | null, to: Route, 
   return Math.max(0, write - tokens * f.input * f.cacheReadX) / 1e6
 }
 
-// returnCostUsd prices going back to a model whose cache is warm: it reads what it holds and writes the turns added
-// since. Like switchCostUsd, it is the extra cost over reading the prefix on the current route.
-export function returnCostUsd(cache: CacheState, held: number, from: Route | null, to: Route, prices: PriceRow, warm: boolean): number {
+// returnCostUsd prices going back to a model whose cache is warm: it reads heldTokens and writes addedTokens, the turns
+// added since it left. The two prefixes differ after a thinking drop: the current one can be shorter than the held one
+// and still carry new turns, so the added turns are an input and not the gap between them. Like switchCostUsd, it is
+// the extra cost over reading the prefix on the current route.
+export function returnCostUsd(cache: CacheState, heldTokens: number, addedTokens: number, from: Route | null, to: Route, prices: PriceRow, warm: boolean): number {
   if (!warm || cache.prefixTokens === 0) return 0
-  const tokens = cache.prefixTokens
-  const kept = Math.min(held, tokens)
-  const t = rateAt(prices.rates[to.family], tokens)
-  const cost = kept * t.input * t.cacheReadX + (tokens - kept) * t.input * cacheWriteX(cache.ttlMs)
+  const t = rateAt(prices.rates[to.family], heldTokens + addedTokens)
+  const cost = heldTokens * t.input * t.cacheReadX + addedTokens * t.input * cacheWriteX(cache.ttlMs)
   if (!from) return cost / 1e6
+  const f = rateAt(prices.rates[from.family], cache.prefixTokens)
+  return Math.max(0, cost - cache.prefixTokens * f.input * f.cacheReadX) / 1e6
+}
+
+// lowPointUsd prices a switch where no cache is warm on the current route. Staying rewrites the prefix too, so the
+// price is the signed difference: below zero when the target writes for less. A target with a warm cache of its own
+// reads what it holds.
+export function lowPointUsd(tokens: number, heldTokens: number, addedTokens: number, from: Route | null, to: Route, prices: PriceRow, ttlMs: number): number {
+  if (!from || tokens === 0) return 0
+  const x = cacheWriteX(ttlMs)
+  const t = rateAt(prices.rates[to.family], heldTokens + addedTokens)
   const f = rateAt(prices.rates[from.family], tokens)
-  return Math.max(0, cost - tokens * f.input * f.cacheReadX) / 1e6
+  return (heldTokens * t.input * t.cacheReadX + addedTokens * t.input * x - tokens * f.input * x) / 1e6
+}
+
+// transitionUsd is the rent rule's price for a move and its possible return. hiUsd is the outbound cost. The return
+// reads the current model's own prefix (warm) or rewrites all of it (expired), over reading on the target. pi is the
+// chance of a return: 1 inside a task and 0.5 at a new task, which is an assumption with no data behind it yet.
+export function transitionUsd(x: { cache: CacheState; from: Route; to: Route; prices: PriceRow; hiUsd: number; addedTokens: number; droppedTokens?: number; sameTask: boolean; expired?: boolean }): Transition {
+  const held = x.cache.prefixTokens
+  const after = held - (x.droppedTokens ?? 0) + x.addedTokens
+  const retWarmUsd = returnCostUsd({ ...x.cache, prefixTokens: after }, held, x.addedTokens, x.to, x.from, x.prices, true)
+  const m = rateAt(x.prices.rates[x.from.family], held + x.addedTokens)
+  const n = rateAt(x.prices.rates[x.to.family], after)
+  const retExpiredUsd = Math.max(0, (held + x.addedTokens) * m.input * cacheWriteX(x.cache.ttlMs) - after * n.input * n.cacheReadX) / 1e6
+  const pi = x.sameTask ? 1 : 0.5
+  return { hiUsd: x.hiUsd, retWarmUsd, retExpiredUsd, pi, totalUsd: x.hiUsd + pi * (x.expired ? retExpiredUsd : retWarmUsd) }
+}
+
+// boundaryOf names the point a discretionary move would happen at. The rent rule moves only at a boundary.
+export function boundaryOf(i: Pick<SwitchInput, 'sameTask' | 'compacted' | 'verifiedSinceSwitch'>, low: boolean): Boundary {
+  if (i.compacted) return 'compaction'
+  if (!i.sameTask) return 'new-task'
+  if (low) return 'cold'
+  return i.verifiedSinceSwitch ? 'checkpoint' : 'none'
 }
 
 // perRequestSavingUsd is what one later request saves on the target versus the current route.
@@ -97,6 +136,9 @@ export function perRequestSavingUsd(prefix: number, out: number, from: Route, to
   const t = rateAt(prices.rates[to.family], prefix)
   return (prefix * (f.input * f.cacheReadX - t.input * t.cacheReadX) + out * (f.output - t.output)) / 1e6
 }
+
+// capability places a configuration on the optimizer's scale: the tier alone would rank Opus low above Sonnet max.
+const capability = (r: Route) => mid(CAPABILITY[r.family][r.effort])
 
 // perRequestCostUsd is what one request costs on a route: the cached prefix read plus the output.
 export function perRequestCostUsd(prefix: number, out: number, route: Route, prices: PriceRow): number {
@@ -132,7 +174,14 @@ export function switchCheck(i: SwitchInput, resetSinceLastRequest = false): Swit
   const sameRoute = i.current && i.current.model === i.target.model
   const effortOnly = sameRoute && i.current!.effort !== i.target.effort
   // A target whose own cache is still warm reads what it holds and writes only the turns added since.
-  const cost = sameRoute ? 0 : i.targetWarm ? returnCostUsd(i.cache, i.targetWarmPrefix ?? i.cache.prefixTokens, i.current, i.target, i.prices, warm) : switchCostUsd(i.cache, i.current, i.target, i.prices, warm)
+  const held = i.targetWarm ? i.targetWarmPrefix ?? i.cache.prefixTokens : 0
+  const added = i.targetWarm ? addedSince(i.cache.prefixTokens, held, i.dropped?.[i.target.family]) : i.cache.prefixTokens
+  // At a low point after a reset, the old prefix is gone: only what survived it has to be written again.
+  const lowTokens = resetSinceLastRequest ? i.resetPrefixTokens ?? 0 : i.cache.prefixTokens
+  const cost = sameRoute ? 0
+    : low ? lowPointUsd(lowTokens, held, i.targetWarm ? added : lowTokens, i.current, i.target, i.prices, i.cache.ttlMs)
+    : i.targetWarm ? returnCostUsd(i.cache, held, added, i.current, i.target, i.prices, warm)
+    : switchCostUsd(i.cache, i.current, i.target, i.prices, warm)
   const rem = remainingFor(i)
   // What one later request saves on the target. With the effort of both configurations known, each is priced as it will
   // run (its own output per step) and the target's step count is scaled by the effort ratio.
@@ -147,7 +196,27 @@ export function switchCheck(i: SwitchInput, resetSinceLastRequest = false): Swit
     savingUsd: { p25: round(per * rem.p25), median: round(per * rem.median), p75: round(per * rem.p75) },
     ...(i.reworkUsd !== undefined ? { reworkUsd: round(i.reworkUsd) } : {}), basis,
   }
-  const out = (verdict: 'switch' | 'hold', reason: string, gate?: SwitchCheck['gate']): SwitchCheck => ({ verdict, ...(gate ? { gate } : {}), estUsd: cost, basis, lowPenaltyPoint: low, reason, economics })
+  // The continuity flag: which models read each other's thinking. It is a flag and never a price.
+  const modelChange = !!i.current && !sameRoute
+  const pair = modelChange ? continuity(i.current!.model, i.target.model, i.provider ?? 'anthropic') : null
+  const flag = pair === 'lost' && i.compacted ? 'cleared' as const : pair
+  const lostHere = flag === 'lost' && i.sameTask
+  // Shadow only: the rent rule's verdict, recorded beside the live one. It replaces votes and payback and keeps every
+  // other gate, so a hold by another gate is its hold too. Nothing reads it to choose a route.
+  const rentFor = (verdict: 'switch' | 'hold', gate?: SwitchCheck['gate']): SwitchCheck['rent'] => {
+    if (!modelChange || i.mandatory) return undefined
+    const boundary = boundaryOf(i, low)
+    const growth = rem.p25 * (DEFAULT_PRIORS.newInputPerStep + i.expectedOutputTokens)
+    const transition = transitionUsd({ cache: i.cache, from: i.current!, to: i.target, prices: i.prices, hiUsd: cost, addedTokens: growth, sameTask: i.sameTask, expired: low })
+    const rentUsd = i.rent && i.rent.from === i.current!.family && i.rent.to === i.target.family ? i.rent.usd : 0
+    const heldBy = verdict === 'hold' && gate !== 'votes' && gate !== 'payback' ? gate : undefined
+    const pays = (low && !i.sameTask) || (boundary !== 'none' && rentUsd >= transition.totalUsd)
+    return { verdict: !heldBy && pays ? 'switch' : 'hold', to: i.target.family, boundary, rentUsd: round(rentUsd), stepRatio: i.targetStepRatio ?? 1, transition, ...(heldBy ? { heldBy } : {}) }
+  }
+  const out = (verdict: 'switch' | 'hold', reason: string, gate?: SwitchCheck['gate']): SwitchCheck => {
+    const rent = rentFor(verdict, gate)
+    return { verdict, ...(gate ? { gate } : {}), estUsd: cost, basis, lowPenaltyPoint: low, reason, economics, ...(flag ? { continuity: flag } : {}), ...(rent ? { rent } : {}) }
+  }
 
   // The reserve keeps a new route away from the window's edge. A target with at least the running model's window
   // (never Haiku, which has its own limit) holds whatever the running model already holds, so the reserve does not
@@ -163,14 +232,22 @@ export function switchCheck(i: SwitchInput, resetSinceLastRequest = false): Swit
   if (i.mandatory) return out('switch', 'mandatory quality floor')
   // Anti-oscillation applies to discretionary changes only.
   if ((i.switchesThisTask ?? 0) >= p.maxSwitches) return out('hold', `${p.maxSwitches} discretionary switches already in this task`, 'oscillation')
-  if (low) return out('switch', 'low-switch-penalty point')
+  const lost = `${i.target.family} cannot read ${i.current.family} thinking, and this task still needs it`
+  // A new task owes nothing to the old cache or the old reasoning. A cold cache inside a task still has a task to protect.
+  if (low && !i.sameTask) return out('switch', 'low-switch-penalty point')
 
-  const up = tierRank(i.target.tier) > tierRank(i.current.tier)
-  if (up) return i.votes >= p.upgradeVotes || i.cache.prefixTokens < p.smallContext ? out('switch', 'upgrade confirmed') : out('hold', `upgrade needs ${p.upgradeVotes} votes`, 'votes')
+  const up = capability(i.target) > capability(i.current)
+  if (up) {
+    if (lostHere) return out('hold', lost, 'continuity')
+    if (low) return out('switch', 'low-switch-penalty point')
+    return i.votes >= p.upgradeVotes || i.cache.prefixTokens < p.smallContext ? out('switch', 'upgrade confirmed') : out('hold', `upgrade needs ${p.upgradeVotes} votes`, 'votes')
+  }
 
-  // Downgrade in a warm session: every gate must pass, and the conservative saving must pay back.
+  // Downgrade: every gate must pass, and in a warm session the conservative saving must pay back.
   if (i.risk !== 'none' || i.candidate.confidence < p.downgradeConfidence) return out('hold', 'risk or confidence too high for a downgrade', 'quality')
   if (i.sameTask && (i.requestsSinceSwitch < p.minDwellRequests || !i.verifiedSinceSwitch)) return out('hold', 'dwell: too soon after the last switch, or no passed check yet', 'dwell')
+  if (lostHere) return out('hold', lost, 'continuity')
+  if (low) return out('switch', 'low-switch-penalty point')
   if (i.cache.prefixTokens >= p.smallContext) {
     const q = p.paybackQuantile ?? 'p25'
     const saving = per * rem[q] - Math.max(0, i.reworkUsd ?? 0)

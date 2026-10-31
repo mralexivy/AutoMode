@@ -847,6 +847,75 @@ describe('Economics', () => {
   })
 })
 
+describe('Continuity and the shadow rent rule', () => {
+  const coldSwitch = (over: Record<string, unknown> = {}) => {
+    let n = 0
+    return auto({ judge: () => judge(n++ === 0 ? { tier: 'T3', complexity: 'complex' } : { tier: 'T1', newTask: true }), effortJudge: (p: string) => (/Next message:\nfix the/.test(p) ? perModel({ opus: ['opus', 'high'], sonnet: ['opus', 'high'] })(p) : perModel({ opus: ['sonnet', 'medium'], sonnet: ['sonnet', 'medium'] })(p)), ...over })
+  }
+
+  test('a new task on a cold cache switches, logs the lost flag, and records the tokens the prompt dropped', async ($, on) => {
+    const h = harness(on, coldSwitch())
+    h.setPrefix(60_000)
+    await h.submit($, 'fix the intermittent deadlock in the flush path')
+    await h.step($)
+    await h.complete($, 'claude-opus-5-5')
+    await h.clock.advance(2 * 3_600_000)
+    await h.submit($, 'add a --quiet flag to the usage script')
+    h.setPrefix(50_000)
+    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2' })
+    await h.complete($, 'claude-sonnet-5-5', undefined, 'done', { turnId: 't2' })
+    const r = records(h.writes)
+    expect(prompts(r)[1].effective.check.continuity).toBe('lost')
+    expect(r.find((x) => x.kind === 'model-switch')).toMatchObject({ from: 'claude-opus-5-5', to: 'claude-sonnet-5-5', continuity: 'lost', prefixBefore: 60_000, prefixAfter: 50_000, droppedTokens: 10_300 })
+  })
+
+  test('a shrink between the two requests leaves the drop unknown', async ($, on) => {
+    const h = harness(on, coldSwitch())
+    h.setPrefix(60_000)
+    await h.submit($, 'fix the intermittent deadlock in the flush path')
+    await h.step($)
+    await h.complete($, 'claude-opus-5-5')
+    await h.clock.advance(2 * 3_600_000)
+    await h.submit($, 'add a --quiet flag to the usage script')
+    h.setPrefix(20_000)
+    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2' })
+    await h.complete($, 'claude-sonnet-5-5', undefined, 'done', { turnId: 't2' })
+    expect(records(h.writes).find((x) => x.kind === 'model-switch').droppedTokens).toBe(null)
+  })
+
+  test('a shrink with no noted compaction is no reset: it is not a low point', async ($, on) => {
+    const h = harness(on, auto({ judge: hard, effortJudge: perModel({ opus: ['opus', 'high'], sonnet: ['opus', 'high'] }) }))
+    h.setPrefix(60_000)
+    await h.submit($, 'fix the intermittent deadlock in the flush path')
+    await h.step($)
+    h.setPrefix(20_000)
+    await h.step($, 'claude-opus-5-5', undefined, { index: 1 })
+    await h.complete($, 'claude-opus-5-5')
+    const d = decisions(records(h.writes)).find((x) => x.trigger?.event === 'compacted')
+    expect(d.effective.check.lowPenaltyPoint).toBe(false)
+  })
+
+  test('held rent grows on real spend, survives a reload, and changes no route', async ($, on) => {
+    const h = harness(on, coldSwitch({ sessionId: 'sess-rent' }))
+    h.setPrefix(120_000)
+    await h.submit($, 'fix the intermittent deadlock in the flush path')
+    await h.step($)
+    await h.complete($, 'claude-opus-5-5')
+    await h.submit($, 'add a --verbose flag to the usage script')
+    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2' })
+    await h.complete($, 'claude-opus-5-5', undefined, 'done', { turnId: 't2' })
+    expect(prompts(records(h.writes))[1].effective.check).toMatchObject({ verdict: 'hold', rent: { to: 'sonnet', rentUsd: 0 } })
+    h.setSession('sess-rent')
+    await h.submit($, 'add a --quiet flag to the usage script')
+    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't3' })
+    await h.complete($, 'claude-opus-5-5', undefined, 'done', { turnId: 't3' })
+    const third = prompts(records(h.writes))[2].effective
+    expect(third.check.rent.rentUsd).toBeGreaterThan(0)
+    expect(third.check.verdict).toBe('hold')
+    expect(third.model).toBe('claude-opus-5-5')
+  })
+})
+
 describe('A7: a stale effort is never the judge\'s Current', () => {
   test('after the cache expired, the running model is named at its default effort, not the old xhigh', async ($, on) => {
     const h = harness(on, auto({ judge: hard, effortJudge: perModel({ opus: ['opus', 'xhigh'], sonnet: ['opus', 'xhigh'] }) }))

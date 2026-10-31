@@ -92,6 +92,21 @@ export function calibrate(sessions) {
       }
     }
   }
+  // Route runs: main requests in a row on one model, per session. A session's end cuts its last run short, so these
+  // are lower bounds. The rent rule's horizon can read them once a table has enough runs.
+  const routeRuns = []
+  for (const s of sessions) {
+    let fam = null
+    let n = 0
+    for (const r of s.prompts.flatMap((p) => p.requests)) {
+      const f = familyOf(r.model ?? '')
+      if (!f) continue
+      if (f !== fam && n) routeRuns.push(n)
+      n = f === fam ? n + 1 : 1
+      fam = f
+    }
+    if (n) routeRuns.push(n)
+  }
   const mean = (xs) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null)
   const stat = (xs) => ({ n: xs.length, mean: mean(xs), median: median(xs), p75: quantile(xs, 0.75) })
   // Cost is linear in tokens, so the priors use means; medians and p75 are reported beside them.
@@ -150,6 +165,7 @@ export function calibrate(sessions) {
     },
     observed: {
       requestsPerPrompt: stat(perPrompt),
+      routeRuns: { n: routeRuns.length, p25: quantile(routeRuns, 0.25), median: median(routeRuns), p75: quantile(routeRuns, 0.75) },
       requestsPerPromptByStage: Object.fromEntries(Object.entries(byStage).map(([k, v]) => [k, stat(v)])),
       newInputPerRequest: stat(growth),
       outputPerRequest: Object.fromEntries(Object.entries(outBy).map(([k, v]) => [k, stat(v)])),

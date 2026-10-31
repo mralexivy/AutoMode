@@ -56,6 +56,7 @@ const MUTANTS = [
   { ...real, name: 'always switch to the cheaper model', switch: () => 'switch' },
   { ...real, name: 'ignore subagent spending', subagent: (c) => c.parent },
   { ...real, name: 'ignore cache rewrites', switch: (c) => switchCheck({ ...c.switchInput, cache: { ...c.switchInput.cache, prefixTokens: 0 } }).verdict },
+  { ...real, name: 'ignore lost thinking', switch: (c) => switchCheck({ ...c.switchInput, compacted: true }).verdict },
   { ...real, name: 'ignore task-stage transitions', next: (c) => c.running },
   { ...real, name: 'disable escalation', escalate: (c) => c.running },
   { ...real, name: 'the floor reads the running model verdict', pick: (c) => {
@@ -97,12 +98,16 @@ const downgrade = (cache) => ({ current: route('opus', 'medium'), target: route(
   const write = 400_000 * r('sonnet').input * 2 / 1e6 - 400_000 * r('opus').input * r('opus').cacheReadX / 1e6
   const perRequest = (400_000 * (r('opus').input * r('opus').cacheReadX - r('sonnet').input * r('sonnet').cacheReadX) + 600 * (r('opus').output - r('sonnet').output)) / 1e6
   const pays = perRequest * P75_REMAINING > write
-  cases.push({ id: 'warm-400k-downgrade', source: `prices+measured (write $${write.toFixed(2)} vs $${(perRequest * P75_REMAINING).toFixed(2)} over p75)`, kind: 'switch', input: { warm: true, switchInput: downgrade(warmCache) },
+  cases.push({ id: 'warm-400k-downgrade', source: `prices+measured (write $${write.toFixed(2)} vs $${(perRequest * P75_REMAINING).toFixed(2)} over p75)`, kind: 'switch', input: { warm: true, switchInput: { ...downgrade(warmCache), sameTask: false } },
     accept: (v) => v === (pays ? 'switch' : 'hold') || `${v}: the rewrite ${pays ? 'pays' : 'does not pay'} back over the measured p75` })
 }
-// 7. The same downgrade on a cold cache (idle past its lifetime) costs nothing to move, so it switches.
-cases.push({ id: 'cold-downgrade', source: 'prices', kind: 'switch', input: { warm: false, switchInput: downgrade({ ...warmCache, lastRequestAt: now - 2 * 3_600_000 }) },
+// 7. The same downgrade on a cold cache (idle past its lifetime) at a new task costs nothing to move, so it switches.
+const coldCase = { ...warmCache, lastRequestAt: now - 2 * 3_600_000 }
+cases.push({ id: 'cold-downgrade', source: 'prices', kind: 'switch', input: { warm: false, switchInput: { ...downgrade(coldCase), sameTask: false } },
   accept: (v) => v === 'switch' || 'held a cold cache: nothing to lose, the cheaper model was adequate' })
+// 7b. Inside a task the same move loses the reasoning: Sonnet cannot read Opus thinking, cold cache or not (preserved-thinking docs).
+cases.push({ id: 'cold-same-task', source: 'docs', kind: 'switch', input: { warm: false, switchInput: downgrade(coldCase) },
+  accept: (v) => v === 'hold' || 'moved a running task to a model that cannot read its reasoning' })
 // 8. A mandatory quality floor switches up even on a warm cache.
 cases.push({ id: 'mandatory-up', source: 'brief', kind: 'switch', input: { warm: true, switchInput: { ...downgrade({ ...warmCache, model: MODEL.sonnet }), current: route('sonnet', 'medium'), target: route('opus', 'high'), mandatory: true } },
   accept: (v) => v === 'switch' || 'a mandatory escalation was held for the cache' })
@@ -147,7 +152,7 @@ test('each mutant is caught by the case that targets it, for the stated reason',
     'always Sonnet medium': 'haiku-lookup', 'always Opus high': 'upstream:t01', 'always the cheapest model': 'hard-on-opus',
     'always xhigh for planning': `plan:${UPSTREAM.find((x) => !x.ok.includes('xhigh') && !x.ok.includes('high')).id}`,
     'always inherit the previous effort': 'plan-exit', 'always keep a warm model': 'mandatory-up', 'always switch to the cheaper model': 'warm-400k-downgrade',
-    'ignore subagent spending': 'subagent-Explore', 'ignore cache rewrites': 'warm-400k-downgrade', 'ignore task-stage transitions': 'plan-exit', 'disable escalation': 'escalate-after-failures',
+    'ignore subagent spending': 'subagent-Explore', 'ignore cache rewrites': 'warm-400k-downgrade', 'ignore lost thinking': 'cold-same-task', 'ignore task-stage transitions': 'plan-exit', 'disable escalation': 'escalate-after-failures',
     'the floor reads the running model verdict': 'start-hard-on-sonnet',
   }
   for (const [name, id] of Object.entries(expectHit)) assert.ok(by[name].includes(id), `"${name}" should fail ${id}; failed ${by[name].join(', ') || 'nothing'}`)

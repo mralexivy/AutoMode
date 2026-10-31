@@ -11,7 +11,9 @@ import { parseOverride, parseJudge, FOLLOW_UP, isTask, namedEffort, typedText, j
 import { transitionOf } from '../hooks/lib/transition.ts'
 import { classifyError, sanitizeDetail, UNCLASSIFIED } from '../hooks/lib/errors.ts'
 import { prospectiveRisk, observedRisk, reviewNeeded, pathsIn } from '../hooks/lib/risk.ts'
-import { switchCheck, lowPenaltyPoint, switchCostUsd, DEFAULT_PARAMS } from '../hooks/lib/policy.ts'
+import { boundaryOf, lowPenaltyPoint, lowPointUsd, returnCostUsd, switchCheck, switchCostUsd, transitionUsd, DEFAULT_PARAMS } from '../hooks/lib/policy.ts'
+import { addedSince, continuity, noteDrop, observedDrop } from '../hooks/lib/continuity.ts'
+import { accrueRent, rentShare } from '../hooks/lib/rent.ts'
 import { resolve, routeFor } from '../hooks/lib/authority.ts'
 import { classify, failureOf, escalation, markFlaky, normalize, isCheck } from '../hooks/lib/failures.ts'
 import { guardBash, guardTool } from '../hooks/lib/guard.ts'
@@ -453,10 +455,17 @@ for (const g of golden.switch) {
     const tgt = routeOf(g.target)
     const r = switchCheck({
       ...base({ cache: cache({ model: cur.model, effort: cur.effort, prefixTokens: g.prefix, lastRequestAt: g.warm ? 1_000 : -10 * HOUR, effortSharesCache: g.effortShared ?? true }), votes: g.votes, sameTask: !!g.sameTask }),
+      ...(g.dwelt ? { requestsSinceSwitch: 20, verifiedSinceSwitch: true } : {}),
+      ...(g.provider ? { provider: g.provider } : {}),
+      ...(g.targetWarmPrefix ? { targetWarm: true, targetWarmPrefix: g.targetWarmPrefix } : {}),
+      ...(g.dropped ? { dropped: g.dropped } : {}),
+      ...(g.reset ? { compacted: true, resetPrefixTokens: g.reset } : {}),
       current: cur, candidate: cand(g.target, 0.95), target: tgt, floor: noFloor, mandatory: !!g.mandatory,
-    })
+    }, !!g.reset)
     assert.equal(r.verdict, g.expect)
     if (g.gate) assert.equal(r.gate, g.gate)
+    if (g.continuity) assert.equal(r.continuity, g.continuity)
+    if (g.expectUsd !== undefined) assert.ok(Math.abs(r.estUsd - g.expectUsd) < 1e-4, `priced ${r.estUsd}`)
   })
 }
 
@@ -554,11 +563,13 @@ test('economics: a 300k warm prefix holds the downgrade, and Haiku cannot take i
   assert.equal(toHaiku.gate, 'context')
 })
 
-test('economics: after compaction (a reset) the downgrade is a low-penalty switch', () => {
-  const r = switchCheck({ ...base({ cache: cache({ model: opusHigh.model, effort: 'high', prefixTokens: 60_000 }), sameTask: true }), current: opusHigh, candidate: cand('T1', 0.95), target: sonnetMed, floor: noFloor, mandatory: false }, true)
+test('economics: a reset with no surviving prefix is a low point, and a task still needs dwell to leave it', () => {
+  const at = (o) => switchCheck({ ...base({ cache: cache({ model: opusHigh.model, effort: 'high', prefixTokens: 60_000 }), sameTask: true }), current: opusHigh, candidate: cand('T1', 0.95), target: sonnetMed, floor: noFloor, mandatory: false, compacted: true, ...o }, true)
+  assert.equal(at({}).gate, 'dwell')
+  assert.equal(at({}).lowPenaltyPoint, true)
+  const r = at({ requestsSinceSwitch: 20, verifiedSinceSwitch: true })
   assert.equal(r.verdict, 'switch')
-  assert.equal(r.lowPenaltyPoint, true)
-  assert.equal(r.economics.writePenaltyUsd, 0)
+  assert.equal(r.economics.writePenaltyUsd, 0, 'no surviving prefix is known, so no write difference is priced')
 })
 
 test('economics: a target whose own cache is still warm costs no rewrite', () => {
@@ -745,4 +756,211 @@ test('checks: piped checks get pipefail; exit codes decide when reliable; marker
   assert.equal(checkPassed('npm test || true', 0, false, 'Tests:       2 failed, 5 passed'), false)
   assert.equal(checkPassed('go test ./... | head', 0, false, 'ok  \tpkg\t0.1s'), true)
   assert.equal(checkPassed('go test ./...', 0, true, ''), false, 'an error result is never a pass')
+})
+
+// ---------------------------------------------------------------- continuity, return pricing and the rent rule
+const FAMILIES = ['haiku', 'sonnet', 'opus']
+const PROVIDERS = ['anthropic', 'vertex', 'bedrock', 'foundry', 'gateway']
+const modelOf = (f) => `claude-${f}-5-5`
+const at = (family, effort) => ({ ...routeFor(family === 'haiku' ? 'T0' : family === 'sonnet' ? 'T1' : 'T3'), effort })
+const moveCheck = (from, to, o = {}, reset = false) => switchCheck({
+  ...base({ cache: cache({ model: from.model, effort: from.effort, prefixTokens: 60_000 }), votes: 2, requestsSinceSwitch: 20, verifiedSinceSwitch: true, sameTask: true }),
+  current: from, candidate: cand(to.tier, 0.95), target: to, floor: noFloor, mandatory: false, ...o,
+}, reset)
+
+test('continuity: the whole matrix, from the preserved-thinking page', () => {
+  const up = new Set(['haiku>sonnet', 'haiku>opus', 'sonnet>opus'])
+  for (const p of PROVIDERS) for (const f of FAMILIES) for (const t of FAMILIES) {
+    const reads = f === t || (up.has(`${f}>${t}`) && (p === 'anthropic' || p === 'vertex'))
+    assert.equal(continuity(modelOf(f), modelOf(t), p), reads ? 'kept' : 'lost', `${f} to ${t} on ${p}`)
+  }
+})
+
+test('continuity: a model outside the table is assumed lost, and provider spellings of a 5.5 id are read', () => {
+  assert.equal(continuity('claude-sonnet-5', 'claude-opus-5-5', 'anthropic'), 'lost')
+  assert.equal(continuity('claude-fable-5-1', 'claude-opus-5-5', 'anthropic'), 'lost')
+  assert.equal(continuity('claude-sonnet-5-5[1m]', 'claude-opus-5-5', 'anthropic'), 'kept')
+  assert.equal(continuity('us.anthropic.claude-haiku-5-5-v1:0', 'us.anthropic.claude-sonnet-5-5-v1:0', 'vertex'), 'kept')
+})
+
+test('dropped tokens: observed on arrival, summed across hops, and cleared for the family that ran', () => {
+  assert.equal(observedDrop(107_535, 1_000, 87_729), 20_806)
+  assert.equal(observedDrop(50_000, 500, 90_000), 0, 'growth alone is no drop')
+  const once = noteDrop({}, 'sonnet', 19_806)
+  assert.deepEqual(once, { haiku: 19_806, opus: 19_806 })
+  assert.deepEqual(noteDrop(once, 'haiku', 1_000), { sonnet: 1_000, opus: 20_806 })
+  assert.deepEqual(noteDrop({ opus: 5 }, 'opus', 0), {})
+  assert.equal(addedSince(97_729, 107_535, 19_806), 10_000)
+  assert.equal(addedSince(87_729, 107_535), 0)
+})
+
+test('return pricing: turns added after a thinking drop are written, not lost in the gap (audit: 107k held, 88k running)', () => {
+  const k = cache({ prefixTokens: 97_729, ttlMs: HOUR })
+  const priced = returnCostUsd(k, 107_535, 10_000, sonnetMed, opusHigh, ANTHROPIC, true)
+  assert.ok(Math.abs(priced - (107_535 * 0.2 + 10_000 * 8 - 97_729 * 0.1) / 1e6) < 1e-9)
+  const check = moveCheck(sonnetMed, opusHigh, { sameTask: false, cache: k, targetWarm: true, targetWarmPrefix: 107_535, dropped: { opus: 19_806 } })
+  assert.ok(Math.abs(check.estUsd - priced) < 1e-9, 'the check derives the added turns from the recorded drop')
+})
+
+test('low points are priced as the signed write difference', () => {
+  const cold = { now: 1_000 + 2 * HOUR }
+  const down = moveCheck(opusHigh, sonnetMed, { ...cold, sameTask: false })
+  assert.ok(Math.abs(down.estUsd - -0.24) < 1e-9, 'a cold downgrade writes for less than staying would')
+  assert.ok(Math.abs(moveCheck(sonnetMed, opusHigh, { ...cold, sameTask: false }).estUsd - 0.24) < 1e-9, 'a cold upgrade writes for more')
+  assert.equal(down.economics.writePenaltyUsd, -0.24)
+  assert.ok(lowPointUsd(60_000, 50_000, 10_000, opusHigh, sonnetMed, ANTHROPIC, HOUR) < lowPointUsd(60_000, 0, 60_000, opusHigh, sonnetMed, ANTHROPIC, HOUR), 'a target with a warm cache reads what it holds')
+  assert.equal(lowPointUsd(60_000, 0, 60_000, null, opusHigh, ANTHROPIC, HOUR), 0, 'a first route has nothing to compare')
+})
+
+test('a cold cache inside a task keeps the risk and confidence gates', () => {
+  // Sonnet high to Opus low keeps thinking and adds no capability: only the quality gates can hold it.
+  const from = routeFor('T2')
+  const to = at('opus', 'low')
+  const cold = { now: 1_000 + 2 * HOUR }
+  assert.equal(moveCheck(from, to, { ...cold, risk: 'critical' }).gate, 'quality')
+  assert.equal(moveCheck(from, to, { ...cold, candidate: cand('T3', 0.5) }).gate, 'quality')
+  assert.equal(moveCheck(from, to, { ...cold, requestsSinceSwitch: 1 }).gate, 'dwell')
+  assert.equal(moveCheck(from, to, cold).verdict, 'switch')
+  assert.equal(moveCheck(from, to, { ...cold, risk: 'critical', sameTask: false }).verdict, 'switch', 'a new task has no task to protect')
+})
+
+test('up compares capability: Sonnet max to Opus low is no upgrade, and two votes do not move it', () => {
+  const r = moveCheck(at('sonnet', 'max'), at('opus', 'low'), { sameTask: false, cache: cache({ model: routeFor('T1').model, prefixTokens: 300_000 }) })
+  assert.equal(r.verdict, 'hold')
+  assert.equal(r.gate, 'payback')
+  assert.equal(moveCheck(at('sonnet', 'low'), at('opus', 'low'), { sameTask: false }).verdict, 'switch', 'Opus low is above Sonnet low')
+})
+
+test('property: a mandatory switch always goes, on every pair, provider and cache state, and logs the flag', () => {
+  for (const p of PROVIDERS) for (const f of FAMILIES) for (const t of FAMILIES) {
+    if (f === t) continue
+    for (const now of [2_000, 1_000 + 2 * HOUR]) for (const sameTask of [true, false]) for (const risk of ['none', 'critical']) {
+      const r = moveCheck(at(f, 'medium'), at(t, 'medium'), { provider: p, now, sameTask, risk, mandatory: true, switchesThisTask: 9, requestsSinceSwitch: 0 })
+      assert.equal(r.verdict, 'switch')
+      assert.equal(r.continuity, continuity(modelOf(f), modelOf(t), p))
+    }
+  }
+})
+
+test('property: a lost pair inside a task never switches at will, in any cache state, until a compaction', () => {
+  const efforts = ['low', 'medium', 'high', 'xhigh', 'max']
+  let seen = 0
+  for (const p of PROVIDERS) for (const f of FAMILIES) for (const t of FAMILIES) for (const a of efforts) for (const b of efforts) {
+    if (f === t || continuity(modelOf(f), modelOf(t), p) === 'kept') continue
+    for (const prefixTokens of [5_000, 60_000, 300_000]) for (const now of [2_000, 1_000 + 2 * HOUR]) for (const targetWarm of [false, true]) {
+      seen += 1
+      const o = { provider: p, now, targetWarm, cache: cache({ model: modelOf(f), prefixTokens }) }
+      assert.equal(moveCheck(at(f, a), at(t, b), o).verdict, 'hold', `${f}/${a} to ${t}/${b}`)
+    }
+  }
+  assert.ok(seen > 1_000)
+  const lost = { cache: cache({ model: opusHigh.model, prefixTokens: 15_000 }) }
+  assert.equal(moveCheck(opusHigh, sonnetMed, lost).gate, 'continuity')
+  assert.equal(moveCheck(opusHigh, sonnetMed, { ...lost, compacted: true }).continuity, 'cleared')
+  assert.equal(moveCheck(opusHigh, sonnetMed, { ...lost, compacted: true }).verdict, 'switch')
+})
+
+test('a lost pair at a new task only records the flag', () => {
+  const r = moveCheck(opusHigh, routeFor('T0'), { sameTask: false, cache: cache({ model: opusHigh.model, prefixTokens: 15_000 }) })
+  assert.equal(r.verdict, 'switch')
+  assert.equal(r.continuity, 'lost')
+})
+
+test('property: the return price never falls as turns are added, and an expired return costs at least a warm one', () => {
+  const ttls = [HOUR, 300_000]
+  for (const f of FAMILIES) for (const t of FAMILIES) {
+    if (f === t) continue
+    for (const ttlMs of ttls) for (const prefixTokens of [25_000, 80_000, 150_000, 300_000]) for (const share of [0, 0.15]) {
+      let last = -1
+      for (let g = 0; g <= 40_000; g += 2_000) {
+        const c = transitionUsd({ cache: cache({ prefixTokens, ttlMs }), from: at(f, 'medium'), to: at(t, 'medium'), prices: ANTHROPIC, hiUsd: 0, addedTokens: g, droppedTokens: prefixTokens * share, sameTask: true })
+        assert.ok(c.retWarmUsd >= last - 1e-12, `${f} to ${t}: ${c.retWarmUsd} fell below ${last} at G=${g}`)
+        assert.ok(c.retExpiredUsd >= c.retWarmUsd - 1e-12, `${f} to ${t}: expired below warm`)
+        last = c.retWarmUsd
+      }
+    }
+  }
+})
+
+test('property: the outbound price is never below the true move with a drop and a warm part applied', () => {
+  for (const f of FAMILIES) for (const t of FAMILIES) {
+    if (f === t) continue
+    for (const K of [25_000, 80_000, 150_000, 300_000]) for (const D of [0, 0.15 * K]) for (const q of [0, 23_750]) {
+      const from = at(f, 'medium')
+      const to = at(t, 'medium')
+      const k = cache({ model: from.model, prefixTokens: K, ttlMs: HOUR })
+      const n = rateAt(ANTHROPIC.rates[to.family], K)
+      const m = rateAt(ANTHROPIC.rates[from.family], K)
+      const truth = ((K - D - q) * n.input * 2 + q * n.input * n.cacheReadX - K * m.input * m.cacheReadX) / 1e6
+      const hi = moveCheck(from, to, { sameTask: false, cache: k }).rent.transition.hiUsd
+      assert.ok(hi >= truth - 1e-12, `${f} to ${t} at ${K}`)
+    }
+  }
+})
+
+test('rent: the share comes from prices, a target that takes more steps saves less, and a dearer target saves nothing', () => {
+  const r = ANTHROPIC.rates
+  assert.equal(rentShare('opus', 'sonnet', r), 0.5)
+  assert.equal(rentShare('opus', 'haiku', r), 0.975)
+  assert.equal(rentShare('sonnet', 'haiku', r), 0.95)
+  assert.equal(rentShare('sonnet', 'opus', r), 0)
+  assert.equal(rentShare('opus', 'sonnet', r, 1.5), 0.25)
+})
+
+test('rent: it rises only while the same target stays eligible, and starts over on a switch or a new target', () => {
+  const r = ANTHROPIC.rates
+  const toS = { to: 'sonnet', stepRatio: 1 }
+  let a = accrueRent(null, 'opus', toS, 0.12, r)
+  a = accrueRent(a, 'opus', toS, 0.12, r)
+  assert.ok(Math.abs(a.usd - 0.12) < 1e-9)
+  assert.equal(accrueRent(a, 'opus', undefined, 0.12, r), null, 'the target is no longer eligible')
+  assert.equal(accrueRent(a, 'sonnet', toS, 0.12, r), null, 'the switch happened')
+  assert.ok(Math.abs(accrueRent(a, 'opus', { to: 'haiku', stepRatio: 1 }, 0.1, r).usd - 0.0975) < 1e-9, 'a new target starts at zero')
+  assert.ok(Math.abs(accrueRent({ from: 'sonnet', to: 'haiku', usd: 1 }, 'opus', toS, 0.1, r).usd - 0.05) < 1e-9, 'a new running model starts at zero')
+})
+
+test('rent rule, shadow: the audit worked case, and the live verdict never moves', () => {
+  const k = cache({ model: opusHigh.model, effort: 'high', prefixTokens: 100_000 })
+  const target = sonnetMed
+  const step = (rent, o = {}) => moveCheck(opusHigh, target, { sameTask: false, cache: k, rent, ...o })
+  const none = step(null)
+  assert.equal(none.rent.verdict, 'hold', 'no rent yet')
+  assert.equal(none.rent.boundary, 'new-task')
+  assert.equal(none.rent.transition.pi, 0.5)
+  const paid = step({ from: 'opus', to: 'sonnet', usd: 0.72 })
+  assert.equal(paid.rent.verdict, 'switch', 'twelve eligible $0.12 requests pay for the move')
+  assert.equal(paid.verdict, none.verdict, 'the live verdict ignores rent')
+  assert.equal(paid.gate, none.gate)
+  assert.equal(step({ from: 'opus', to: 'haiku', usd: 9 }).rent.rentUsd, 0, 'rent toward another target does not count')
+  assert.equal(moveCheck(opusHigh, target, { cache: k, rent: { from: 'opus', to: 'sonnet', usd: 9 } }).rent.heldBy, 'continuity', 'the rule keeps the gates it does not replace')
+  assert.equal(moveCheck(opusHigh, target, { cache: k, rent: { from: 'opus', to: 'sonnet', usd: 9 } }).rent.verdict, 'hold')
+  assert.equal(moveCheck(opusHigh, target, { cache: k, mandatory: true }).rent, undefined, 'a mandatory switch is outside the rule')
+  assert.equal(moveCheck(opusHigh, opusHigh, { cache: k }).rent, undefined, 'so is staying')
+  assert.equal(boundaryOf({ sameTask: true, verifiedSinceSwitch: false }, false), 'none')
+  assert.equal(boundaryOf({ sameTask: true, verifiedSinceSwitch: true }, false), 'checkpoint')
+  assert.equal(boundaryOf({ sameTask: true, verifiedSinceSwitch: false }, true), 'cold')
+  assert.equal(boundaryOf({ sameTask: true, verifiedSinceSwitch: false, compacted: true }, false), 'compaction')
+})
+
+test('property: the rent rule does not flip-flop while the same target stays eligible', () => {
+  for (const [f, t] of [['opus', 'sonnet'], ['opus', 'haiku'], ['sonnet', 'haiku']]) {
+    let running = at(f, 'medium')
+    const cheap = at(t, 'medium')
+    let rent = null
+    let moves = 0
+    for (let i = 0; i < 200; i++) {
+      const c = moveCheck(running, cheap, { sameTask: false, cache: cache({ model: running.model, prefixTokens: 60_000 }), rent })
+      if (c.rent?.verdict === 'switch') { running = cheap; moves += 1 }
+      rent = accrueRent(rent, running.family, running.family === t ? undefined : c.rent, 0.12, ANTHROPIC.rates)
+    }
+    assert.equal(moves, 1, `${f} to ${t} moved ${moves} times`)
+  }
+})
+
+test('attemptCost: new input is priced at the cache lifetime in use', () => {
+  const d = { steps: 1 }
+  const c = { family: 'sonnet', effort: 'medium', cap: { lo: 0, hi: 0 } }
+  const x = (ttlMs) => ({ cache: { ...coldCache(0), ttlMs }, warm: {}, now: 0, prices: ANTHROPIC, neutral: true })
+  const gap = attemptCost(c, d, x(HOUR)).usd - attemptCost(c, d, x(300_000)).usd
+  assert.ok(Math.abs(gap - (983 * 2 * 0.75) / 1e6) < 1e-9)
 })

@@ -40,6 +40,28 @@ describe('V4: activation and modes', () => {
   })
 })
 
+describe('V4 legacy: a warm return', () => {
+  test('the turns the old cache lacks are priced: legacy passes what that cache holds', async ($, on) => {
+    let n = 0
+    const tiers = [{ tier: 'T3', complexity: 'complex' }, { tier: 'T1', complexity: 'standard', newTask: true, confidence: 0.95 }, { tier: 'T3', complexity: 'complex', newTask: true }]
+    const h = harness(on, { policy: 'legacy', judge: () => judge(tiers[n++]) })
+    h.setPrefix(10_000)
+    await h.submit($, 'design the cache layer for the decision records')
+    await h.step($)
+    await h.complete($, 'claude-opus-5-5')
+    await h.submit($, 'add a --verbose flag to the usage command')
+    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2' })
+    h.setPrefix(100_000)
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't2', index: 1 })
+    await h.complete($, 'claude-sonnet-5-5', undefined, 'done', { turnId: 't2' })
+    await h.submit($, 'design the eviction policy for the record store')
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't3' })
+    await h.complete($, 'claude-sonnet-5-5', undefined, 'done', { turnId: 't3' })
+    const last = records(h.writes).filter((x) => x.kind === 'decision' && x.point === 'prompt').at(-1)
+    expect(last.effective.check.economics.writePenaltyUsd).toBeGreaterThan(0.5) // 90k written on Opus, not read
+  })
+})
+
 describe('V4 auto: model and effort routing', () => {
   test('a lookup routes to Haiku at a low-switch-penalty point, with the owner recorded', async ($, on) => {
     const h = harness(on, { judge: judge({ tier: 'T0', complexity: 'trivial', effort: 'low' }), effortJudge: says('haiku', 'medium') })
