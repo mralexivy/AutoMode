@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoMode vs Claude Code auto mode: what is the difference?</title>
+<meta name="description" content="Claude Code auto mode is a built-in permission mode. AutoMode is a free plugin that picks the model and effort for each prompt. Here is how they differ.">
+<link rel="canonical" href="https://mralexivy.github.io/AutoMode/auto-mode-vs-automode/">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="AutoMode">
+<meta property="og:title" content="AutoMode vs Claude Code auto mode: what is the difference?">
+<meta property="og:description" content="Claude Code auto mode is a built-in permission mode. AutoMode is a free plugin that picks the model and effort for each prompt. Here is how they differ.">
+<meta property="og:image" content="https://mralexivy.github.io/AutoMode/social.png">
+<meta property="og:image:alt" content="AutoMode for Claude Code: the right model and the right effort for every prompt">
+<meta property="og:url" content="https://mralexivy.github.io/AutoMode/auto-mode-vs-automode/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../page.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"AutoMode vs Claude Code auto mode","description":"Claude Code auto mode is a built-in permission mode. AutoMode is a free plugin that picks the model and effort for each prompt. Here is how they differ.","url":"https://mralexivy.github.io/AutoMode/auto-mode-vs-automode/","mainEntityOfPage":"https://mralexivy.github.io/AutoMode/auto-mode-vs-automode/","image":"https://mralexivy.github.io/AutoMode/social.png","datePublished":"2026-10-31","dateModified":"2026-10-31","author":{"@type":"Person","name":"Alex Ivy","url":"https://github.com/mralexivy"},"about":{"@type":"SoftwareApplication","name":"AutoMode","url":"https://mralexivy.github.io/AutoMode/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"AutoMode","item":"https://mralexivy.github.io/AutoMode/"},{"@type":"ListItem","position":2,"name":"AutoMode vs auto mode","item":"https://mralexivy.github.io/AutoMode/auto-mode-vs-automode/"}]}]}</script>
+</head>
+<body>
+<header><div class="wrap">
+    <nav>
+      <a class="brand" href="../"><img src="../mark.svg" alt="" width="28" height="28">AutoMode</a>
+      <div>
+        <a href="../how-it-works/">How it works</a>
+        <a href="../compare/">Compare</a>
+        <a href="https://github.com/mralexivy/AutoMode">GitHub</a>
+      </div>
+    </nav>
+</div></header>
+<main><article class="wrap">
+    <p class="crumb"><a href="../">AutoMode</a> / AutoMode vs auto mode</p>
+    <h1>AutoMode vs Claude Code auto mode</h1>
+    <p class="byline">By <a href="https://github.com/mralexivy">Alex Ivy</a>, who makes AutoMode. Updated <time datetime="2026-10-31">October 31, 2026</time>.</p>
+    <p class="answer"><strong>They are two different things with similar names.</strong> Claude Code <em>auto mode</em> is a permission mode built by Anthropic. It decides whether an action can run without asking you. <em>AutoMode</em> is a free community plugin. It picks the model and the effort for each prompt.</p>
+
+    <h2>The difference at a glance</h2>
+    <div class="scroll"><table>
+      <tr><th>Feature</th><th>Claude Code auto mode</th><th>AutoMode</th></tr>
+      <tr><td>Made by</td><td>Anthropic, built into Claude Code</td><td>A community project, not Anthropic</td></tr>
+      <tr><td>Question it answers</td><td>Can this action run without a prompt?</td><td>Which model and effort fit this prompt?</td></tr>
+      <tr><td>What it controls</td><td>Permissions for each tool call</td><td>The model and effort for each prompt</td></tr>
+      <tr><td>How it decides</td><td>A classifier reviews each action before it runs</td><td>Haiku judges and code-set risk floors choose a route</td></tr>
+      <tr><td>Extra it adds</td><td>Fewer permission prompts</td><td>A cache countdown, a workflow and an Opus review for risky work</td></tr>
+      <tr><td>How you get it</td><td>Built in. Press Shift+Tab to cycle modes</td><td>Install the plugin</td></tr>
+    </table></div>
+    <p class="note">Auto mode facts come from Anthropic's <a href="https://code.claude.com/docs/en/permission-modes">permission modes docs</a> and <a href="https://claude.com/blog/auto-mode">announcement</a>, read on 2026-10-31.</p>
+
+    <h2>What is Claude Code auto mode?</h2>
+    <p>Auto mode is a permission mode. Claude runs actions without routine permission prompts, and a separate classifier reviews each action first. The classifier blocks actions that go beyond your request. Anthropic's docs warn that it "reduces permission prompts but does not guarantee safety."</p>
+    <p>Start a session with <code>claude --permission-mode auto</code>, or press Shift+Tab to cycle modes. Auto mode does not choose your model. The <code>/model</code> setting does that.</p>
+
+    <h2>What is AutoMode?</h2>
+    <p>AutoMode is a free, open source Claude Code plugin. For each prompt, it picks a model and an effort. A quick fact can run on Haiku at Low. A security migration moves up to Opus, because code sets a risk floor that the judge cannot lower. <a href="../how-it-works/">Read how a route is decided</a>.</p>
+
+    <h2>Can I use both?</h2>
+    <p>The two settings are separate. AutoMode does not change your permission mode, and auto mode does not pick your route. Auto mode does need a supported model, so check Anthropic's list if a session starts in Manual mode.</p>
+
+    <h2>Install AutoMode</h2>
+    <p>Paste these into Claude Code, one at a time, then run <code>/reload-plugins</code>.</p>
+    <pre><code>/plugin marketplace add mralexivy/AutoMode
+/plugin install automode@automode</code></pre>
+    <p>It is free. It needs no key and no server, and it starts on its own.</p>
+</article></main>
+<footer><div class="wrap">
+  <p><a href="../">Home</a> · <a href="../how-it-works/">How it works</a> · <a href="../compare/">Compare routers</a> · <a href="../prompt-cache/">Prompt cache</a> · <a href="../auto-mode-vs-automode/">AutoMode vs auto mode</a> · <a href="https://github.com/mralexivy/AutoMode">GitHub</a></p>
+  <p>AutoMode is a community project, MIT licensed, and not made by Anthropic. Claude and Claude Code are trademarks of Anthropic.</p>
+</div></footer>
+</body>
+</html>

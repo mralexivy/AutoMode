@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Code Model Routers Compared (October 2026)</title>
+<meta name="description" content="AutoMode, effortless, jev-router, claude-router and more compared on model routing, effort, workflows, credentials and published cost results.">
+<link rel="canonical" href="https://mralexivy.github.io/AutoMode/compare/">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="AutoMode">
+<meta property="og:title" content="Claude Code Model Routers Compared (October 2026)">
+<meta property="og:description" content="AutoMode, effortless, jev-router, claude-router and more compared on model routing, effort, workflows, credentials and published cost results.">
+<meta property="og:image" content="https://mralexivy.github.io/AutoMode/social.png">
+<meta property="og:image:alt" content="AutoMode for Claude Code: the right model and the right effort for every prompt">
+<meta property="og:url" content="https://mralexivy.github.io/AutoMode/compare/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../page.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Claude Code model routers compared","description":"AutoMode, effortless, jev-router, claude-router and more compared on model routing, effort, workflows, credentials and published cost results.","url":"https://mralexivy.github.io/AutoMode/compare/","mainEntityOfPage":"https://mralexivy.github.io/AutoMode/compare/","image":"https://mralexivy.github.io/AutoMode/social.png","datePublished":"2026-10-31","dateModified":"2026-10-31","author":{"@type":"Person","name":"Alex Ivy","url":"https://github.com/mralexivy"},"about":{"@type":"SoftwareApplication","name":"AutoMode","url":"https://mralexivy.github.io/AutoMode/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"AutoMode","item":"https://mralexivy.github.io/AutoMode/"},{"@type":"ListItem","position":2,"name":"Compare routers","item":"https://mralexivy.github.io/AutoMode/compare/"}]}]}</script>
+</head>
+<body>
+<header><div class="wrap">
+    <nav>
+      <a class="brand" href="../"><img src="../mark.svg" alt="" width="28" height="28">AutoMode</a>
+      <div>
+        <a href="../how-it-works/">How it works</a>
+        <a href="../compare/">Compare</a>
+        <a href="https://github.com/mralexivy/AutoMode">GitHub</a>
+      </div>
+    </nav>
+</div></header>
+<main><article class="wrap">
+    <p class="crumb"><a href="../">AutoMode</a> / Compare routers</p>
+    <h1>Claude Code model routers compared</h1>
+    <p class="byline">By <a href="https://github.com/mralexivy">Alex Ivy</a>, who makes AutoMode. Updated <time datetime="2026-10-31">October 31, 2026</time>.</p>
+    <p class="answer"><strong>A Claude Code model router picks a model for each prompt, so you stop switching by hand.</strong> The main options differ in how they run, what they route and what they can prove. We make AutoMode, so read this as a maker's view. Each row comes from the project's own README.</p>
+    <p>These projects change quickly. We read the four main READMEs on 2026-10-30 and the others on 2026-10-31. If a cell is wrong, <a href="https://github.com/mralexivy/AutoMode/issues">open an issue</a>.</p>
+
+    <h2>Four routers side by side</h2>
+    <div class="scroll"><table>
+      <tr><th>Feature</th><th>AutoMode</th><th><a href="https://github.com/HeyCubit/effortless">effortless</a></th><th><a href="https://github.com/gargpratyush/jev-router">jev-router</a></th><th><a href="https://github.com/alexei-led/claude-router">claude-router</a></th></tr>
+      <tr><td>Effort per prompt</td><td>Yes</td><td>Yes</td><td>Not described</td><td>Yes</td></tr>
+      <tr><td>Model per prompt</td><td>Yes, on by default</td><td>Off by default, experimental</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Extra credential</td><td>None</td><td>None. A Jev key is optional</td><td>Jev key</td><td>Depends on the classifier. Ollama needs none</td></tr>
+      <tr><td>How it runs</td><td>Claude Code mod</td><td>Claude Code mod</td><td>Local proxy around the CLI</td><td>Claude Code mod</td></tr>
+      <tr><td>CLIs</td><td>Claude Code</td><td>Claude Code</td><td>Claude Code and Codex</td><td>Claude Code</td></tr>
+      <tr><td>Multi-stage workflow</td><td>Plan, build, verify, review</td><td>Not described</td><td>Not described</td><td>Not described</td></tr>
+      <tr><td>Mandatory review for risky work</td><td>Yes, Opus</td><td>Not described</td><td>Not described</td><td>Not described</td></tr>
+      <tr><td>Prompt cache</td><td>Countdown on the bar, cost check before a switch</td><td>Countdown on the bar, compact and handoff offers</td><td>Refuses a downgrade that wastes more cache than it saves</td><td>Cache-cost rules in its policy</td></tr>
+      <tr><td>Published cost result</td><td><b>No</b></td><td><b>Yes.</b> 21% less than Opus medium, on mostly easy tasks. Its README gives the limits</td><td>None found</td><td>"Savings are not measured"</td></tr>
+    </table></div>
+    <p class="note">"Not described" means the README does not mention it. It does not prove the feature is absent.</p>
+
+    <h2>Where the others are ahead</h2>
+    <ul>
+      <li><strong>effortless has a cost result.</strong> AutoMode does not. We will not quote a saving until a public run produces one.</li>
+      <li><strong>effortless is simpler.</strong> It does one job.</li>
+      <li><strong>jev-router also runs on Codex.</strong> AutoMode runs only in Claude Code.</li>
+      <li><strong>claude-router lets you choose the classifier,</strong> including a local Ollama model. AutoMode's judge always runs on Haiku, through your Claude login.</li>
+    </ul>
+    <p>AutoMode is not independent of these projects. Its effort rules and bar techniques are ported from effortless. Its classifier contract and switch payback are adapted from claude-router and jev-router.</p>
+
+    <h2>Other tools with similar names</h2>
+    <ul>
+      <li><strong><a href="https://github.com/0dust/ClaudeRouter">ClaudeRouter</a></strong> classifies each prompt and delegates to Haiku, Sonnet or Opus. It installs from npm, and its README lists a Pro or Max plan as a requirement for delegation.</li>
+      <li><strong><a href="https://github.com/jdogresorg/claude-model-router">claude-model-router</a></strong> tracks token use and routes sub-tasks to subagents, rather than the main prompt. Its 35 to 50% figure is its own claim.</li>
+      <li><strong><a href="https://github.com/musistudio/claude-code-router">Claude Code Router</a></strong> does a different job. It is a local app that connects coding agents to the providers you choose, then routes and fails over between them. Pick it to reach other providers.</li>
+    </ul>
+
+    <h2>Which one should you pick?</h2>
+    <ul>
+      <li><strong>You want effort routing and nothing more:</strong> effortless.</li>
+      <li><strong>You also use Codex:</strong> jev-router.</li>
+      <li><strong>You want to run the classifier locally:</strong> claude-router.</li>
+      <li><strong>You want to reach non-Anthropic models:</strong> Claude Code Router.</li>
+      <li><strong>You want model and effort routing, risk floors and a review workflow with no key:</strong> AutoMode.</li>
+    </ul>
+
+    <h2>Does a router save money?</h2>
+    <p>It can, but a router can also cost more. <a href="../prompt-cache/">A model switch in a warm chat rewrites the prompt cache</a>. Treat any saving as a claim until you can repeat the benchmark.</p>
+
+    <h2>Install AutoMode</h2>
+    <p>Paste these into Claude Code, one at a time, then run <code>/reload-plugins</code>.</p>
+    <pre><code>/plugin marketplace add mralexivy/AutoMode
+/plugin install automode@automode</code></pre>
+    <p>It is free. It needs no key and no server, and it starts on its own.</p>
+</article></main>
+<footer><div class="wrap">
+  <p><a href="../">Home</a> · <a href="../how-it-works/">How it works</a> · <a href="../compare/">Compare routers</a> · <a href="../prompt-cache/">Prompt cache</a> · <a href="../auto-mode-vs-automode/">AutoMode vs auto mode</a> · <a href="https://github.com/mralexivy/AutoMode">GitHub</a></p>
+  <p>AutoMode is a community project, MIT licensed, and not made by Anthropic. Claude and Claude Code are trademarks of Anthropic.</p>
+</div></footer>
+</body>
+</html>

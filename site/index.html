@@ -3,19 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AutoMode for Claude Code: the right model and the right effort for every prompt</title>
-<meta name="description" content="A free, open source mod for Claude Code. It picks the model and the effort for each prompt, sets a risk floor, and forces an Opus review on risky work. No key, no server.">
+<title>AutoMode: Automatic Model and Effort Router for Claude Code</title>
+<meta name="description" content="Free, open source Claude Code plugin that picks the model and effort for each prompt, sets a risk floor and forces an Opus review on risky work. No key.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AutoMode">
 <meta property="og:title" content="AutoMode for Claude Code">
 <meta property="og:description" content="The right model and the right effort for every prompt. No key, no server.">
 <meta property="og:image" content="https://mralexivy.github.io/AutoMode/social.png">
+<meta property="og:image:alt" content="AutoMode for Claude Code: the right model and the right effort for every prompt">
 <meta property="og:url" content="https://mralexivy.github.io/AutoMode/">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://mralexivy.github.io/AutoMode/">
 <link rel="icon" href="mark.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://mralexivy.github.io/AutoMode/#website","name":"AutoMode","url":"https://mralexivy.github.io/AutoMode/"},{"@type":"SoftwareApplication","@id":"https://mralexivy.github.io/AutoMode/#software","name":"AutoMode","alternateName":"AutoMode for Claude Code","description":"A free, open source Claude Code plugin that picks the model and the effort for each prompt.","applicationCategory":"DeveloperApplication","applicationSubCategory":"Claude Code plugin","operatingSystem":"macOS, Linux, Windows","url":"https://mralexivy.github.io/AutoMode/","image":"https://mralexivy.github.io/AutoMode/social.png","softwareVersion":"0.2.1","license":"https://opensource.org/licenses/MIT","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Person","name":"Alex Ivy","url":"https://github.com/mralexivy"},"sameAs":["https://github.com/mralexivy/AutoMode"]},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is AutoMode?","acceptedAnswer":{"@type":"Answer","text":"AutoMode is a free, open source plugin for Claude Code. It picks the model and the effort for each prompt, sets a quality floor for risky work, and runs a plan, build, verify and review workflow for big jobs."}},{"@type":"Question","name":"Is AutoMode the same as Claude Code auto mode?","acceptedAnswer":{"@type":"Answer","text":"No. Claude Code auto mode is a built-in permission mode from Anthropic. It decides whether an action runs without asking you. AutoMode is a community plugin that picks the model and effort."}},{"@type":"Question","name":"How do I stop switching Claude Code models by hand?","acceptedAnswer":{"@type":"Answer","text":"Install a model router such as AutoMode. It chooses Haiku, Sonnet or Opus for each prompt, so you do not touch the model picker. You can still override any prompt with am:opus or am:haiku."}},{"@type":"Question","name":"Does AutoMode need an API key?","acceptedAnswer":{"@type":"Answer","text":"No. AutoMode runs on the Claude login you already have. There is no key, no server and no account to make."}},{"@type":"Question","name":"Does AutoMode save money?","acceptedAnswer":{"@type":"Answer","text":"We do not know yet. AutoMode has no published cost result, so we quote no saving. A model switch in a warm chat can also cost more, so AutoMode checks each switch first."}},{"@type":"Question","name":"Does AutoMode send my prompts anywhere?","acceptedAnswer":{"@type":"Answer","text":"AutoMode has no telemetry and no network code of its own. Judge and compaction calls go through Claude Code, on your own login. It stores local files in its own data folder."}},{"@type":"Question","name":"Does AutoMode work in VS Code?","acceptedAnswer":{"@type":"Answer","text":"Yes. Routing runs in the VS Code extension. Claude Code does not draw the bar there, so use the /automode command for the same facts."}},{"@type":"Question","name":"How does AutoMode compare with other routers?","acceptedAnswer":{"@type":"Answer","text":"AutoMode adds risk floors and a review workflow, and it needs no key. Others are ahead in places: effortless has a published cost result, and jev-router also runs on Codex."}}]}]}</script>
 <style>
 :root {
   color-scheme: dark light;
-  --bg: #0a0d1b; --bg2: #171038; --panel: #11152b; --line: #262c52; --text: #eef0fb; --muted: #a2a9cb; --faint: #6b7394;
+  --bg: #0a0d1b; --bg2: #171038; --panel: #11152b; --line: #262c52; --text: #eef0fb; --muted: #a2a9cb; --faint: #8b93b8;
   --violet: #a78bfa; --cyan: #22d3ee; --blue: #60a5fa; --amber: #fbbf24; --term: #0a0d1b; --term-text: #e6e9f5;
   --grad: linear-gradient(100deg, #a78bfa, #22d3ee);
   --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
@@ -87,7 +91,7 @@ td:first-child { color: var(--text); font-weight: 600; }
 td.us { color: var(--text); }
 footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--faint); font-size: 14px; }
 .demo { max-width: 900px; margin: 0 auto; }
-.demo img { width: 100%; border-radius: 14px; border: 1px solid var(--line); display: block; }
+.demo img { width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line); display: block; }
 @media (max-width: 880px) {
   .hero .grid, .tryit, .two, .three { grid-template-columns: 1fr; }
   .stages { grid-template-columns: 1fr 1fr; }
@@ -101,18 +105,19 @@ footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--f
 <header class="hero">
   <div class="wrap">
     <nav>
-      <a class="brand" href="#"><img src="mark.svg" alt="">AutoMode</a>
+      <a class="brand" href="#"><img src="mark.svg" alt="" width="28" height="28">AutoMode</a>
       <div>
         <a href="#try">The ladder</a>
-        <a href="#how">How it works</a>
-        <a href="#trust">Your data</a>
+        <a href="how-it-works/">How it works</a>
+        <a href="compare/">Compare</a>
+        <a href="#faq">FAQ</a>
         <a href="https://github.com/mralexivy/AutoMode">GitHub</a>
       </div>
     </nav>
     <div class="grid">
       <div>
         <h1>AutoMode <span>for Claude Code</span></h1>
-        <p class="lead">The right model and the right effort for every prompt. Quick questions stay cheap. Hard jobs get the strongest model. Risky changes always get a review.</p>
+        <p class="lead">A free model router for Claude Code. The right model and the right effort for every prompt. Quick questions stay cheap. Hard jobs get the strongest model. Risky changes always get a review.</p>
         <div class="install"><code>/plugin marketplace add mralexivy/AutoMode</code><button data-copy="/plugin marketplace add mralexivy/AutoMode">Copy</button></div>
         <div class="install"><code>/plugin install automode@automode</code><button data-copy="/plugin install automode@automode">Copy</button></div>
         <a class="cta" href="https://github.com/mralexivy/AutoMode">Star on GitHub</a>
@@ -120,7 +125,7 @@ footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--f
         <p class="note">Free and MIT licensed. No key, no server. A community project, not made by Anthropic, and not Claude Code's built-in auto permission mode.</p>
       </div>
       <div>
-        <div class="term" aria-label="Replay of a real session: a quick question runs on Haiku at Low, then a JWT migration moves up to Opus at Medium because the risk floor rules out Haiku">
+        <div class="term" role="img" aria-label="Replay of a real session: a quick question runs on Haiku at Low, then a JWT migration moves up to Opus at Medium because the risk floor rules out Haiku">
           <div class="bar3"><i></i><i></i><i></i></div>
           <div class="screen" id="screen" aria-hidden="true"></div>
         </div>
@@ -137,8 +142,8 @@ footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--f
   <div class="tryit">
     <div class="prompts" id="prompts"></div>
     <div>
-      <div id="rungs"></div>
-      <p class="why-box" id="why"></p>
+      <div id="rungs"><div class="rung"><span>T0&nbsp; <b>Haiku</b> low</span><em></em></div><div class="rung"><span>T1&nbsp; <b>Sonnet</b> medium</span><em></em></div><div class="rung"><span>T2&nbsp; <b>Sonnet</b> high</span><em></em></div><div class="rung on"><span>T3&nbsp; <b>Opus</b> high</span><em>risk floor</em></div><div class="rung"><span>T4&nbsp; <b>Opus</b> max</span><em></em></div></div>
+      <p class="why-box" id="why">Security and migration. Code sets a floor, the judge cannot lower it, and changed code gets an Opus review.</p>
     </div>
   </div>
 </div></section>
@@ -158,7 +163,7 @@ footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--f
 <section id="demo"><div class="wrap">
   <h2>See a real session</h2>
   <p class="sub">Recorded on Claude Code 2.1.308, sped up 1.6 times.</p>
-  <div class="demo"><img src="demo.gif" alt="A real session: a quick question runs on Haiku at Low, then a JWT migration moves up to Opus" loading="lazy"></div>
+  <div class="demo"><img src="demo.gif" alt="A real session: a quick question runs on Haiku at Low, then a JWT migration moves up to Opus" width="1240" height="680" loading="lazy"></div>
 </div></section>
 
 <section id="trust"><div class="wrap">
@@ -175,7 +180,7 @@ footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--f
   <h2>How it compares</h2>
   <p class="sub">AutoMode builds on these projects: its effort rules come from effortless, and its classifier contract and switch payback from claude-router and jev-router. Each row is from the project's own README on 2026-10-30.</p>
   <div class="scroll"><table>
-    <tr><th></th><th>AutoMode</th><th>effortless</th><th>jev-router</th><th>claude-router</th></tr>
+    <tr><th>Feature</th><th>AutoMode</th><th>effortless</th><th>jev-router</th><th>claude-router</th></tr>
     <tr><td>Model per prompt</td><td class="us">On by default</td><td>Off by default, experimental</td><td>Yes</td><td>Yes</td></tr>
     <tr><td>Effort per prompt</td><td class="us">Yes</td><td>Yes</td><td>Not described</td><td>Yes</td></tr>
     <tr><td>Multi-stage workflow</td><td class="us">Plan, build, verify, review</td><td>Not described</td><td>Not described</td><td>Not described</td></tr>
@@ -183,7 +188,21 @@ footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--f
     <tr><td>Extra credential</td><td class="us">None</td><td>None. A Jev key is optional</td><td>Jev key</td><td>Depends on the classifier</td></tr>
     <tr><td>Published cost result</td><td class="us"><b>No</b></td><td><b>Yes.</b> 21% less than Opus medium, with limits</td><td>None found</td><td>"Savings are not measured"</td></tr>
   </table></div>
-  <p class="note">We will not quote a saving until a public benchmark produces one. <a href="https://github.com/mralexivy/AutoMode/blob/main/docs/compare.md">Read the full comparison</a>.</p>
+  <p class="note">We will not quote a saving until a public benchmark produces one. <a href="compare/">Read the full comparison</a>.</p>
+</div></section>
+
+<section id="faq"><div class="wrap">
+  <h2>Questions people ask</h2>
+  <div class="two">
+    <div class="card"><h3>What is AutoMode?</h3><p>AutoMode is a free, open source plugin for Claude Code. It picks the model and the effort for each prompt, sets a quality floor for risky work, and runs a plan, build, verify and review workflow for big jobs.</p></div>
+    <div class="card"><h3>Is AutoMode the same as Claude Code auto mode?</h3><p>No. Claude Code auto mode is a built-in permission mode from Anthropic. It decides whether an action runs without asking you. AutoMode is a community plugin that picks the model and effort. <a href="auto-mode-vs-automode/">Read the full difference</a>.</p></div>
+    <div class="card"><h3>How do I stop switching Claude Code models by hand?</h3><p>Install a model router such as AutoMode. It chooses Haiku, Sonnet or Opus for each prompt, so you do not touch the model picker. You can still override any prompt with am:opus or am:haiku. <a href="how-it-works/">See how a route is decided</a>.</p></div>
+    <div class="card"><h3>Does AutoMode need an API key?</h3><p>No. AutoMode runs on the Claude login you already have. There is no key, no server and no account to make.</p></div>
+    <div class="card"><h3>Does AutoMode save money?</h3><p>We do not know yet. AutoMode has no published cost result, so we quote no saving. A model switch in a warm chat can also cost more, so AutoMode checks each switch first. <a href="prompt-cache/">Read about the prompt cache</a>.</p></div>
+    <div class="card"><h3>Does AutoMode send my prompts anywhere?</h3><p>AutoMode has no telemetry and no network code of its own. Judge and compaction calls go through Claude Code, on your own login. It stores local files in its own data folder.</p></div>
+    <div class="card"><h3>Does AutoMode work in VS Code?</h3><p>Yes. Routing runs in the VS Code extension. Claude Code does not draw the bar there, so use the /automode command for the same facts.</p></div>
+    <div class="card"><h3>How does AutoMode compare with other routers?</h3><p>AutoMode adds risk floors and a review workflow, and it needs no key. Others are ahead in places: effortless has a published cost result, and jev-router also runs on Codex. <a href="compare/">Compare Claude Code routers</a>.</p></div>
+  </div>
 </div></section>
 
 <section><div class="wrap" style="text-align:center">
@@ -196,6 +215,7 @@ footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--f
 </main>
 
 <footer><div class="wrap">
+  <p><a href="how-it-works/">How it works</a> · <a href="compare/">Compare routers</a> · <a href="prompt-cache/">Prompt cache</a> · <a href="auto-mode-vs-automode/">AutoMode vs auto mode</a></p>
   MIT licensed. Effort rules and bar techniques ported from <a href="https://github.com/HeyCubit/effortless">effortless</a>. Classifier contract and switch payback adapted from <a href="https://github.com/alexei-led/claude-router">claude-router</a> and <a href="https://github.com/gargpratyush/jev-router">jev-router</a>. Claude and Claude Code are trademarks of Anthropic. <a href="https://github.com/mralexivy/AutoMode">Source</a>.
 </div></footer>
 
