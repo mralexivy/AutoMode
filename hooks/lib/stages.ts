@@ -20,12 +20,17 @@ export function stagesFor(d: Demand, opts: { userAsked?: boolean; manyFiles?: bo
   return out
 }
 
+const TIERS: Complexity[] = ['trivial', 'standard', 'complex']
+
 // workflowArgs: the args the router tells the main session to send to the workflow. The tier is the
-// task's real one, because a fixed "complex" put every task in band S2.
+// task's real one, because a fixed "complex" put every task in band S2. Two floors hold it up: am:run
+// asks for the whole workflow, so it never runs below complex, and elevated risk never runs as trivial.
 export function workflowArgs(i: { demand: Demand | null; userAsked: boolean; risk: Risk; complexity: Complexity; reviewRequired: boolean; mode: string; reviewPolicy: string; maxConcurrency: number }) {
   const stages = i.demand ? stagesFor(i.demand, { userAsked: i.userAsked, reviewRequired: i.reviewRequired }) : undefined
+  const floor: Complexity = i.userAsked ? 'complex' : i.risk === 'elevated' ? 'standard' : 'trivial'
+  const tier = TIERS[Math.max(TIERS.indexOf(i.complexity), TIERS.indexOf(floor))]
   return {
-    task: '<the full task with every constraint>', tier: i.risk === 'critical' ? 'critical' : i.complexity, mode: i.mode,
+    task: '<the full task with every constraint>', tier: i.risk === 'critical' ? 'critical' : tier, mode: i.mode,
     reviewPolicy: i.reviewRequired ? 'always' : i.reviewPolicy, maxConcurrency: i.maxConcurrency, ...(stages ? { stages } : {}),
   }
 }

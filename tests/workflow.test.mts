@@ -182,6 +182,16 @@ test('verification: expected_exit is an exact match, so grep exit 2 (an error) a
   assert.equal(await verdict(check('grep -rn oldName src', 0, 'pass', { expected_exit: 1 })), 'fail')
 })
 
+test('verification: expected_exit counts only for one plain grep, rg or diff', async () => {
+  for (const cmd of ['npm test', 'go test ./...', 'make', 'grep -q x a && npm test', 'grep x a; npm test', 'grep x a | wc -l', 'npm test | grep ok']) {
+    assert.equal(await verdict(check(cmd, 1, 'pass', { expected_exit: 1 })), 'fail', cmd)
+  }
+  for (const cmd of ['rg oldName src', 'diff a b', "grep -E 'old|older' src/a.go"]) {
+    assert.equal(await verdict(check(cmd, 1, 'pass', { expected_exit: 1 })), 'pass', cmd)
+  }
+  assert.equal(await verdict(check('grep x a', 2, 'pass', { expected_exit: 2 })), 'fail', 'exit 2 is a grep error')
+})
+
 test('verification: without expected_exit the default is 0, so any nonzero exit fails', async () => {
   assert.equal(await verdict(check('make test', 2, 'pass')), 'fail')
   assert.equal(await verdict(check('grep -rn oldName src', 1, 'pass')), 'fail')
@@ -387,7 +397,14 @@ test('router args: a bounded task sends its real tier, and stages leave out disc
   assert.equal(a.mode, 'discover', 'the router still sends mode')
   assert.deepEqual(a.stages, ['implement', 'verify'])
   assert.equal(routerArgs({ risk: 'critical', complexity: 'complex' }).tier, 'critical')
-  assert.equal(routerArgs({ risk: 'elevated', complexity: 'trivial' }).tier, 'trivial')
+  assert.equal(routerArgs({ risk: 'none', complexity: 'trivial' }).tier, 'trivial')
+})
+
+test('router args: am:run never runs below complex, and elevated risk never runs as trivial', () => {
+  assert.equal(routerArgs({ risk: 'elevated', complexity: 'trivial' }).tier, 'standard')
+  assert.equal(routerArgs({ userAsked: true, complexity: 'trivial' }).tier, 'complex')
+  assert.equal(routerArgs({ userAsked: true, complexity: 'standard' }).tier, 'complex')
+  assert.equal(routerArgs({ userAsked: true, risk: 'critical', complexity: 'standard' }).tier, 'critical')
 })
 
 test('router args: a required review is in the stages, with policy always', () => {
@@ -411,12 +428,46 @@ test('router args: stages with discover win over a handoff mode', async () => {
 })
 
 test('router args: an S2 task without architect or review plans on Sonnet and skips review', async () => {
-  const { result, calls } = await run({ ...routerArgs({ complexity: 'complex' }) }, defaults({
-    architect: PLAN({ review_required: true, risks: [{ risk: 'x', severity: 'high' }] }),
-  }))
+  const { result, calls } = await run({ ...routerArgs({ complexity: 'complex' }) }, defaults({ architect: PLAN({ review_required: true }) }))
   assert.equal(result.band, 'S2')
   assert.equal(calls.find((c) => c.label === 'plan').model, 'sonnet')
-  assert.equal(result.review.verdict, 'skipped', 'the planner\'s opinion does not force a review the router left out')
+  assert.equal(result.review.verdict, 'skipped', 'size and a bare request do not force a review the router left out')
+})
+
+test('router args: leaving out review still reviews the infra rule, the architect\'s S3 and a high risk', async () => {
+  const text = await run({ ...routerArgs(), task: 'change the terraform deploy for prod' }, defaults())
+  assert.ok(text.calls.some((c) => c.role === 'reviewer'), 'infra in the task text')
+  const planned = await run(routerArgs(), defaults({ architect: PLAN({ workstreams: [ws('ci', ['.github/workflows/ci.yml'])] }) }))
+  assert.ok(planned.calls.some((c) => c.role === 'reviewer'), 'infra in the plan files')
+  const s3 = await run(routerArgs(), defaults({ architect: PLAN({ risk_class: 'S3' }) }))
+  assert.ok(s3.calls.some((c) => c.role === 'reviewer'), 'the architect\'s S3')
+  const high = await run(routerArgs(), defaults({ architect: PLAN({ risks: [{ risk: 'x', severity: 'high' }] }) }))
+  assert.ok(high.calls.some((c) => c.role === 'reviewer'), 'a high-severity risk')
+})
+
+test('a Sonnet plan that reaches S3 gets one Opus re-plan, and the Opus plan is the one built', async () => {
+  const auth = PLAN({ summary: 'sonnet plan', workstreams: [ws('m', ['src/auth/token.go'])] })
+  const opus = PLAN({ summary: 'opus plan', workstreams: [ws('m', ['src/auth/token.go'])] })
+  const { result, calls } = await run(routerArgs(), defaults({ architect: (o) => (o.model === 'opus' ? opus : auth) }))
+  assert.deepEqual(calls.filter((c) => c.label.startsWith('plan')).map((c) => `${c.label}/${c.model}`), ['plan/sonnet', 'plan:opus/opus'])
+  assert.match(calls.find((c) => c.label === 'plan:opus').prompt, /sonnet plan/)
+  assert.equal(result.plan.summary, 'opus plan')
+  assert.equal(result.band, 'S3')
+  assert.equal(calls.filter((c) => c.role === 'reviewer').length, 1)
+})
+
+test('a planModel Sonnet plan that reaches S3 is planned again on Opus too', async () => {
+  const { calls } = await run({ task: 'add retries', planModel: 'sonnet' }, defaults({ architect: PLAN({ workstreams: [ws('m', ['src/auth/token.go'])] }) }))
+  assert.deepEqual(calls.filter((c) => c.label.startsWith('plan')).map((c) => c.model), ['sonnet', 'opus'])
+})
+
+test('an Opus plan that reaches S3 is not planned again, and a failed re-plan leaves the Sonnet plan', async () => {
+  const auth = PLAN({ workstreams: [ws('m', ['src/auth/token.go'])] })
+  const direct = await run({ task: 'add retries' }, defaults({ architect: auth }))
+  assert.equal(direct.calls.filter((c) => c.label.startsWith('plan')).length, 1)
+  const failed = await run(routerArgs(), defaults({ architect: (o) => (o.model === 'opus' ? null : auth) }))
+  assert.equal(failed.result.band, 'S3')
+  assert.ok(failed.calls.some((c) => c.role === 'implementer'))
 })
 
 test('router args: leaving out review still reviews rule-based S3, failed checks, escalation and blocking evidence', async () => {
@@ -444,6 +495,13 @@ test('band: cited files do not trigger the module or infra rules', async () => {
   const { result } = await run({ task: 'add retries' }, defaults({ explorer: DISC(['a/x/f.go:1', 'b/y/g.go:1', 'c/z/h.go:1', '.github/workflows/ci.yml:3']) }))
   assert.equal(result.band, 'S1')
   assert.ok(!result.band_reasons.some((r) => r.includes('modules') || r.includes('infrastructure')))
+})
+
+test('band: a module is a folder, so three files in one folder or at the root are not three modules', async () => {
+  const one = await run({ task: 'add retries' }, defaults({ architect: PLAN({ workstreams: [ws('m', ['src/a.go', 'src/b.go', 'src/c.go'])] }) }))
+  assert.equal(one.result.band, 'S1')
+  const rootFiles = await run({ task: 'add retries' }, defaults({ architect: PLAN({ workstreams: [ws('m', ['a.go', 'b.go', 'c.go'])] }) }))
+  assert.equal(rootFiles.result.band, 'S1')
 })
 
 test('band: open questions do not count as unknowns, only blocking evidence does', async () => {
@@ -532,6 +590,23 @@ test('next_action: passing checks mean report, and no rework', async () => {
   const { result } = await run({ task: 'add retries' }, defaults())
   assert.equal(result.next_action.do, 'report')
   assert.match(result.next_action.why, /Do not edit/)
+})
+
+test('next_action: a failed fix pass or a failed review is reported as open', async () => {
+  const blocker = { verdict: 'changes_required', findings: [FINDING({ severity: 'blocker' })] }
+  const noFix = await run({ task: 'add retries', reviewPolicy: 'always' }, defaults({ reviewer: blocker, implementer: (o) => (o.label === 'fix:review' ? null : IMPL('main')) }))
+  assert.match(noFix.result.next_action.why, /defect was not fixed/)
+  const partial = await run({ task: 'add retries', reviewPolicy: 'always' }, defaults({ reviewer: blocker, implementer: (o) => IMPL('main', o.label === 'fix:review' ? { status: 'partial' } : {}) }))
+  assert.match(partial.result.next_action.why, /defect was not fixed/)
+  const noReview = await run({ task: 'add retries', reviewPolicy: 'always' }, defaults({ reviewer: null }))
+  assert.equal(noReview.result.review.verdict, 'agent_failed')
+  assert.match(noReview.result.next_action.why, /review did not run/)
+})
+
+test('next_action: an unverified review fix is reported as open', async () => {
+  const blocker = { verdict: 'changes_required', findings: [FINDING({ severity: 'blocker' })] }
+  const { result } = await run({ task: 'add retries', reviewPolicy: 'always' }, defaults({ reviewer: blocker, verifier: (o) => (o.label === 'verify:after-review' ? null : PASS) }))
+  assert.match(result.next_action.why, /fix was not verified/)
 })
 
 test('next_action: a grep that expected exit 1 is not a failure to fix', async () => {

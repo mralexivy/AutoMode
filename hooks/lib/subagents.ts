@@ -12,13 +12,15 @@ import { maxEffort } from './effort.ts'
 export interface SubagentRoute { model: Family; effort: Effort; why: string }
 
 const READS = /^\s*(find|search|list|map|locate|trace|read|summari[sz]e|explain|show|count|which|where|what|how|does|look)\b/i
-const WRITES = /\b(fix|edit|chang|writ|implement|add|remov|delet|updat|refactor|renam|creat|modif|replac|apply|commit|migrat|patch|install)/i
+const WRITES = /\b(?:re|over|un)?(fix|edit|chang|writ|implement|add|remov|delet|updat|refactor|renam|creat|modif|replac|apply|commit|migrat|patch|install|rotat|revert|run|make|correct|resolv|set|build|generat|mov|drop|purg|bump)/i
+const CLAUSES = /[.;:!?]\s+|\n+|,?\s+(?:and|then|but|so)\s+|,\s+/i
 
 // readOnlyTask reads the subagent's prompt, because a general-purpose agent has every tool. It says yes
-// only when the prompt opens with a read and names no write. A wrong no costs money, a wrong yes costs
-// quality, so any doubt counts as a write.
+// only when every clause opens with a read and the text names no write. A wrong no costs money, a wrong
+// yes costs quality on critical work, so anything less than clear counts as a write.
 export function readOnlyTask(prompt: string): boolean {
-  return READS.test(prompt) && !WRITES.test(prompt)
+  if (!prompt.trim() || WRITES.test(prompt)) return false
+  return prompt.split(CLAUSES).map((c) => c.trim()).filter(Boolean).every((c) => READS.test(c))
 }
 
 // subagentEffort: the policy is a floor under the helper judge's pick. A failed judge gives the helper

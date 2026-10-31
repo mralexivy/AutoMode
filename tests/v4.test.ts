@@ -621,7 +621,7 @@ describe('V4: workflow entry', () => {
     const h = harness(on, { judge: judge({ tier: 'T2', complexity: 'standard' }) })
     const out = await h.submit($, 'am:run add retries to the uploader')
     expect(out.context.join('\n').includes('Run Workflow')).toBe(true)
-    expect(out.context.join('\n').includes('"tier":"standard"')).toBe(true)
+    expect(out.context.join('\n').includes('"tier":"complex"')).toBe(true)
     await h.step($)
     await h.complete($)
     expect(records(h.writes).find((x) => x.kind === 'workflow-entry')).toMatchObject({ source: 'user', called: false })
@@ -634,6 +634,27 @@ describe('V4: workflow entry', () => {
     await $.tool.call({ tool: 'Workflow', name: 'automode:run' } as never)
     await h.complete($)
     expect(records(h.writes).find((x) => x.kind === 'workflow-entry')).toMatchObject({ source: 'user', called: true })
+  })
+})
+
+describe('V4: workflow calls that do not count', () => {
+  test('another workflow, by tool call or by its agents, leaves the chosen one uncalled', async ($, on) => {
+    const h = harness(on, { judge: judge({ tier: 'T2', complexity: 'standard' }) })
+    await h.submit($, 'am:run add retries to the uploader')
+    await h.step($)
+    await $.tool.call({ tool: 'Workflow', name: 'other:flow' } as never)
+    await $.agent.spawn({ subagentType: 'other:worker', prompt: 'x', description: 'x', model: 'sonnet', workflow: { runId: 'r1', agentIndex: 0 } } as never)
+    await h.complete($)
+    expect(records(h.writes).find((x) => x.kind === 'workflow-entry')).toMatchObject({ called: false })
+  })
+
+  test('an agent of this workflow counts as called', async ($, on) => {
+    const h = harness(on, { judge: judge({ tier: 'T2', complexity: 'standard' }) })
+    await h.submit($, 'am:run add retries to the uploader')
+    await h.step($)
+    await $.agent.spawn({ subagentType: 'automode:explorer', prompt: 'x', description: 'x', model: 'haiku', workflow: { runId: 'r1', agentIndex: 0 } } as never)
+    await h.complete($)
+    expect(records(h.writes).find((x) => x.kind === 'workflow-entry')).toMatchObject({ called: true })
   })
 })
 

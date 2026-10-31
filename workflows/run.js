@@ -25,9 +25,11 @@ let mode = ['discover', 'handoff'].includes(A.mode) ? A.mode : 'discover'
 // stages (optional, from the router's stagesFor): the stages this task needs. Absent means all, as in V2.
 // When present, stages wins over mode: the router sends both, and only stages knows this task.
 // implement and verify always run. Without 'discover' the architect reads the code itself (handoff).
-// Without 'architect' a Sonnet planner plans, but only for bands S0-S2; S3 always gets the Opus plan.
-// Without 'review' only hard evidence forces a review: a rule-based S3, failed checks, an unfinished
-// workstream, an escalation or blocking evidence. The planner's own opinion does not.
+// Without 'architect' a Sonnet planner plans, but only for bands S0-S2. A band that reaches S3 gets an
+// Opus plan, even after a Sonnet plan. Without 'review' size alone does not force a review, and neither
+// does a bare review_required from the planner, which asked in 7 of 7 measured runs. Every other
+// mandatory rule stands: S3, the infra rule, a high-severity risk, failed checks, an unfinished
+// workstream, an escalation and blocking evidence.
 const STAGES = ['discover', 'architect', 'implement', 'verify', 'review']
 const stages = Array.isArray(A.stages) ? STAGES.filter((s) => A.stages.includes(s) || s === 'implement' || s === 'verify') : STAGES
 if (Array.isArray(A.stages)) mode = stages.includes('discover') ? 'discover' : 'handoff'
@@ -87,7 +89,8 @@ function classifyRisk(text, files, extra) {
       reasons.push(`${r.band}: ${r.reason} (${hitPath ? 'path' : 'task text'})`)
     }
   }
-  const modules = new Set(files.map((f) => f.split('/').slice(0, 2).join('/')))
+  // A module is a folder, by its first two levels. Three files in one folder are one module.
+  const modules = new Set(files.map((f) => f.split('/').slice(0, -1).slice(0, 2).join('/')).filter(Boolean))
   if (!extra.cited && modules.size >= 3) { band = higher(band, 'S2'); reasons.push(`S2: ${modules.size} modules touched`) }
   if (extra.workstreams > 1) { band = higher(band, 'S2'); reasons.push(`S2: ${extra.workstreams} workstreams`) }
   if (extra.unknowns > 0) { band = higher(band, 'S2'); reasons.push(`S2: ${extra.unknowns} open unknowns`) }
@@ -242,11 +245,17 @@ const REVIEW = {
 // verdictFromChecks decides the verification result in code, from the commands and exit codes.
 // Any failing check fails the run, whatever the agent's own summary says. No checks means the
 // result is unverified, which counts as uncertain. A check fails on outcome "fail", or when its exit
-// code differs from expected_exit (default 0). A grep that must find nothing expects 1.
+// code differs from the expected one. That is 0, and 1 only when the agent asks for it on one plain
+// grep, rg or diff, where exit 1 means "no match". A test runner can never pass on a nonzero exit.
+function searchOnly(cmd) {
+  const bare = String(cmd).replace(/'[^']*'|"[^"$`]*"/g, '')
+  return /^\s*(grep|egrep|fgrep|rg|diff)\s/.test(bare) && !/[|;&\n`]|\$\(/.test(bare)
+}
 function checkFailed(c) {
   if (c.outcome === 'pre-existing' || c.outcome === 'skipped') return false
   if (c.outcome === 'fail') return true
-  return Number.isInteger(c.exit_code) && c.exit_code !== (Number.isInteger(c.expected_exit) ? c.expected_exit : 0)
+  const expected = c.expected_exit === 1 && searchOnly(c.cmd) ? 1 : 0
+  return Number.isInteger(c.exit_code) && c.exit_code !== expected
 }
 function verdictFromChecks(v) {
   if (!v) return 'unverified'
@@ -363,9 +372,13 @@ const sonnetPlans = band === 'S0' || (!stages.includes('architect') && BANDS.ind
   Object.values(byLens).every((d) => !d.open_questions.length))
 const planRole = sonnetPlans ? 'planner' : 'architect'
 const planPick = sonnetPlans ? {} : { model: planModel }
+let planOnOpus = !sonnetPlans && planModel === 'opus'
+let opusDown = false
 let plan = await run(planRole, planPrompt(), { phase: 'Plan', label: 'plan', schema: PLAN, ...planPick })
 if (!plan && !sonnetPlans) {
   note('The Opus architect returned no plan. Sonnet makes the plan instead, and the review becomes mandatory.')
+  opusDown = true
+  planOnOpus = false
   plan = await run('planner', planPrompt(), { phase: 'Plan', label: 'plan:fallback', schema: PLAN })
   if (plan) bandReasons.push('review mandatory: Opus plan unavailable')
 }
@@ -399,9 +412,26 @@ if (plan.missing_evidence.length && !plan.evidence_blocking) {
   }
 }
 
-const planFiles = [...new Set(plan.workstreams.flatMap((w) => w.files))]
-raiseBand(classifyRisk(task + '\n' + plan.decisions.join('\n'), planFiles, { workstreams: plan.workstreams.length, unknowns: evidenceIncomplete ? plan.missing_evidence.length : 0 }), 'Plan')
-if (BANDS.indexOf(plan.risk_class) > BANDS.indexOf(band)) raiseBand({ band: plan.risk_class, reasons: [`${plan.risk_class}: architect risk class`] }, 'Plan')
+function raiseFromPlan() {
+  const planFiles = [...new Set(plan.workstreams.flatMap((w) => w.files))]
+  raiseBand(classifyRisk(task + '\n' + plan.decisions.join('\n'), planFiles, { workstreams: plan.workstreams.length, unknowns: evidenceIncomplete ? plan.missing_evidence.length : 0 }), 'Plan')
+  if (BANDS.indexOf(plan.risk_class) > BANDS.indexOf(band)) raiseBand({ band: plan.risk_class, reasons: [`${plan.risk_class}: architect risk class`] }, 'Plan')
+}
+raiseFromPlan()
+// A Sonnet plan that turns out to be S3 does not stand. One Opus re-plan follows, never a loop.
+if (band === 'S3' && !planOnOpus && !opusDown) {
+  note('The Sonnet plan reached S3. Opus plans again, from what the Sonnet plan found.')
+  const stronger = await run('architect', planPrompt(`A Sonnet plan reached risk band S3, so you plan this instead. Its plan, for reference (JSON):\n${JSON.stringify(plan)}\n\n`),
+    { phase: 'Plan', label: 'plan:opus', schema: PLAN })
+  if (stronger) {
+    plan = stronger
+    evidenceIncomplete = Boolean(plan.evidence_blocking && plan.missing_evidence.length)
+    evidenceNotes = plan.evidence_blocking ? [] : plan.missing_evidence
+    raiseFromPlan()
+  } else {
+    note('The Opus re-plan returned nothing. The Sonnet plan stands.')
+  }
+}
 const planBrief = JSON.stringify({
   summary: plan.summary, decisions: plan.decisions, assumptions: plan.assumptions, forbidden_changes: plan.forbidden_changes,
   acceptance_criteria: plan.acceptance_criteria, validation_commands: plan.validation_commands, risks: plan.risks,
@@ -523,7 +553,7 @@ phase('Verify')
 let verify = null
 let verifyStatus = 'unverified'
 const verifyHistory = []
-const EXIT_RULE = 'Report every command you ran with its real exit code. Set expected_exit only when a nonzero exit is that command\'s success, such as 1 for a grep that must find nothing. Never set it for tests, builds or type checks.\n'
+const EXIT_RULE = 'Report every command you ran with its real exit code. Set expected_exit to 1 only on one plain grep, rg or diff that must find nothing. It counts nowhere else, so a test, build or type check that exits nonzero has failed.\n'
 for (let round = 1; round <= MAX_VERIFY_ROUNDS; round++) {
   const prior = verify ? `\n\nThe previous round left these failures:\n${JSON.stringify(verify.remaining_failures)}\nFixes already made: ${JSON.stringify(verify.fixes_made)}` : ''
   verify = await run('verifier',
@@ -543,13 +573,13 @@ for (let round = 1; round <= MAX_VERIFY_ROUNDS; round++) {
 // ---------- Phase E: Review (Opus, evidence-first) ----------
 const highRisk = plan.risks.some((r) => r.severity === 'high')
 const mandatory = []
-// With review left out, only an S3 from a rule or the router forces it, not the planner's own label.
-const ruleS3 = bandReasons.some((r) => r.startsWith('S3:') && !r.includes('architect risk class'))
-if (reviewLeftOut ? ruleS3 : BANDS.indexOf(band) >= 2) mandatory.push(`band ${band}`)
+// With review left out, an S2 forces it only through the infra rule, not through size.
+const infraRule = bandReasons.some((r) => r.includes('infrastructure or deployment'))
+if (reviewLeftOut ? band === 'S3' || infraRule : BANDS.indexOf(band) >= 2) mandatory.push(`band ${band}`)
 if (verifyStatus !== 'pass') mandatory.push(`verification ${verifyStatus}`)
 if (buildFailed) mandatory.push('a workstream did not finish')
 if (!reviewLeftOut && plan.review_required) mandatory.push('architect requested review')
-if (!reviewLeftOut && highRisk) mandatory.push('high-severity risk in plan')
+if (highRisk) mandatory.push('high-severity risk in plan')
 if (evidenceIncomplete) mandatory.push('plan evidence incomplete')
 for (const r of bandReasons) if (r.startsWith('review mandatory')) mandatory.push(r.replace('review mandatory: ', ''))
 const needReview = band !== 'S0' ? (reviewPolicy === 'always' || mandatory.length > 0) : mandatory.length > 0
@@ -588,7 +618,7 @@ if (!needReview) {
       : ''
     const reverify = await run('verifier', verifyFixes + verifyGaps + EXIT_RULE + GIT_RULES,
       { phase: 'Review', label: toFix.length ? 'verify:after-review' : 'verify:evidence-gaps', schema: VERIFY })
-    postReviewFix = { fix, gaps: gaps.length, verify: reverify, computed: verdictFromChecks(reverify) }
+    postReviewFix = { fix, defects: toFix.length, gaps: gaps.length, verify: reverify, computed: verdictFromChecks(reverify) }
     // A gap pass runs only its own checks, so alone it can fail the run but never pass it.
     if (reverify && (toFix.length || postReviewFix.computed === 'fail')) { verify = reverify; verifyStatus = postReviewFix.computed }
   }
@@ -602,6 +632,10 @@ function nextAction() {
   const open = []
   if (verifyStatus !== 'pass') open.push('the change is unverified')
   if (buildFailed) open.push('a workstream did not finish')
+  if (needReview && !review) open.push('the required review did not run')
+  const p = postReviewFix
+  if (p && p.defects && (!p.fix || p.fix.status !== 'done')) open.push('a review defect was not fixed')
+  else if (p && p.defects && !p.verify) open.push('the review fix was not verified')
   return { do: 'report', why: `Report this result to the user. Do not edit, verify or review again.${open.length ? ` Say that ${open.join(' and ')}.` : ''}` }
 }
 

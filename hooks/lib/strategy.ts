@@ -115,11 +115,12 @@ export interface WorkflowValue { purpose: string | null; would: boolean; reasons
 
 export const WORKFLOW_MIN_MODULES = 3
 
-// editedModules counts the folders a task edited, by their first two levels under the root.
+// editedModules counts the folders a task edited, by their first two levels under the root. A file at
+// the root belongs to no module.
 export function editedModules(paths: string[], root = ''): number {
   const base = root.replace(/\/+$/, '')
   const dirs = paths.map((p) => (base && p.startsWith(`${base}/`) ? p.slice(base.length + 1) : p).split('/').filter(Boolean).slice(0, -1).slice(0, 2).join('/'))
-  return new Set(dirs).size
+  return new Set(dirs.filter(Boolean)).size
 }
 
 export function workflowValue(i: WorkflowValueInput): WorkflowValue {

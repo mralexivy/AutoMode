@@ -22,7 +22,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - An upgrade compares capability, not tier, and needs a model that is not weaker. Sonnet max to Opus low is not an upgrade, and neither is Opus low to Sonnet high.
 - A shrink with no compaction noted since the last request is priced as a warm switch, and step pricing uses the cache lifetime's write rate.
 - A calibrated `effortOutput` is read, a hold records the tier of its effort, and `underRouting` records only real corrections.
-- A check that expects a nonzero exit, such as a `grep` that must find nothing, no longer fails the workflow. Verifier reports carry `expected_exit`.
+- A plain `grep`, `rg` or `diff` that must find nothing no longer fails the workflow on exit 1. Verifier reports carry `expected_exit`, and it counts for no other command.
 - The workflow's `stages` win over `mode`, so the conditional stages run on the router path.
 - The workflow band counts planned and changed files and blocking unknowns, not files that explorers cited, and the router sends the real tier.
 - The workflow fixes major correctness and security defects as well as blockers, sends evidence gaps to the verifier, and skips the fix pass when there is no defect.

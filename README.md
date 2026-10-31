@@ -184,7 +184,7 @@ Each prompt takes one of four paths:
 | **Plan** | Opus. Workstreams, acceptance criteria and risks. |
 | **Build** | Sonnet. Workstreams that share files never run together. `maxConcurrency` defaults to 1. |
 | **Verify** | Sonnet runs the commands. Code decides pass or fail from the exit codes. At most 2 rounds. |
-| **Review** | Opus reads the diff. It is mandatory for S2 and S3, failed checks, unfinished work and incomplete evidence. If the router leaves review out, S2 alone does not force it. Sonnet fixes blockers and major correctness or security defects. The verifier checks evidence gaps. |
+| **Review** | Opus reads the diff. It is mandatory for S2 and S3, failed checks, unfinished work and incomplete evidence. If the router leaves review out, size alone does not force it. Sonnet fixes blockers and major correctness or security defects. The verifier checks evidence gaps. |
 
 **The S3 rule.** If a prompt matches security or credentials, migrations or destructive operations, concurrency, external contracts, or payments and sensitive data, the Opus review is mandatory.
 

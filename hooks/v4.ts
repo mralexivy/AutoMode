@@ -1179,7 +1179,8 @@ function entryValue(answer: JudgeAnswer | null, env: TaskEnvelope): WorkflowValu
   })
 }
 
-// noteWorkflowCall: the main session did call the workflow the router chose.
+// noteWorkflowCall: the main session did call the workflow the router chose. Another workflow does not
+// count. A spawn names only its agent type, so there the mod's own agent prefix stands for the workflow.
 function noteWorkflowCall() {
   if (S.workflowPending) S.workflowPending.called = true
   S.workflowRanTask = S.envelope?.taskId
@@ -1844,7 +1845,7 @@ export async function v4TurnComplete($: EngineInterface, e: any, next: any) {
 }
 
 export async function v4AgentSpawn($: EngineInterface, e: any, next: any) {
-  if (e.workflow) noteWorkflowCall()
+  if (e.workflow && String(e.subagentType).startsWith(`${S.cfg.workflowName.split(':')[0]}:`)) noteWorkflowCall()
   if (S.mode === 'off') return next(e)
   if (!(await activeV4($))) return S.cfg.subagentsEverySession && S.mode === 'auto' ? spawnOutsideAutoMode($, e, next) : next(e)
   if (S.mode === 'shadow') {
@@ -1920,7 +1921,7 @@ export async function v4ToolCall($: EngineInterface, e: any, next: any) {
     }
     return next(e)
   }
-  if (e.tool === 'Workflow') noteWorkflowCall()
+  if (e.tool === 'Workflow' && input.name === S.cfg.workflowName) noteWorkflowCall()
   // Main session: the worker calls the router asked for.
   // Discovery reuse (advisory): a new exploration is told what the task's earlier discoveries covered.
   const exploring = e.tool === 'Agent' && (input.subagent_type === 'Explore' || input.subagent_type === 'automode:explorer') && S.envelope

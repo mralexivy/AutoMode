@@ -1004,6 +1004,16 @@ test('subagents: a read-only task opens with a read and names no write', () => {
   assert.ok(!readOnlyTask(''))
 })
 
+test('subagents: anything less than clearly read-only counts as a write', () => {
+  for (const p of ['Find the expired signing key and rotate it', 'Look at auth.ts and rewrite the token check', 'Read the failing test, then make it pass',
+    'Find the file. Overwrite it.', 'Find the bad commit and revert it', 'Read the log and correct the config', 'Find the conflict and resolve it', 'Find the key and burn it', 'Check the token logic']) {
+    assert.ok(!readOnlyTask(p), p)
+  }
+  for (const p of ['map the call sites of verify() and list the callers', 'Which files read auth.ts?', 'Find every caller of parse(). Show the signatures.']) {
+    assert.ok(readOnlyTask(p), p)
+  }
+})
+
 test('subagents: effort is the stronger of the policy and the helper; no helper keeps the policy', () => {
   assert.equal(subagentEffort('xhigh', 'medium'), 'xhigh')
   assert.equal(subagentEffort('medium', 'max'), 'max')
@@ -1050,6 +1060,7 @@ test('workflowValue: real edits across three modules count, and the root does no
   const paths = ['/repo/src/a/x.ts', '/repo/src/b/y.ts', '/repo/lib/c/z.ts']
   assert.equal(editedModules(paths, '/repo'), WORKFLOW_MIN_MODULES)
   assert.equal(editedModules(['/repo/src/a/x.ts', '/repo/src/a/y.ts', '/repo/src/a/z.ts'], '/repo'), 1)
+  assert.equal(editedModules(['/repo/a.ts', '/repo/b.ts', '/repo/src/a/x.ts', '/repo/src/b/y.ts'], '/repo'), 2, 'root files are no module')
   assert.deepEqual(workflowValue(entry({ editedPaths: paths, root: '/repo' })).reasons, ['edits across 3 modules'])
 })
 
