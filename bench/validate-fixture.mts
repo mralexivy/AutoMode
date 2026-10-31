@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// @ts-nocheck TODO(types): 1 errors with strict off. Fix them and delete this line to turn checking on for this file.
 // validate-fixture.mts <task-id ...> [--scratch dir]
 // A task is a valid benchmark fixture when its hidden tests fail at the base commit and pass at the reference commit,
 // run with the task's own `accept` command. Those tests become the hidden acceptance tests. No model call, no spend.
@@ -8,16 +7,16 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { loadTasks, problems, taskRepo } from './lib/task-repo.mts'
+import { loadTasks, problems, taskRepo, type Task } from './lib/task-repo.mts'
 
 const argv = process.argv.slice(2)
 const si = argv.indexOf('--scratch')
 const scratch = si >= 0 ? argv[si + 1] : path.join(os.tmpdir(), 'am-bench-validate')
 const wanted = argv.filter((a, i) => !a.startsWith('--') && (si < 0 || i !== si + 1))
-const git = (args, cwd) => execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 1e8 })
-const accepts = (task, cwd) => spawnSync('sh', ['-c', task.accept], { cwd, encoding: 'utf8', timeout: 10 * 60_000 }).status === 0
+const git = (args: string[], cwd?: string) => execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 1e8 })
+const accepts = (task: Task, cwd: string) => spawnSync('sh', ['-c', task.accept], { cwd, encoding: 'utf8', timeout: 10 * 60_000 }).status === 0
 
-export function validate(task) {
+export function validate(task: Task) {
   const bad = problems(task)
   if (bad.length) return { id: task.id, valid: false, problems: bad }
   const cache = taskRepo(task)
