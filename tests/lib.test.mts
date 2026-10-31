@@ -977,6 +977,8 @@ test('attemptCost: new input is priced at the cache lifetime in use', () => {
   const x = (ttlMs) => ({ cache: { ...coldCache(0), ttlMs }, warm: {}, now: 0, prices: ANTHROPIC, neutral: true })
   const gap = attemptCost(c, d, x(HOUR)).usd - attemptCost(c, d, x(300_000)).usd
   assert.ok(Math.abs(gap - (983 * 2 * 0.75) / 1e6) < 1e-9)
+})
+
 test('subagents: critical work keeps the parent family unless the task only reads', () => {
   const critical = { type: 'general-purpose', demand: null, risk: 'critical' as const }
   const write = subagentRoute({ ...critical, parentFamily: 'opus', prompt: 'fix the token check in auth.ts' })
