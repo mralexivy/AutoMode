@@ -49,6 +49,8 @@ export function automodeRoute(c: LabeledCase, s: Slots, rule: Rule): Route {
   const floors: AutoFloors = { effortMin: {}, exclude: {}, because: [] }
   if (risk === 'critical' && complexity !== 'trivial') { floors.exclude!.haiku = 'critical'; floors.effortMin = { sonnet: 'high', opus: 'medium' } }
   const anchor = c.current.model
+  // A9: the need is asked with a fixed Sonnet anchor, so it does not depend on the starting model.
+  const need = verdictFor(s, 'sonnet', rule)
   let verdicts: Partial<Record<Family, FamilyVerdict | null>> = { [anchor]: verdictFor(s, anchor, rule) }
   let source = 'judge'
   const allowed: Family[] = ['haiku', 'sonnet', 'opus']
@@ -68,10 +70,10 @@ export function automodeRoute(c: LabeledCase, s: Slots, rule: Rule): Route {
   }
   const cost = (family: Family, effort: Effort) => attemptCost({ family, effort, cap: { lo: 0, hi: 0 } } as never, { steps: TASK_STEPS[complexity] }, COST as never).usd
   if (source === 'judge') {
-    const second = secondCall({ allowed, verdicts, hm, consequence: risk, floors, current: null, cost: () => 0 }, anchor)
+    const second = secondCall({ allowed, verdicts, need, hm, consequence: risk, floors, current: null, cost: () => 0 }, anchor)
     if (second) verdicts[second] = verdictFor(s, second, rule)
   }
   if (rule.effortOf) for (const [f, v] of Object.entries(verdicts)) if (v) verdicts[f as Family] = { ...v, effort: rule.effortOf(c, s, f as Family, v) }
-  const choice = optimizeAuto({ allowed, verdicts, hm, consequence: risk, floors, current, cost })
+  const choice = optimizeAuto({ allowed, verdicts, need, hm, consequence: risk, floors, current, cost })
   return { family: choice.best.family, effort: choice.best.effort, source }
 }
