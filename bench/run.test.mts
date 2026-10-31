@@ -7,7 +7,12 @@ import os from 'node:os'
 import path from 'node:path'
 import { GRADER_MODEL, grade, gradePrompt, parseGrade, referenceDiff } from './lib/grade-core.mts'
 import { chargedUsd, classifyRun, isDone, isResult } from './lib/outcome.mts'
-import { oneRun } from './lib/run-one.mts'
+import { armEnv, armInvocation, armSpec, ARMS } from './arms.mts'
+import { canonical, experimentProblems, loadExperiment, specHash } from './lib/experiment.mts'
+import { loadTemplate, renderPrompt } from './lib/prompt.mts'
+import { estimatedUsd, rowProblems } from './lib/result.mts'
+import { oneRun, runIdFor } from './lib/run-one.mts'
+import { normalizeTask, problems } from './lib/task-repo.mts'
 import { bootstrapCI } from './lib/stats.mts'
 
 const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'am-bench-test-'))
@@ -161,4 +166,112 @@ test('report: the declared non-inferiority rule evaluates for AutoMode arms, and
   assert.match(r.stdout, /AutoMode Auto: model and effort routing:\*\* FAILS \(security: 0 accepted vs best baseline 1\)/)
   assert.match(r.stdout, /Runs: 3 rows, 2 valid/)
   assert.match(r.stdout, /1 stopped by a usage limit or setup/)
+})
+
+test('a row has schema 3, states what was requested and what ran, and stores no prompt text', async () => {
+  const { row } = await run('solve')
+  assert.deepEqual(rowProblems(row), [])
+  assert.equal(row.schema_version, 3)
+  assert.equal(row.cost_basis, 'api-list-equivalent')
+  assert.equal(row.reported_cost_usd, null)
+  assert.equal(row.model.requestedModel, 'sonnet')
+  assert.deepEqual(row.evidence.effective_models, ['claude-sonnet-5-5'])
+  assert.deepEqual(row.evidence.effective_efforts, ['high'])
+  assert.equal(row.evidence.compactions, 1)
+  assert.equal(row.evidence.peak_prompt_tokens, 1600)
+  assert.equal(row.evidence.tokens.thinking, 50)
+  assert.ok(row.estimated_cost_usd > 0)
+  assert.match(row.harness.git_sha, /^[0-9a-f]{40}$/)
+  assert.match(row.prompt.rendered_sha256, /^[0-9a-f]{64}$/)
+  assert.doesNotMatch(JSON.stringify(row), /Execution contract/)
+})
+
+test('a row that stops early still meets the schema', async () => {
+  assert.deepEqual(rowProblems((await run('quota')).row), [])
+  assert.deepEqual(rowProblems((await run('solve', { setup: 'exit 1' })).row), [])
+  assert.deepEqual(rowProblems({ text: 'x' }).includes('a row must not store "text"'), true)
+})
+
+test('estimatedUsd is null when a model has no price row, never a partial sum', () => {
+  const t = { input: 1e6, output: 0, cacheRead: 0, cacheWrite5m: 0, cacheWrite1h: 0 }
+  const ev: any = { by_model: { 'claude-sonnet-5-5': t } }
+  assert.equal(estimatedUsd(ev), 2)
+  assert.equal(estimatedUsd({ ...ev, by_model: { ...ev.by_model, 'other-model': t } }), null)
+  assert.equal(estimatedUsd(null), null)
+})
+
+test('run_id changes when the arm, the prompt or the task changes, and not with key order', () => {
+  const t = loadTemplate('repo-change-v1')
+  const a = runIdFor(task, 'sonnet-high', 1, t).runId
+  assert.equal(a, runIdFor({ ...task }, 'sonnet-high', 1, t).runId)
+  assert.notEqual(a, runIdFor(task, 'sonnet-medium', 1, t).runId)
+  assert.notEqual(a, runIdFor(task, 'sonnet-high', 1, { ...t, sha256: 'other' }).runId)
+  assert.notEqual(a, runIdFor({ ...task, base: 'c'.repeat(40) }, 'sonnet-high', 1, t).runId)
+  assert.equal(canonical({ b: 1, a: [2, { d: 3, c: 4 }] }), canonical({ a: [2, { c: 4, d: 3 }], b: 1 }))
+  assert.equal(specHash({ a: 1, b: 2 }), specHash({ b: 2, a: 1 }))
+})
+
+test('the prompt template keeps the task text literal', () => {
+  const t = loadTemplate('repo-change-v1')
+  assert.ok(renderPrompt(t, 'use $& here').text.startsWith('use $& here'))
+  assert.throws(() => loadTemplate('../secret'))
+})
+
+test('arm controls map to documented flags and variables', () => {
+  assert.deepEqual(armEnv(ARMS['sonnet-default-effort']), { CLAUDE_CODE_EFFORT_LEVEL: 'unset' })
+  assert.deepEqual(armEnv(ARMS['sonnet-medium-uncached']), { DISABLE_PROMPT_CACHING: '1' })
+  assert.deepEqual(armEnv(ARMS['sonnet-medium-200k']), { CLAUDE_CODE_DISABLE_1M_CONTEXT: '1' })
+  assert.deepEqual(armEnv(ARMS['sonnet-medium-compact-200k']), { CLAUDE_CODE_AUTO_COMPACT_WINDOW: '200000' })
+  assert.equal(armSpec('sonnet-default-effort').model.reasoning.mode, 'provider-default')
+  assert.equal(armSpec('haiku-max').model.reasoning.requestedEffort, 'max')
+  assert.equal(armSpec('sonnet-medium-200k').model.context.policy, 'capped-200k')
+  for (const family of ['haiku', 'sonnet', 'opus']) for (const effort of ['low', 'medium', 'high', 'xhigh', 'max']) assert.ok(ARMS[`${family}-${effort}`])
+  const dir = fs.mkdtempSync(path.join(ROOT, 'arm-'))
+  assert.equal(armInvocation('sonnet-default-effort', dir, 'p').args.includes('--effort'), false)
+  const { args } = armInvocation('opus-max', dir, 'p')
+  assert.equal(args[args.indexOf('--effort') + 1], 'max')
+})
+
+test('every experiment file loads, and a bad one names its fault', () => {
+  for (const f of fs.readdirSync('bench/experiments')) assert.ok(loadExperiment(path.join('bench/experiments', f), Object.keys(ARMS)).arms.length, f)
+  assert.deepEqual(experimentProblems({ schema_version: 1, id: 'x', track: 'automode-system', arms: ['nope'], repeats: 1, prompt_template: 't' }, []), ['unknown arm nope'])
+  assert.ok(experimentProblems({}, []).length >= 4)
+})
+
+test('task schema 2 reads into the same shape, and a v1 file is unchanged', () => {
+  const v1 = { id: 'a', accept: 'x', hidden_tests: ['t'] }
+  assert.deepEqual(normalizeTask(v1), v1)
+  const t = normalizeTask({ schema_version: 2, id: 'a', task: 'do', evaluation: { hidden_tests: ['t'], accept: ['one', 'two'], regression: ['r'], lint: ['l'], typecheck: ['c'] }, requirements: { risk_tags: ['SECRET-TAG'] } })
+  assert.equal(t.accept, 'one && two')
+  assert.equal(t.regression, 'r')
+  assert.equal(problems({ ...t, repo: 'https://x', license: 'MIT', cohort: 'c', base: 'a'.repeat(40), reference: 'b'.repeat(40), limits: { wall_seconds: 0 } }).length, 1)
+  assert.doesNotMatch(renderPrompt(loadTemplate('repo-change-v1'), t.task).text, /SECRET-TAG/)
+})
+
+test('task regression and typecheck commands are recorded', async () => {
+  const { row } = await run('solve', { regression: 'true', typecheck: 'false' })
+  assert.equal(row.regression_ok, true)
+  assert.equal(row.typecheck_ok, false)
+})
+
+test('the run script: a resume skips finished rows, reruns a usage limit, and the budget survives', () => {
+  const dir = path.join(ROOT, 'cli')
+  const tasks = path.join(dir, 'tasks')
+  fs.mkdirSync(tasks, { recursive: true })
+  fs.writeFileSync(path.join(tasks, 'fixture.json'), JSON.stringify(task))
+  const out = path.join(dir, 'results.jsonl')
+  const cli = (mode: string, ...more: string[]) => spawnSync(process.execPath, ['bench/run.mts', '--tasks-dir', tasks, '--arms', 'sonnet-high,sonnet-medium', '--repeats', '1', '--parallel', '1', '--scratch', path.join(dir, 'scratch'), '--out', out, '--run-cap-usd', '3', ...more],
+    { encoding: 'utf8', env: { ...process.env, FAKE_CLAUDE: mode, BENCH_ALLOW_LOCAL: '1', BENCH_CACHE_DIR: path.join(dir, 'repos'), LEDGER_FILE: path.join(dir, 'ledger.jsonl') } })
+  const quota = cli('quota')
+  assert.equal(quota.status, 0, quota.stderr)
+  assert.match(quota.stdout, /USAGE LIMIT, will rerun/)
+  const first = cli('solve', '--budget-usd', '0.25')
+  assert.match(first.stdout, /2 to run/)
+  assert.match(first.stdout, /Budget \$0.25 reached/)
+  const second = cli('solve', '--budget-usd', '0.25')
+  assert.match(second.stdout, /1 to run/)
+  assert.match(second.stdout, /Budget \$0.25 reached/, 'spend from the first run still counts')
+  const third = cli('solve')
+  assert.match(third.stdout, /1 to run/)
+  assert.match(cli('solve').stdout, /0 to run/)
 })

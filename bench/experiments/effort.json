@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "effort",
+  "track": "automode-system",
+  "arms": [
+    "opus-medium",
+    "opus-high",
+    "opus-effortless",
+    "auto"
+  ],
+  "repeats": 3,
+  "parallel": 2,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 3,
+  "budget_usd": 40
+}

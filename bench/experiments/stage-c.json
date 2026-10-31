@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "stage-c",
+  "track": "automode-system",
+  "arms": [
+    "auto",
+    "sonnet-high",
+    "opus-high",
+    "sonnet-medium"
+  ],
+  "repeats": 3,
+  "parallel": 1,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 3,
+  "budget_usd": 300
+}

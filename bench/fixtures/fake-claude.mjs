@@ -5,6 +5,16 @@ import fs from 'node:fs'
 
 const mode = process.env.FAKE_CLAUDE ?? 'solve'
 if (process.env.FAKE_CLAUDE_LOG) fs.writeFileSync(process.env.FAKE_CLAUDE_LOG, JSON.stringify({ args: process.argv.slice(2), apiKey: process.env.ANTHROPIC_API_KEY ?? null }))
+// A transcript like the real one, so the run evidence has something to read.
+if (process.env.CLAUDE_CONFIG_DIR && mode !== 'grade') {
+  const dir = `${process.env.CLAUDE_CONFIG_DIR}/projects/fake-project`
+  fs.mkdirSync(dir, { recursive: true })
+  const usage = { input_tokens: 1000, output_tokens: 200, cache_read_input_tokens: 500, cache_creation_input_tokens: 100, output_tokens_details: { thinking_tokens: 50 } }
+  fs.writeFileSync(`${dir}/fake-session.jsonl`, [
+    { type: 'assistant', requestId: 'r1', timestamp: '2026-10-31T00:00:00Z', effort: 'high', message: { model: 'claude-sonnet-5-5', usage, stop_reason: 'end_turn' } },
+    { type: 'system', subtype: 'compact_boundary' },
+  ].map((r) => JSON.stringify(r)).join('\n') + '\n')
+}
 const reply = (o) => console.log(JSON.stringify({ session_id: 'fake-session', num_turns: 1, total_cost_usd: 0.25, ...o }))
 const solve = () => fs.writeFileSync('add.js', 'export const add = (a, b) => a + b\n')
 
