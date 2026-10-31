@@ -80,7 +80,7 @@ export function v4JudgeCost(sessionId: string | null | undefined) {
   return {
     usd: calls.length ? calls.reduce((a, r) => a + (r.usd?.value || 0), 0) : decisions.reduce((a, r) => a + (r.judge?.usd || 0), 0), calls: calls.length || decisions.filter((r) => r.judge?.called).length,
     verdicts: decisions.map((r) => ({ tier: r.effective?.tier, model: r.effective?.model, effort: r.effective?.effort, owner: r.effective?.owner, risk: r.risk?.effective, review: r.risk?.reviewRequired, strategy: r.strategy?.chosen })),
-    workers: rows.filter((r) => r.kind === 'worker').map((r) => ({ agent: r.agent, status: r.status, tokens: r.tokens })),
+    workers: rows.filter((r) => r.kind === 'worker' || r.kind === 'agent').map((r) => ({ agent: r.agent ?? r.type, status: r.status, tokens: r.tokens })),
     escalations: rows.filter((r) => r.kind === 'escalation').length,
   }
 }

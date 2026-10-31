@@ -563,6 +563,14 @@ test('a grade keeps only the three reference labels', () => {
   assert.equal(parseGrade(reply('hard to say')), null)
 })
 
+test('auto-workflow asks for the agents the way a person does, and only that arm sends the prefix', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'am-arm-'))
+  const prompt = (id: string) => { const { args } = armInvocation(id, dir, 'fix it'); return args[args.indexOf('-p') + 1] }
+  assert.equal(prompt('auto-workflow'), 'am:run fix it')
+  assert.equal(prompt('auto'), 'fix it')
+  fs.rmSync(dir, { recursive: true, force: true })
+})
+
 test('auto-from-opus runs the same router as auto and starts the session on Opus', () => {
   assert.equal(ARMS['auto-from-opus'].model, 'claude-opus-5-5')
   assert.deepEqual(ARMS['auto-from-opus'].plugin, ARMS.auto.plugin)
