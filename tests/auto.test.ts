@@ -701,3 +701,118 @@ describe('A failed effortless judge on a hard first prompt', () => {
     expect(prompts(records(h.writes))[0].auto.fallback).toContain('the AutoMode judge decides')
   })
 })
+
+describe('The person keeps the last word on model and effort', () => {
+  const easy = judge({ tier: 'T1', complexity: 'standard' })
+  const sonnetMedium = perModel({ sonnet: ['sonnet', 'medium'], opus: ['sonnet', 'medium'], haiku: ['sonnet', 'medium'] })
+
+  test('routeModels false keeps an Opus pick from the first prompt on', async ($, on) => {
+    const h = harness(on, auto({ model: 'claude-opus-5-5', config: { activation: 'always', routeModels: false }, judge: easy, effortJudge: perModel({ opus: ['sonnet', 'medium'], sonnet: ['sonnet', 'medium'] }) }))
+    await h.submit($, 'add a flag to the importer')
+    await h.step($, 'claude-opus-5-5')
+    expect(h.steps[0].model).toBe('claude-opus-5-5')
+  })
+
+  test('/effort stands past the next prompt, and am:reset hands it back', async ($, on) => {
+    const h = harness(on, auto({ judge: easy, effortJudge: sonnetMedium }))
+    await h.submit($, 'add a flag to the importer')
+    await h.step($)
+    await h.complete($)
+    await h.submit($, 'add a second flag')
+    await h.step($, 'claude-sonnet-5-5', undefined, { effort: 'max' })
+    expect(h.steps[1].effort).toBe('max')
+    await h.complete($)
+    await h.submit($, 'add a third flag')
+    await h.step($, 'claude-sonnet-5-5', undefined, { effort: 'max' })
+    expect(h.steps[2].effort).toBe('max')
+    await h.complete($)
+    await h.submit($, 'am:reset add a fourth flag')
+    await h.step($, 'claude-sonnet-5-5', undefined, { effort: 'max' })
+    expect(h.steps[3].effort).toBe('medium')
+  })
+
+  test('/model stands against a verdict for a cheaper model', async ($, on) => {
+    const h = harness(on, auto({ judge: easy, effortJudge: sonnetMedium }))
+    await h.submit($, 'add a flag to the importer')
+    await h.step($)
+    await h.complete($)
+    await h.submit($, 'add a second flag')
+    await h.step($, 'claude-opus-5-5')
+    expect(h.steps[1].model).toBe('claude-opus-5-5')
+    await h.complete($)
+    await h.submit($, 'add a third flag')
+    await h.step($, 'claude-opus-5-5')
+    expect(h.steps[2].model).toBe('claude-opus-5-5')
+  })
+
+  test('a route the mod chose itself pins nothing', async ($, on) => {
+    let n = 0
+    const h = harness(on, auto({ judge: () => judge(n++ === 0 ? { tier: 'T3', complexity: 'complex' } : { tier: 'T1', complexity: 'standard', newTask: true }), effortJudge: (p: string) => (n > 1 ? sonnetMedium(p) : perModel({ opus: ['opus', 'high'], sonnet: ['opus', 'high'] })(p)) }))
+    await h.submit($, 'design the cache layer')
+    await h.step($)
+    expect(h.steps[0].model).toBe('claude-opus-5-5')
+    await h.complete($, 'claude-opus-5-5')
+    await h.submit($, 'rename the flag')
+    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2', effort: 'high' })
+    expect(requests(records(h.writes)).length).toBeGreaterThan(0)
+    expect(prompts(records(h.writes)).every((d) => d.owner !== 'user-override')).toBe(true)
+  })
+})
+
+describe('A8: the closing line is the retry', () => {
+  test('a reply with no verdict is asked once more with the closing line, and that verdict counts', async ($, on) => {
+    const seen: string[] = []
+    const effortJudge = (p: string) => { seen.push(p); return p.includes('Reply with the JSON verdict only') ? JSON.stringify({ model: 'sonnet', effort: 'high', sure: 0.9, why: 'x' }) : 'Here is your Slack reply.' }
+    const h = harness(on, auto({ judge: judge({ tier: 'T1', complexity: 'standard' }), effortJudge }))
+    await h.submit($, 'draft the Slack reply')
+    await h.step($)
+    expect(seen.length).toBe(2)
+    expect(seen[0].includes('Reply with the JSON verdict only')).toBe(false)
+    expect(h.steps[0]).toMatchObject({ model: 'claude-sonnet-5-5', effort: 'high' })
+  })
+})
+
+describe('Task risk follows the evidence', () => {
+  test('a failed judge raises the task only until a judge answers', async ($, on) => {
+    let up = true
+    const ok = judge({ tier: 'T1', complexity: 'standard', newTask: false })
+    const h = harness(on, auto({ judge: () => (up ? ok : null as any), effortJudge: perModel({ sonnet: ['sonnet', 'medium'] }) }))
+    const risks = () => prompts(records(h.writes)).map((d) => d.risk?.effective ?? d.envelope?.risk?.effective)
+    await h.submit($, 'add a flag to the importer')
+    await h.step($)
+    await h.complete($)
+    up = false
+    await h.submit($, 'also add a default for it')
+    await h.step($)
+    await h.complete($)
+    up = true
+    await h.submit($, 'and print the flag in the help text')
+    await h.step($)
+    const all = risks()
+    expect(all[1]).toBe('elevated')
+    expect(all[2]).toBe('none')
+  })
+
+  test('a two-word destructive message skips neither the judge nor the risk layers', async ($, on) => {
+    const h = harness(on, auto({ judge: judge({ tier: 'T1', complexity: 'standard' }), effortJudge: perModel({ sonnet: ['sonnet', 'medium'] }) }))
+    await h.submit($, 'clean up the old accounts job')
+    await h.step($)
+    await h.complete($)
+    const before = h.judged.length
+    await h.submit($, 'drop users')
+    await h.step($)
+    expect(h.judged.length).toBeGreaterThan(before)
+  })
+
+  test('moving on is not a correction', async ($, on) => {
+    const h = harness(on, auto({ judge: judge({ tier: 'T1', complexity: 'standard' }), effortJudge: perModel({ sonnet: ['sonnet', 'medium'] }) }))
+    await h.submit($, 'add a flag to the importer')
+    await h.step($)
+    await h.complete($)
+    await h.submit($, 'thanks, now add the docs for it')
+    await h.complete($)
+    const signals = records(h.writes).filter((x) => x.kind === 'signal')
+    expect(signals.length).toBeGreaterThan(0)
+    expect(signals.some((x) => x.next === 'moved-on' && x.underRouting)).toBe(false)
+  })
+})

@@ -8,6 +8,7 @@ import type { Candidate, EffectiveRoute, Effort, Family, Floor, Owner, Route, Ti
 import { tierRank } from './types.ts'
 import type { SwitchInput } from './policy.ts'
 import { switchCheck, tierAtLeast } from './policy.ts'
+import { tierOf } from './optimizer.ts'
 
 export interface Ladder { models: Record<Family, string>; tiers: Record<Tier, { family: Family; effort: Effort }> }
 
@@ -84,5 +85,5 @@ export function resolve(i: AuthorityInput, resetSinceLastRequest = false): Effec
   const keep = i.current ?? target
   const heldAt = i.current && i.heldEffort && check.gate !== 'provider-effort' ? i.heldEffort : keep.effort
   overridden.push({ owner: i.candidate.source === 'judge' ? 'judge' : i.candidate.source, reason: `held by ${check.gate}: ${target.tier}/${target.effort}` })
-  return { ...keep, effort: heldAt, owner: 'cache-policy', reason: `hold (${check.gate})${heldAt !== keep.effort ? `, effort ${heldAt}` : ''}`, floor: i.floor, candidate: i.candidate, check, overridden }
+  return { ...keep, tier: heldAt !== keep.effort ? tierOf(keep.family, heldAt) : keep.tier, effort: heldAt, owner: 'cache-policy', reason: `hold (${check.gate})${heldAt !== keep.effort ? `, effort ${heldAt}` : ''}`, floor: i.floor, candidate: i.candidate, check, overridden }
 }

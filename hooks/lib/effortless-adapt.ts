@@ -15,10 +15,12 @@
 //   A7 The running effort is named as Current only while the cache is warm (within its lifetime). After that the model
 //      is named at Anthropic's default effort, because upstream's "keep the current pair" rule would otherwise keep a
 //      stale effort from a finished task (found in the replay: a question two hours after xhigh work went to xhigh).
-//   A8 One closing line after the message: do not answer it, reply with the verdict only. Upstream ends the input on the
-//      message itself. On real prompts that ask for work ("draft the Slack reply", "fix the query"), Haiku did the work
-//      instead of judging it: 14 of 27 calls returned no verdict (bench/retro-judge.mts, 2026-10-26), and the router
-//      fell back. The line names no model and no effort.
+//   A8 A reply with no verdict is asked once more, with one closing line after the message: do not answer it, reply with
+//      the verdict only. Upstream ends the input on the message itself. On real prompts that ask for work ("draft the
+//      Slack reply", "fix the query"), Haiku did the work instead of judging it: 14 of 27 calls returned no verdict
+//      (bench/retro-judge.mts, 2026-10-26). On every call the line also moved verdicts low: on 165 labeled decisions
+//      (bench/judge-panel.mts, 2026-10-31) it gave 2 too-low answers, and asking without it first gave none. The line
+//      names no model and no effort.
 // Kept from upstream: the call settings (Haiku 5.5, 160 tokens, low effort, 6 s) and the second attempt on the alias.
 // Upstream's skill note ("This is a slash command that runs a skill") is not needed: a slash command is not routed.
 import type { Family } from './types.ts'
@@ -37,6 +39,7 @@ export interface JudgeInputOptions {
   midTurnEffort?: Effort                               // set when the message was typed while a turn ran
   attachments?: readonly { type: string }[]
   planMode?: boolean
+  closing?: boolean                                    // A8: the retry after a reply with no verdict
 }
 
 // judgeInputFor builds the prompt the effortless judge reads for one candidate model.
@@ -44,7 +47,8 @@ export function judgeInputFor(prompt: string, o: JudgeInputOptions): string {
   let text = withAttachments(stripReminders(prompt), o.attachments)
   if (o.midTurnEffort) text = withMidTurn(text, o.midTurnEffort)
   const context = contextFrom(o.messages.map((m) => ({ role: m.role, text: stripReminders(m.text) })))
-  const q = `${judgeQuestion(text, { model: o.family, effort: o.effort }, context)}\n\n${CLOSING_LINE}`
+  const question = judgeQuestion(text, { model: o.family, effort: o.effort }, context)
+  const q = o.closing ? `${question}\n\n${CLOSING_LINE}` : question
   return o.planMode ? `${PLAN_LINE}\n\n${q}` : q
 }
 
