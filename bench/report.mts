@@ -68,8 +68,8 @@ for (const c of cohorts) {
 
 out.push('\n### Non-inferiority check (declared before the runs)\n')
 out.push('Rule: per cohort, an AutoMode arm accepts no fewer runs than the best baseline minus one, and in critical cohorts it accepts no fewer than the best baseline.\n')
-// A baseline is any arm with no plugin. An AutoMode arm is one that runs the V4 router.
-const baseArms = armIds.filter((a) => !ARMS[a].plugin)
+// A baseline is plain Claude Code: no plugin, and no other track's runner or gateway. An AutoMode arm is one that runs the V4 router.
+const baseArms = armIds.filter((a) => !ARMS[a].plugin && !ARMS[a].runner && !ARMS[a].gateway)
 for (const a of armIds.filter((x) => ARMS[x].v4)) {
   const fails = []
   for (const c of cohorts) {
