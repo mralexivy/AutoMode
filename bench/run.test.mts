@@ -339,11 +339,24 @@ test('holm matches a worked example and keeps the input order', () => {
 })
 
 test('the bootstrap resamples repeats within tasks and stays inside its cohorts', () => {
-  const rows = [{ t: 'a', c: 'x', ok: 1 }, { t: 'a', c: 'x', ok: 0 }, { t: 'b', c: 'y', ok: 1 }, { t: 'b', c: 'y', ok: 1 }]
+  const rows = [{ t: 'a', c: 'x', ok: 1 }, { t: 'a', c: 'x', ok: 0 }, { t: 'a2', c: 'x', ok: 1 }, { t: 'a2', c: 'x', ok: 0 }, { t: 'b', c: 'y', ok: 1 }, { t: 'b', c: 'y', ok: 1 }, { t: 'b2', c: 'y', ok: 1 }, { t: 'b2', c: 'y', ok: 1 }]
   const m = (s: typeof rows) => s.reduce((a, r) => a + r.ok, 0) / s.length
   const [lo, hi] = bootstrapCI(rows, (r) => r.t, m, { cohortOf: (r) => r.c })
   assert.equal(hi, 1)
   assert.ok(lo >= 0.5, 'stratification keeps the all-solved cohort in every draw')
+})
+
+test('a cohort of one task still adds spread: lone tasks share one pool, so an interval never collapses to a point', () => {
+  const rows = [{ t: 'a', c: 'x', v: 0.1 }, { t: 'b', c: 'y', v: 0.5 }, { t: 'c', c: 'z', v: 1.7 }]
+  const m = (s: typeof rows) => s.reduce((a, r) => a + r.v, 0) / s.length
+  const [lo, hi] = bootstrapCI(rows, (r) => r.t, m, { cohortOf: (r) => r.c })
+  assert.ok(lo < hi, 'one task per cohort must not read as perfect certainty')
+  const a = rows, b = rows.map((r) => ({ ...r, v: r.v * 2 }))
+  const d = pairedDelta(a, b, (r) => r.t, m, { cohortOf: (r) => r.c })
+  assert.ok(d.ci[0] < d.ci[1])
+  const partial = pairedDelta([...a, { t: 'd', c: 'x', v: 9 }], b, (r) => r.t, m, { cohortOf: (r) => r.c })
+  assert.equal(partial.tasks, 3, 'a task only one arm ran leaves the comparison, and its cohort drops to one task')
+  assert.ok(partial.ci[0] < partial.ci[1])
 })
 
 test('pairedDelta compares only shared tasks and keeps a task pair together', () => {
