@@ -18,8 +18,10 @@ const files = named.length ? named
   : fs.readdirSync(path.join(REPO, 'bench', 'results')).filter((f) => f.endsWith('.jsonl') && f !== 'ledger.jsonl' && !/\.(grades|disputes)\.jsonl$/.test(f)).map((f) => path.join(REPO, 'bench', 'results', f))
 const rows: any[] = files.flatMap((f) => fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l))).filter((r) => r.run_id)
 // A run that saw the user's auto-memory is contaminated and excluded from every number.
-const contaminated = rows.filter((r) => isResult(r) && r.memory_refs > 0)
-const valid = rows.filter((r) => isResult(r) && !(r.memory_refs > 0))
+// So is one whose transcript shows the reference commit or the harness's repository cache.
+const tainted = (r: any) => r.memory_refs > 0 || r.leak_refs > 0
+const contaminated = rows.filter((r) => isResult(r) && tainted(r))
+const valid = rows.filter((r) => isResult(r) && !tainted(r))
 const notRun = rows.filter((r) => !isDone(r))
 const CRITICAL_COHORTS = ['security', 'migration']
 
@@ -45,7 +47,7 @@ const ci = ([lo, hi]: [number | null, number | null], f: (x: number) => string) 
 const armIds = Object.keys(ARMS).filter((a) => valid.some((r) => r.arm === a))
 const cohorts = [...new Set(valid.map((r) => r.cohort))].sort()
 const out = []
-out.push(`Runs: ${rows.length} rows, ${valid.length} valid, ${rows.filter((r) => r.harness_error).length} harness errors, ${contaminated.length} excluded for memory contamination, ${notRun.length} stopped by a usage limit or setup, ${valid.filter((r) => r.cost_usd_api_equiv == null).length} with no reported cost. Tasks: ${[...new Set(valid.map((r) => r.task_id))].length}. Cohorts: ${cohorts.join(', ')}.`)
+out.push(`Runs: ${rows.length} rows, ${valid.length} valid, ${rows.filter((r) => r.harness_error).length} harness errors, ${contaminated.length} excluded for contamination, ${notRun.length} stopped by a usage limit or setup, ${valid.filter((r) => r.cost_usd_api_equiv == null).length} with no reported cost. Tasks: ${[...new Set(valid.map((r) => r.task_id))].length}. Cohorts: ${cohorts.join(', ')}.`)
 out.push('All USD values are API list-price equivalents from the CLI, not subscription charges. Intervals are bootstrap 95% CIs that resample tasks, then repeats, stratified by cohort (2,000 resamples, seed 42).\n')
 
 out.push('### By arm\n')

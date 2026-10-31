@@ -460,3 +460,29 @@ test('report: quality scores are secondary and leave out disputed runs', () => {
   assert.equal(r.status, 0, r.stderr)
   assert.match(r.stdout, /\| AutoMode Auto: model and effort routing \| 2 \| 1 \| 4\.00 \|/)
 })
+
+test('the agent cannot reach the reference commit, its message, or the hidden tests through git', async () => {
+  const probe = path.join(ROOT, 'probe.json')
+  process.env.FAKE_CLAUDE_PROBE = probe
+  process.env.FAKE_CLAUDE_REFERENCE = task.reference
+  const { row } = await run('solve')
+  delete process.env.FAKE_CLAUDE_PROBE
+  delete process.env.FAKE_CLAUDE_REFERENCE
+  const seen = JSON.parse(fs.readFileSync(probe, 'utf8'))
+  assert.equal(seen.reference, null)
+  assert.equal(seen.remotes, '')
+  assert.equal(seen.log, 'base')
+  assert.equal(seen.files, 'README.md')
+  assert.equal(row.accepted, true, 'the hidden test still runs after the agent ends')
+  assert.equal(row.commits_made, 0)
+})
+
+test('a transcript that shows the reference commit taints the row, and the report leaves it out', async () => {
+  process.env.FAKE_CLAUDE_LEAK = `git show ${task.reference}`
+  const { row } = await run('solve')
+  delete process.env.FAKE_CLAUDE_LEAK
+  assert.equal(row.leak_refs, 1)
+  const file = path.join(ROOT, 'tainted.jsonl')
+  fs.writeFileSync(file, JSON.stringify({ run_id: 'a', task_id: 't', cohort: 'feature', arm: 'auto', accepted: true, leak_refs: 1 }))
+  assert.match(spawnSync(process.execPath, ['bench/report.mts', file], { encoding: 'utf8' }).stdout, /0 valid.*1 excluded for contamination/)
+})

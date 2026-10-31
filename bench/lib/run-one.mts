@@ -98,6 +98,31 @@ export function agentChange(wt: string, base: string, hiddenTests: string[]) {
   }
 }
 
+// prepareWorkspace writes the tree at `base` into a new repository with one commit. A clone would carry the reference
+// commit and the hidden tests in its object store, where `git log --all` finds them. Agents get no project history.
+export function prepareWorkspace(cache: string, base: string, wt: string) {
+  fs.mkdirSync(wt, { recursive: true })
+  const tree = execFileSync('git', ['archive', '--format=tar', base], { cwd: cache, maxBuffer: 1e10 })
+  execFileSync('tar', ['-xf', '-'], { cwd: wt, input: tree, maxBuffer: 1e9 })
+  git(['init', '-q'], wt)
+  git(['add', '-A', '-f'], wt)
+  git(['-c', 'user.name=bench', '-c', 'user.email=bench@example.com', 'commit', '-q', '--allow-empty', '-m', 'base'], wt)
+  return git(['rev-parse', 'HEAD'], wt).trim()
+}
+
+// leakRefs counts signs that the agent reached outside its workspace for the answer: the reference commit's id or the
+// harness's own repository cache in its transcripts. A row with a hit is left out of the report.
+export function leakRefs(sessionId: string | null | undefined, task: Task) {
+  const found = sessionFiles(sessionId)
+  if (!found) return null
+  let hits = 0
+  for (const file of found.files) {
+    const text = fs.readFileSync(file, 'utf8')
+    hits += text.split(task.reference).length - 1 + text.split('bench/.cache/repos').length - 1
+  }
+  return hits
+}
+
 export async function oneRun(task: Task, armId: string, rep: number, ctx: RunContext) {
   const template = loadTemplate(ctx.template ?? task.prompt_template ?? 'repo-change-v1')
   const { runId, hash } = runIdFor(task, armId, rep, template)
@@ -118,8 +143,7 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
   fs.mkdirSync(dir, { recursive: true })
   const wt = path.join(dir, 'wt')
   const cache = (ctx.repoFor ?? taskRepo)(task)
-  git(['clone', '-q', '--no-checkout', cache, wt])
-  git(['checkout', '-q', '--detach', task.base], wt)
+  const workspaceBase = prepareWorkspace(cache, task.base, wt)
   try {
     if (task.setup) {
       const setup = spawnSync('sh', ['-c', task.setup], { cwd: wt, encoding: 'utf8', timeout: SETUP_MS })
@@ -138,7 +162,7 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
     }
     if (exit_reason === 'quota') return { ...agentHead, at: new Date().toISOString() }
 
-    const change = agentChange(wt, task.base, task.hidden_tests)
+    const change = agentChange(wt, workspaceBase, task.hidden_tests)
     const diffDir = path.join(path.dirname(ctx.out), 'diffs')
     fs.mkdirSync(diffDir, { recursive: true })
     fs.writeFileSync(path.join(diffDir, `${runId}.diff`), change.diff)
@@ -152,7 +176,7 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
     const typecheck_ok = check(task.typecheck)
     const regression_ok = check(task.regression)
     const acc = spawnSync('sh', ['-c', task.accept], { cwd: wt, encoding: 'utf8', timeout: SETUP_MS })
-    const commits = Number(git(['rev-list', '--count', `${task.base}..HEAD`], wt).trim())
+    const commits = Number(git(['rev-list', '--count', `${workspaceBase}..HEAD`], wt).trim())
     return {
       ...agentHead,
       // A test command that never returned gave no verdict, so the row is an error and not a rejection.
@@ -164,6 +188,7 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
       lint_clean: lint ? lint.status === 0 : null, typecheck_ok, regression_ok, files_touched: change.files, commits_made: commits,
       trace: usageTrace(res.sessionId)?.trace ?? null,
       memory_refs: memoryRefs(res.sessionId),
+      leak_refs: leakRefs(res.sessionId, task),
       judge: ARMS[armId].v4 ? v4JudgeCost(res.sessionId) : judgeCost(dir),
       latency: { total_ms: elapsed(), setup_ms: setupDone, agent_ms: agentDone - setupDone, model_ms: res.modelMs, tool_ms: res.modelMs === null ? null : Math.max(0, agentDone - setupDone - res.modelMs), test_ms: elapsed() - agentDone },
       stderr_tail: res.stderrTail, at: new Date().toISOString(),
