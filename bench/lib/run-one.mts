@@ -95,7 +95,8 @@ export function agentChange(wt: string, base: string, hiddenTests: string[]) {
   const untracked = lines(git(['ls-files', '--others', '--exclude-standard'], wt))
   return {
     diff: git(['diff', base], wt) + untracked.map((f) => `\n--- new file: ${f}\n${fs.readFileSync(path.join(wt, f), 'utf8').slice(0, 20000)}`).join(''),
-    shortstat: git(['diff', '--shortstat', base, '--', '.', ...hiddenTests.map((t) => `:!${t}`)], wt).trim(),
+    // Staged for a moment, so that new files count too.
+    shortstat: (() => { git(['add', '-A'], wt); const stat = git(['diff', '--cached', '--shortstat', base, '--', '.', ...hiddenTests.map((t) => `:!${t}`)], wt).trim(); git(['reset', '-q'], wt); return stat })(),
     // A patch that applies, for a harness that scores the change elsewhere. Staging is undone, so nothing else sees it.
     patch: () => { git(['add', '-A'], wt); const p = git(['diff', '--cached', '--binary', base], wt); git(['reset', '-q'], wt); return p },
     files: new Set([...lines(git(['diff', '--name-only', base], wt)), ...untracked]).size,

@@ -73,6 +73,7 @@ test('a solved task passes the hidden tests, and the grader sees the agent test 
   assert.match(diff, /AGENT TEST/)
   assert.doesNotMatch(diff, new RegExp(HIDDEN_MARK))
   assert.equal(row.files_touched, 2)
+  assert.match(row.diff_shortstat, /1 file changed/, 'a new file counts, and the hidden test path does not')
 })
 
 test('work the agent committed reaches the grader', async () => {
