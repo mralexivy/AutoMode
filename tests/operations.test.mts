@@ -25,7 +25,7 @@ const SAFE = [
   'git push', 'git push origin main', 'git push -u origin feature/force', 'git log --force', 'git status', 'terraform plan', 'terraform validate', 'terraform fmt', 'kubectl get pods', 'kubectl describe pod x', 'kubectl logs api', 'helm list', 'helm template x',
   'psql -c "SELECT 1"', 'psql -c "DELETE FROM users WHERE id = 1"', 'psql -c "UPDATE users SET a = 1 WHERE id = 1"', 'aws s3 ls', 'aws s3 cp a s3://b', 'gcloud config list', 'rm -rf node_modules', 'rm -rf build dist', 'rm -f a.txt', 'docker ps', 'npm test', 'npm pack', 'go test ./...', 'alembic upgrade head', 'rails db:migrate',
   'git commit -m "Fix kubectl delete handling"', 'gh pr create --title "terraform apply wrapper"', 'git commit -m "git push --force is gone"', 'cat > a.sql <<EOF\nDROP TABLE users;\nEOF', "cat > run.sh <<'X'\nkubectl delete pod y\nX", 'echo "DROP TABLE users"', 'sed -i "s/kubectl delete/x/" a.sh',
-  'rm -rf /Users/me/proj/node_modules', 'rm -rf ~/.cache/foo', 'rm -rf *.log', 'rm -rf /etc/nginx', 'rm -f /', 'rm -rf "$HOME/.cache"',
+  'rm -rf /Users/you/proj/node_modules', 'rm -rf ~/.cache/foo', 'rm -rf *.log', 'rm -rf /etc/nginx', 'rm -f /', 'rm -rf "$HOME/.cache"',
   'grep "DROP TABLE" schema.sql', 'rg "terraform apply" docs', 'echo "git push --force"', 'cat drop_table.sql', 'git log --grep "force push"', 'git diff --stat', 'less kubectl-delete.md',
 ]
 
