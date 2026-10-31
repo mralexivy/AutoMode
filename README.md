@@ -272,9 +272,9 @@ What it does not show:
 
 ## Benchmarks
 
-The harness is in [`bench/`](bench/). A task names a public repository, a pinned base commit and a pinned reference commit, plus hidden tests and a test command. The runner lets an agent try the task, then runs the hidden tests and reports cost, tokens, turns and time. A blind grader scores the change against the reference.
+The harness is in [`bench/`](bench/), with [its guide](bench/README.md). A task names a public repository, a pinned base commit and a pinned reference commit, plus hidden tests and a test command. The runner lets an agent try the task, then runs the hidden tests and reports cost, tokens, turns and time. A blind panel scores the change against the reference.
 
-**Honest status: v0.1.0 ships the harness and no tasks.** `bench/tasks/` is empty, so `node bench/run.mts` has nothing to run yet. We will not quote a saving until a public run, with at least three repeats per arm, produces one. What works today:
+**Honest status: AutoMode has no published end-to-end result yet.** We will not quote a saving until a public run, with at least three repeats per arm, produces one. What works today:
 
 - `node bench/style-check.mts`: the output style check, with [its results](#the-concise-output-style).
 - `node bench/judge-bench-effortless.mts`: how often the judge picks a sensible effort, on [labeled cases](bench/judge-cases.json). With no flags it is a dry run and spends nothing. [One run](bench/results/judge-bench-effortless-2026-10-30.json) got 74 of 75 cases right, and 20 of 20 held-out cases. Always medium got 34 of 75. This measures the effort label only, not cost or task quality. The cases are the effortless author's, and many accept two efforts, which raises every score.

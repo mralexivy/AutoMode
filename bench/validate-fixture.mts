@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// validate-fixture.mts <task-id ...> [--scratch dir]
+// validate-fixture.mts <task-id ...> [--scratch dir] [--offline]
 // A task is a valid benchmark fixture when its hidden tests fail at the base commit and pass at the reference commit,
 // run with the task's own `accept` command. Those tests become the hidden acceptance tests. No model call, no spend.
 // It also checks the task file itself (bench/lib/task-repo.mts `problems`). Network: it clones the task's public repository.
@@ -42,6 +42,18 @@ export function validate(task: Task) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  // --offline checks the task files only, with no clone and no test run, so CI can run it on every pull request.
+  if (argv.includes('--offline')) {
+    const seen = new Set<string>()
+    let bad = 0
+    for (const t of loadTasks()) {
+      const faults = [...problems(t), ...(seen.has(t.id) ? [`duplicate id ${t.id}`] : [])]
+      seen.add(t.id)
+      if (faults.length) { bad++; console.log(`${t.id ?? '?'}: ${faults.join('; ')}`) }
+    }
+    console.log(`${seen.size} task files checked.`)
+    process.exit(bad ? 1 : 0)
+  }
   const tasks = loadTasks().filter((t) => !wanted.length || wanted.includes(t.id))
   if (!tasks.length) { console.log('No tasks found in bench/tasks. See bench/tasks/README.md to add one.'); process.exit(0) }
   let invalid = 0

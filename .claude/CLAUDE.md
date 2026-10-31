@@ -67,6 +67,8 @@ Effort can change per prompt while the model holds, because an effort change kee
 - **The `directory` branch.** The Anthropic directory reads `$` only within one file, so `tools/release.mts directory` publishes the shipped files with `hooks/` bundled into one module. Pure `lib/` files stay separate. Never name a local variable `on` or `next` in `hooks/`. The portal's Validate button accepts `owner/repo@branch`, so try a change there first.
 - **`lib/effortless.ts` is a verbatim port.** `tests/effortless-fidelity.test.mts` fails if its code differs from the vendored source. Put changes in `lib/effortless-adapt.ts`, each with its reason and a test.
 - **`tests/golden/decisions.json`** pins optimizer and switch-check behavior. When a change to the assumptions moves a case, update that case on purpose.
+- **Benchmark tracks stay apart.** The AutoMode study uses `claude -p`, the neutral track uses `bench/runners/neutral-agent.mts`, and a report never compares across them. Never weaken a rule in `bench/README.md` under "What keeps a run honest". Safety tasks run only on a sandboxed runner.
+- **`npm test` globs one level.** It runs `bench/*.test.mts`, so a test in a `bench/` subfolder does not run.
 - **`workflows/run.js` has a top-level `return`.** `tests/workflow.test.mts` wraps it in an `AsyncFunction` with mocked globals. Keep it as JavaScript.
 
 ## Repository rules
@@ -74,6 +76,6 @@ Effort can change per prompt while the model holds, because an effort change kee
 - Follow the `ship-change` skill for every change: issue, branch, pull request. Nothing writes to `main` directly.
 - Do not change `version` in `.claude-plugin/plugin.json`. The release PR raises it, and also updates the README. Add a line under `[Unreleased]` in `CHANGELOG.md` when you change a shipped path.
 - CI rejects personal absolute paths anywhere in the repository, and a `"text":` field in `bench/results/*.json`. Never save model reply text or real session transcripts.
-- Do not claim a cost saving without a repeatable benchmark run. `bench/tasks/` holds no tasks yet.
+- Do not claim a cost saving without a repeatable benchmark run. Under 30 tasks, a run is a pilot. See `bench/README.md`.
 - Add or update a test with every behavior change. Keep one topic per pull request.
 - Write comments and docs in short sentences, in active voice, with one idea per sentence.

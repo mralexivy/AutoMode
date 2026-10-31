@@ -486,3 +486,17 @@ test('a transcript that shows the reference commit taints the row, and the repor
   fs.writeFileSync(file, JSON.stringify({ run_id: 'a', task_id: 't', cohort: 'feature', arm: 'auto', accepted: true, leak_refs: 1 }))
   assert.match(spawnSync(process.execPath, ['bench/report.mts', file], { encoding: 'utf8' }).stdout, /0 valid.*1 excluded for contamination/)
 })
+
+test('the offline task check runs with no network, and a manifest check fails on a changed file', () => {
+  const r = spawnSync(process.execPath, ['bench/validate-fixture.mts', '--offline'], { encoding: 'utf8' })
+  assert.equal(r.status, 0, r.stdout)
+  assert.match(r.stdout, /task files checked/)
+  const dir = fs.mkdtempSync(path.join(ROOT, 'verify-'))
+  const file = path.join(dir, 'r.jsonl')
+  fs.writeFileSync(file, '{}\n')
+  const manifest = path.join(dir, 'm.json')
+  fs.writeFileSync(manifest, JSON.stringify(buildManifest([file])))
+  assert.equal(spawnSync(process.execPath, ['bench/verify-manifest.mts', manifest]).status, 0)
+  fs.writeFileSync(file, '{"changed":true}\n')
+  assert.equal(spawnSync(process.execPath, ['bench/verify-manifest.mts', manifest]).status, 1)
+})

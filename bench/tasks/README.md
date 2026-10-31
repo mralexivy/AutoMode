@@ -1,6 +1,6 @@
 # Benchmark tasks
 
-A task is one JSON file in this folder. The runner (`node bench/run.mts`), the grader (`bench/grade.mts`) and the fixture check (`node bench/validate-fixture.mts`) read every `*.json` file here.
+A task is one JSON file in this folder. See [`bench/README.md`](../README.md) for how the benchmark works. The runner (`node bench/run.mts`), the grader (`bench/grade.mts`) and the fixture check (`node bench/validate-fixture.mts`) read every `*.json` file here.
 
 **This folder has no tasks yet.** Adding the first six is the most useful contribution to AutoMode. Without them, we cannot publish a result.
 
@@ -29,7 +29,9 @@ A task is one JSON file in this folder. The runner (`node bench/run.mts`), the g
 | `base`, `reference` | Full 40-character SHAs. `reference` must be a descendant of `base`. |
 | `hidden_tests` | Test files that the reference commit adds or changes. The runner copies them from `reference` after the agent finishes. |
 | `accept` | Must fail with the hidden tests at `base` and pass at `reference`. |
-| `cohort` | One of the six. A good set has one task per cohort. |
+| `cohort` | One of the six. Aim for at least two tasks per cohort. |
+
+The harness also reads schema 2, which nests the commands under `evaluation` and adds `regression`, `typecheck`, `limits` and `requirements`. The model never sees those fields, including `risk_tags`. See `normalizeTask` in `bench/lib/task-repo.mts`.
 
 ## What makes a good task
 

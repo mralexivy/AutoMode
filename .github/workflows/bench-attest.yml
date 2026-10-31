@@ -1,0 +1,35 @@
+name: bench-attest
+
+# Signs a result manifest that is already on this branch, so a published number can be tied to its exact files.
+# It runs by hand only. Live benchmark runs stay out of CI: they spend money or usage, and they need no repository secret.
+on:
+  workflow_dispatch:
+    inputs:
+      manifest:
+        description: Path of a result manifest, such as bench/results/run.manifest.json
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  attest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Check the manifest against its files
+        env:
+          MANIFEST: ${{ inputs.manifest }}
+        run: node bench/verify-manifest.mts "$MANIFEST"
+      - name: Attest the manifest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ inputs.manifest }}
