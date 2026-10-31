@@ -1,31 +1,34 @@
 // AutoMode Auto (policy `auto`): one joint model x effort decision.
 //
-// Evidence, and only this evidence, decides which (model, effort) pairs are eligible:
-//   effortless judge  (lib/effortless.ts, verbatim). Its prompt asks for "the cheapest pair that will still do the
-//                     job well", relative to the model named as Current. So each answer says two things: the cheapest
-//                     model that does the job (its `model`), and the effort the asked-about model needs (its `effort`).
-//                     An effort is used only for the model it was asked about: no conversion between models.
-//   AutoMode judge   (lib/classify.ts, contract v2). Its tiers name models: T0 Haiku, T1-T2 Sonnet, T3-T4 Opus. It also
-//                     gives complexity, risk and consequence (the quality floors).
+// The task decides the route, not the model the session started on.
 //
-// Eligibility rules (explicit, no numbers, no success rates):
-//   Opus    always eligible when available: the strongest model.
-//   Sonnet  eligible when effortless puts the cheapest adequate model at Sonnet or below AND either the AutoMode
-//           judge names Sonnet or below (T0-T2), or the judges disagree on T3 and the Sonnet effort verdict is high or
-//           above and the consequence is not critical. That disagreement case is how a T3 task stays on Sonnet: one
-//           judge's model name never forces Opus, but Sonnet at a low effort never takes Opus-tier work.
-//   Haiku   eligible only when BOTH judges name Haiku (effortless model haiku AND AutoMode T0). An effort verdict for
-//           Haiku alone never makes Haiku eligible.
-// Among the eligible pairs whose effort is known, the cheapest attempt wins; resolve() then decides hold or switch
-// with the real cache economics. Nothing eligible: the strongest available model, labeled inadequate.
-// Hard work never runs Opus below high: T4 (a focused attempt failed) or a Fable verdict, which Opus must carry since
-// the router has no Fable route. A verdict's effort for Fable-level work is understated for Opus (the judge prompt
-// asks for lower effort on Fable). An explicit user effort still wins.
+// Evidence, and only this evidence, decides the route:
+//   need             One effortless answer with a fixed anchor: Current: sonnet (A9 in lib/effortless-adapt.ts). It is
+//                    the only answer whose `model` counts. Effortless asks for "the cheapest pair that will still do the
+//                    job well" relative to Current, so an answer about the running model moves with the start model.
+//   own verdict      An effortless answer about one model gives that model's effort and nothing else. A verdict is used
+//                    only for the model it was asked about: no conversion between models.
+//   AutoMode judge   (lib/classify.ts, contract v2) gives difficulty (tier), complexity, risk and consequence.
+//
+// Eligibility rules (explicit, no numbers, no success rates). They read `need`, the tier and the consequence:
+//   Opus required   T4, a Fable verdict, T3 plus critical, or T3 plus need=opus. An escalation floor also requires it, by
+//                   excluding the models that cannot reach its step (AutoFloors.exclude).
+//   Haiku           Both judges must name it: need=haiku and T0. An effort verdict alone never makes Haiku eligible.
+//   Sonnet          Everything else. One judge's model name never forces Opus: T1 with need=opus runs on Sonnet.
+//   Opus            Always eligible, so a running Opus can hold. It runs only when no weaker model is eligible.
+// The effort comes from the chosen model's own verdict, within its floors. Price is only a tie-break: it decides between
+// Haiku and Sonnet when both are eligible, and never brings Opus in. resolve() then decides hold or switch with the real
+// cache economics. Nothing eligible: the strongest available model, labeled inadequate.
+// A failed AutoMode judge leaves T3 unknown, so need=opus still rules out the weaker models there.
+// Hard work never runs Opus below high: T4 or a Fable verdict, which Opus must carry since the router has no Fable route.
+// A verdict's effort for Fable-level work is understated for Opus (the judge prompt asks for lower effort on Fable). An
+// explicit user effort still wins.
 // Pure: no `$`, no I/O.
 import type { Complexity, Effort, Family, Risk, Tier } from './types.ts'
 import { EFFORTS, tierRank } from './types.ts'
 import { bounded, type ModelKey } from './effortless.ts'
 import { BAND_OF, TIER_BAND } from './bands.ts'
+import { NEED_ANCHOR } from './effortless-adapt.ts'
 
 export interface FamilyVerdict { model: ModelKey; effort: Effort; why: string; sure?: number }
 export type Eligibility = 'eligible' | 'ineligible' | 'unavailable' | 'needs-verdict'
@@ -50,6 +53,7 @@ export interface AutoFloors {
 export interface AutoInput {
   allowed: Family[]                                        // after provider constraints (breakers, Haiku guards)
   verdicts: Partial<Record<Family, FamilyVerdict | null>>  // the effortless answer asked ABOUT each model; null: failed
+  need: FamilyVerdict | null                               // the fixed-anchor answer; null: it failed
   hm: { tier: Tier; complexity: Complexity } | null        // null: the AutoMode judge failed
   consequence?: Risk
   floors: AutoFloors
@@ -63,41 +67,51 @@ const at = (e: Effort) => EFFORTS.indexOf(e)
 export const maxEffort = (a: Effort, b: Effort): Effort => (at(a) >= at(b) ? a : b)
 export const hmModel = (t: Tier): Family => (t === 'T0' ? 'haiku' : t === 'T1' || t === 'T2' ? 'sonnet' : 'opus')
 
-// effortlessFloor: the cheapest model any effortless answer named (each answer names the cheapest adequate model).
-// Several answers (asked about different models) can differ: the most demanding one counts.
-export function effortlessFloor(verdicts: AutoInput['verdicts']): number | null {
-  const picks = Object.values(verdicts).filter((v): v is FamilyVerdict => !!v).map((v) => RANK[v.model])
-  return picks.length ? Math.max(...picks) : null
-}
+// effortlessFloor: the rank of the model the need names. No other effortless answer counts.
+export const effortlessFloor = (need: FamilyVerdict | null): number | null => (need ? RANK[need.model] : null)
 
 // effortMinFor: the quality floor for one model, with the hard-work floor for Opus on top of the caller's floors.
-function effortMinFor(family: Family, i: Pick<AutoInput, 'verdicts' | 'hm' | 'floors'>): Effort | undefined {
+function effortMinFor(family: Family, i: Pick<AutoInput, 'need' | 'hm' | 'floors'>): Effort | undefined {
   const floor = i.floors.effortMin?.[family]
-  const hard = i.hm?.tier === 'T4' || effortlessFloor(i.verdicts) === RANK.fable
+  const hard = i.hm?.tier === 'T4' || effortlessFloor(i.need) === RANK.fable
   return family === 'opus' && hard ? maxEffort(floor ?? 'low', 'high') : floor
 }
 
-// eligibilityOf applies the rules above to one model. `effort` is that model's own verdict effort, when known.
-export function eligibilityOf(family: Family, i: Pick<AutoInput, 'verdicts' | 'hm' | 'consequence'>): { eligibility: Eligibility; why: string[] } {
-  const floor = effortlessFloor(i.verdicts)
-  const own = i.verdicts[family]
-  const why: string[] = []
-  if (floor === null) return { eligibility: 'needs-verdict', why: ['no effortless answer yet'] }
-  why.push(`effortless: cheapest adequate model ${Object.keys(RANK).find((k) => RANK[k as ModelKey] === floor)}`)
+type Evidence = Pick<AutoInput, 'need' | 'hm' | 'consequence'>
+
+// opusRequired: why this task rules out every weaker model, or null.
+function opusRequired(i: Evidence): string | null {
+  const tier = i.hm?.tier
+  if (tier === 'T4') return 'T4: a focused attempt already failed'
+  if (i.need?.model === 'fable') return 'a fable verdict: opus carries it'
+  if (tier === 'T3' && i.consequence === 'critical') return 'T3 on critical work'
+  if (tier === 'T3' && i.need?.model === 'opus') return 'T3 and the need names opus'
+  if (!i.hm && i.need?.model === 'opus') return 'the need names opus and the automode judge did not answer'
+  return null
+}
+
+// eligibilityOf applies the rules above to one model. It never reads an own verdict, so the verdicts a session happens
+// to hold cannot change the answer.
+export function eligibilityOf(family: Family, i: Evidence): { eligibility: Eligibility; why: string[] } {
+  if (!i.need) {
+    const missing = family === 'opus' ? null : opusRequired(i)
+    return missing ? { eligibility: 'ineligible', why: ['no effortless answer yet', missing] } : { eligibility: 'needs-verdict', why: ['no effortless answer yet'] }
+  }
+  const why = [`effortless: the need names ${i.need.model}`]
   if (i.hm) why.push(`automode: ${i.hm.tier} (${hmModel(i.hm.tier)})`)
   if (family === 'opus') return { eligibility: 'eligible', why: [...why, 'opus: the strongest model'] }
-  if (RANK[family] < floor) return { eligibility: 'ineligible', why: [...why, `effortless says ${family} is too weak`] }
-  if (!i.hm) return { eligibility: family === 'haiku' ? 'ineligible' : 'eligible', why: [...why, family === 'haiku' ? 'haiku needs both judges; the automode judge did not answer' : 'automode judge did not answer'] }
-  const hmF = hmModel(i.hm.tier)
-  if (family === 'haiku') return hmF === 'haiku' ? { eligibility: 'eligible', why: [...why, 'both judges name haiku'] } : { eligibility: 'ineligible', why: [...why, 'haiku needs both judges'] }
-  // sonnet
-  if (hmF !== 'opus') return { eligibility: 'eligible', why: [...why, 'both judges allow sonnet'] }
-  if (i.hm.tier === 'T4') return { eligibility: 'ineligible', why: [...why, 'T4: a focused attempt already failed'] }
-  if (i.consequence === 'critical') return { eligibility: 'ineligible', why: [...why, 'judges disagree on a critical task: the stronger model'] }
-  if (!own) return { eligibility: 'needs-verdict', why: [...why, 'judges disagree on T3: sonnet needs its own effort verdict'] }
-  return at(own.effort) >= at('high')
-    ? { eligibility: 'eligible', why: [...why, `judges disagree on T3: sonnet at ${own.effort} (high or above) is eligible`] }
-    : { eligibility: 'ineligible', why: [...why, `judges disagree on T3: sonnet at ${own.effort} is below high`] }
+  const required = opusRequired(i)
+  if (required) return { eligibility: 'ineligible', why: [...why, required] }
+  if (family === 'sonnet') return { eligibility: 'eligible', why: [...why, 'sonnet: no rule requires opus'] }
+  if (!i.hm) return { eligibility: 'ineligible', why: [...why, 'haiku needs both judges; the automode judge did not answer'] }
+  return i.need.model === 'haiku' && i.hm.tier === 'T0' ? { eligibility: 'eligible', why: [...why, 'both judges name haiku'] } : { eligibility: 'ineligible', why: [...why, 'haiku needs both judges'] }
+}
+
+// firstCalls: the effortless calls that run beside the AutoMode judge. The first one gives the need. The running model
+// is also asked when it differs, so a hold has its own effort. A fixed model needs only its own verdict.
+export function firstCalls(fixedFamily: Family | undefined, running: Family | undefined): Family[] {
+  if (fixedFamily) return [fixedFamily]
+  return running && running !== NEED_ANCHOR ? [NEED_ANCHOR, running] : [NEED_ANCHOR]
 }
 
 // secondCall: the one model a second effortless call should be asked about, or null. Asked only when that model
@@ -117,7 +131,23 @@ export function secondCall(i: AutoInput, anchor: Family): Family | null {
   return null
 }
 
-// optimizeAuto: among eligible models with a known effort, the cheapest attempt. No retry charge, no score.
+// runningRuledOut: must the session leave its running model now? A provider limit, a quality floor and an escalation
+// say so. T4 counts as escalation evidence, because a focused attempt already failed. Haiku out of its rule means real
+// work on Haiku. Any other upgrade from the judges goes through the normal gate in the switch check.
+export function runningRuledOut(family: Family | undefined, choice: AutoChoice, floors: AutoFloors, hm: AutoInput['hm']): boolean {
+  const own = family ? choice.candidates.find((c) => c.family === family) : undefined
+  if (!own) return false
+  if (own.eligibility === 'unavailable') return true
+  return own.eligibility === 'ineligible' && (!!floors.exclude?.[own.family] || hm?.tier === 'T4' || own.family === 'haiku')
+}
+
+// ownEffort: the effort a hold runs the running model at, when the optimizer worked one out. It holds the same rules as
+// any other route (floors, T3 and T4 never at low), also for a model the rules rule out.
+export function ownEffort(own: AutoCandidate | undefined): Effort | undefined {
+  return own && (own.verdictEffort || (own.eligibility === 'eligible' && Number.isFinite(own.attemptUsd))) ? own.effort : undefined
+}
+
+// optimizeAuto: the weakest model the rules allow, at its own effort. No retry charge, no score.
 export function optimizeAuto(i: AutoInput): AutoChoice {
   const families = i.floors.fixedFamily ? [i.floors.fixedFamily] : FAMILIES
   const candidates: AutoCandidate[] = families.map((family) => {
@@ -139,18 +169,23 @@ export function optimizeAuto(i: AutoInput): AutoChoice {
     return { family, effort, ...(v ? { verdictEffort: v.effort } : {}), eligibility: e.eligibility, why: notes, attemptUsd: e.eligibility === 'eligible' ? i.cost(family, effort) : Infinity }
   })
   const usable = candidates.filter((c) => c.eligibility === 'eligible' && Number.isFinite(c.attemptUsd))
-  // Cost first; on a tie the running model (its cache), then the lower effort.
+  // Opus runs only when no weaker model can. Between Haiku and Sonnet the price breaks the tie; on a tie of price the
+  // running model (its cache), then the lower effort.
+  const weaker = usable.filter((c) => c.family !== 'opus')
+  const field = weaker.length ? weaker : usable
   const order = (a: AutoCandidate, b: AutoCandidate) => a.attemptUsd - b.attemptUsd || Number(b.family === i.current?.family) - Number(a.family === i.current?.family) || at(a.effort) - at(b.effort)
-  if (usable.length) return { best: usable.sort(order)[0], candidates, inadequate: false, rule: usable.length > 1 ? 'cheapest eligible pair' : 'the only eligible pair' }
+  if (field.length) return { best: field.sort(order)[0], candidates, inadequate: false, rule: field.length > 1 ? 'cheapest eligible pair' : 'the weakest eligible model' }
   // Nothing eligible with a known effort: the strongest available model, labeled inadequate when it was not eligible.
+  // With no need there is no evidence for Opus: Sonnet runs, unless a rule rules it out.
   const pool = candidates.filter((c) => c.eligibility !== 'unavailable')
-  const strongest = (pool.length ? pool : candidates).slice().sort((a, b) => RANK[b.family] - RANK[a.family])[0]
+  const waiting = i.need ? undefined : pool.find((c) => c.family === 'sonnet' && c.eligibility === 'needs-verdict')
+  const strongest = waiting ?? (pool.length ? pool : candidates).slice().sort((a, b) => RANK[b.family] - RANK[a.family])[0]
   const floored = maxEffort(i.verdicts[strongest.family]?.effort ?? i.current?.effort ?? 'high', effortMinFor(strongest.family, i) ?? 'low')
   // The same rule as above: a T3 or T4 task never runs at low, on the last model standing either.
   const effort = i.floors.fixedEffort ?? (i.hm && tierRank(i.hm.tier) >= 3 ? maxEffort(floored, 'medium') : floored)
   const best ={ ...strongest, effort, attemptUsd: i.cost(strongest.family, effort) }
   const inadequate = strongest.eligibility !== 'eligible' && strongest.eligibility !== 'needs-verdict'
-  return { best, candidates, inadequate, rule: inadequate ? 'no eligible model: the strongest available, labeled inadequate' : 'no effort verdict for an eligible model: the strongest available at its known or running effort' }
+  return { best, candidates, inadequate, rule: inadequate ? 'no eligible model: the strongest available, labeled inadequate' : waiting ? 'no need: sonnet at its known or running effort' : 'no effort verdict for an eligible model: the strongest available at its known or running effort' }
 }
 
 // fallbackModel: the effortless judge failed. The remaining judge decides the model, as the legacy policy does in

@@ -11,7 +11,7 @@ const hard = judge({ tier: 'T3', complexity: 'complex' })
 const auto = (o: Record<string, unknown> = {}) => ({ policy: 'auto', ...o })
 
 describe('Two judges, one joint choice', () => {
-  test('call 1 asks about the anchor model; a second call only for the model that can win; every call is recorded', async ($, on) => {
+  test('call 1 uses the fixed anchor; a second call only for the model that can win; every call is recorded', async ($, on) => {
     const h = harness(on, auto({ judge: hard, effortJudge: perModel({ opus: ['opus', 'medium'], sonnet: ['opus', 'high'], haiku: ['opus', 'high'] }) }))
     await h.submit($, 'design the cache layer for the decision records')
     await h.step($)
@@ -32,7 +32,7 @@ describe('Two judges, one joint choice', () => {
   })
 
   test('critical work gets an Opus floor: an Opus low verdict runs at medium', async ($, on) => {
-    const h = harness(on, auto({ judge: judge({ tier: 'T2', complexity: 'standard', risk: 'critical', riskWhy: 'payment path' }), effortJudge: perModel({ sonnet: ['opus', 'high'], opus: ['opus', 'low'] }) }))
+    const h = harness(on, auto({ judge: judge({ tier: 'T3', complexity: 'complex', risk: 'critical', riskWhy: 'payment path' }), effortJudge: perModel({ sonnet: ['sonnet', 'high'], opus: ['opus', 'low'] }) }))
     await h.submit($, 'change how the payment webhook retries')
     await h.step($)
     expect(h.steps[0]).toMatchObject({ model: 'claude-opus-5-5', effort: 'medium' })
@@ -53,16 +53,16 @@ describe('Two judges, one joint choice', () => {
     expect(h.steps[0]).toMatchObject({ model: 'claude-sonnet-5-5', effort: 'high' })
     const d = prompts(records(h.writes))[0]
     expect(d.auto.candidates.find((c: any) => c.route.startsWith('sonnet')).eligibility).toBe('eligible')
-    expect(d.auto.candidates.find((c: any) => c.route.startsWith('sonnet')).why.join(' ')).toContain('judges disagree on T3')
+    expect(d.auto.candidates.find((c: any) => c.route.startsWith('sonnet')).why.join(' ')).toContain('no rule requires opus')
     expect(h.effortJudged.length).toBe(1)
   })
 
-  test('T3 with Sonnet only at medium: Sonnet is not eligible, Opus runs at its own verdict', async ($, on) => {
+  test('T3 with Sonnet at medium stays on Sonnet: the rule table has no effort test, and Sonnet\'s own verdict sets the effort', async ($, on) => {
     const h = harness(on, auto({ judge: hard, effortJudge: perModel({ sonnet: ['sonnet', 'medium'], opus: ['opus', 'high'] }) }))
     await h.submit($, 'design the cache layer')
     await h.step($)
-    expect(h.steps[0]).toMatchObject({ model: 'claude-opus-5-5', effort: 'high' })
-    expect(h.effortJudged.map((p) => p.match(/Current: (\w+)/)?.[1])).toEqual(['sonnet', 'opus'])
+    expect(h.steps[0]).toMatchObject({ model: 'claude-sonnet-5-5', effort: 'medium' })
+    expect(h.effortJudged.map((p) => p.match(/Current: (\w+)/)?.[1])).toEqual(['sonnet'])
   })
 
   test('a difficult task never reaches Haiku from an effort verdict', async ($, on) => {
@@ -88,6 +88,158 @@ describe('Two judges, one joint choice', () => {
     expect(h.steps[0]).toMatchObject({ model: 'claude-sonnet-5-5', effort: 'xhigh' })
     const c = prompts(records(h.writes))[0].auto.candidates
     expect(c.find((x: any) => x.route.startsWith('opus')).eligibility).toBe('needs-verdict') // no effort borrowed from Sonnet
+  })
+})
+
+describe('The task decides the route, not the start model', () => {
+  const start = (model: string) => ({ model, config: { activation: 'always' } }) // a session that starts on this model
+  const ROUTINE = { judge: judge({ tier: 'T1', complexity: 'standard' }), effortJudge: perModel({ sonnet: ['sonnet', 'medium'], opus: ['opus', 'medium'] }) }
+  for (const model of ['claude-sonnet-5-5', 'claude-opus-5-5']) {
+    test(`a routine first prompt on ${model}: one anchored call, Sonnet at its own verdict`, async ($, on) => {
+      const h = harness(on, auto({ ...ROUTINE, ...start(model) }))
+      await h.submit($, 'add a --verbose flag to the usage script')
+      await h.step($, model)
+      expect(h.steps[0]).toMatchObject({ model: 'claude-sonnet-5-5', effort: 'medium' })
+      expect(h.effortJudged.map((p) => p.match(/Current: (\w+)/)?.[1])).toEqual(['sonnet'])
+      expect(prompts(records(h.writes))[0].auto.need).toEqual({ anchor: 'sonnet', verdict: 'sonnet/medium' })
+    })
+    test(`one judge naming Opus over T1 on ${model} does not force Opus`, async ($, on) => {
+      const h = harness(on, auto({ ...start(model), judge: judge({ tier: 'T1', complexity: 'standard' }), effortJudge: perModel({ sonnet: ['opus', 'medium'], opus: ['opus', 'medium'] }) }))
+      await h.submit($, 'parse the xml attribute order')
+      await h.step($, model)
+      expect(h.steps[0]).toMatchObject({ model: 'claude-sonnet-5-5', effort: 'medium' })
+    })
+  }
+
+  test('a hard first prompt on Opus: the anchor is asked first, both judges name Opus, and Opus runs at its own verdict', async ($, on) => {
+    const h = harness(on, auto({ ...start('claude-opus-5-5'), judge: hard, effortJudge: perModel({ sonnet: ['opus', 'high'], opus: ['opus', 'xhigh'] }) }))
+    await h.submit($, 'design the cache layer')
+    await h.step($, 'claude-opus-5-5')
+    expect(h.effortJudged.map((p) => p.match(/Current: (\w+)/)?.[1])).toEqual(['sonnet', 'opus'])
+    expect(h.steps[0]).toMatchObject({ model: 'claude-opus-5-5', effort: 'xhigh' })
+  })
+
+  test('a cold Opus session asks the anchor and Opus, and routes as a Sonnet session does', async ($, on) => {
+    const h = harness(on, auto({ judge: (p: string) => judge(p.includes('design') ? { tier: 'T4', complexity: 'complex' } : { tier: 'T1', complexity: 'standard', newTask: true }), effortJudge: perModel({ sonnet: ['sonnet', 'medium'], opus: ['opus', 'high'] }) }))
+    h.setPrefix(120_000)
+    await h.submit($, 'design the cache layer')
+    await h.step($)
+    await h.complete($, 'claude-opus-5-5')
+    await h.clock.advance(2 * 3_600_000)
+    h.effortJudged.length = 0
+    await h.submit($, 'add a --verbose flag to the usage script')
+    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2' })
+    expect(h.effortJudged.map((p) => p.match(/Current: (\w+)/)?.[1])).toEqual(['sonnet', 'opus'])
+    expect(h.steps[1]).toMatchObject({ model: 'claude-sonnet-5-5', effort: 'medium' })
+  })
+
+  test('a warm Opus session that holds runs at the verdict asked about Opus', async ($, on) => {
+    const h = harness(on, auto({ judge: (p: string) => judge(p.includes('design') ? { tier: 'T4', complexity: 'complex' } : { tier: 'T1', complexity: 'standard' }), effortJudge: perModel({ sonnet: ['sonnet', 'medium'], opus: ['opus', 'low'] }) }))
+    h.setPrefix(120_000)
+    await h.submit($, 'design the cache layer')
+    await h.step($)
+    await h.complete($, 'claude-opus-5-5')
+    await h.submit($, 'and a small helper for it')
+    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2' })
+    expect(h.steps[1]).toMatchObject({ model: 'claude-opus-5-5', effort: 'low' })
+    expect(prompts(records(h.writes))[1].effective.owner).toBe('cache-policy')
+  })
+
+  test('an upgrade only the judges ask for waits for the vote gate on a warm session', async ($, on) => {
+    const h = harness(on, auto({ judge: (p: string) => judge(p.includes('rename') ? { tier: 'T1', complexity: 'standard' } : { tier: 'T3', complexity: 'complex' }), effortJudge: (p: string) => (/Next message:\nrename/.test(p) ? perModel({ sonnet: ['sonnet', 'medium'] })(p) : perModel({ sonnet: ['opus', 'high'], opus: ['opus', 'high'] })(p)) }))
+    h.setPrefix(120_000)
+    await h.submit($, 'rename the helper')
+    await h.step($)
+    await h.complete($)
+    await h.submit($, 'redesign the cache eviction')
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't2' })
+    expect(h.steps[1].model).toBe('claude-sonnet-5-5')
+    const held = prompts(records(h.writes))[1]
+    expect(held.effective.check.gate).toBe('votes')
+    expect(held.routing.underRouted).toBe('cache-policy') // the record still says the route runs below the rules
+    await h.complete($, 'claude-sonnet-5-5', undefined, 'done', { turnId: 't2' })
+    await h.submit($, 'now redesign the cache admission too')
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't3' })
+    expect(h.steps[2]).toMatchObject({ model: 'claude-opus-5-5', effort: 'high' })
+  })
+
+  test('"continue" after a held upgrade keeps the upgrade, not the hold', async ($, on) => {
+    const h = harness(on, auto({ judge: (p: string) => judge(p.includes('rename') ? { tier: 'T1', complexity: 'standard' } : { tier: 'T3', complexity: 'complex' }), effortJudge: (p: string) => (/Next message:\nrename/.test(p) ? perModel({ sonnet: ['sonnet', 'medium'] })(p) : perModel({ sonnet: ['opus', 'high'], opus: ['opus', 'high'] })(p)) }))
+    h.setPrefix(120_000)
+    await h.submit($, 'rename the helper')
+    await h.step($)
+    await h.complete($)
+    await h.submit($, 'redesign the cache eviction')
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't2' })
+    expect(h.steps[1].model).toBe('claude-sonnet-5-5')
+    await h.complete($, 'claude-sonnet-5-5', undefined, 'done', { turnId: 't2' })
+    await h.submit($, 'continue')
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't3' })
+    expect(h.steps[2]).toMatchObject({ model: 'claude-opus-5-5', effort: 'high' })
+  })
+
+  test('T4 on a warm Sonnet session moves at once: a focused attempt already failed', async ($, on) => {
+    const h = harness(on, auto({ judge: (p: string) => judge(p.includes('rename') ? { tier: 'T1', complexity: 'standard' } : { tier: 'T4', complexity: 'complex' }), effortJudge: (p: string) => (/Next message:\nrename/.test(p) ? perModel({ sonnet: ['sonnet', 'medium'] })(p) : perModel({ sonnet: ['sonnet', 'low'], opus: ['opus', 'medium'] })(p)) }))
+    h.setPrefix(120_000)
+    await h.submit($, 'rename the helper')
+    await h.step($)
+    await h.complete($)
+    await h.submit($, 'the eviction fix failed again')
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't2' })
+    expect(h.steps[1]).toMatchObject({ model: 'claude-opus-5-5', effort: 'high' })
+    expect(prompts(records(h.writes))[1].effective.owner).toBe('quality-escalation')
+  })
+
+  test('a held T3 task never runs at low: the hold takes the effort the optimizer gave the running model', async ($, on) => {
+    const h = harness(on, auto({ judge: (p: string) => judge(p.includes('rename') ? { tier: 'T1', complexity: 'standard' } : { tier: 'T3', complexity: 'complex' }), effortJudge: (p: string) => (/Next message:\nrename/.test(p) ? perModel({ sonnet: ['sonnet', 'medium'] })(p) : perModel({ sonnet: ['opus', 'low'], opus: ['opus', 'high'] })(p)) }))
+    h.setPrefix(120_000)
+    await h.submit($, 'rename the helper')
+    await h.step($)
+    await h.complete($)
+    await h.submit($, 'redesign the cache eviction')
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't2' })
+    expect(h.steps[1]).toMatchObject({ model: 'claude-sonnet-5-5', effort: 'medium' })
+  })
+
+  test('the own-verdict call fails and the need answered: the rules still decide, and Haiku still needs both judges', async ($, on) => {
+    const effortJudge = (p: string) => (p.includes('where is') && p.includes('Current: opus') ? 'no verdict' : perModel({ sonnet: ['sonnet', 'medium'], opus: ['opus', 'high'] })(p))
+    const h = harness(on, auto({ judge: (p: string) => judge(p.includes('where is') ? { tier: 'T0', complexity: 'trivial', newTask: true } : { tier: 'T4', complexity: 'complex' }), effortJudge }))
+    h.setPrefix(30_000)
+    await h.submit($, 'design the cache layer')
+    await h.step($)
+    await h.complete($, 'claude-opus-5-5')
+    await h.clock.advance(2 * 3_600_000)
+    await h.submit($, 'where is the output folder written?')
+    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2' })
+    expect(h.steps[1]).toMatchObject({ model: 'claude-sonnet-5-5', effort: 'medium' })
+    const d = prompts(records(h.writes))[1]
+    expect(d.auto.need).toEqual({ anchor: 'sonnet', verdict: 'sonnet/medium' })
+    expect(d.auto.fallback).toBeTruthy()
+  })
+
+  test('the need call fails and the running model answers: the model stays', async ($, on) => {
+    const effortJudge = (p: string) => (p.includes('hour later') && p.includes('Current: sonnet') ? 'no verdict' : perModel({ sonnet: ['opus', 'high'], opus: ['opus', 'high'] })(p))
+    const h = harness(on, auto({ judge: (p: string) => judge(p.includes('hour later') ? { tier: 'T1', complexity: 'standard' } : { tier: 'T3', complexity: 'complex' }), effortJudge }))
+    h.setPrefix(120_000)
+    await h.submit($, 'design the cache layer')
+    await h.step($)
+    await h.complete($, 'claude-opus-5-5')
+    await h.submit($, 'an hour later, one more tweak')
+    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2' })
+    expect(h.steps[1].model).toBe('claude-opus-5-5')
+    const d = prompts(records(h.writes))[1]
+    expect(d.auto.fallback).toContain('the need call failed')
+    expect(d.auto.need).toEqual({ anchor: 'sonnet', verdict: null })
+  })
+
+  test('an outcome names the route and the AutoMode tier', async ($, on) => {
+    const h = harness(on, auto(ROUTINE))
+    await h.submit($, 'add a --verbose flag to the usage script')
+    await h.step($)
+    await h.complete($)
+    const o = records(h.writes).find((x) => x.kind === 'outcome')
+    expect(o.route).toBe('sonnet/medium')
+    expect(o.tier).toBe('T1')
   })
 })
 
@@ -264,6 +416,26 @@ describe('Plan Mode and its transitions', () => {
     expect(r.some((x) => x.kind === 'rejudge' && x.event === 'plan-exit')).toBe(true)
     const t = decisions(r).find((x) => x.trigger?.event === 'plan-exit')
     expect(t.auto.candidates.find((c: any) => c.route.startsWith('sonnet')).eligibility).toBe('eligible')
+    expect(t.auto.need).toEqual({ anchor: 'sonnet', verdict: 'sonnet/medium' })
+    expect(h.effortJudged.filter((p) => p.includes('IMPLEMENTATION work')).map((p) => p.match(/Current: (\w+)/)?.[1])).toEqual(['sonnet', 'opus'])
+  })
+
+  test('a trigger that holds a stronger route runs the running model at its own verdict', async ($, on) => {
+    const h = harness(on, planSetup('auto-held', {
+      judge: (p: string) => (p.includes('IMPLEMENTATION work') ? hard : judge({ tier: 'T1', complexity: 'standard' })),
+      effortJudge: (p: string) => (p.includes('IMPLEMENTATION work') ? perModel({ sonnet: ['opus', 'medium'], opus: ['opus', 'high'] })(p) : perModel({ sonnet: ['sonnet', 'high'] })(p)),
+    }))
+    h.setPrefix(120_000)
+    h.writes[sig('auto-held')] = JSON.stringify({ seq: 1, permissionMode: 'plan', compactions: [] })
+    await h.submit($, 'plan the migration of the sessions store')
+    await h.step($)
+    await h.complete($)
+    await h.submit($, 'continue')
+    h.writes[sig('auto-held')] = JSON.stringify({ seq: 2, permissionMode: 'default', compactions: [] })
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't2' })
+    const t = decisions(records(h.writes)).find((x) => x.trigger?.event === 'plan-exit')
+    expect(t.effective.owner).toBe('cache-policy')
+    expect(t.effective.effort).toBe('medium')
   })
 
   test('"continue" right after a plan exit is a required decision: it is judged, not kept', async ($, on) => {
@@ -607,7 +779,7 @@ describe('Workflow transitions', () => {
     await h.submit($, 'now add a --dry-run flag to the setup command')
     await h.step($, 'claude-haiku-5-5', undefined, { turnId: 't2' })
     expect(h.steps.map((s) => `${s.model}/${s.effort}`)).toEqual(['claude-haiku-5-5/low', 'claude-sonnet-5-5/medium'])
-    expect(prompts(records(h.writes))[1].effective.owner).toBe('quality-escalation') // Haiku is ruled out: the move is mandatory
+    expect(prompts(records(h.writes))[1].effective.owner).toBe('quality-escalation') // real work on Haiku: the move is mandatory
   })
 
   test('implementation, a failing check twice, a passing fix: one step up, then the floor ends and the review stays', async ($, on) => {

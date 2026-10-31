@@ -37,7 +37,7 @@ export interface AuthorityInput {
   heldEffort?: Effort                       // the effort the CURRENT model should run at for this prompt, if the model switch is held
   // Policy auto (from v4.1): output per request and steps per request by configuration, so the switch check prices each as it will run.
   effortCost?: { output: (r: Route) => number; steps: (r: Route) => number }
-  currentInadequate?: boolean               // policy auto: the running model is ruled out for the task, so a stronger one switches at once
+  currentInadequate?: boolean               // policy auto: a floor, an escalation or a provider limit rules out the running model, so the switch is mandatory
   current: Route | null
   switchInput: Omit<SwitchInput, 'current' | 'candidate' | 'target' | 'floor' | 'mandatory'>
   ladder?: Ladder

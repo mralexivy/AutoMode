@@ -36,9 +36,13 @@ export interface DecisionRecord {
   judge?: { called: boolean; ms?: number; ok?: boolean; usd?: number; basis?: 'measured' }
   cache: Pick<CacheState, 'model' | 'effort' | 'prefixTokens' | 'effortSharesCache'> & { warm: boolean }
   actual?: { model: string; effort?: string } // what really ran, in shadow mode
-  // Policy auto: every judge verdict, every candidate, the resolution steps that fired, and any fallback.
+  // Policy auto: every judge verdict, every candidate, the resolution steps that fired, any fallback, and the need.
   auto?: unknown
 }
+
+// The fixed-anchor effortless answer that decided eligibility. `verdict` is null when that call failed.
+export interface NeedRecord { anchor: string; verdict: string | null }
+export const needRecord = (anchor: string, need: { model: string; effort: string } | null | undefined): NeedRecord => ({ anchor, verdict: need ? `${need.model}/${need.effort}` : null })
 
 export interface OutcomeRecord {
   v: number; kind: 'outcome'; at: number; sessionId: string; turnId: string; taskId: string
@@ -47,6 +51,8 @@ export interface OutcomeRecord {
   usage: Record<string, TokenUsage>
   usd: { value: number; basis: 'measured'; source: string }
   checks: { pass: number; fail: number }
+  route?: string // the family and effort the turn ended on
+  tier?: string  // the AutoMode judge's tier for the task, not the route's
   next?: 'moved-on' | 'corrected' | 'retried' // filled on the next prompt
 }
 
