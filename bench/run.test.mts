@@ -14,7 +14,9 @@ import { estimatedUsd, rowProblems } from './lib/result.mts'
 import { RunQueue, WINDOW_MS, waitMs, windowSpend } from './lib/pacer.mts'
 import { oneRun, runIdFor } from './lib/run-one.mts'
 import { normalizeTask, problems } from './lib/task-repo.mts'
+import { brier, ece, effortDistance, nll, replicaForecast, spearman, withinOne } from './lib/calibration.mts'
 import { buildManifest, verifyManifest } from './lib/manifest.mts'
+import { aggregate, countsOnly } from './lib/panel.mts'
 import { bootstrapCI, discordant, holm, mcnemarExact, pairedDelta, paretoFrontier, routeSummary, routingRegret } from './lib/stats.mts'
 
 const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'am-bench-test-'))
@@ -401,4 +403,60 @@ test('report: paired, Pareto and routing sections come from the rows, and a smal
   assert.match(r.stdout, /\| 4 \| \+50 pts .*\| -\$1\.00 .*\| 0 \| 2 \| 0\.500 \|/)
   assert.match(r.stdout, /Solved rate and mean cost: auto/)
   assert.equal(JSON.parse(fs.readFileSync(manifest, 'utf8')).files[0].rows, 8)
+})
+
+const scored = (n: number, vs = 'equal', defects: string[] = []) => ({ correctness: n, completeness: n, scope: n, tests: n, maintainability: n, vs_reference: vs, defects })
+
+test('panel: the median resists one odd judge, and disagreement goes to a person', () => {
+  const calm = aggregate({ a: scored(4), b: scored(4), c: scored(5) })
+  assert.equal(calm.grade.correctness, 4)
+  assert.equal(calm.disputed, false)
+  const split = aggregate({ a: scored(1, 'worse'), b: scored(4), c: scored(4) })
+  assert.equal(split.grade.correctness, 4)
+  assert.equal(split.grade.vs_reference, 'equal')
+  assert.ok(split.reasons.includes('vs_reference differs') && split.reasons.includes('tests differs by 2 or more'))
+  assert.equal(aggregate({ a: scored(3), b: null }).disputed, true)
+  assert.equal(aggregate({ a: null }).grade, null)
+  assert.equal(aggregate({ a: scored(2), b: scored(3) }).grade.scope, 2, 'an even panel leans strict')
+})
+
+test('grade rows never keep the text of a defect', () => {
+  const g = countsOnly(scored(3, 'equal', ['a defect, in model words']))
+  assert.equal(g.defect_count, 1)
+  assert.doesNotMatch(JSON.stringify(g), /model words/)
+  assert.equal(countsOnly(null), null)
+  assert.doesNotMatch(JSON.stringify(aggregate({ a: scored(3, 'equal', ['model words']) })), /model words/)
+})
+
+test('calibration measures match worked values', () => {
+  assert.equal(spearman([1, 2, 3, 4], [10, 20, 30, 40]), 1)
+  assert.equal(spearman([1, 2, 3, 4], [4, 3, 2, 1]), -1)
+  assert.equal(spearman([1, 1, 1], [1, 2, 3]), null)
+  assert.ok(Math.abs(spearman([1, 2, 2, 3], [1, 2, 3, 4]) - 0.9486832980505138) < 1e-12)
+  assert.equal(withinOne([1, 5], [2, 3]), 0.5)
+  const f = [{ p: 0.8, correct: true }, { p: 0.8, correct: false }]
+  assert.ok(Math.abs(brier(f) - 0.34) < 1e-12)
+  assert.ok(Math.abs(ece(f) - 0.3) < 1e-12)
+  assert.ok(Math.abs(nll(f) - (-(Math.log(0.8) + Math.log(0.2)) / 2)) < 1e-12)
+  assert.equal(effortDistance('xhigh', ['low', 'medium']), 2)
+  assert.equal(effortDistance('high', ['high']), 0)
+  assert.equal(replicaForecast(['high'], ['high']), null)
+  assert.deepEqual(replicaForecast(['high', 'high', 'low', 'high'], ['high']), { p: 0.75, correct: true })
+})
+
+test('the calibration script refuses to invent uncertainty from one label per case', () => {
+  const file = path.join(ROOT, 'answers.json')
+  fs.writeFileSync(file, JSON.stringify({ answers: [{ id: 't01', arm: 'x', effort: 'low' }] }))
+  const r = spawnSync(process.execPath, ['bench/calibration-report.mts', '--effort', file, '--arm', 'x'], { encoding: 'utf8' })
+  assert.equal(r.status, 0, r.stderr)
+  assert.match(r.stdout, /need at least two labels/)
+})
+
+test('report: quality scores are secondary and leave out disputed runs', () => {
+  const file = path.join(ROOT, 'graded.jsonl')
+  fs.writeFileSync(file, [{ run_id: 'a', task_id: 't', cohort: 'feature', arm: 'auto', accepted: true, cost_usd_api_equiv: 1, wall_s: 1 }, { run_id: 'b', task_id: 't', cohort: 'feature', arm: 'auto', accepted: true, cost_usd_api_equiv: 1, wall_s: 1 }].map((r) => JSON.stringify(r)).join('\n'))
+  fs.writeFileSync(path.join(ROOT, 'graded.grades.jsonl'), [{ run_id: 'a', grade: scored(4), disputed: false }, { run_id: 'b', grade: scored(1), disputed: true }].map((r) => JSON.stringify(r)).join('\n'))
+  const r = spawnSync(process.execPath, ['bench/report.mts', file], { encoding: 'utf8' })
+  assert.equal(r.status, 0, r.stderr)
+  assert.match(r.stdout, /\| AutoMode Auto: model and effort routing \| 2 \| 1 \| 4\.00 \|/)
 })
