@@ -9,14 +9,17 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { grade, gradePrompt, parseGrade, referenceDiff } from './lib/grade-core.mts'
-import { add, LEDGER, total } from './lib/ledger.mts'
+import { add, entries, LEDGER, total } from './lib/ledger.mts'
+import { waitMs } from './lib/pacer.mts'
 import { isResult } from './lib/outcome.mts'
 import { loadTasks, taskRepo } from './lib/task-repo.mts'
 
 const resultsFile = process.argv[2]
 if (!resultsFile) { console.error('usage: node bench/grade.mts <results.jsonl>'); process.exit(1) }
 const opt = (n: string, d: unknown) => { const i = process.argv.indexOf(`--${n}`); return i >= 0 ? process.argv[i + 1] : d }
-const parallelRuns = Number(opt('parallel', 3))
+const parallelRuns = Number(opt('parallel', 1))
+// Grading shares the usage window with the runs (bench/lib/pacer.mts).
+const windowUsd = Number(opt('window-usd', process.env.BENCH_AUTH === 'api' ? 0 : 10))
 const budget = Number(opt('budget-usd', 3))
 const out = resultsFile.replace(/\.jsonl$/, '.grades.jsonl')
 const tasks = Object.fromEntries(loadTasks().map((t) => [t.id, t]))
@@ -32,6 +35,7 @@ let next = 0
 async function worker() {
   while (next < todo.length) {
     if (spent >= budget) { console.log(`Budget $${budget} reached. Stopping.`); return }
+    if (waitMs(entries(), Date.now(), windowUsd) > 0) { console.log('The usage window is full. Run the same command later to continue.'); return }
     const r = todo[next++]
     const task = tasks[r.task_id]
     const diffFile = path.join(path.dirname(resultsFile), 'diffs', `${r.run_id}.diff`)

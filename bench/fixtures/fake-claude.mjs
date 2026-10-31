@@ -3,6 +3,7 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 
+if (process.argv.includes('--version')) { console.log('0.0.0 (fake)'); process.exit(0) }
 const mode = process.env.FAKE_CLAUDE ?? 'solve'
 if (process.env.FAKE_CLAUDE_LOG) fs.writeFileSync(process.env.FAKE_CLAUDE_LOG, JSON.stringify({ args: process.argv.slice(2), apiKey: process.env.ANTHROPIC_API_KEY ?? null }))
 // A transcript like the real one, so the run evidence has something to read.

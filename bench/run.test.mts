@@ -11,6 +11,7 @@ import { armEnv, armInvocation, armSpec, ARMS } from './arms.mts'
 import { canonical, experimentProblems, loadExperiment, specHash } from './lib/experiment.mts'
 import { loadTemplate, renderPrompt } from './lib/prompt.mts'
 import { estimatedUsd, rowProblems } from './lib/result.mts'
+import { RunQueue, WINDOW_MS, waitMs, windowSpend } from './lib/pacer.mts'
 import { oneRun, runIdFor } from './lib/run-one.mts'
 import { normalizeTask, problems } from './lib/task-repo.mts'
 import { bootstrapCI } from './lib/stats.mts'
@@ -260,11 +261,12 @@ test('the run script: a resume skips finished rows, reruns a usage limit, and th
   fs.mkdirSync(tasks, { recursive: true })
   fs.writeFileSync(path.join(tasks, 'fixture.json'), JSON.stringify(task))
   const out = path.join(dir, 'results.jsonl')
-  const cli = (mode: string, ...more: string[]) => spawnSync(process.execPath, ['bench/run.mts', '--tasks-dir', tasks, '--arms', 'sonnet-high,sonnet-medium', '--repeats', '1', '--parallel', '1', '--scratch', path.join(dir, 'scratch'), '--out', out, '--run-cap-usd', '3', ...more],
+  const cli = (mode: string, ...more: string[]) => spawnSync(process.execPath, ['bench/run.mts', '--quota-wait-min', '0', '--quota-retries', '1', '--window-usd', '0', '--tasks-dir', tasks, '--arms', 'sonnet-high,sonnet-medium', '--repeats', '1', '--parallel', '1', '--scratch', path.join(dir, 'scratch'), '--out', out, '--run-cap-usd', '3', ...more],
     { encoding: 'utf8', env: { ...process.env, FAKE_CLAUDE: mode, BENCH_ALLOW_LOCAL: '1', BENCH_CACHE_DIR: path.join(dir, 'repos'), LEDGER_FILE: path.join(dir, 'ledger.jsonl') } })
   const quota = cli('quota')
   assert.equal(quota.status, 0, quota.stderr)
   assert.match(quota.stdout, /USAGE LIMIT, will rerun/)
+  assert.match(quota.stdout, /did not clear/)
   const first = cli('solve', '--budget-usd', '0.25')
   assert.match(first.stdout, /2 to run/)
   assert.match(first.stdout, /Budget \$0.25 reached/)
@@ -274,4 +276,44 @@ test('the run script: a resume skips finished rows, reruns a usage limit, and th
   const third = cli('solve')
   assert.match(third.stdout, /1 to run/)
   assert.match(cli('solve').stdout, /0 to run/)
+})
+
+test('pacer: the rolling window counts recent spend and says when room returns', () => {
+  const now = Date.parse('2026-10-31T12:00:00Z')
+  const at = (minAgo: number, usd: number) => ({ at: new Date(now - minAgo * 60_000).toISOString(), usd })
+  const entries = [at(400, 100), at(200, 6), at(30, 5)]
+  assert.equal(windowSpend(entries, now), 11, 'spend older than 5 hours is out')
+  assert.equal(waitMs(entries, now, null), 0)
+  assert.equal(waitMs(entries, now, 12), 0)
+  assert.equal(waitMs(entries, now, 10), WINDOW_MS - 200 * 60_000, 'the oldest $6 must leave')
+  assert.equal(waitMs(entries, now, 4), WINDOW_MS - 30 * 60_000, 'all of it must leave')
+})
+
+test('pacer: a usage limit puts the run back first, pauses, and gives up after the retries', () => {
+  const q = new RunQueue(['a', 'b'], 1)
+  const first = q.take()
+  assert.equal(q.limitHit(first, 1000, 500), true)
+  assert.equal(q.pausedUntil, 1500)
+  assert.equal(q.take(), 'a')
+  assert.equal(q.limitHit('a', 2000, 500), false)
+  assert.equal(q.size, 2)
+})
+
+test('the run script waits or stops at a full window, and a resume continues', () => {
+  const dir = path.join(ROOT, 'window')
+  const tasks = path.join(dir, 'tasks')
+  fs.mkdirSync(tasks, { recursive: true })
+  fs.writeFileSync(path.join(tasks, 'fixture.json'), JSON.stringify(task))
+  const r = spawnSync(process.execPath, ['bench/run.mts', '--tasks-dir', tasks, '--arms', 'sonnet-high,sonnet-medium', '--repeats', '1', '--window-usd', '0.2', '--stop-at-window', '--scratch', path.join(dir, 's'), '--out', path.join(dir, 'r.jsonl')],
+    { encoding: 'utf8', env: { ...process.env, FAKE_CLAUDE: 'solve', BENCH_ALLOW_LOCAL: '1', BENCH_CACHE_DIR: path.join(dir, 'repos'), LEDGER_FILE: path.join(dir, 'ledger.jsonl') } })
+  assert.equal(r.status, 0, r.stderr)
+  assert.equal(r.stdout.match(/accepted/g)?.length, 1, 'one run fits, then the window is full')
+  assert.match(r.stdout, /usage window is full/)
+})
+
+test('timing is split by phase, and the row records the auth mode', async () => {
+  const { row } = await run('solve')
+  assert.ok(row.latency.total_ms >= row.latency.setup_ms + row.latency.agent_ms)
+  assert.ok(row.latency.agent_ms > 0)
+  assert.equal(row.auth, 'subscription')
 })
