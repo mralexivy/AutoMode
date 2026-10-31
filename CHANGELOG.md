@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-31
+
 ### Fixed
 
 - The route now follows the task, not the model the session started on. One effortless answer with a fixed anchor (`Current: sonnet`) decides the model, and the running model is asked only for its own effort.
