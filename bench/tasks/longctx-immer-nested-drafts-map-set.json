@@ -1,0 +1,15 @@
+{
+  "id": "longctx-immer-nested-drafts-map-set",
+  "cohort": "longctx",
+  "repo": "https://github.com/immerjs/immer",
+  "license": "MIT",
+  "base": "d6265138448ebb0f8adbd312f5d8b06f9043e433",
+  "reference": "b208d58698e5a72c64d55bb467b9e7c9fd00c92a",
+  "task": "With enableMapSet(), a draft inside a new plain object leaks out of produce when that object goes into a draft Map or a draft Set. The result then holds a revoked proxy, and reading it throws \"Cannot use a proxy that has been revoked\". There is also a separate fault with patch paths. Fix all of these, using new Immer({ autoFreeze: true }) for the Map and Set cases.\n\nMap.set with a nested draft Set: start from { map: new Map([['key1', { users: new Set() }]]) }, and add { name: 'user1' } to that Set in one produce. In a second produce, take existingUsers = draft.map.get('key1').users, build newEntry = { users: existingUsers }, call draft.map.set('key1', newEntry), then call newEntry.users.add({ name: 'user2' }). The result's map.get('key1').users must be a real Set, and its names must be ['user1', 'user2'].\n\nThe same shape with data: start from { map: new Map([['key1', { items: new Set([1, 2, 3]) }]]) }. Set newEntry = { items: existingItems, extra: 'data' } into the Map, then add 4 through newEntry.items. The result's items must be a real Set holding [1, 2, 3, 4], and extra must be 'data'.\n\nSet.add with a wrapper: start from { items: [{ id: 1, name: 'item1' }], itemSet: new Set() }. Take draftItem = draft.items[0], call draft.itemSet.add({ item: draftItem, extra: 'wrapper data' }), then set draftItem.name = 'modified'. The result's Set must hold one wrapper with item.id 1, item.name 'modified' and extra 'wrapper data'. JSON.stringify(result) must not throw.\n\nSet.add with a deep wrapper: start from { nested: { deep: { value: 'original' } }, mySet: new Set() }. Add { level1: { level2: { draftRef: draft.nested.deep } } }, then set that draft's value to 'modified'. The result's one item must have level1.level2.draftRef.value equal to 'modified', and JSON.stringify(result) must not throw.\n\nPatch paths in the production bundle: paths for nested changes come out truncated there, while the development build is correct. From { lists: [{ items: [{ id: 1 }] }] }, produceWithPatches with draft.lists[0].items.push({ id: 2 }) must give exactly [{ op: 'add', path: ['lists', 0, 'items', 1], value: { id: 2 } }], not a path of [1]. From { queries: { queryKey: { data: { items: [{ name: 'item1' }] } } } }, pushing { name: 'item2' } onto items must give a first path of ['queries', 'queryKey', 'data', 'items', 1]. The same result must hold in both builds.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "__tests__/map-set.js",
+    "__tests__/patch.js"
+  ],
+  "accept": "npx vitest run",
+  "setup": "npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund --before=2025-12-28T23:59:59Z"
+}

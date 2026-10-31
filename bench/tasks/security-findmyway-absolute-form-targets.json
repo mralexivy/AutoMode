@@ -1,0 +1,15 @@
+{
+  "id": "security-findmyway-absolute-form-targets",
+  "cohort": "security",
+  "repo": "https://github.com/delvedor/find-my-way",
+  "license": "MIT",
+  "base": "a0429ea8a62bfa2a1212cfd85b3a744f73f6dfda",
+  "reference": "b8f95028e6f95872bd0067152b587d9cc95ceaa9",
+  "task": "The router mishandles absolute-form request targets, and query text can choose the route. With routes on '/' and '/admin', find('GET', 'http://localhost?next=/admin', { host: 'localhost' }) selects the /admin handler. Clients can use this to reach a route that the request path does not name.\n\nAn http or https target with an empty path must route to '/', and keep its query string. The scheme is case-insensitive. For each of 'http://localhost?next=/admin', 'https://localhost?next=/admin' and 'HTTP://localhost?next=/admin', find must return the '/' handler with searchParams deep equal to { next: '/admin' }.\n\nThese pairs must give deep-equal find results, with the same constraints:\n'http://localhost?next=//admin/settings&return=/' and '/?next=//admin/settings&return=/'\n'http://localhost/?next=/admin' and '/?next=/admin'\n'http://localhost' and '/'\n'http://localhost:8080/a/100' and '/a/100'\n'http://123.123.123.123/a' and '/a'\n\nlookup must behave the same way. lookup({ method: 'GET', url: 'http://example.test?next=/admin', headers: { host: 'example.test' } }, null) must run the '/' handler and pass searchParams { next: '/admin' }. Under a real node:http server with this request target, the '/' handler must run and req.url must stay the original target.\n\nInvalid http targets are bad URLs. 'http:///admin' has no host, 'http://localhost#next=/admin' has a fragment, which an http target must never contain, and 'http://localhost:invalid/admin' has an invalid port. With the onBadUrl option set, find on each one must return a match whose handler, when run by callHandler(match, null, null), calls onBadUrl with the full original url as the first argument. These targets must never select /admin. Without onBadUrl, find returns null, as for other bad URLs.\n\nTargets that do not start with '/' and are not http or https keep their current behavior.\n\nThe startup check that throws 'the FULL_PATH_REGEXP is not safe, update this module' must no longer exist. If the safe-regex2 dependency is replaced by a function that always returns false, requiring the module must throw new Error('the OPTIONAL_PARAM_REGEXP is not safe, update this module'). So no earlier pattern check may run.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "test/full-url.test.js",
+    "test/issue-330.test.js"
+  ],
+  "accept": "npx borp",
+  "setup": "npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund --legacy-peer-deps --before=2026-08-21T23:59:59Z"
+}

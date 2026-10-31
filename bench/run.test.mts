@@ -7,13 +7,13 @@ import os from 'node:os'
 import path from 'node:path'
 import { GRADER_MODEL, grade, gradePrompt, parseGrade, referenceDiff } from './lib/grade-core.mts'
 import { chargedUsd, classifyRun, isDone, isResult } from './lib/outcome.mts'
-import { armEnv, armInvocation, armSpec, ARMS, EXCLUDED_FROM_PLUGIN } from './arms.mts'
+import { armCode, armEnv, armInvocation, armSpec, ARMS, EXCLUDED_FROM_PLUGIN, pluginCodeHash } from './arms.mts'
 import { canonical, experimentProblems, loadExperiment, specHash } from './lib/experiment.mts'
 import { loadTemplate, renderPrompt } from './lib/prompt.mts'
 import { estimatedUsd, rowProblems } from './lib/result.mts'
 import { RunQueue, WINDOW_MS, waitMs, windowSpend } from './lib/pacer.mts'
 import { oneRun, removeTree, runIdFor, v4JudgeCost } from './lib/run-one.mts'
-import { normalizeTask, problems } from './lib/task-repo.mts'
+import { loadTasks, normalizeTask, problems } from './lib/task-repo.mts'
 import { brier, ece, effortDistance, nll, replicaForecast, spearman, withinOne } from './lib/calibration.mts'
 import { buildManifest, verifyManifest } from './lib/manifest.mts'
 import { aggregate, countsOnly } from './lib/panel.mts'
@@ -238,7 +238,7 @@ test('arm controls map to documented flags and variables', () => {
 })
 
 test('every experiment file loads, and a bad one names its fault', () => {
-  for (const f of fs.readdirSync('bench/experiments')) assert.ok(loadExperiment(path.join('bench/experiments', f), Object.keys(ARMS)).arms.length, f)
+  for (const f of fs.readdirSync('bench/experiments').filter((x) => x.endsWith('.json'))) assert.ok(loadExperiment(path.join('bench/experiments', f), Object.keys(ARMS)).arms.length, f)
   assert.deepEqual(experimentProblems({ schema_version: 1, id: 'x', track: 'automode-system', arms: ['nope'], repeats: 1, prompt_template: 't' }, []), ['unknown arm nope'])
   assert.ok(experimentProblems({}, []).length >= 4)
 })
@@ -417,6 +417,68 @@ test('report: paired, Pareto and routing sections come from the rows, and a smal
   assert.match(r.stdout, /\| 4 \| \+50 pts .*\| -\$1\.00 .*\| 0 \| 2 \| 0\.500 \|/)
   assert.match(r.stdout, /Solved rate and mean cost: auto/)
   assert.equal(JSON.parse(fs.readFileSync(manifest, 'utf8')).files[0].rows, 8)
+})
+
+test('report: an unstratified interval sits beside the stratified one, and is wider when cohorts are small', () => {
+  const row = (id: string, t: string, c: string, arm: string, accepted: boolean, cost: number) => ({ run_id: id, task_id: t, cohort: c, arm, accepted, cost_usd_api_equiv: cost, wall_s: 10 })
+  const costs = [1, 2, 9, 10, 1, 2, 9, 10]
+  const rows = costs.flatMap((cost, i) => { const t = `t${i}`, c = i % 2 ? 'feature' : 'trivial'; return [row(`a${i}`, t, c, 'sonnet-high', true, cost), row(`b${i}`, t, c, 'auto', true, cost * 2)] })
+  const file = path.join(ROOT, 'strata.jsonl')
+  fs.writeFileSync(file, rows.map((r) => JSON.stringify(r)).join('\n'))
+  const r = spawnSync(process.execPath, ['bench/report.mts', file], { encoding: 'utf8' })
+  assert.equal(r.status, 0, r.stderr)
+  assert.match(r.stdout, /Cost, unstratified/)
+  const cells = r.stdout.split('\n').find((l) => l.startsWith('| Sonnet 5.5, fixed high')).split('|').map((c) => c.trim())
+  const width = (cell: string) => { const [lo, hi] = cell.match(/\$[\d.]+/g).slice(-2).map((x) => Number(x.slice(1))); return hi - lo }
+  assert.match(cells[5], /^\$5\.50 \[/)
+  assert.ok(width(cells[6]) > width(cells[5]), `${cells[5]} against ${cells[6]}`)
+})
+
+test('a run id moves with the plugin code an arm runs, and stays put for an arm with none', () => {
+  const dir = fs.mkdtempSync(path.join(ROOT, 'plugin-'))
+  fs.mkdirSync(path.join(dir, 'hooks'))
+  fs.mkdirSync(path.join(dir, 'bench'))
+  fs.writeFileSync(path.join(dir, 'hooks', 'a.ts'), 'one')
+  fs.writeFileSync(path.join(dir, 'bench', 'b.mts'), 'one')
+  const first = pluginCodeHash(dir)
+  fs.writeFileSync(path.join(dir, 'bench', 'b.mts'), 'two')
+  assert.equal(pluginCodeHash(dir), first, 'a file the copy leaves out changes nothing')
+  fs.writeFileSync(path.join(dir, 'hooks', 'a.ts'), 'two')
+  assert.notEqual(pluginCodeHash(dir), first, 'shipped code moves the hash')
+  fs.writeFileSync(path.join(dir, 'hooks', 'a.ts'), 'one')
+  fs.renameSync(path.join(dir, 'hooks', 'a.ts'), path.join(dir, 'hooks', 'c.ts'))
+  assert.notEqual(pluginCodeHash(dir), first, 'a renamed file moves the hash')
+
+  assert.equal(armCode('sonnet-high', dir), null)
+  assert.equal(armCode('auto', dir), pluginCodeHash(dir))
+  assert.match(armCode('opus-effortless', dir), /^[0-9a-f]{40}$/)
+  const task = { id: 't', cohort: 'trivial', repo: 'https://example.com/r', license: 'MIT', base: 'a'.repeat(40), reference: 'b'.repeat(40), task: 'x', hidden_tests: ['t'], accept: 'true' }
+  const template = loadTemplate('repo-change-v1')
+  const plain = { arm: armSpec('sonnet-high'), template: template.sha256, task: [task.base, task.reference, task.accept, task.hidden_tests, task.task] }
+  assert.equal(runIdFor(task, 'sonnet-high', 1, template).hash, specHash(plain), 'a fixed arm keeps its old id')
+  const noCode = { ...plain, arm: armSpec('auto') }
+  assert.notEqual(runIdFor(task, 'auto', 1, template).hash, specHash(noCode), 'an AutoMode arm hashes its code')
+})
+
+test('the task screen runs fixed arms only, over tasks that exist, and never an AutoMode arm', () => {
+  const screen = loadExperiment('screen', Object.keys(ARMS))
+  assert.deepEqual(screen.arms, ['sonnet-medium', 'sonnet-high', 'opus-medium'])
+  assert.equal(screen.repeats, 3)
+  for (const a of screen.arms) assert.equal(ARMS[a].plugin, undefined)
+  const ids = new Set(loadTasks().map((x) => x.id))
+  assert.ok(screen.tasks.length >= 1)
+  for (const id of screen.tasks) assert.ok(ids.has(id), id)
+  assert.equal(new Set(screen.tasks).size, screen.tasks.length)
+})
+
+test('every experiment names its tasks, so a new task file never joins an older study', () => {
+  const dir = path.join('bench', 'experiments')
+  const ids = new Set(loadTasks().map((x) => x.id))
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+    const e = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
+    assert.ok(Array.isArray(e.tasks) && e.tasks.length, f)
+    for (const id of e.tasks) assert.ok(ids.has(id), `${f}: ${id}`)
+  }
 })
 
 const scored = (n: number, vs = 'equal', defects: string[] = []) => ({ correctness: n, completeness: n, scope: n, tests: n, maintainability: n, vs_reference: vs, defects })

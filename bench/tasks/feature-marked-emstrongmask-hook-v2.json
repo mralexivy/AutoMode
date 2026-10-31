@@ -1,0 +1,14 @@
+{
+  "id": "feature-marked-emstrongmask-hook-v2",
+  "cohort": "feature",
+  "repo": "https://github.com/markedjs/marked",
+  "license": "MIT",
+  "base": "e3497a50b295af0b4ff6080a00920137c0979b42",
+  "reference": "cd2b5f479768bae1082a10d7558177c92f1e0189",
+  "task": "Add a new emStrongMask hook that extensions can set through marked.use({ hooks: { emStrongMask } }). Extensions with their own inline syntax need a way to stop marked pairing * and _ delimiters that sit inside their syntax. The hook takes the masked copy of the inline source that the lexer uses to match em and strong delimiters, after the built-in masking, and returns a masked string of the same length. The default hook returns its input unchanged. It only affects delimiter matching, never the rendered text. Several emStrongMask hooks from separate marked.use calls must combine like the other pass-through hooks, so all their masks apply. The hook is synchronous and must stay synchronous when async: true is set, because the lexer calls it inline, so it must never get wrapped in a Promise. Example: with an inline extension that renders =text= as <u>text</u>, and emStrongMask: (src) => src.replace(/=([^=]+)=/g, (match) => `[${\"a\".repeat(match.length - 2)}]`), parsing *Not Underlined =Underlined* with *asterisk= Not Underlined* gives <p><em>Not Underlined <u>Underlined* with *asterisk</u> Not Underlined</em></p> followed by a newline, both with marked.parse and with async: true. With no extensions, two hooks that mask =...= and $...$ make *Before $dollar * dollar$ =equal * equal= after* give <p><em>Before $dollar * dollar$ =equal * equal= after</em></p> followed by a newline.",
+  "hidden_tests": [
+    "test/unit/marked.test.js"
+  ],
+  "accept": "npm run build:esbuild --silent && node --test test/unit/*.test.js test/run-spec-tests.js",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

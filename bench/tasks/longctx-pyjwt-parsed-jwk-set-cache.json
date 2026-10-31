@@ -1,0 +1,15 @@
+{
+  "id": "longctx-pyjwt-parsed-jwk-set-cache",
+  "cohort": "longctx",
+  "repo": "https://github.com/jpadilla/pyjwt",
+  "license": "MIT",
+  "base": "ea7267519f2be5ff031efabd692af7a4461f3d5e",
+  "reference": "384c945065ad1f1d7e5a0331c7377c7f278532f5",
+  "task": "The JWK Set cache of PyJWKClient cannot hold a parsed key set, and malformed key sets fail with the wrong errors. Fix all of these.\n\nPre-populating the cache fails. After client = PyJWKClient(url) and client.jwk_set_cache.put(PyJWKSet.from_dict(data)), client.get_jwk_set() raises PyJWKClientError(\"The JWKS endpoint did not return a JSON object\"), though no endpoint was called. It must return that PyJWKSet without any network call, and jwk_set[kid].key_id must work on it.\n\nThe cache must always hold a parsed set. After a fetch through client.get_jwk_set(), client.jwk_set_cache.get() must be a PyJWKSet, and it must be the very object that get_jwk_set() returned (an `is` check). A second get_jwk_set() must return that same object with no network call.\n\nThe cached value must be the one that get_jwk_set() returned. A subclass may override fetch_data(), call super().fetch_data(), and return a dict with some keys filtered out. The first get_jwk_set() returns the filtered set. A second call must hit the cache, with no network call, and must return the same filtered keys. Today a removed key comes back.\n\nJWKSetCache, from jwt.jwk_set_cache, takes a lifespan. Its put() must accept a PyJWKSet or a raw JWKS dict, and must store the dict parsed, so get() returns a PyJWKSet. put(None) must clear the cache, so get() returns None. Any other value, such as put(\"not a jwk set\"), must raise PyJWKSetError with the message \"Invalid JWK Set value\".\n\nWhen the endpoint returns JSON that is not an object, such as [{\"kty\": \"RSA\"}], get_jwk_set() must raise PyJWKClientError with \"did not return a JSON object\" in the message, with the cache enabled as it is by default.\n\nPyJWKSet.from_dict raises an uncaught AttributeError on a member that is not an object. Such members must be skipped: {\"keys\": [None, \"nope\", 7, good_key]} must give a set that holds only good_key. {\"keys\": [None]} has no usable keys, so it must raise PyJWKSetError.\n\nA JWK with a wrongly typed component raises an uncaught TypeError. PyJWK({\"kty\": \"RSA\", \"alg\": \"RS256\", \"n\": 1, \"e\": \"AQAB\"}) must raise InvalidKeyError. PyJWKSet.from_dict({\"keys\": [{\"kty\": \"RSA\", \"n\": 1, \"e\": \"AQAB\"}]}) must raise PyJWKSetError.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/test_api_jwk.py",
+    "tests/test_jwks_client.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests --deselect tests/test_jwks_client.py::TestPyJWKClient::test_get_jwt_set_sslcontext_no_ca",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 cryptography"
+}

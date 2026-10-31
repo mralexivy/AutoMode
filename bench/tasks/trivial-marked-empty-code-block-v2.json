@@ -1,0 +1,15 @@
+{
+  "id": "trivial-marked-empty-code-block-v2",
+  "cohort": "trivial",
+  "repo": "https://github.com/markedjs/marked",
+  "license": "MIT",
+  "base": "df575341940389880afde6372ae5aa19bd9eb205",
+  "reference": "23b1706a0e19e354d0dd0e82ba93fb73e11c6f5c",
+  "task": "An empty fenced code block renders with a stray newline. Three backticks followed straight away by three backticks gives <pre><code>\\n</code></pre> (a real newline inside the code element) but it should give <pre><code></code></pre> with nothing inside. The same goes for a fence with an info string: an empty block fenced with ````; should give <pre><code class=\"language-;\"></code></pre>, and an unclosed empty fence at the end of the document should give <pre><code></code></pre> too. Code blocks that have content keep their one trailing newline, so x inside a fence still gives <pre><code>x\\n</code></pre>. The spec fixtures for this compare the HTML exactly, whitespace included.",
+  "hidden_tests": [
+    "test/specs/new/empty_code_block.html",
+    "test/specs/new/empty_code_block.md"
+  ],
+  "accept": "npm run build:esbuild --silent && node --test test/unit/*.test.js test/run-spec-tests.js",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

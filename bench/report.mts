@@ -49,14 +49,14 @@ const armIds = Object.keys(ARMS).filter((a) => valid.some((r) => r.arm === a))
 const cohorts = [...new Set(valid.map((r) => r.cohort))].sort()
 const out = []
 out.push(`Runs: ${rows.length} rows, ${valid.length} valid, ${rows.filter((r) => r.harness_error).length} harness errors, ${contaminated.length} excluded for contamination, ${notRun.length} stopped by a usage limit or setup, ${valid.filter((r) => r.cost_usd_api_equiv == null).length} with no reported cost. Tasks: ${[...new Set(valid.map((r) => r.task_id))].length}. Cohorts: ${cohorts.join(', ')}.`)
-out.push('All USD values are API list-price equivalents from the CLI, not subscription charges. Intervals are bootstrap 95% CIs that resample tasks, then repeats, stratified by cohort (2,000 resamples, seed 42).\n')
+out.push('All USD values are API list-price equivalents from the CLI, not subscription charges. Intervals are bootstrap 95% CIs that resample tasks, then repeats, stratified by cohort (2,000 resamples, seed 42). The unstratified columns drop the cohort strata. With few tasks per cohort the stratified interval runs narrow, so read both.\n')
 
 out.push('### By arm\n')
-out.push('| Arm | Runs | Accepted | Cost per accepted task | Opus USD per accepted task | Median wall time | Runs with commits |')
-out.push('|---|---:|---:|---:|---:|---:|---:|')
+out.push('| Arm | Runs | Accepted | Accepted, unstratified | Cost per accepted task | Cost, unstratified | Opus USD per accepted task | Median wall time | Runs with commits |')
+out.push('|---|---:|---:|---:|---:|---:|---:|---:|---:|')
 for (const a of armIds) {
   const rs = valid.filter((r) => r.arm === a)
-  out.push(`| ${ARMS[a].label} | ${rs.length} | ${pct(acceptRate(rs))}${ci(bootstrapCI(rs, taskOf, acceptRate, opts), pct)} | ${usd(costPerAccepted(rs))}${ci(bootstrapCI(rs, taskOf, costPerAccepted, opts), usd)} | ` +
+  out.push(`| ${ARMS[a].label} | ${rs.length} | ${pct(acceptRate(rs))}${ci(bootstrapCI(rs, taskOf, acceptRate, opts), pct)} |${ci(bootstrapCI(rs, taskOf, acceptRate), pct)} | ${usd(costPerAccepted(rs))}${ci(bootstrapCI(rs, taskOf, costPerAccepted, opts), usd)} |${ci(bootstrapCI(rs, taskOf, costPerAccepted), usd)} | ` +
     `${usd(opusPerAccepted(rs))}${ci(bootstrapCI(rs, taskOf, opusPerAccepted, opts), usd)} | ${median(rs.map((r) => r.wall_s).filter(Number.isFinite)) ?? 'n/a'}s | ${rs.filter((r) => r.commits_made > 0).length} |`)
 }
 
@@ -86,9 +86,9 @@ const tasksSeen = new Set(valid.map(taskOf)).size
 if (tasksSeen < 30) out.splice(1, 0, `**Pilot: ${tasksSeen} tasks. This is too few to support a claim, and intervals may be wide or optimistic.**`)
 
 out.push('\n### Paired comparison against fixed arms\n')
-out.push('Each row is the AutoMode arm minus the fixed arm, on the tasks both ran. p is the exact McNemar test on per-task majority verdicts, Holm-adjusted across the rows of one AutoMode arm.\n')
-out.push('| AutoMode arm | Fixed arm | Tasks | Solved | Mean cost | Mean wall time | Only fixed solved | Only AutoMode solved | p (Holm) |')
-out.push('|---|---|---:|---:|---:|---:|---:|---:|---:|')
+out.push('Each row is the AutoMode arm minus the fixed arm, on the tasks both ran. Cells with no label are stratified by cohort. p is the exact McNemar test on per-task majority verdicts, Holm-adjusted across the rows of one AutoMode arm.\n')
+out.push('| AutoMode arm | Fixed arm | Tasks | Solved | Solved, unstratified | Mean cost | Cost, unstratified | Mean wall time | Only fixed solved | Only AutoMode solved | p (Holm) |')
+out.push('|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
 for (const a of armIds.filter((x) => ARMS[x].v4)) {
   const mine = valid.filter((r) => r.arm === a)
   const compared = baseArms.map((b) => {
@@ -101,7 +101,8 @@ for (const a of armIds.filter((x) => ARMS[x].v4)) {
     const cost = pairedDelta(theirs, mine, taskOf, (rs) => mean(rs.map(runCost)), opts)
     const wall = pairedDelta(theirs, mine, taskOf, (rs) => mean(rs.map(rowWall)), opts)
     const cell = (x: typeof solved, f: (v: number) => string) => (x.delta === null ? 'n/a' : `${signed(f)(x.delta)}${ci(x.ci, signed(f))}`)
-    out.push(`| ${ARMS[a].label} | ${ARMS[b].label} | ${solved.tasks} | ${cell(solved, points)} | ${cell(cost, money)} | ${cell(wall, seconds)} | ${d.onlyA} | ${d.onlyB} | ${adjusted[i].toFixed(3)} |`)
+    const solvedAll = pairedDelta(theirs, mine, taskOf, acceptRate), costAll = pairedDelta(theirs, mine, taskOf, (rs) => mean(rs.map(runCost)))
+    out.push(`| ${ARMS[a].label} | ${ARMS[b].label} | ${solved.tasks} | ${cell(solved, points)} |${ci(solvedAll.ci, signed(points))} | ${cell(cost, money)} |${ci(costAll.ci, signed(money))} | ${cell(wall, seconds)} | ${d.onlyA} | ${d.onlyB} | ${adjusted[i].toFixed(3)} |`)
   })
 }
 

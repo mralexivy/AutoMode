@@ -1,0 +1,14 @@
+{
+  "id": "feature-fastxmlparser-stopnode-nested-same-tag",
+  "cohort": "feature",
+  "repo": "https://github.com/NaturalIntelligence/fast-xml-parser",
+  "license": "MIT",
+  "base": "7cf67e6058f23c9e81d0e3d561beeb944ae71247",
+  "reference": "383b836b1bdb076fd85e744f41a5b2bc6a6e8466",
+  "task": "A stop node ends too early when its raw content contains a tag with the same name. Take this input:\n\n<issue><title>test 1</title><fix1><p>p 1</p><div class=\"show\">div 1</div><other><fix1>more</fix1></other></fix1><last>something</last></issue>\n\nParse it with new XMLParser({ attributeNamePrefix: \"\", ignoreAttributes: false, parseAttributeValue: true, stopNodes: [\"issue.fix1\"] }). The inner </fix1> closes the stop node, so the value is cut off and the rest of the document is misread.\n\nThe result must be:\n\n{ issue: { title: 'test 1', fix1: '<p>p 1</p><div class=\"show\">div 1</div><other><fix1>more</fix1></other>', last: 'something' } }\n\nA stop node must end at the closing tag that matches its own opening tag, at any nesting depth of same-named tags. Its raw content must stay exactly as written. XMLValidator.validate on the same input must return true.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "spec/stopNodes_spec.js"
+  ],
+  "accept": "npx jasmine 'spec/*spec.js'",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

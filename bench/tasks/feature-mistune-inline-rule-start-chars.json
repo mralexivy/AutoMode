@@ -1,0 +1,14 @@
+{
+  "id": "feature-mistune-inline-rule-start-chars",
+  "cohort": "feature",
+  "repo": "https://github.com/lepture/mistune",
+  "license": "BSD-3-Clause",
+  "base": "4a382986bf6ea948d2bed9ac433d493019f3299e",
+  "reference": "1cc26a3e14b2da5e910bd2ba3f55eae8bc0dfb9a",
+  "task": "Custom inline rules silently miss matches when their regex can start with more than one character.\n\nA plugin does md.inline.register(\"word\", r\"foo|bar\", parse_word) and registers a renderer that wraps the text in <word> tags. Rendering \"foo bar\" gives <p><word>foo</word> bar</p>. \"bar\" is never matched. The right output is <p><word>foo</word> <word>bar</word></p>. The parser must never assume where a custom pattern can start from the pattern text. Any registered custom rule, whatever its regex, must match everywhere its regex matches.\n\nInlineParser.register needs a new keyword-only option, start_chars, with default None. It lets a plugin declare the exhaustive set of characters a rule can start with, so that parsing stays fast. It accepts one single-character string, or an iterable of single-character strings. Both of these must work:\n- md.inline.register(\"at\", r\"@+\", parse_at, start_chars=\"@\")\n- md.inline.register(\"word\", r\"foo|bar\", parse_word, start_chars={\"f\", \"b\"}), which renders \"foo bar\" the same as above.\n\nThe method must raise ValueError for an invalid value: \"\", \"ab\", [] and [\"a\", \"bc\"] all raise. The error message is \"start_chars must contain one or more single-character strings\". Registering a rule name again without start_chars must drop any hint set before for that name.\n\nRule order must still hold when rules share a start character. If rule \"first\" and then rule \"second\" both use r\"@+\", each with before=\"linebreak\" and start_chars=\"@\", then \"@@\" must render with the first rule: <p><first>@@</first></p> when the first rule's renderer wraps the text in <first> tags.\n\nEverything else must keep working, including the built-in rules and plugins.",
+  "hidden_tests": [
+    "tests/test_misc.py"
+  ],
+  "accept": "PYTHONPATH=src:.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests -k 'not near_linear'",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5"
+}

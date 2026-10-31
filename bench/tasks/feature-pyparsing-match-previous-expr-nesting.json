@@ -1,0 +1,14 @@
+{
+  "id": "feature-pyparsing-match-previous-expr-nesting",
+  "cohort": "feature",
+  "repo": "https://github.com/pyparsing/pyparsing",
+  "license": "MIT",
+  "base": "038ff39cbc29b77a74ac21674206d5bf170ca769",
+  "reference": "efd56db4e59f36b1673ce0eb0823e3afaa9d1201",
+  "task": "pp.match_previous_expr works only for the first pair in a parser's life. It fails on a second pair, on nested pairs, and after a failed parse. Packrat and left recursion are out of scope, as before.\n\nRepeated pairs: take first = pp.Word(pp.alphas), second = pp.match_previous_expr(first) and expr = first + pp.Suppress(':') + second. pp.OneOrMore(expr).parse_string('a:a b:b c:c') must give ['a', 'a', 'b', 'b', 'c', 'c'].\n\nReuse after a failure: with that same expr object, call parse_string with parse_all=True on these inputs, in this order. 'd:d' must give ['d', 'd']. 'e:f' must raise ParseException. 'g:g' must then give ['g', 'g']. A failed parse must not affect any later parse.\n\nNesting: an inner match must pair with the nearest enclosing occurrence of the leading expression. Take:\n\nLBRACE, RBRACE, SLASH = map(pp.Suppress, '{}/')\ntag_name = pp.Word(pp.alphanums + '_')\nopen_tag = LBRACE + tag_name + RBRACE\nclose_tag = LBRACE + SLASH + pp.match_previous_expr(tag_name) + RBRACE\ncontent = pp.Forward()\ncontent <<= (open_tag + pp.Group(content) + close_tag) | pp.Word(pp.alphas)\n\nWith content.parse_string(s, parse_all=True), these must parse: '{a}xx{/a}', '{a}{b}xx{/b}{/a}', '{a}{b}{c}xx{/c}{/b}{/a}'. These must raise ParseException: '{a}{b}xx{/a}{/b}', '{a}{b}xx{/b}{/c}', '{a}xx{/b}'.\n\nA leading match made on a branch that the parser later abandons must never pair with a repeat. All of these inputs must give the stated result when run in sequence on the same parser object.\n\nExisting uses of match_previous_expr, including parse actions on the expression, must keep working.",
+  "hidden_tests": [
+    "tests/test_unit.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests --ignore=tests/test_matplotlib_cases.py",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 railroad-diagrams jinja2"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "longctx-attrs-converter-callable-adapter",
+  "cohort": "longctx",
+  "repo": "https://github.com/python-attrs/attrs",
+  "license": "MIT",
+  "base": "53e632c5218b729da6ac37a35b4b68379dc18999",
+  "reference": "6fda0a4e086b56d7058855e4c15112c8f58de74c",
+  "task": "Converters that take the instance or the field misbehave in pipelines and on attribute assignment. Fix all of these.\n\nAssigning to a field whose converter is a list crashes. With @attr.define and class C: x = attr.field(converter=[int]), C('1') works, but c.x = '2' raises TypeError because the composed converter is not callable. After the fix, c.x == 2. A field with a plain callable converter must keep working on assignment too, and an attrs.Converter set on a field must run with the right arguments when the on_setattr convert hook runs. That hook is attr.setters.convert.\n\nA pipeline passes the wrong arguments. Take def takes_all(val, instance, attrib) wrapped as attr.Converter(takes_all, takes_field=True, takes_self=True), used in attr.ib(converter=[that_converter, int]). When the class is instantiated with '41', takes_all must receive '41', the instance being built, and the real Attribute, whose .name is 'x1'. Today it receives the True flags instead of the instance and the field. attr.converters.pipe must behave the same way, and plain callables in a pipeline must still receive only the value.\n\nattrs.Converter instances must be directly callable, as adapters, with exactly three positional arguments: value, instance, field. The call passes on only what the wrapped callable declared. Given a callable that records its args:\n- Converter(f)(42, instance, field) calls f(42).\n- Converter(f, takes_self=True)(42, instance, field) calls f(42, instance).\n- Converter(f, takes_field=True)(42, instance, field) calls f(42, field).\n- Converter(f, takes_self=True, takes_field=True)(42, instance, field) calls f(42, instance, field).\n\nThis must survive pickling. After a pickle round trip of a Converter, for all four flag combinations, the copy must equal the original, keep takes_self and takes_field, and c.__call__.__name__ must equal the copy's __call__.__name__.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/test_converters.py",
+    "tests/test_setattr.py"
+  ],
+  "accept": "PYTHONPATH=src:.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 hypothesis pympler cloudpickle"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "feature-sqlparse-begin-end-block-semicolons",
+  "cohort": "feature",
+  "repo": "https://github.com/andialbrecht/sqlparse",
+  "license": "BSD-3-Clause",
+  "base": "e92a032c81d51a6645b4f8c32470481894818ba0",
+  "reference": "1a3bfbd50b82c05d9adcc51bacba059671dc1bc7",
+  "task": "sqlparse.split cuts a statement at semicolons inside a BEGIN ... END block when the block is not in a shape it already knows.\n\nThis input must come back as one statement, which contains both 'WITH' and 'SELECT meaning_of_life()':\n\nWITH\nFUNCTION meaning_of_life()\n  RETURNS tinyint\n  BEGIN\n    DECLARE a tinyint DEFAULT CAST(6 as tinyint);\n    DECLARE b tinyint DEFAULT CAST(7 as tinyint);\n    RETURN a * b;\n  END\nSELECT meaning_of_life();\n\nThis input must also come back as one statement, which contains 'CREATE OR REPLACE PROCEDURE':\n\nCREATE OR REPLACE PROCEDURE mydataset.create_customer()\nBEGIN\n  DECLARE id STRING;\n  SET id = GENERATE_UUID();\n  INSERT INTO mydataset.customers (customer_id)\n    VALUES(id);\n  SELECT FORMAT(\"Created customer %s\", id);\nEND;\n\nA BEGIN that is followed directly by a semicolon starts a transaction, not a block, so it must still split. 'begin;\\nupdate foo\\n       set bar = 1;\\ncommit;' must parse into 3 statements, and the statements joined must equal the input.\n\nEverything else must keep working, including CREATE TASK ... AS BEGIN ... END; followed by another statement, which splits into 2.",
+  "hidden_tests": [
+    "tests/test_split.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5"
+}

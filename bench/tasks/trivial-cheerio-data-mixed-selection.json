@@ -1,0 +1,14 @@
+{
+  "id": "trivial-cheerio-data-mixed-selection",
+  "cohort": "trivial",
+  "repo": "https://github.com/cheeriojs/cheerio",
+  "license": "MIT",
+  "base": "6710eecdab95135b2f924409bd35466f49062b07",
+  "reference": "1e177f443532318746c830a1874276c1f0a347f9",
+  "task": "Setting data does nothing when the selection starts with a text node. With const $ = load('<div>text<span></span></div>') and const contents = $('div').contents(), the selection holds a text node and then the span. contents.data('foo', 'bar') returns undefined and the span gets no data.\n\nThe .data(name, value) and .data(map) setters must apply to every element in the selection, skip nodes that are not elements, and return the same Cheerio instance. So contents.data('foo', 'bar') must return contents, and $('span').data('foo') must then be 'bar'. contents.data({ baz: 'qux' }) must return contents, and $('span').data('baz') must then be 'qux'.\n\nThe getter forms keep their behavior: .data() and .data(name) read from the first node, and return undefined when it is not an element.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "src/api/attributes.spec.ts"
+  ],
+  "accept": "npx vitest run",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

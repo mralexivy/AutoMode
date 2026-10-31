@@ -1,0 +1,14 @@
+{
+  "id": "feature-qs-object-input-immutable",
+  "cohort": "feature",
+  "repo": "https://github.com/ljharb/qs",
+  "license": "BSD-3-Clause",
+  "base": "98157dc1b770240ed4fb91da0faa3fb404b80474",
+  "reference": "d219359f5bedc42815190b2448160fae06b7817c",
+  "task": "qs.parse changes the caller's data when it gets an object instead of a string. It must leave the input untouched, at any depth, and still return the same results.\n\nArrays: with arr = ['x'], qs.parse({ a: arr, 'a[]': 'y' }) must return { a: ['x', 'y'] }, and arr must stay ['x']. Today arr gains 'y'.\n\nNested arrays: with nested = { b: ['x'] }, qs.parse({ a: nested, 'a[b][]': 'y' }) must return { a: { b: ['x', 'y'] } }, and nested must stay { b: ['x'] }.\n\nObjects: with obj = { b: 'c' }, qs.parse({ a: obj, 'a[d]': 'e' }) must return { a: { b: 'c', d: 'e' } }, and obj must stay { b: 'c' }.\n\nSparse values: with sparse = { b: [1, undefined, 2] }, qs.parse({ a: sparse }) must return { a: { b: [1, 2] } }, and sparse must still deep-equal { b: [1, undefined, 2] }.\n\nThe returned containers follow these rules. An input object with a null prototype must stay null-prototype: Object.getPrototypeOf(qs.parse({ a: { __proto__: null, b: 'c' } }).a) must be null. An object that is neither an array nor a plain object must pass through by identity: with date = new Date(0), qs.parse({ a: date }).a must be strictly equal to date. Cycles must be kept: with cyclic = { b: 'c' } and cyclic.self = cyclic, result = qs.parse({ a: cyclic }) must give result.a !== cyclic and result.a.self === result.a. Very deeply nested input must not overflow the stack.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "test/parse.js"
+  ],
+  "accept": "npx tape 'test/**/*.js'",
+  "setup": "npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund --legacy-peer-deps --before=2026-10-14T23:59:59Z"
+}

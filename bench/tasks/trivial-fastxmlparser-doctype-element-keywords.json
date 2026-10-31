@@ -1,0 +1,14 @@
+{
+  "id": "trivial-fastxmlparser-doctype-element-keywords",
+  "cohort": "trivial",
+  "repo": "https://github.com/NaturalIntelligence/fast-xml-parser",
+  "license": "MIT",
+  "base": "619b504eb19e39e83dfa6aedda1a527574c15549",
+  "reference": "5bcf183566c3412715168c55479bf169c09be555",
+  "task": "XMLParser throws on valid DOCTYPE element declarations that use the EMPTY or ANY content keywords. Parsing this document fails with: Expected '(', found \"E\".\n\n<?xml version=\"1.0\" standalone=\"yes\" ?><!--open the DOCTYPE declaration -  the open square bracket indicates an internal DTD--><!DOCTYPE foo [<!--define the internal DTD--><!ELEMENT foo EMPTY><!ELEMENT foo ANY><!--close the DOCTYPE declaration-->]><foo>Hello World.</foo>\n\nnew XMLParser().parse(xml) must return { \"?xml\": \"\", foo: \"Hello World.\" }. The EMPTY and ANY declarations are skipped, as other element declarations are, and each may appear with the other in one DOCTYPE. Declarations with a parenthesized content model, such as <!ELEMENT foo (#PCDATA)>, must keep working, and an unknown content model must still throw.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "spec/entities_spec.js"
+  ],
+  "accept": "npx jasmine 'spec/*spec.js'",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

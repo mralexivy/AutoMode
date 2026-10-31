@@ -1,0 +1,15 @@
+{
+  "id": "security-markdownit-reference-continuation-quadratic",
+  "cohort": "security",
+  "repo": "https://github.com/markdown-it/markdown-it",
+  "license": "MIT",
+  "base": "3c51991c32aaa2b002a52c009334ebe5752c84b3",
+  "reference": "48fbc465812c440020c663f040ab22deaf8f1eca",
+  "task": "Link reference definitions have three faults. Fix all of them.\n\nFirst, a definition that spans many lines takes quadratic time. With the default markdownit(), each of these inputs must render in under 5 seconds:\n\n- '[a]: /u \"' + 'x\\n'.repeat(300000) (a title that never closes)\n- '[a]: /u \"' + 'x\\n'.repeat(300000) + '\"' (a title that closes at the very end)\n- '[' + 'a\\n'.repeat(300000) (a label that never closes)\n\nSecond, reference labels have no length limit. CommonMark allows at most 999 Unicode code points in a label, and a surrogate pair counts as one. A label over the limit must not define a reference. After md.parse('[' + 'a'.repeat(999) + ']: /url\\n\\n[' + 'b'.repeat(1000) + ']: /url', env), Object.keys(env.references) must be exactly ['A'.repeat(999)].\n\nThird, a title that continues onto a later line is accepted even with no whitespace between the destination and the title. A title needs whitespace before it. md.render('- [ref]: <url>\"open\\n  close\"') must return '<ul>\\n<li>[ref]: &lt;url&gt;&quot;open\\nclose&quot;</li>\\n</ul>\\n', so the text stays a paragraph. A valid multi-line title must keep working: md.render('[ref]: <url> \"open\\nclose\"\\n\\n[ref]') must return '<p><a href=\"url\" title=\"open\\nclose\">ref</a></p>\\n'.\n\nEverything else must keep working, including the CommonMark spec tests.",
+  "hidden_tests": [
+    "test/markdown-it/misc.test.mjs",
+    "test/markdown-it/pathological.test.mjs"
+  ],
+  "accept": "npm run --silent test:markdown-it && npm run --silent test:cmspec",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

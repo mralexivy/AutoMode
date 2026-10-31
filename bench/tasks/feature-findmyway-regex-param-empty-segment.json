@@ -1,0 +1,14 @@
+{
+  "id": "feature-findmyway-regex-param-empty-segment",
+  "cohort": "feature",
+  "repo": "https://github.com/delvedor/find-my-way",
+  "license": "MIT",
+  "base": "7d3ec5f4411710688919275f838f42a8b7f8deb4",
+  "reference": "9a9a279bf63542f10fc7680b2240c35d7c904519",
+  "task": "A route with a regex parameter matches a path where that parameter is empty, even though the regex fails. Register findMyWay.on('GET', '/users/:userId(^\\\\d+)', handler). Then find('GET', '/users/') returns a match, and lookup({ method: 'GET', url: '/users/', headers: {} }, null) runs the handler. The value '' does not satisfy ^\\d+, so the route must not match.\n\nfind('GET', '/users/') must return null. lookup on the same url must call defaultRoute, when one is set, and must not run the route's handler.\n\nA parameter value that fails its regex, or that exceeds maxParamLength, must not select that route, at the end of the path or anywhere else. If another registered route can still match the path, the router must try it and return it. When no route remains, the result is null, or the onMaxParamLength result if a parameter was too long and that option is set.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "test/issue-6700.test.js"
+  ],
+  "accept": "npx borp",
+  "setup": "npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund --legacy-peer-deps --before=2026-05-08T23:59:59Z"
+}

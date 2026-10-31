@@ -1,0 +1,14 @@
+{
+  "id": "feature-immer-array-plugin-spread-drafts",
+  "cohort": "feature",
+  "repo": "https://github.com/immerjs/immer",
+  "license": "MIT",
+  "base": "f0d1c1b3c57003c9962f7c8bf1f1d7d801aaa2e1",
+  "reference": "d3bc436d0f39dd9c273f1fad3061c17f73ffd82a",
+  "task": "After enableArrayMethods(), inserting a spread copy of a draft into an array corrupts the result. The spread copy holds drafts of the nested values. After produce returns, those nested values are revoked proxies, so reading them throws. The same code works without the plugin, and it must behave the same with the plugin on.\n\nWith enableArrayMethods() active and autoFreeze on, all of these must hold:\n\n- Base [{ nestedArray: [] }], recipe s => { s.push({ ...s[0] }) }: next[0].nestedArray and next[1].nestedArray both equal [], and next[1].nestedArray.length is 0.\n- Base [{ nested: { value: 42 } }], recipe s => { s.push({ ...s[0] }) }: next[0].nested.value and next[1].nested.value are both 42.\n- Base [{ nestedArray: [] }], recipe s => { s.push(s[0]) }: next[0].nestedArray and next[1].nestedArray both equal [].\n- Base [{ nestedArray: [1] }], recipe s => { s.unshift({ ...s[0] }) }: next[0].nestedArray and next[1].nestedArray both equal [1].\n- Base [{ nestedArray: ['a', 'b'] }], recipe s => { s.splice(0, 0, { ...s[0] }) }: next[0].nestedArray and next[1].nestedArray both equal ['a', 'b'].\n\nThese same recipes must keep working with the plugin off, across autoFreeze, useStrictShallowCopy and patch listener settings. Everything else must keep working.",
+  "hidden_tests": [
+    "__tests__/base.js"
+  ],
+  "accept": "npx vitest run",
+  "setup": "npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund --before=2026-02-10T23:59:59Z"
+}

@@ -1,0 +1,13 @@
+{
+  "id": "security-tornado-header-control-chars-v2",
+  "cohort": "security",
+  "repo": "https://github.com/tornadoweb/tornado",
+  "license": "Apache-2.0",
+  "base": "5976db7db6796ea75bfaec9d620b4ba3ff6f2023",
+  "reference": "4bdd0bc63d363b844c7b5471488fe45c6fefa471",
+  "task": "HTTPHeaders lets control characters through in header values, which is a request smuggling risk. Reject them. A header value must not contain NUL, CR, DEL (0x7F) or any other ASCII control character below 0x20, except horizontal tab (0x09). Raise HTTPInputError for these from HTTPHeaders.parse, from HTTPHeaders.add and for continuation lines too. Tab, space and characters from 0x80 up stay legal: parsing \"Foo: bar\" + c + \"baz\\r\\n\" for such a c must keep the value intact. CRLF and LF both still end a header line. A bare CR is not a line ending and is not allowed inside a value, so HTTPHeaders.parse(\"CRLF: crlf\\r\\nLF: lf\\nCR: cr\\rMore: more\\r\\n\") must now raise HTTPInputError instead of keeping the CR in the value, while \"CRLF: crlf\\r\\nLF: lf\\nMore: more\\r\\n\" still parses to the three headers Crlf, Lf and More. Unicode characters that only look like newlines, such as U+0085, U+2028 and U+2029, are not separators and stay allowed in values. HTTPHeaders.add can still receive bytes values today, and that has to keep working.",
+  "hidden_tests": [
+    "tornado/test/httputil_test.py"
+  ],
+  "accept": "python3 -m unittest tornado.test.httputil_test tornado.test.httpserver_test tornado.test.web_test tornado.test.simple_httpclient_test tornado.test.httpclient_test tornado.test.websocket_test tornado.test.wsgi_test tornado.test.routing_test tornado.test.escape_test tornado.test.util_test"
+}

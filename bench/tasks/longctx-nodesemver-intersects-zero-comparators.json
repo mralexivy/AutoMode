@@ -1,0 +1,16 @@
+{
+  "id": "longctx-nodesemver-intersects-zero-comparators",
+  "cohort": "longctx",
+  "repo": "https://github.com/npm/node-semver",
+  "license": "ISC",
+  "base": "aa516b50b32f5a144017d8fc1b9efe0540963c91",
+  "reference": "940723d22bca824993627c45ac30dd3d2854b8cd",
+  "task": "Intersection checks report true for comparators that can never match. No version is below 0.0.0, yet new Comparator('<0.0.0').intersects(new Comparator('<0.1.0')) returns true.\n\nWithout includePrerelease, both '<0.0.0' and '<0.0.0-0' match nothing. Each of these must return false, in both orders:\n\n- new Comparator('<0.0.0').intersects(new Comparator('<0.1.0'), { includePrerelease: undefined })\n- new Comparator('<0.0.0-0').intersects(new Comparator('<0.1.0'), { includePrerelease: undefined })\n\nWith { includePrerelease: true }, '<0.0.0-0' still matches nothing, so new Comparator('<0.0.0-0').intersects(new Comparator('<0.1.0'), { includePrerelease: true }) must be false in both orders. In that mode '<0.0.0' is not empty, because 0.0.0-1 is below it, so it still intersects '<0.1.0'.\n\nThe top-level semver.intersects(a, b, options) must give the same answers and must honor everything in options, including includePrerelease. This applies when a and b are strings and when they are Comparator objects, in both orders, with loose false and with loose true. For example, semver.intersects('<0.0.0', '<0.1.0', { loose: true }) and semver.intersects(new Comparator('<0.1.0'), new Comparator('<0.0.0-0'), { includePrerelease: true }) must both be false.\n\nAll other comparator and range intersection results must stay the same. Everything else must keep working.",
+  "hidden_tests": [
+    "test/classes/comparator.js",
+    "test/fixtures/comparator-intersection.js",
+    "test/ranges/intersects.js"
+  ],
+  "accept": "npx tap --no-coverage",
+  "setup": "npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund --legacy-peer-deps --before=2023-04-10T23:59:59Z"
+}
