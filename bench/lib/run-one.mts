@@ -2,24 +2,34 @@
 // Raw results never contain prompt text or file contents.
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
-import { ARMS, armInvocation } from '../arms.mts'
+import { ARMS, armInvocation, armSpec } from '../arms.mts'
+import { ANTHROPIC, usageUsd } from '../../hooks/lib/prices.ts'
 import { classifyRun, type ExitReason } from './outcome.mts'
+import { specHash } from './experiment.mts'
+import { loadTemplate, renderPrompt, type Template } from './prompt.mts'
+import { COST_BASIS, RESULT_SCHEMA, estimatedUsd, harnessInfo, pricingSnapshot } from './result.mts'
+import { configDir, runEvidence, sessionFiles } from './run-evidence.mts'
 import { taskRepo, type Task } from './task-repo.mts'
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..')
-const PROMPT_SUFFIX = '\n\nWork in this repository. Make the change, add or update tests, and run the test suite. Do not commit or push.'
 const SETUP_MS = 10 * 60_000
 const git = (args: string[], cwd?: string) => execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 1e8 })
-const configDir = () => process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude')
 
 export interface RunContext {
   scratch: string
   out: string
   timeoutMs: number
   runCap: number | null
+  experiment?: string
+  template?: string
   repoFor?: (task: Task) => string
+}
+
+// runIdFor names a run. The hash covers the arm's whole setup, the prompt template and the task's commits and commands.
+export function runIdFor(task: Task, armId: string, rep: number, template: Template) {
+  const hash = specHash({ arm: armSpec(armId), template: template.sha256, task: [task.base, task.reference, task.accept, task.hidden_tests, task.task] })
+  return { runId: `${task.id}__${armId}__r${rep}__${hash}`, hash }
 }
 
 function runClaude(args: string[], env: NodeJS.ProcessEnv, cwd: string, timeoutMs: number) {
@@ -43,34 +53,19 @@ function runClaude(args: string[], env: NodeJS.ProcessEnv, cwd: string, timeoutM
 // Every session is told about its own (empty) memory folder; that is fine. A reference to any other
 // project's memory means the run saw the user's memory, and the row is excluded from the report.
 function memoryRefs(sessionId: string | null | undefined) {
-  if (!sessionId) return null
-  const root = path.join(configDir(), 'projects')
-  if (!fs.existsSync(root)) return null
-  for (const proj of fs.readdirSync(root)) {
-    const main = path.join(root, proj, `${sessionId}.jsonl`)
-    if (!fs.existsSync(main)) continue
-    let hits = 0
-    const count = (file: string) => {
-      for (const m of fs.readFileSync(file, 'utf8').matchAll(/projects\/([^/\s"\\]+)\/memory/g)) if (m[1] !== proj) hits++
-    }
-    const scan = (p: string) => {
-      for (const e of fs.readdirSync(p, { withFileTypes: true })) {
-        const q = path.join(p, e.name)
-        if (e.isDirectory()) scan(q)
-        else if (q.endsWith('.jsonl')) count(q)
-      }
-    }
-    count(main)
-    if (fs.existsSync(path.join(root, proj, sessionId))) scan(path.join(root, proj, sessionId))
-    return hits
+  const found = sessionFiles(sessionId)
+  if (!found) return null
+  let hits = 0
+  for (const file of found.files) {
+    for (const m of fs.readFileSync(file, 'utf8').matchAll(/projects\/([^/\s"\\]+)\/memory/g)) if (m[1] !== found.project) hits++
   }
-  return null
+  return hits
 }
 
 const jsonLines = (file: string): any[] => fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l) } catch { return null } }).filter(Boolean)
 
 // judgeCost reads the judge router's decision log in the run's plugin copy: every verdict, and the
-// judge's own Haiku tokens priced at list price. The CLI's total may not include plugin model calls,
+// judge's own Haiku tokens priced at the dated price book. The CLI's total may not include plugin model calls,
 // so the report adds this to the run's cost.
 function judgeCost(dir: string) {
   const file = path.join(dir, 'plugin-v2', 'judge-log.jsonl')
@@ -79,7 +74,7 @@ function judgeCost(dir: string) {
   let usd = 0
   for (const l of lines.filter((x) => x.ev === 'judge' && x.usage)) {
     const u = l.usage
-    usd += ((u.input_tokens || 0) * 0.10 + (u.output_tokens || 0) * 0.50 + (u.cache_read_input_tokens || 0) * 0.01 + (u.cache_creation_input_tokens || 0) * 0.125) / 1e6
+    usd += usageUsd({ input: u.input_tokens || 0, output: u.output_tokens || 0, cacheRead: u.cache_read_input_tokens || 0, cacheWrite5m: u.cache_creation_input_tokens || 0, cacheWrite1h: 0 }, ANTHROPIC.rates.haiku)
   }
   return { usd, calls: lines.filter((x) => x.ev === 'judge').length, verdicts: lines.filter((x) => x.ev === 'verdict').map((v) => ({ path: v.path, effort: v.effort, by: v.by, risks: v.risks })) }
 }
@@ -118,8 +113,17 @@ export function agentChange(wt: string, base: string, hiddenTests: string[]) {
 }
 
 export async function oneRun(task: Task, armId: string, rep: number, ctx: RunContext) {
-  const runId = `${task.id}__${armId}__r${rep}`
-  const rowHead = { run_id: runId, task_id: task.id, cohort: task.cohort, arm: armId, repeat: rep }
+  const template = loadTemplate(ctx.template ?? task.prompt_template ?? 'repo-change-v1')
+  const { runId, hash } = runIdFor(task, armId, rep, template)
+  const prompt = renderPrompt(template, task.task)
+  const spec = armSpec(armId)
+  const rowHead = {
+    schema_version: RESULT_SCHEMA, run_id: runId, task_id: task.id, cohort: task.cohort, arm: armId, repeat: rep,
+    experiment: ctx.experiment ?? 'adhoc', spec_hash: hash, model: spec.model, alias_map: spec.alias_map, arm_env: spec.env, plugin: spec.plugin,
+    prompt: { template_id: template.id, template_sha256: template.sha256, rendered_sha256: prompt.sha256, tool_schema_sha256: null as string | null },
+    task_ref: { base: task.base, reference: task.reference, dataset: task.provenance?.dataset ?? 'automode-native' },
+    harness: harnessInfo(), cost_basis: COST_BASIS, pricing_snapshot: pricingSnapshot(),
+  }
   const dir = path.join(ctx.scratch, runId)
   fs.rmSync(dir, { recursive: true, force: true })
   fs.mkdirSync(dir, { recursive: true })
@@ -132,14 +136,16 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
       const setup = spawnSync('sh', ['-c', task.setup], { cwd: wt, encoding: 'utf8', timeout: SETUP_MS })
       if (setup.status !== 0) return { ...rowHead, exit_reason: 'setup_error' as ExitReason, setup_exit: setup.status, at: new Date().toISOString() }
     }
-    const { args, env } = armInvocation(armId, dir, task.task + PROMPT_SUFFIX)
+    const { args, env } = armInvocation(armId, dir, prompt.text)
     if (ctx.runCap) args.push('--max-budget-usd', String(ctx.runCap))
-    const res = await runClaude(args, env, wt, ctx.timeoutMs)
+    const res = await runClaude(args, env, wt, task.limits?.wall_seconds ? task.limits.wall_seconds * 1000 : ctx.timeoutMs)
     const exit_reason = classifyRun(res)
     const j = res.json || {}
+    const evidence = runEvidence(j.session_id)
     const agentHead = {
       ...rowHead, exit_reason, claude_exit: res.code, claude_signal: res.signal, is_error: j.is_error ?? null, num_turns: j.num_turns ?? null,
-      cost_usd_api_equiv: j.total_cost_usd ?? null, wall_s: res.wall_s, session_id: j.session_id ?? null, run_cap_usd: ctx.runCap,
+      cost_usd_api_equiv: j.total_cost_usd ?? null, estimated_cost_usd: estimatedUsd(evidence), reported_cost_usd: null as number | null,
+      wall_s: res.wall_s, session_id: j.session_id ?? null, run_cap_usd: ctx.runCap, evidence,
     }
     if (exit_reason === 'quota') return { ...agentHead, at: new Date().toISOString() }
 
@@ -153,6 +159,9 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
       fs.writeFileSync(path.join(wt, t), git(['show', `${task.reference}:${t}`], cache))
     }
     const lint = task.lint ? spawnSync('sh', ['-c', task.lint], { cwd: wt, encoding: 'utf8', timeout: 5 * 60_000 }) : null
+    const check = (cmd?: string) => (cmd ? spawnSync('sh', ['-c', cmd], { cwd: wt, encoding: 'utf8', timeout: SETUP_MS }).status === 0 : null)
+    const typecheck_ok = check(task.typecheck)
+    const regression_ok = check(task.regression)
     const acc = spawnSync('sh', ['-c', task.accept], { cwd: wt, encoding: 'utf8', timeout: SETUP_MS })
     const commits = Number(git(['rev-list', '--count', `${task.base}..HEAD`], wt).trim())
     return {
@@ -165,7 +174,7 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
         cache_write: u.cacheCreationInputTokens ?? null, cost_usd: u.costUSD ?? null }])) : null,
       diff_shortstat: change.shortstat,
       diff_chars: change.diff.length,
-      lint_clean: lint ? lint.status === 0 : null, files_touched: change.files, commits_made: commits,
+      lint_clean: lint ? lint.status === 0 : null, typecheck_ok, regression_ok, files_touched: change.files, commits_made: commits,
       trace: usageTrace(j.session_id)?.trace ?? null,
       memory_refs: memoryRefs(j.session_id),
       judge: ARMS[armId].v4 ? v4JudgeCost(j.session_id) : judgeCost(dir),

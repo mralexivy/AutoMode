@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // AutoMode benchmark runner. Resumable: a run whose id is already in the results file is skipped.
 //
-// Usage: node bench/run.mts [--preset light|effort|auto] [--tasks a,b] [--arms x,y] [--repeats 3] [--parallel 2]
+// Usage: node bench/run.mts [--experiment light|effort|auto|stage-a|stage-b|stage-c|file.json] [--tasks a,b] [--arms x,y] [--repeats 3] [--parallel 2]
 //                           [--run-cap-usd 3] [--budget-usd 15] [--scratch dir] [--out file] [--timeout-min 40] [--dry-run]
 //
 // Spend limits: --run-cap-usd passes --max-budget-usd to each claude run (a hard stop per run).
@@ -25,22 +25,22 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { ARMS } from './arms.mts'
+import { loadExperiment } from './lib/experiment.mts'
 import { add, LEDGER, total } from './lib/ledger.mts'
+import { loadTemplate } from './lib/prompt.mts'
 import { chargedUsd, isDone } from './lib/outcome.mts'
-import { oneRun, type RunContext } from './lib/run-one.mts'
-import { loadTasks, problems, type Task } from './lib/task-repo.mts'
+import { oneRun, runIdFor, type RunContext } from './lib/run-one.mts'
+import { loadTasks, problems, TASKS_DIR, type Task } from './lib/task-repo.mts'
 
 const REPO = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim()
-const PRESETS = {
-  light: { arms: 'sonnet,opus,auto', repeats: '1', parallel: '1', 'run-cap-usd': '3', 'budget-usd': '15' },
-  effort: { arms: 'opus-medium,opus-high,opus-effortless,auto', repeats: '3', parallel: '2', 'run-cap-usd': '3', 'budget-usd': '40' },
-  auto: { arms: 'opus,sonnet,auto', repeats: '3', parallel: '2', 'run-cap-usd': '3', 'budget-usd': '30' },
-}
-const presetName = (() => { const i = process.argv.indexOf('--preset'); return i >= 0 ? process.argv[i + 1] : null })()
-if (presetName && !PRESETS[presetName]) throw new Error(`unknown preset ${presetName}; known: ${Object.keys(PRESETS).join(', ')}`)
-const opt = (name: string, def?: unknown): any => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : (presetName && PRESETS[presetName][name]) ?? def }
+const arg = (name: string) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined }
+// --preset is the older name for --experiment.
+const experimentId = arg('experiment') ?? arg('preset')
+const experiment = experimentId ? loadExperiment(experimentId, Object.keys(ARMS)) : null
+const fromSpec: Record<string, unknown> = experiment ? { arms: experiment.arms.join(','), tasks: experiment.tasks?.join(','), repeats: experiment.repeats, parallel: experiment.parallel, 'run-cap-usd': experiment.run_cap_usd, 'budget-usd': experiment.budget_usd } : {}
+const opt = (name: string, def?: unknown): any => arg(name) ?? fromSpec[name] ?? def
 const flag = (name: string) => process.argv.includes(`--${name}`)
-const allTasks = loadTasks()
+const allTasks = loadTasks(opt('tasks-dir', TASKS_DIR))
 const tasks = opt('tasks') ? allTasks.filter((t) => opt('tasks').split(',').includes(t.id)) : allTasks
 const arms = opt('arms') ? opt('arms').split(',') : Object.keys(ARMS)
 const repeats = Number(opt('repeats', 3))
@@ -50,7 +50,7 @@ const out = opt('out', path.join(REPO, 'bench', 'results', 'results.jsonl'))
 const timeoutMs = Number(opt('timeout-min', 40)) * 60_000
 const runCap = opt('run-cap-usd') ? Number(opt('run-cap-usd')) : null
 const budget = opt('budget-usd') ? Number(opt('budget-usd')) : null
-for (const t of allTasks) { const bad = problems(t); if (bad.length) throw new Error(`task ${t.id ?? '?'}: ${bad.join('; ')}`) }
+for (const t of allTasks) { const bad = problems(t, { allowLocal: process.env.BENCH_ALLOW_LOCAL === '1' }); if (bad.length) throw new Error(`task ${t.id ?? '?'}: ${bad.join('; ')}`) }
 if (!tasks.length) { console.log('No tasks to run. Add one in bench/tasks (see bench/tasks/README.md).'); process.exit(0) }
 for (const a of arms) if (!ARMS[a]) throw new Error(`unknown arm ${a}; known: ${Object.keys(ARMS).join(', ')}`)
 
@@ -62,13 +62,15 @@ function doneIds() {
 const plan: [Task, string, number][] = []
 for (let rep = 1; rep <= repeats; rep++) for (const t of tasks) for (const a of arms) plan.push([t, a, rep])
 const skip = doneIds()
-const todo = plan.filter(([t, a, r]) => !skip.has(`${t.id}__${a}__r${r}`))
+const templateId = experiment?.prompt_template
+const idOf = ([t, a, r]: [Task, string, number]) => runIdFor(t, a, r, loadTemplate(templateId ?? t.prompt_template ?? 'repo-change-v1')).runId
+const todo = plan.filter((p) => !skip.has(idOf(p)))
 console.log(`${plan.length} runs planned, ${plan.length - todo.length} already done, ${todo.length} to run (${parallelRuns} at a time).` +
   `${runCap ? ` Cap per run: $${runCap}.` : ''}${budget ? ` Total budget: $${budget}.` : ''}`)
 if (flag('dry-run')) { for (const [t, a, r] of todo) console.log(`  ${t.id} / ${a} / r${r}`); process.exit(0) }
 
 fs.mkdirSync(path.dirname(out), { recursive: true })
-const ctx: RunContext = { scratch, out, timeoutMs, runCap }
+const ctx: RunContext = { scratch, out, timeoutMs, runCap, experiment: experiment?.id, template: templateId }
 // One batch per results file, so a resume keeps counting what the earlier runs spent.
 const batch = `run:${path.basename(out)}`
 let next = 0
@@ -77,7 +79,7 @@ async function worker() {
   while (next < todo.length) {
     if (budget && spent >= budget) { console.log(`Budget $${budget} reached ($${spent.toFixed(2)} spent). No new runs start.`); return }
     const [t, a, r] = todo[next++]
-    const row: any = await oneRun(t, a, r, ctx).catch((e) => ({ run_id: `${t.id}__${a}__r${r}`, task_id: t.id, cohort: t.cohort, arm: a, repeat: r, harness_error: String(e.message || e), at: new Date().toISOString() }))
+    const row: any = await oneRun(t, a, r, ctx).catch((e) => ({ run_id: idOf([t, a, r]), task_id: t.id, cohort: t.cohort, arm: a, repeat: r, harness_error: String(e.message || e), at: new Date().toISOString() }))
     const charge = chargedUsd(row.cost_usd_api_equiv, runCap)
     spent += charge.usd
     add({ batch, what: row.run_id, usd: charge.usd, source: charge.known ? 'cli total_cost_usd' : 'run cap: no cost reported' })
