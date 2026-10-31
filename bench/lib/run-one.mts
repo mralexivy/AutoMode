@@ -94,6 +94,8 @@ export function agentChange(wt: string, base: string, hiddenTests: string[]) {
   return {
     diff: git(['diff', base], wt) + untracked.map((f) => `\n--- new file: ${f}\n${fs.readFileSync(path.join(wt, f), 'utf8').slice(0, 20000)}`).join(''),
     shortstat: git(['diff', '--shortstat', base, '--', '.', ...hiddenTests.map((t) => `:!${t}`)], wt).trim(),
+    // A patch that applies, for a harness that scores the change elsewhere. Staging is undone, so nothing else sees it.
+    patch: () => { git(['add', '-A'], wt); const p = git(['diff', '--cached', '--binary', base], wt); git(['reset', '-q'], wt); return p },
     files: new Set([...lines(git(['diff', '--name-only', base], wt)), ...untracked]).size,
   }
 }
@@ -143,6 +145,8 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
   fs.mkdirSync(dir, { recursive: true })
   const wt = path.join(dir, 'wt')
   const cache = (ctx.repoFor ?? taskRepo)(task)
+  // Third-party test code never runs on the host.
+  if (task.requirements?.sandbox && !runner.sandbox) throw new Error(`${task.id} needs a sandboxed runner`)
   const workspaceBase = prepareWorkspace(cache, task.base, wt)
   try {
     // Commands run where the runner says. In a sandbox, so do the tests: they execute code the model wrote.
@@ -173,6 +177,10 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
     const diffDir = path.join(path.dirname(ctx.out), 'diffs')
     fs.mkdirSync(diffDir, { recursive: true })
     fs.writeFileSync(path.join(diffDir, `${runId}.diff`), change.diff)
+    if (task.external_eval) {
+      fs.writeFileSync(path.join(diffDir, `${runId}.patch`), change.patch())
+      return { ...agentHead, external_eval: task.external_eval, accepted: null as boolean | null, model_usage: res.modelUsage, diff_shortstat: change.shortstat, diff_chars: change.diff.length, files_touched: change.files, memory_refs: memoryRefs(res.sessionId), leak_refs: leakRefs(res.sessionId, task), judge: null, stderr_tail: res.stderrTail, at: new Date().toISOString() }
+    }
     // Acceptance: the reference commit's versions of the hidden tests, then the accept command.
     for (const t of task.hidden_tests) {
       fs.mkdirSync(path.dirname(path.join(wt, t)), { recursive: true })

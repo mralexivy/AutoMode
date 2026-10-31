@@ -26,7 +26,8 @@ export interface Task {
   prompt_template?: string
   regression?: string
   typecheck?: string
-  requirements?: { network?: boolean; min_context_tokens?: number; languages?: string[]; risk_tags?: string[] }
+  requirements?: { network?: boolean; min_context_tokens?: number; languages?: string[]; risk_tags?: string[]; sandbox?: boolean }
+  external_eval?: 'swebench' // another harness scores this task, so accept stays empty
   limits?: { wall_seconds?: number; disk_mb?: number }
   provenance?: { source: string; dataset?: string; dataset_version?: string }
 }
@@ -48,10 +49,11 @@ export function loadTasks(dir = TASKS_DIR): Task[] {
 // problems: what a task file must have. A task without these cannot run, and a task without a license is not published.
 export function problems(t: Task, { allowLocal = false } = {}) {
   const out = []
-  for (const k of ['id', 'cohort', 'repo', 'license', 'base', 'reference', 'task', 'accept']) if (!t[k]) out.push(`missing "${k}"`)
-  if (!Array.isArray(t.hidden_tests) || !t.hidden_tests.length) out.push('"hidden_tests" must list at least one test file')
-  if (t.repo && !allowLocal && !/^https:\/\//.test(t.repo)) out.push('"repo" must be an https URL of a public repository')
-  if (t.license && !/^(MIT|Apache-2\.0|BSD-2-Clause|BSD-3-Clause|ISC)$/.test(t.license)) out.push('"license" must be MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause or ISC')
+  for (const k of ['id', 'cohort', 'repo', 'license', 'base', 'reference', 'task']) if (!t[k]) out.push(`missing "${k}"`)
+  if (!t.external_eval && !t.accept) out.push('missing "accept"')
+  if (!t.external_eval && (!Array.isArray(t.hidden_tests) || !t.hidden_tests.length)) out.push('"hidden_tests" must list at least one test file')
+  if (t.repo && !allowLocal && t.provenance?.dataset === undefined && !/^https:\/\//.test(t.repo)) out.push('"repo" must be an https URL of a public repository')
+  if (t.license && t.provenance?.dataset === undefined && !/^(MIT|Apache-2\.0|BSD-2-Clause|BSD-3-Clause|ISC)$/.test(t.license)) out.push('"license" must be MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause or ISC')
   if (t.limits?.wall_seconds !== undefined && !(t.limits.wall_seconds > 0)) out.push('"limits.wall_seconds" must be positive')
   for (const k of ['base', 'reference']) if (t[k] && !/^[0-9a-f]{40}$/.test(t[k])) out.push(`"${k}" must be a full 40-character commit SHA`)
   return out
