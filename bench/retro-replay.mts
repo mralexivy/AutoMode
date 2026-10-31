@@ -22,7 +22,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { parseLines, requestsOf, isPersonPrompt, loadSubagents, readRecords } from './lib/transcripts.mts'
 import { costOf, sum, rateOf, familyOf, workloadOf } from './spend-audit.mts'
-import { optimizeAuto, fallbackModel, escalationTarget } from '../hooks/lib/auto.ts'
+import { optimizeAuto, fallbackModel } from '../hooks/lib/auto.ts'
+import { ladderStep } from '../hooks/lib/bands.ts'
 import { switchCheck, DEFAULT_PARAMS } from '../hooks/lib/policy.ts'
 import { DEFAULT_PRIORS } from '../hooks/lib/optimizer.ts'
 import { subagentRoute } from '../hooks/lib/subagents.ts'
@@ -210,9 +211,9 @@ export function replaySession(L, regime, scenario, start = START, end = END, fil
         // Decision points: the segment's first request (a new prompt or the plan exit), and an escalation.
         let target = null, why = null, mandatory = false
         if (k === 0 && replayable) { const d = regime === 'measured' ? decideMeasured(si === 0 ? `${base}|${turn.at}` : `${base}|${s.at}|exit`, sim, cache.prefix || promptOf(s)) : decide(regime, cls, sim, cache.prefix || promptOf(s)); target = d; why = d.why; out.judgeCalls += regime === 'fail' ? 0 : regime === 'measured' ? d.calls : 2 }
-        // Escalation as the router does it (auto.ts escalationTarget): one band up toward the T3 floor, the running model first.
+        // Escalation as the router does it (bands.ts ladderStep): one effort step, and the model once no step is left.
         // Before 2026-10-26 this replay jumped straight to Opus high, which overstated the cost of hard work.
-        if (k > 0 && failures >= 2 && regime !== 'fail') { const up = escalationTarget(sim, 'T3', ['sonnet', 'opus']); if (up.family !== sim.family || up.effort !== sim.effort) { target = { family: up.family, effort: up.effort }; why = 'escalation: repeated failing checks, one band up'; mandatory = true }; failures = -99 }
+        if (k > 0 && failures >= 2 && regime !== 'fail') { const up = ladderStep(sim, 'weak', ['sonnet', 'opus']) ?? ladderStep(sim, 'strong', ['sonnet', 'opus']); if (up) { target = { family: up.family, effort: up.effort }; why = 'escalation: repeated failing checks, one band up'; mandatory = true }; failures = -99 }
         if (!replayable) target = { family: actual.family, effort: actual.effort } // unknown turn: no change
         let switched = false
         if (target && target.family !== sim.family) {

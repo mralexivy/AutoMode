@@ -27,7 +27,6 @@
 import type { Complexity, Effort, Family, Risk, Tier } from './types.ts'
 import { EFFORTS, tierRank } from './types.ts'
 import { bounded, type ModelKey } from './effortless.ts'
-import { BAND_OF, TIER_BAND } from './bands.ts'
 import { NEED_ANCHOR } from './effortless-adapt.ts'
 
 export interface FamilyVerdict { model: ModelKey; effort: Effort; why: string; sure?: number }
@@ -200,22 +199,6 @@ export function fallbackModel(keep: Family, hm: { tier: Tier; effort?: Effort; c
   if (down && (hm.confidence ?? 1) < minConfidence) return { family: keep, why: `the AutoMode judge names ${need} with low confidence: the ${keep} model stays` }
   if (need !== keep && allowed.includes(need)) return { family: need, effort: hm.effort, why: `the effortless judge failed: the AutoMode judge decides (${hm.tier}: ${need})` }
   return { family: keep, why: `the effortless judge failed; the AutoMode judge names ${need}: the ${keep} model stays` }
-}
-
-// ---------------------------------------------------------------- escalation (defect evidence)
-// One step up from the running configuration, never past the step the escalation's tier asks for. The order of
-// configurations is the v4.1 band table (bands.ts), used here only to order escalation steps: Sonnet medium to
-// Sonnet high, Sonnet high to Opus high, Opus high to Opus xhigh, and Opus max only for a defect that repeats on xhigh.
-export function escalationTarget(running: { family: Family; effort: Effort }, floorTier: Tier, allowed: Family[]): { family: Family; effort: Effort; band: number } {
-  const runBand = BAND_OF[running.family][running.effort]
-  // Never below the running configuration: a floor the route already meets raises nothing.
-  const band = Math.max(runBand, Math.min(TIER_BAND[floorTier], runBand + 1))
-  const fams = allowed.length ? allowed : (['sonnet', 'opus'] as Family[])
-  const options: { family: Family; effort: Effort; band: number }[] = []
-  for (const f of fams) for (const e of EFFORTS) if (BAND_OF[f][e] >= band) { options.push({ family: f, effort: e, band: BAND_OF[f][e] }); break }
-  const price: Record<Family, number> = { haiku: 0, sonnet: 1, opus: 2 }
-  options.sort((a, b) => Number(b.family === running.family) - Number(a.family === running.family) || price[a.family] - price[b.family])
-  return options[0] ?? { family: running.family, effort: running.effort, band: BAND_OF[running.family][running.effort] }
 }
 
 // ---------------------------------------------------------------- resolution order, step 4: is a new decision required?

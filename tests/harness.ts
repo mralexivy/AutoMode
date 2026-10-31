@@ -19,7 +19,7 @@ export const says = (model: string, effort = 'medium') => (p: string) => effortV
 // A per-model effortless judge for tests: `per` maps the model asked about to its [model, effort] verdict.
 export const perModel = (per: Record<string, [string, string]>) => (p: string) => { const v = per[currentOf(p)] ?? ['sonnet', 'medium']; return effortVerdict(p, v[1], v[0]) }
 
-export type Setup = { ratios?: number[]; preflight?: { systemChars: number; tools: number }; firstPrefixes?: Record<string, number[]>; firstPrefix?: number | null; policy?: string; config?: Record<string, unknown>; bash?: (command: string) => unknown; sessionId?: string; mode?: string; model?: string; judge?: string | null | ((p: string) => string); effortJudge?: string | null | ((p: string) => string); env?: Record<string, string>; workerAnswer?: string; tools?: Record<string, () => unknown>; failWrites?: RegExp }
+export type Setup = { ratios?: number[]; preflight?: { systemChars: number; tools: number }; firstPrefixes?: Record<string, number[]>; firstPrefix?: number | null; policy?: string; config?: Record<string, unknown>; bash?: (command: string) => unknown; sessionId?: string; mode?: string; model?: string; judge?: string | null | ((p: string) => string); effortJudge?: string | null | ((p: string) => string); env?: Record<string, string>; workerAnswer?: string; tools?: Record<string, () => unknown>; failWrites?: RegExp; agentList?: () => unknown }
 
 // The policy the suite runs under when a test names none. The test runtime has no process.env, so this is a constant.
 const DEFAULT_POLICY: string | undefined = undefined
@@ -81,7 +81,7 @@ export function harness(on: any, setup: Setup) {
   on('session.messages', () => ({ value: [] }))
   on('session.start', () => ({ cwd: '/repo' }))
   on('session.compact', () => ({ messages: [{ role: 'user', text: 'engine summary', toolUses: [] }] }))
-  on('agent.list', () => ({ value: [] }))
+  on('agent.list', () => ({ value: setup.agentList ? setup.agentList() : [] }))
   // Preflight: the composed system prompt and the tool list, when a test gives them (else the calls fail, as on a host without them).
   if (setup.preflight) {
     const p = setup.preflight

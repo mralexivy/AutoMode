@@ -10,7 +10,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import { optimizeAuto, escalationTarget, decisionRequired } from '../hooks/lib/auto.ts'
+import { optimizeAuto, decisionRequired } from '../hooks/lib/auto.ts'
+import { ladderStep } from '../hooks/lib/bands.ts'
 import { switchCheck } from '../hooks/lib/policy.ts'
 import { subagentRoute } from '../hooks/lib/subagents.ts'
 import { ANTHROPIC } from '../hooks/lib/prices.ts'
@@ -40,7 +41,7 @@ const real = {
   // After a stage change the route is decided again from the new verdict; otherwise the running route stays.
   next: (c) => decisionRequired({ stageChanged: c.stageChanged, planExited: c.planExited }).required ? real.pick(c) : c.running,
   switch: (c) => switchCheck(c.switchInput).verdict,
-  escalate: (c) => { const t = escalationTarget(c.running, c.floorTier, ['sonnet', 'opus']); return { family: t.family, effort: t.effort } },
+  escalate: (c) => { const t = ladderStep(c.running, 'weak', ['sonnet', 'opus']); return { family: t.family, effort: t.effort } },
   subagent: (c) => { const r = subagentRoute({ type: c.type, parentFamily: c.parent, demand: null }); return r ? r.model : c.parent },
 }
 
@@ -112,7 +113,7 @@ cases.push({ id: 'cold-same-task', source: 'docs', kind: 'switch', input: { warm
 cases.push({ id: 'mandatory-up', source: 'brief', kind: 'switch', input: { warm: true, switchInput: { ...downgrade({ ...warmCache, model: MODEL.sonnet }), current: route('sonnet', 'medium'), target: route('opus', 'high'), mandatory: true } },
   accept: (v) => v === 'switch' || 'a mandatory escalation was held for the cache' })
 // 9. Repeated failures raise the route.
-cases.push({ id: 'escalate-after-failures', source: 'brief', kind: 'escalate', input: { running: { family: 'sonnet', effort: 'medium' }, floorTier: 'T2' },
+cases.push({ id: 'escalate-after-failures', source: 'brief', kind: 'escalate', input: { running: { family: 'sonnet', effort: 'medium' } },
   accept: (d) => STRENGTH[d.family] > STRENGTH.sonnet || EFFORTS.indexOf(d.effort) > EFFORTS.indexOf('medium') || `stayed on ${d.family}/${d.effort} after repeated failures` })
 // 10. Built-in subagents of an Opus session do not inherit Opus (measured on real transcripts with bench/subagents.mts).
 for (const type of ['Explore', 'general-purpose']) {

@@ -19,7 +19,7 @@
 import type { EngineInterface, Register } from 'claude-code'
 import { COMPACT_SYSTEM, transcriptOf } from './lib/compact.ts'
 import { guardianPromptSubmit, guardianSessionEnd, guardianSessionStart, guardianSnapshot, guardianStep, guardianToolCall, guardianTurnComplete, guardianTurnStart } from './guardian.ts'
-import { useV4, v4AgentSpawn, v4Append, v4Attachment, v4Compact, v4PromptSubmit, v4SessionStart, v4Snapshot, v4ToolCall, v4TurnComplete, v4TurnStep } from './v4.ts'
+import { useV4, v4AgentSpawn, v4Append, v4Attachment, v4CommandRun, v4Compact, v4PromptSubmit, v4SessionStart, v4Snapshot, v4ToolCall, v4TurnComplete, v4TurnStep } from './v4.ts'
 import { setOptions } from './options.ts'
 import { setSources } from './ui/publish.ts'
 import { registerUi, uiSessionStart } from './ui/register-ui.tsx'
@@ -347,13 +347,16 @@ export const register: Register = (on, options) => {
     if (!(await active($))) return next(e)
     if (!BLOCKED.some((re) => re.test(e.command))) return next(e)
     return { deny: 'AutoMode agents do not run git writes or destructive commands. Leave the changes in the working tree for the user to review.' }
-  }).catch(($, e, next) => next(e))
+  }).catch(($, e, next) => (next.called ? next(e) : { deny: 'AutoMode guard failed; the call was not run.' }))
 
   // V4 only: completions, spawns, worker tools, and the guards on every other tool.
   on('turn.complete', async ($, e, next) => guardianTurnComplete($, e, async (e2: any) => ((await useV4($)) ? v4TurnComplete($, e2, next) : next(e2)))).catch(($, e, next) => next(e))
   on('agent.spawn', async ($, e, next) => ((await useV4($)) ? v4AgentSpawn($, e, next) : next(e))).catch(($, e, next) => next(e))
   on('prompt.attachment', async ($, e, next) => ((await useV4($)) ? v4Attachment($, e, next) : next(e))).catch(($, e, next) => next(e))
   on('session.append', async ($, e, next) => ((await useV4($)) ? v4Append($, e, next) : next(e))).catch(($, e, next) => next(e))
+  // /model and /effort: a pick equal to the app's value shows in no request, so the commands themselves pin.
+  on('command.run', { command: 'model' }, ($, e, next) => v4CommandRun($, e, next))
+  on('command.run', { command: 'effort' }, ($, e, next) => v4CommandRun($, e, next))
   for (const tool of ['Agent', 'Workflow', 'Read', 'Grep', 'Glob', 'Edit', 'Write', 'MultiEdit', 'NotebookEdit', 'WebFetch', 'WebSearch']) {
     on('tool.call', { tool }, async ($, e, next) => ((await useV4($)) ? v4ToolCall($, e, next) : next(e)))
       .catch(($, e, next) => (next.called ? next(e) : { deny: 'AutoMode guard failed; the call was not run.' }))

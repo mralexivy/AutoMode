@@ -352,11 +352,11 @@ describe('Application at the request: requested, legal and effective effort', ()
     await h.step($)
     await h.submit($, 'also fix the typo in the log line', { turnId: 't1' })
     expect(h.effortJudged.some((p) => p.includes('[Sent while the assistant was still working on the last task at xhigh effort.'))).toBe(true)
-    await h.step($, 'claude-opus-5-5', undefined, { index: 1 })
+    await h.step($, 'claude-sonnet-5-5', undefined, { index: 1 })
     expect(h.steps[1].effort).toBe('xhigh') // the running task is not weakened
     await h.complete($, 'claude-opus-5-5')
-    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2' })
-    expect(h.steps[2].effort).toBe('medium') // applied when the turn ended; a deadlock is critical, so the low pick meets the Opus floor
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't2' })
+    expect(h.steps[2].effort).toBe('low') // applied when the turn ended; a deadlock named in text alone sets no Opus floor
   })
 
   test('a lower effort chosen inside a turn without new input is requested at once and takes effect at the next new input', async ($, on) => {
@@ -687,7 +687,7 @@ describe('Kept V4 and v4.1 behavior under policy auto', () => {
     expect(req.effortWhy).toContain('thinking mode')
   })
 
-  test('a repeated defect on a large warm Sonnet high session asks the Opus architect instead of moving', async ($, on) => {
+  test('a repeated defect on a large warm Sonnet high session raises the effort, then asks the Opus architect instead of moving', async ($, on) => {
     const h = harness(on, auto({ judge: judge({ tier: 'T2', complexity: 'standard' }), effortJudge: perModel({ sonnet: ['sonnet', 'high'], opus: ['opus', 'high'] }) }))
     h.setPrefix(150_000)
     await h.submit($, 'fix the failing parser test')
@@ -696,10 +696,14 @@ describe('Kept V4 and v4.1 behavior under policy auto', () => {
     await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
     await $.tool.call({ tool: 'Edit', file_path: 'parser.go', old_string: 'a', new_string: 'b' })
     const second = await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
-    expect(JSON.stringify(second)).toContain('automode:architect')
+    expect(JSON.stringify(second)).toContain('sonnet xhigh') // a rung of its own before the model moves
     await h.step($, 'claude-sonnet-5-5', undefined, { index: 3 })
-    expect(h.steps[1].model).toBe('claude-sonnet-5-5')
-    expect(records(h.writes).find((x) => x.kind === 'escalation').via).toBe('architect')
+    await $.tool.call({ tool: 'Edit', file_path: 'parser.go', old_string: 'b', new_string: 'c' })
+    const third = await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    expect(JSON.stringify(third)).toContain('automode:architect')
+    await h.step($, 'claude-sonnet-5-5', undefined, { index: 6 })
+    expect(h.steps[2].model).toBe('claude-sonnet-5-5')
+    expect(records(h.writes).filter((x) => x.kind === 'escalation').at(-1).via).toBe('architect')
   })
 
   test('shadow: no rewrite, no context; the auto decision is recorded after the turn', async ($, on) => {
@@ -777,7 +781,7 @@ describe('Workflow transitions', () => {
     await h.step($)
     await h.complete($, 'claude-haiku-5-5')
     await h.submit($, 'now add a --dry-run flag to the setup command')
-    await h.step($, 'claude-haiku-5-5', undefined, { turnId: 't2' })
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't2' })
     expect(h.steps.map((s) => `${s.model}/${s.effort}`)).toEqual(['claude-haiku-5-5/low', 'claude-sonnet-5-5/medium'])
     expect(prompts(records(h.writes))[1].effective.owner).toBe('quality-escalation') // real work on Haiku: the move is mandatory
   })
@@ -825,13 +829,13 @@ describe('Economics', () => {
     await h.step($)
     await h.complete($, 'claude-opus-5-5')
     await h.submit($, 'add a --verbose flag to the usage script')
-    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2' })
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't2' })
     expect(h.steps[1].model).toBe('claude-opus-5-5') // warm 120k Opus cache: the rewrite does not pay back
     expect(prompts(records(h.writes))[1].effective.check.economics).toBeTruthy()
     await h.complete($, 'claude-opus-5-5', undefined, 'done', { turnId: 't2' })
     await h.clock.advance(2 * 3_600_000) // the cache is cold
     await h.submit($, 'add a --quiet flag to the usage script')
-    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't3' })
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't3' })
     expect(h.steps[2].model).toBe('claude-sonnet-5-5') // cold: the cheaper eligible model costs no rewrite
   })
 
@@ -1011,7 +1015,7 @@ describe('The person keeps the last word on model and effort', () => {
     expect(h.steps[2].model).toBe('claude-opus-5-5')
   })
 
-  test('a route the mod chose itself pins nothing', async ($, on) => {
+  test('a route the mod chose itself pins nothing: the app keeps its own value', async ($, on) => {
     let n = 0
     const h = harness(on, auto({ judge: () => judge(n++ === 0 ? { tier: 'T3', complexity: 'complex' } : { tier: 'T1', complexity: 'standard', newTask: true }), effortJudge: (p: string) => (n > 1 ? sonnetMedium(p) : perModel({ opus: ['opus', 'high'], sonnet: ['opus', 'high'] })(p)) }))
     await h.submit($, 'design the cache layer')
@@ -1019,9 +1023,10 @@ describe('The person keeps the last word on model and effort', () => {
     expect(h.steps[0].model).toBe('claude-opus-5-5')
     await h.complete($, 'claude-opus-5-5')
     await h.submit($, 'rename the flag')
-    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2', effort: 'high' })
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't2' })
     expect(requests(records(h.writes)).length).toBeGreaterThan(0)
     expect(prompts(records(h.writes)).every((d) => d.owner !== 'user-override')).toBe(true)
+    expect(records(h.writes).filter((x) => x.kind === 'pin').length).toBe(0)
   })
 })
 

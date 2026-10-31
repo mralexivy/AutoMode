@@ -28,11 +28,23 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - The workflow fixes major correctness and security defects as well as blockers, sends evidence gaps to the verifier, and skips the fix pass when there is no defect.
 - Subagents take the task's risk: on critical work a general-purpose agent keeps the parent's model unless it only reads, and a diagnoser runs on Sonnet when the task carries risk. Effort is the stronger of the helper's pick and the policy.
 - Removed the unsupported "73%" figure from the subagent reason.
+- An `am:` command beats a `/model` or `/effort` pin for its turn.
+- `/model` and `/effort` register when they name the value the route already runs, or the app's own value. A `pin` record shows each detection.
+- A model outside Haiku, Sonnet and Opus, such as Fable, passes through unrewritten and turns routing off.
+- A model change in plan mode is no longer read as a pin, and an effort pin applies to helpers.
+- An escalation that a pin undoes no longer claims a move.
+- The Bash guard fails closed: a guard that throws before the call denies it, as every other tool guard does.
+- Check detection reads through wrappers, env prefixes, virtual environments, `python3 -m` and `npx`, and it counts subagent checks and edits.
+- `am:reset` also clears pins under policy `legacy`.
 
 ### Changed
 
 - Automatic workflow entry is off by default (`autoWorkflow: false`). `am:run` still works. Decision records show what entry would have done, and `workflow-entry` records show whether a chosen workflow was called.
 - The workflow result carries `next_action`, and its trace carries `effort`. `planModel` and `reviewModel` args set those models below S3. The defaults stay Opus.
+- The escalation ladder takes more evidence. A first repeat, three tool errors in a row or scope growth raises the effort one step. A repeat after that raise, a test or compile regression, a revert or a reviewer blocker moves the model, with an Opus consult first.
+- Sonnet xhigh is a rung of its own, below Opus high, so the ladder tries it before it moves the model.
+- Critical review needs hard evidence: an edited path, an operation such as a force push or `terraform apply`, or a production target. Text or the judge alone caps at elevated, unless both agree. A judge-only critical task gets a Sonnet reviewer, and routing still reads the judge.
+- A surface word such as "add a test" now covers only its own clause.
 
 ### Added
 

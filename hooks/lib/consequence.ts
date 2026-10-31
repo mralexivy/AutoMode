@@ -2,14 +2,18 @@
 // which caught 0 of 8 critical real prompts. A risky word alone never decides: the text layer needs a
 // consequential domain AND a change to that domain (not a question, not a message, not a surface edit
 // such as copy, style, docs or tests). Other layers come from the work itself: planned and edited paths,
-// changed exported interfaces, failed verification, and the judge. The highest layer wins; a judge that
-// failed or is unsure leaves the text layer's verdict with an `uncertain` flag that raises the floor.
+// changed exported interfaces, failed verification, and the judge.
 //
-// Consequence sets controls (verification, independent review); it never picks the implementing model.
+// Critical needs hard evidence: an edited path, an operation (lib/operations.ts) or a production target. Words and the
+// judge are opinions, so either alone caps at elevated, and only their agreement stands in for hard evidence. A judge
+// that alone says critical still buys a review, on Sonnet, and routing still reads its word (`routing`).
+//
+// Consequence sets controls (verification, independent review) and the floors in v4.ts autoFloors.
 // Designed on bench/consequence-dev.json; held-out sets bench/judge-cases-v3.json (seen) and
 // a frozen case set was evaluated offline when the module was written.
 import type { Risk } from './types.ts'
 import { maxRisk } from './types.ts'
+import { classifyOperation, productionTarget } from './operations.ts'
 
 export type Domain = 'auth' | 'secrets' | 'data' | 'interface' | 'concurrency' | 'money' | 'pii' | 'production' | 'security'
 export type Intent = 'change' | 'inquiry' | 'communicate' | 'operate'
@@ -36,6 +40,15 @@ const CHANGE_VERB = /\b(add|adds|fix|fixes|change|changes|implement|remove|remov
 const COMMUNICATE = /\b(slack|message|ticket|email|reply|answer for|case|announcement)\b/i
 const OPERATE = /\b(deploy\w*|push\w* to (main|origin|prod\w*)|merge request|\bmr\b|release|ship\w*|against prod\w*)\b/i
 const PRESERVE = /\b(without (changing|a) (its |the )?(behaviou?r|logic)|no behaviou?r change|without behaviou?r change|behaviou?r[- ]preserving|without changing (it|logic)|(pure|just a|only a) (rename|move|refactor))\b/i
+
+// A surface word covers only its own clause: "fix the auth middleware; add a test for that" still changes auth.
+const CLAUSE = /[.!?]+\s+|[;\n]+\s*|,\s*(?:and|then|also)\b|\s+and then\s+|\s+then\s+/i
+const clausesOf = (text: string) => text.split(CLAUSE).filter(Boolean)
+function surfaceOnly(text: string): boolean {
+  const touching = clausesOf(text).filter((c) => domainsOf(c).length)
+  // A domain phrase split across clauses matches in no single clause: the whole text decides.
+  return touching.length ? touching.every((c) => SURFACE.test(c)) : SURFACE.test(text)
+}
 
 export function intentOf(text: string): Intent {
   const t = text.trim()
@@ -70,7 +83,7 @@ export function textConsequence(text: string): TextConsequence {
   if (intent === 'communicate' || intent === 'operate') return { level: 'elevated', intent, domains, reasons: [`${intent} touching ${domains.join(', ')}`] }
   // Personal data written somewhere new is critical even through logs or exports.
   const piiExposure = domains.includes('pii') && /\b(log|export|write|store|share|send|backfill)\w*\b/i.test(text)
-  if (SURFACE.test(text) && !piiExposure) return { level: 'none', intent, domains, reasons: [`surface change near ${domains.join(', ')}`] }
+  if (surfaceOnly(text) && !piiExposure) return { level: 'none', intent, domains, reasons: [`surface change near ${domains.join(', ')}`] }
   if (PRESERVE.test(text)) return { level: 'elevated', intent, domains, reasons: [`behavior-preserving change in ${domains.join(', ')}`] }
   reasons.push(...domains.map((d) => `changes ${d}`))
   return { level: 'critical', intent, domains, reasons }
@@ -80,23 +93,50 @@ export interface ConsequenceInput {
   text: string
   judge?: { risk: Risk; consequence?: Risk; confidence?: number } | null
   judgeFailed?: boolean
-  pathLevel?: Risk          // from planned or named paths (risk.ts pathRisk)
+  pathLevel?: Risk          // from planned or named paths (risk.ts pathRisk): words about a target, not an edit
   observedLevel?: Risk      // from edits, diff size and interfaces (risk.ts observedRisk)
   verificationFailed?: boolean
 }
-export interface ConsequenceAssessment { level: Risk; layers: Record<string, Risk>; reasons: string[]; uncertain: boolean }
+export interface ConsequenceAssessment {
+  level: Risk                  // what the controls act on
+  routing: Risk                // what model routing reads: the level, or critical where the judge alone says so
+  review: 'opus' | 'sonnet' | null
+  hard: string[]               // the evidence that needs no opinion
+  layers: Record<string, Risk>
+  reasons: string[]
+  uncertain: boolean
+}
 
-// assess combines the layers. The judge can raise but never lower the deterministic layers. A failed or
-// low-confidence judge marks the result uncertain and floors it at elevated: checks run, and the
-// implementer choice accepts only configurations whose lower bound suffices.
+// hardEvidence: what stands without an opinion. A command spelled out in the prompt counts when the prompt asks to run
+// it: a question about `terraform apply` does not, and neither does a clause that only documents or tests it.
+function hardEvidence(i: ConsequenceInput, t: TextConsequence): string[] {
+  const out: string[] = []
+  if (i.observedLevel === 'critical') out.push('edited path')
+  if (t.domains.includes('production') && t.intent !== 'communicate') out.push('production incident')
+  if (t.intent === 'change' || t.intent === 'operate') {
+    const acting = clausesOf(i.text).filter((c) => !SURFACE.test(c))
+    const op = acting.map(classifyOperation).find(Boolean)
+    if (op) out.push(`operation: ${op.reason}`)
+    if (acting.some(productionTarget)) out.push('production target')
+  }
+  return out
+}
+
+// assess combines the layers. The judge can raise but never lower the deterministic layers. A failed or low-confidence
+// judge marks the result uncertain and floors it at elevated: checks run.
 export function assess(i: ConsequenceInput): ConsequenceAssessment {
   const t = textConsequence(i.text)
   const judged = i.judge ? maxRisk(i.judge.risk, i.judge.consequence ?? 'none') : 'none'
-  const uncertain = !!i.judgeFailed || !i.judge || (i.judge.confidence ?? 1) < 0.6
+  const uncertain = !!i.judgeFailed || (!!i.judge && (i.judge.confidence ?? 1) < 0.6)
   const layers: Record<string, Risk> = { text: t.level, judge: judged, paths: i.pathLevel ?? 'none', diff: i.observedLevel ?? 'none', verification: i.verificationFailed ? 'elevated' : 'none' }
-  let level: Risk = 'none'
-  for (const v of Object.values(layers)) level = maxRisk(level, v)
-  if (uncertain) level = maxRisk(level, 'elevated')
-  const reasons = [...t.reasons, ...(judged !== 'none' ? [`judge: ${judged}`] : []), ...(uncertain ? ['judge unavailable or unsure'] : [])]
-  return { level, layers, reasons, uncertain }
+  let top: Risk = uncertain ? 'elevated' : 'none'
+  for (const v of Object.values(layers)) top = maxRisk(top, v)
+  const hard = hardEvidence(i, t)
+  const wordsCritical = t.level === 'critical' || i.pathLevel === 'critical'
+  const agree = wordsCritical && judged === 'critical'
+  const level: Risk = hard.length || agree ? 'critical' : top === 'critical' ? 'elevated' : top
+  const routing = judged === 'critical' ? 'critical' : level
+  const review = level === 'critical' ? 'opus' : judged === 'critical' ? 'sonnet' : null
+  const reasons = [...t.reasons, ...hard, ...(judged !== 'none' ? [`judge: ${judged}`] : []), ...(uncertain ? ['judge unavailable or unsure'] : [])]
+  return { level, routing, review, hard, layers, reasons, uncertain }
 }

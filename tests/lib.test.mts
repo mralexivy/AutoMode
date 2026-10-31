@@ -15,7 +15,7 @@ import { boundaryOf, lowPenaltyPoint, lowPointUsd, returnCostUsd, switchCheck, s
 import { addedSince, continuity, noteDrop, observedDrop } from '../hooks/lib/continuity.ts'
 import { accrueRent, rentShare } from '../hooks/lib/rent.ts'
 import { resolve, routeFor } from '../hooks/lib/authority.ts'
-import { classify, failureOf, escalation, markFlaky, normalize, isCheck } from '../hooks/lib/failures.ts'
+import { classify, failureOf, failureStep, markFlaky, normalize, isCheck } from '../hooks/lib/failures.ts'
 import { guardBash, guardTool } from '../hooks/lib/guard.ts'
 import { newEnvelope, injection, observe, isBoundary, summaryOf, acceptanceFrom, withReview } from '../hooks/lib/envelope.ts'
 import { choose, estimate, workFromFiles } from '../hooks/lib/strategy.ts'
@@ -172,9 +172,12 @@ test('provider errors: each class has one bounded action (E)', () => {
 
 test('risk: topic words alone do not raise risk; paths, phrases and the judge do', () => {
   assert.equal(prospectiveRisk('add a token counter to the usage report', null).level, 'none')
-  assert.equal(prospectiveRisk('pin the OAuth scopes in internal/auth/scopes.go', null).level, 'critical')
-  assert.equal(prospectiveRisk('write a data migration for the users table', null).level, 'critical')
-  assert.equal(prospectiveRisk('rename a helper', { risk: 'critical', why: 'touches credentials' }).level, 'critical')
+  // Words and a named path are opinions until the path is edited: elevated. Agreement with the judge makes it critical.
+  assert.equal(prospectiveRisk('pin the OAuth scopes in internal/auth/scopes.go', null).level, 'elevated')
+  assert.equal(prospectiveRisk('pin the OAuth scopes in internal/auth/scopes.go', { risk: 'critical', why: 'auth' }).level, 'critical')
+  assert.equal(prospectiveRisk('write a data migration for the users table', null).level, 'elevated')
+  const judgeOnly = prospectiveRisk('rename a helper', { risk: 'critical', why: 'touches credentials' })
+  assert.deepEqual([judgeOnly.level, judgeOnly.routing, judgeOnly.review], ['elevated', 'critical', 'sonnet'])
   assert.deepEqual(pathsIn('see src/setup/plugins.go and docs/x.md'), ['src/setup/plugins.go', 'docs/x.md'])
   const obs = observedRisk({ editedPaths: ['db/migrations/0004.sql'], changedFiles: 1, changedLines: 20, verification: 'pass' })
   assert.equal(obs.level, 'critical')
@@ -299,16 +302,16 @@ test('failures: escalation paths', () => {
   const f1 = failureOf('go test ./...', 1, out, 1, false)
   const f2 = failureOf('go test ./...', 1, out.replace('1.460s', '0.912s'), 2, true)
   assert.equal(f1.fingerprint, f2.fingerprint, 'timings do not change the fingerprint')
-  assert.equal(escalation([f1], 'T1').action, 'none')
-  const e = escalation([f1, f2], 'T1')
+  assert.equal(failureStep([f1], 'T1').action, 'none')
+  const e = failureStep([f1, f2], 'T1')
   assert.equal(e.action, 'raise'); assert.equal(e.floor, 'T2')
-  assert.equal(escalation([f1, f2], 'T2').floor, 'T3')
-  assert.equal(escalation([f1, f2], 'T3').floor, 'T4')
+  assert.equal(failureStep([f1, f2], 'T2').floor, 'T3')
+  assert.equal(failureStep([f1, f2], 'T3').floor, 'T4')
   const env = failureOf('golangci-lint run', 127, 'bash: golangci-lint: command not found', 3, false)
-  assert.equal(escalation([env], 'T1').action, 'report', 'environment failures report first')
-  assert.equal(escalation([env, { ...env, at: 4 }, { ...env, at: 5 }], 'T1').action, 'diagnose', 'but repeats get a diagnosis')
+  assert.equal(failureStep([env], 'T1').action, 'report', 'environment failures report first')
+  assert.equal(failureStep([env, { ...env, at: 4 }, { ...env, at: 5 }], 'T1').action, 'diagnose', 'but repeats get a diagnosis')
   const sys = failureOf('go test ./integration/...', 1, 'dial tcp 10.0.0.4:443: i/o timeout\nENOTFOUND', 6, false)
-  assert.equal(escalation([sys], 'T1').action, 'diagnose', 'systemic-looking environment failures are diagnosed, not ignored')
+  assert.equal(failureStep([sys], 'T1').action, 'diagnose', 'systemic-looking environment failures are diagnosed, not ignored')
   assert.equal(markFlaky([f1], 'go test ./...', true, false)[0].class, 'flaky')
   assert.equal(failureOf('go test', 0, '', 1, false), null)
 })
@@ -626,10 +629,11 @@ import { interfaceChanges, PRESERVING } from '../hooks/lib/risk.ts'
 
 test('risk: intent lowers a path-only critical; phrases and the judge keep it; signals never pick the model', () => {
   assert.equal(prospectiveRisk('rename the auth.go helper to authutil.go without changing behavior', null).level, 'elevated')
-  assert.equal(prospectiveRisk('fix the token refresh in auth.go', null).level, 'critical')
-  assert.equal(prospectiveRisk('rename auth.go without changing behavior', { risk: 'critical', why: 'auth' }).level, 'critical', 'a judge signal keeps it')
-  assert.equal(prospectiveRisk('there is a race condition in the cache refresh', null).level, 'critical')
-  assert.equal(prospectiveRisk('change the public API of the setup package', null).level, 'critical')
+  assert.equal(prospectiveRisk('fix the token refresh in auth.go', null).level, 'elevated')
+  assert.equal(prospectiveRisk('fix the token refresh in auth.go', { risk: 'critical', why: 'auth' }).level, 'critical')
+  assert.equal(prospectiveRisk('rename auth.go without changing behavior', { risk: 'critical', why: 'auth' }).routing, 'critical', 'routing keeps the judge signal')
+  assert.equal(prospectiveRisk('there is a race condition in the cache refresh', null).level, 'elevated')
+  assert.equal(prospectiveRisk('change the public API of the setup package', null).level, 'elevated')
   assert.ok(PRESERVING.test('pure rename of the helper'))
   // Consequence sets verification, not the implementer: a critical bounded task gets review and Sonnet high.
   const d = demandOf({ tier: 'T1', complexity: 'standard', risk: 'critical' })
@@ -694,8 +698,12 @@ test('consequence: a domain needs a change to it; questions, messages and surfac
 })
 
 test('consequence: the judge can raise but never lower; a failed judge floors at elevated and marks uncertain', () => {
-  assert.equal(assess({ text: 'Fix the typo in the README.', judge: { risk: 'critical', confidence: 0.9 } }).level, 'critical')
-  assert.equal(assess({ text: 'Let admins grant the editor role.', judge: { risk: 'none', confidence: 0.9 } }).level, 'critical')
+  assert.equal(assess({ text: 'Fix the typo in the README.', judge: { risk: 'critical', confidence: 0.9 } }).level, 'elevated', 'the judge alone caps at elevated')
+  assert.equal(assess({ text: 'Fix the typo in the README.', judge: { risk: 'critical', confidence: 0.9 } }).review, 'sonnet', 'and buys a Sonnet review')
+  assert.equal(assess({ text: 'Let admins grant the editor role.', judge: { risk: 'none', confidence: 0.9 } }).level, 'elevated', 'the text alone caps at elevated')
+  assert.equal(assess({ text: 'Let admins grant the editor role.', judge: { risk: 'none', confidence: 0.9 } }).review, null)
+  assert.equal(assess({ text: 'Let admins grant the editor role.', judge: { risk: 'critical', confidence: 0.9 } }).level, 'critical', 'both agree')
+  assert.equal(assess({ text: 'Let admins grant the editor role.', judge: { risk: 'critical', confidence: 0.9 } }).review, 'opus')
   const failed = assess({ text: 'Fix the typo in the README.', judgeFailed: true })
   assert.equal(failed.level, 'elevated')
   assert.equal(failed.uncertain, true)

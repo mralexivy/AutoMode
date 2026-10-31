@@ -73,7 +73,9 @@ export interface EffectiveRoute extends Route {
   overridden: { owner: Owner; reason: string }[]
 }
 
-export interface RiskAssessment { level: Risk; reasons: string[]; source: 'judge' | 'rules' | 'plan' | 'diff' | 'user' }
+// level: the consequence the controls act on. routing: what model routing reads, where it differs (judge-only critical).
+// review: 'sonnet' when a review runs without critical evidence. hard: the evidence that made the level critical.
+export interface RiskAssessment { level: Risk; reasons: string[]; source: 'judge' | 'rules' | 'plan' | 'diff' | 'user'; routing?: Risk; review?: 'sonnet'; hard?: string[] }
 
 export interface Acceptance { text: string; source: 'user' | 'plan' | 'model' }
 
@@ -85,6 +87,19 @@ export interface FailureRecord {
   at: number
   editedSince: boolean
   evidence: string // the normalized tail, at most 1,500 chars
+  tests?: string[] // the failing test names the output gave
+}
+
+// What the escalation ladder remembers about one task (lib/failures.ts escalation).
+export interface LadderState {
+  raised: Record<string, number>  // failure fingerprint: its count when a step ran for it
+  passed: Record<string, number>  // check command: when it last passed
+  toolErrors: number              // tool errors in a row
+  scopeGrew: boolean
+  reverts: number
+  reviewerBlockers: number
+  fired: string[]                 // causes already acted on
+  floor?: { family: Family; effort: Effort; band: number; because: string; command?: string } // holds until a check passes
 }
 
 export interface DiscoveryRecord {
@@ -117,6 +132,7 @@ export interface TaskEnvelope {
   editedPaths: string[]
   changedLines?: number // lines added or replaced by Edit, MultiEdit and Write in this task
   interfacesChanged?: number // exported declarations changed by edits in this task
+  ladder?: LadderState
   status: 'open' | 'done' | 'abandoned' | 'superseded'
   injectedRevision: number // the revision whose summary the model last saw
 }
