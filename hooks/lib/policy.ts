@@ -7,7 +7,7 @@ import { CAPABILITY, DEFAULT_PRIORS, mid, REMAINING, remainingWork, type Remaini
 import { tierRank } from './types.ts'
 import type { PriceRow } from './prices.ts'
 import { cacheWriteX, rateAt } from './prices.ts'
-import { addedSince, continuity } from './continuity.ts'
+import { addedSince, continuity, STRENGTH } from './continuity.ts'
 import type { Rent } from './rent.ts'
 
 export interface PolicyParams {
@@ -236,7 +236,8 @@ export function switchCheck(i: SwitchInput, resetSinceLastRequest = false): Swit
   // A new task owes nothing to the old cache or the old reasoning. A cold cache inside a task still has a task to protect.
   if (low && !i.sameTask) return out('switch', 'low-switch-penalty point')
 
-  const up = capability(i.target) > capability(i.current)
+  // An upgrade needs a model that is not weaker too: a high effort on a cheaper model keeps the downgrade gates.
+  const up = capability(i.target) > capability(i.current) && STRENGTH[i.target.family] >= STRENGTH[i.current.family]
   if (up) {
     if (lostHere) return out('hold', lost, 'continuity')
     if (low) return out('switch', 'low-switch-penalty point')

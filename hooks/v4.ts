@@ -1695,6 +1695,7 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
     if (r.owner !== 'quality-escalation' && r.owner !== 'user-override') S.switchesThisTask += 1
   } else S.requestsSinceSwitch += 1
   let shrank = false
+  let compactedHere = false // a compaction was noted since the last request: an older one proves nothing about this shrink
   if (res?.usage) {
     const u = res.usage
     const prefix = (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0)
@@ -1702,6 +1703,7 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
     // compact without this mod's session.compact hook (or in another process), and the route should still
     // be re-evaluated on the smaller context.
     shrank = !!S.cache && S.cache.prefixTokens > 20_000 && prefix < S.cache.prefixTokens / 2
+    compactedHere = !!S.cache && !!S.compactedAt && S.compactedAt >= (S.cache.lastRequestAt ?? 0)
     // The part that survives compaction: measured as the cache read of the first request after one,
     // estimated before that as three quarters of the session's first prompt (system prompt and tools).
     if (S.compactedAt && !S.basePrefixMeasured) { S.basePrefix = u.cache_read_input_tokens ?? S.basePrefix; S.basePrefixMeasured = true }
@@ -1719,8 +1721,8 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
   if (res?.stopReason && res.stopReason !== 'tool_use') await flush($)
   const ctx = trigger(trigState(), { kind: 'context', prefixTokens: S.cache?.prefixTokens ?? 0, family: r.family })
   if (ctx.action === 'reoptimize') reoptimize(ctx, 'context-growth', t, e.turnId)
-  // With no noted compaction nothing proves a reset, so the shrink is priced and gated as a warm switch.
-  else if (shrank) reoptimize(trigger(trigState(), { kind: 'compacted' }), 'compacted', t, e.turnId, !!S.compactedAt)
+  // With no compaction noted since the last request nothing proves a reset, so the shrink is priced and gated as a warm switch.
+  else if (shrank) reoptimize(trigger(trigState(), { kind: 'compacted' }), 'compacted', t, e.turnId, compactedHere)
   if (res?.answer) S.lastReply = res.answer
   await publish($)
   return res

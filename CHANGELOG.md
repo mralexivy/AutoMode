@@ -19,8 +19,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - A return to a warm model is priced for turns added after a thinking drop, and the legacy policy reads what that cache holds.
 - A model switch that loses the running model's thinking holds inside a task. A mandatory switch still goes and logs it. A compaction clears the flag.
 - A cold cache inside a task no longer skips the risk, confidence and dwell gates. A low point is priced as the difference between the two cache writes.
-- An upgrade compares capability, not tier, so Sonnet max to Opus low is not an upgrade.
-- A shrink with no noted compaction is priced as a warm switch, and step pricing uses the cache lifetime's write rate.
+- An upgrade compares capability, not tier, and needs a model that is not weaker. Sonnet max to Opus low is not an upgrade, and neither is Opus low to Sonnet high.
+- A shrink with no compaction noted since the last request is priced as a warm switch, and step pricing uses the cache lifetime's write rate.
 - A calibrated `effortOutput` is read, a hold records the tier of its effort, and `underRouting` records only real corrections.
 
 ### Added

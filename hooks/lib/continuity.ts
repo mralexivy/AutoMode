@@ -14,7 +14,7 @@ import type { Family } from './types.ts'
 export type Continuity = 'kept' | 'lost'
 
 const MODEL = /(opus|sonnet|haiku)-5-5/i
-const STRENGTH: Record<Family, number> = { haiku: 0, sonnet: 1, opus: 2 }
+export const STRENGTH: Record<Family, number> = { haiku: 0, sonnet: 1, opus: 2 }
 const READS_WEAKER = ['anthropic', 'vertex']
 
 export function continuity(from: string, to: string, provider: string): Continuity {

@@ -895,6 +895,31 @@ describe('Continuity and the shadow rent rule', () => {
     expect(d.effective.check.lowPenaltyPoint).toBe(false)
   })
 
+  test('after an earlier compaction, a later shrink is still no reset: the flag stays and the real prefix is priced', async ($, on) => {
+    const h = harness(on, coldSwitch())
+    h.setPrefix(120_000)
+    await h.submit($, 'fix the intermittent deadlock in the flush path')
+    await h.step($, 'claude-opus-5-5', undefined, { messageCount: 30 })
+    await h.clock.advance(60_000)
+    await h.step($, 'claude-opus-5-5', undefined, { index: 1, messageCount: 3 }) // the message count falls: a noted compaction
+    await h.complete($, 'claude-opus-5-5')
+    expect(records(h.writes).some((x) => x.kind === 'compaction')).toBe(true)
+    await h.clock.advance(60_000)
+    await h.submit($, 'fix the flush path timing as well')
+    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2', messageCount: 4 })
+    await h.complete($, 'claude-opus-5-5', undefined, 'done', { turnId: 't2' })
+    await h.clock.advance(60_000)
+    await h.submit($, 'add a --verbose flag to the usage script')
+    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't3', messageCount: 5 })
+    await h.clock.advance(60_000)
+    h.setPrefix(40_000)
+    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't3', index: 1, messageCount: 6 })
+    await h.complete($, 'claude-opus-5-5', undefined, 'done', { turnId: 't3' })
+    const d = decisions(records(h.writes)).filter((x) => x.trigger?.event === 'compacted').at(-1)
+    expect(d.effective.check.economics.prefixTokens).toBe(40_000)
+    expect(d.effective.check.continuity).toBe('lost')
+  })
+
   test('held rent grows on real spend, survives a reload, and changes no route', async ($, on) => {
     const h = harness(on, coldSwitch({ sessionId: 'sess-rent' }))
     h.setPrefix(120_000)

@@ -831,6 +831,19 @@ test('up compares capability: Sonnet max to Opus low is no upgrade, and two vote
   assert.equal(moveCheck(at('sonnet', 'low'), at('opus', 'low'), { sameTask: false }).verdict, 'switch', 'Opus low is above Sonnet low')
 })
 
+test('a stronger configuration on a weaker model is no upgrade: it keeps the downgrade gates', () => {
+  const k = (model, prefixTokens) => cache({ model, prefixTokens })
+  const risky = { sameTask: false, risk: 'elevated', candidate: cand('T2', 0.5) }
+  const moves = [[at('opus', 'low'), at('sonnet', 'high'), 300_000], [at('opus', 'medium'), at('sonnet', 'max'), 300_000], [at('sonnet', 'low'), at('haiku', 'max'), 60_000]]
+  for (const [from, to, tokens] of moves) {
+    const r = moveCheck(from, to, { ...risky, cache: k(from.model, tokens) })
+    assert.equal(r.verdict, 'hold', `${from.family}/${from.effort} to ${to.family}/${to.effort}: ${r.reason}`)
+    assert.equal(r.gate, 'quality')
+  }
+  const calm = moveCheck(at('opus', 'low'), at('sonnet', 'high'), { sameTask: false, cache: k(routeFor('T3').model, 300_000) })
+  assert.equal(calm.gate, 'payback', 'with clean gates the rewrite still has to pay back')
+})
+
 test('property: a mandatory switch always goes, on every pair, provider and cache state, and logs the flag', () => {
   for (const p of PROVIDERS) for (const f of FAMILIES) for (const t of FAMILIES) {
     if (f === t) continue
