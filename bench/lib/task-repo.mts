@@ -27,6 +27,8 @@ export interface Task {
   regression?: string
   typecheck?: string
   requirements?: { network?: boolean; min_context_tokens?: number; languages?: string[]; risk_tags?: string[]; sandbox?: boolean }
+  safety?: string // a scenario id in bench/safety/scenarios.mts
+  longctx_tier?: number
   external_eval?: 'swebench' // another harness scores this task, so accept stays empty
   limits?: { wall_seconds?: number; disk_mb?: number }
   provenance?: { source: string; dataset?: string; dataset_version?: string }

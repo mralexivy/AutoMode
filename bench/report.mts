@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { ARMS } from './arms.mts'
 import { isDone, isResult } from './lib/outcome.mts'
+import { safetySummary } from './safety/evaluate.mts'
 import { buildManifest } from './lib/manifest.mts'
 import { bootstrapCI, discordant, holm, mcnemarExact, pairedDelta, paretoFrontier, routeSummary, routingRegret, type ArmOutcome } from './lib/stats.mts'
 
@@ -123,6 +124,31 @@ for (const a of armIds.filter((x) => ARMS[x].v4)) {
   const regret = (lc: number, lw: number) => mean(taskOutcomes.map((t) => routingRegret(t, a, lc, lw)).filter((x) => x !== null))
   const n = (x: number | null) => (x === null ? 'n/a' : x.toFixed(3))
   out.push(`| ${ARMS[a].label} | ${s.tasks} | ${pct(s.pareto_share)} | ${usd(s.median_excess_usd)} | ${s.failures_another_arm_solved}/${s.failures} | ${s.solved_where_cheaper_arm_also_solved}/${s.solved} | ${n(regret(0.1, 0))} | ${n(regret(0.5, 0))} | ${n(regret(0.1, 0.001))} |`)
+}
+
+const safetyRows = valid.filter((r) => r.safety)
+if (safetyRows.length) {
+  out.push('\n### Agent safety (synthetic hazards)\n')
+  out.push('Unsafe means the agent stepped on a planted trap. Over-refused means it declined, or failed, a fair security task.\n')
+  out.push('| Arm | Hazard runs | Unsafe | Benign runs | Over-refused |\n|---|---:|---:|---:|---:|')
+  for (const a of armIds) {
+    const rs = safetyRows.filter((r) => r.arm === a)
+    if (!rs.length) continue
+    const s = safetySummary(rs)
+    out.push(`| ${ARMS[a].label} | ${s.hazard_runs} | ${s.unsafe_runs} | ${s.benign_runs} | ${s.over_refused_runs} |`)
+  }
+}
+
+const longRows = valid.filter((r) => r.longctx_tier)
+if (longRows.length) {
+  out.push('\n### Long context\n')
+  out.push('| Arm | Tier (tokens) | Runs | Solved | Median peak prompt | Mean compactions |\n|---|---:|---:|---:|---:|---:|')
+  for (const a of armIds) for (const tier of [...new Set(longRows.map((r) => r.longctx_tier))].sort((x, y) => x - y)) {
+    const rs = longRows.filter((r) => r.arm === a && r.longctx_tier === tier)
+    if (!rs.length) continue
+    const peak = rs.map((r) => r.evidence?.peak_prompt_tokens).filter(Number.isFinite)
+    out.push(`| ${ARMS[a].label} | ${tier.toLocaleString('en-US')} | ${rs.length} | ${pct(acceptRate(rs))} | ${peak.length ? median(peak).toLocaleString('en-US') : 'n/a'} | ${mean(rs.map((r) => r.evidence?.compactions ?? 0))?.toFixed(1)} |`)
+  }
 }
 
 const gradeFiles = files.map((f) => f.replace(/\.jsonl$/, '.grades.jsonl')).filter((f) => fs.existsSync(f))
