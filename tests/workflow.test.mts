@@ -4,6 +4,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
+import { workflowArgs } from '../hooks/lib/stages.ts'
+import { demandOf } from '../hooks/lib/optimizer.ts'
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 const SRC = fs.readFileSync(path.join(ROOT, 'workflows', 'run.js'), 'utf8').replace('export const meta', 'const meta')
@@ -166,9 +168,41 @@ test('verification: a failing check beats a "pass" narrative', async () => {
   assert.ok(result.notes.some((n) => n.includes('The checks win')))
 })
 
-test('verification: a nonzero exit code counts as a failure', async () => {
-  const { result } = await run({ task: 'add retries' }, defaults({ verifier: VERIFY([{ cmd: 'make test', exit_code: 2, outcome: 'pass', failure_summary: '' }]) }))
-  assert.equal(result.verification.result, 'fail')
+const check = (cmd, exit_code, outcome, over = {}) => ({ cmd, exit_code, outcome, failure_summary: '', ...over })
+const verdict = async (c) => (await run({ task: 'add retries' }, defaults({ verifier: VERIFY([check('go test ./...', 0, 'pass'), c]) }))).result.verification.result
+
+test('verification: a grep that must find nothing passes on exit 1 when it expects 1', async () => {
+  const { result, calls } = await run({ task: 'add retries' }, defaults({ verifier: VERIFY([check('grep -rn oldName src', 1, 'pass', { expected_exit: 1 })]) }))
+  assert.equal(result.verification.result, 'pass')
+  assert.equal(calls.filter((c) => c.role === 'verifier').length, 1, 'no second verify round')
+})
+
+test('verification: expected_exit is an exact match, so grep exit 2 (an error) and a found match both fail', async () => {
+  assert.equal(await verdict(check('grep -rn oldName src', 2, 'pass', { expected_exit: 1 })), 'fail')
+  assert.equal(await verdict(check('grep -rn oldName src', 0, 'pass', { expected_exit: 1 })), 'fail')
+})
+
+test('verification: without expected_exit the default is 0, so any nonzero exit fails', async () => {
+  assert.equal(await verdict(check('make test', 2, 'pass')), 'fail')
+  assert.equal(await verdict(check('grep -rn oldName src', 1, 'pass')), 'fail')
+})
+
+test('verification: outcome "fail" beats a matching expected_exit', async () => {
+  assert.equal(await verdict(check('grep -rn oldName src', 1, 'fail', { expected_exit: 1 })), 'fail')
+})
+
+test('verification: `! grep` passes on 0 and fails on 1', async () => {
+  assert.equal(await verdict(check('! grep -rn oldName src', 0, 'pass')), 'pass')
+  assert.equal(await verdict(check('! grep -rn oldName src', 1, 'fail')), 'fail')
+})
+
+test('verification: a skipped check with a nonzero exit does not fail the run', async () => {
+  assert.equal(await verdict(check('make slow', 1, 'skipped')), 'pass')
+})
+
+test('verification: the verifier hears about expected_exit', async () => {
+  const { calls } = await run({ task: 'add retries' }, defaults())
+  assert.match(calls.find((c) => c.role === 'verifier').prompt, /expected_exit/)
 })
 
 test('verification: no checks is unverified and forces review', async () => {
@@ -304,9 +338,218 @@ test('trace: one record per attempt with the required fields', async () => {
   assert.ok(!('elapsed_ms' in result.trace[0]), 'scripts have no clock; durations come from am-usage')
 })
 
+test('trace: every record names its effort', async () => {
+  const { result } = await run({ task: 'add retries', reviewPolicy: 'always' }, defaults())
+  assert.deepEqual(Object.fromEntries(result.trace.map((t) => [t.role, t.effort])), { explorer: 'medium', architect: 'high', implementer: 'high', verifier: 'medium', reviewer: 'high' })
+})
+
+test('planModel and reviewModel: defaults stay Opus, a bad value is ignored', async () => {
+  const { calls } = await run({ task: 'add retries', reviewPolicy: 'always', planModel: 'gpt', reviewModel: 'haiku' }, defaults())
+  assert.equal(calls.find((c) => c.label === 'plan').model, 'opus')
+  assert.equal(calls.find((c) => c.role === 'reviewer').model, 'opus')
+})
+
+test('planModel and reviewModel: Sonnet below S3, and the trace records the model that ran', async () => {
+  const { result, calls } = await run({ task: 'add retries', reviewPolicy: 'always', planModel: 'sonnet', reviewModel: 'sonnet' }, defaults())
+  assert.equal(calls.find((c) => c.label === 'plan').model, 'sonnet')
+  assert.equal(calls.find((c) => c.role === 'reviewer').model, 'sonnet')
+  assert.equal(result.trace.find((t) => t.role === 'reviewer').model_id, 'sonnet')
+})
+
+test('planModel and reviewModel: S3 and escalations stay on Opus', async () => {
+  const s3 = await run({ task: 'rotate the OAuth token on expiry', planModel: 'sonnet', reviewModel: 'sonnet' }, defaults())
+  assert.equal(s3.calls.find((c) => c.label === 'plan').model, 'opus')
+  assert.equal(s3.calls.find((c) => c.role === 'reviewer').model, 'opus')
+  let n = 0
+  const esc = await run({ task: 'add retries', planModel: 'sonnet' }, defaults({
+    implementer: () => (++n === 1 ? IMPL('main', { escalation: { needed: true, question: 'v1 or v2?', evidence: [] } }) : IMPL('main')),
+  }))
+  assert.equal(esc.calls.find((c) => c.label === 'escalate:main').model, 'opus')
+})
+
 test('missing task returns an error', async () => {
   const { result } = await run({}, defaults())
   assert.match(result.error, /args.task is required/)
+})
+
+// The router's own args, built by the function that writes them into the header.
+const routerArgs = (over = {}) => ({
+  ...workflowArgs({
+    demand: demandOf({ tier: 'T2', complexity: 'standard', risk: 'none', confidence: 0.9 }), userAsked: false, risk: 'none', complexity: 'standard',
+    reviewRequired: false, mode: 'discover', reviewPolicy: 'risk', maxConcurrency: 1, ...over,
+  }),
+  task: 'add retries to the uploader',
+})
+
+test('router args: a bounded task sends its real tier, and stages leave out discovery', () => {
+  const a = routerArgs()
+  assert.equal(a.tier, 'standard')
+  assert.equal(a.mode, 'discover', 'the router still sends mode')
+  assert.deepEqual(a.stages, ['implement', 'verify'])
+  assert.equal(routerArgs({ risk: 'critical', complexity: 'complex' }).tier, 'critical')
+  assert.equal(routerArgs({ risk: 'elevated', complexity: 'trivial' }).tier, 'trivial')
+})
+
+test('router args: a required review is in the stages, with policy always', () => {
+  const a = routerArgs({ reviewRequired: true })
+  assert.ok(a.stages.includes('review'))
+  assert.equal(a.reviewPolicy, 'always')
+  assert.equal(routerArgs({ demand: null }).stages, undefined, 'no demand: the full workflow')
+})
+
+test('router args: stages win over mode, so the left-out stages really do not run', async () => {
+  const { result, calls } = await run(routerArgs(), defaults())
+  assert.deepEqual(seq(calls), ['architect/sonnet', 'implementer/sonnet', 'verifier/sonnet'])
+  assert.equal(result.mode, 'handoff')
+  assert.equal(result.review.verdict, 'skipped')
+})
+
+test('router args: stages with discover win over a handoff mode', async () => {
+  const { result, calls } = await run({ ...routerArgs(), stages: ['discover', 'implement', 'verify'], mode: 'handoff' }, defaults())
+  assert.equal(result.mode, 'discover')
+  assert.equal(calls[0].role, 'explorer')
+})
+
+test('router args: an S2 task without architect or review plans on Sonnet and skips review', async () => {
+  const { result, calls } = await run({ ...routerArgs({ complexity: 'complex' }) }, defaults({
+    architect: PLAN({ review_required: true, risks: [{ risk: 'x', severity: 'high' }] }),
+  }))
+  assert.equal(result.band, 'S2')
+  assert.equal(calls.find((c) => c.label === 'plan').model, 'sonnet')
+  assert.equal(result.review.verdict, 'skipped', 'the planner\'s opinion does not force a review the router left out')
+})
+
+test('router args: leaving out review still reviews rule-based S3, failed checks, escalation and blocking evidence', async () => {
+  const s3 = await run({ ...routerArgs(), task: 'rotate the OAuth token on expiry' }, defaults())
+  assert.ok(s3.result.review_reasons.includes('band S3'))
+  const failed = await run(routerArgs(), defaults({ verifier: FAIL }))
+  assert.ok(failed.result.review_reasons.includes('verification fail'))
+  let n = 0
+  const esc = await run(routerArgs(), defaults({
+    implementer: () => (++n === 1 ? IMPL('main', { escalation: { needed: true, question: 'v1 or v2?', evidence: [] } }) : IMPL('main')),
+  }))
+  assert.ok(esc.result.review_reasons.some((r) => r.includes('escalated')))
+  const gap = await run(routerArgs(), defaults({ architect: PLAN({ missing_evidence: ['which client?'], evidence_blocking: true }) }))
+  assert.ok(gap.result.review_reasons.includes('plan evidence incomplete'))
+})
+
+test('no stages: S2, the architect\'s request and a high risk still force review', async () => {
+  const s2 = await run({ task: 'refactor', tier: 'complex', reviewPolicy: 'risk' }, defaults())
+  assert.ok(s2.result.review_reasons.includes('band S2'))
+  const asked = await run({ task: 'refactor', reviewPolicy: 'risk' }, defaults({ architect: PLAN({ review_required: true }) }))
+  assert.ok(asked.result.review_reasons.includes('architect requested review'))
+})
+
+test('band: cited files do not trigger the module or infra rules', async () => {
+  const { result } = await run({ task: 'add retries' }, defaults({ explorer: DISC(['a/x/f.go:1', 'b/y/g.go:1', 'c/z/h.go:1', '.github/workflows/ci.yml:3']) }))
+  assert.equal(result.band, 'S1')
+  assert.ok(!result.band_reasons.some((r) => r.includes('modules') || r.includes('infrastructure')))
+})
+
+test('band: open questions do not count as unknowns, only blocking evidence does', async () => {
+  const open = await run({ task: 'add retries' }, defaults({ explorer: DISC(undefined, { open_questions: ['which client?', 'which retry?'] }) }))
+  assert.equal(open.result.band, 'S1')
+  const soft = await run({ task: 'add retries' }, defaults({ architect: PLAN({ missing_evidence: ['backoff base?'], evidence_blocking: false }) }))
+  assert.equal(soft.result.band, 'S1')
+  const blocking = await run({ task: 'add retries' }, defaults({ architect: PLAN({ missing_evidence: ['which client?'], evidence_blocking: true }) }))
+  assert.equal(blocking.result.band, 'S2')
+  assert.ok(blocking.result.band_reasons.some((r) => r.includes('open unknowns')))
+})
+
+test('band: an S3 path that an explorer cites still raises the band', async () => {
+  const { result } = await run({ task: 'add retries' }, defaults({ explorer: DISC(['src/auth/token.go:1']) }))
+  assert.equal(result.band, 'S3')
+})
+
+test('band: the module and infra rules fire on planned and on changed files', async () => {
+  const planned = await run({ task: 'add retries' }, defaults({ architect: PLAN({ workstreams: [ws('m', ['a/x/f.go', 'b/y/g.go', 'c/z/h.go'])] }) }))
+  assert.equal(planned.result.band, 'S2')
+  assert.ok(planned.result.band_reasons.some((r) => r.includes('3 modules')))
+  const infra = await run({ task: 'add retries' }, defaults({ architect: PLAN({ workstreams: [ws('m', ['.github/workflows/ci.yml'])] }) }))
+  assert.equal(infra.result.band, 'S2')
+  const changed = await run({ task: 'add retries' }, defaults({ implementer: IMPL('main', { files_changed: ['a/x/f.go', 'b/y/g.go', 'c/z/h.go'] }) }))
+  assert.equal(changed.result.band, 'S2')
+})
+
+const FINDING = (over = {}) => ({ severity: 'major', kind: 'defect', area: 'correctness', file: 'a.go', detail: 'd', fix: 'f', ...over })
+const reviewed = (findings, over = {}) => run({ task: 'add retries', reviewPolicy: 'always' }, defaults({ reviewer: { verdict: 'approve_with_notes', findings }, ...over }))
+const labels = (calls) => calls.map((c) => c.label).filter((l) => l.startsWith('fix') || /after-review|gaps/.test(l))
+
+test('review: blockers and correctness or security majors get one fix pass and one verification', async () => {
+  for (const f of [FINDING({ severity: 'blocker', area: 'tests' }), FINDING(), FINDING({ area: 'security' })]) {
+    const { result, calls } = await reviewed([f])
+    assert.deepEqual(labels(calls), ['fix:review', 'verify:after-review'])
+    assert.match(calls.find((c) => c.label === 'fix:review').prompt, /Defects \(JSON\)/)
+    assert.equal(result.post_review_fix.computed, 'pass')
+  }
+})
+
+test('review: a minor finding or a major outside correctness and security gets no fix pass', async () => {
+  const { result, calls } = await reviewed([FINDING({ severity: 'minor' }), FINDING({ area: 'performance' })])
+  assert.deepEqual(labels(calls), [])
+  assert.equal(result.post_review_fix, null)
+})
+
+test('review: a finding with no kind counts as a defect', async () => {
+  const { calls } = await reviewed([FINDING({ severity: 'blocker', kind: undefined })])
+  assert.deepEqual(labels(calls), ['fix:review', 'verify:after-review'])
+})
+
+test('review: an evidence gap goes to the verifier, with no fix pass', async () => {
+  const { result, calls } = await reviewed([FINDING({ severity: 'blocker', kind: 'evidence_gap', detail: 'is the client retried?' })])
+  assert.deepEqual(labels(calls), ['verify:evidence-gaps'])
+  assert.match(calls.find((c) => c.label === 'verify:evidence-gaps').prompt, /is the client retried/)
+  assert.equal(result.post_review_fix.fix, null)
+  assert.equal(result.post_review_fix.gaps, 1)
+})
+
+test('review: a minor evidence gap costs no verifier call', async () => {
+  const { calls } = await reviewed([FINDING({ severity: 'minor', kind: 'evidence_gap' })])
+  assert.deepEqual(labels(calls), [])
+})
+
+test('review: a gap pass can fail the run but cannot pass it', async () => {
+  const gap = FINDING({ kind: 'evidence_gap' })
+  const fails = await reviewed([gap], { verifier: (o) => (o.label === 'verify:evidence-gaps' ? FAIL : PASS) })
+  assert.equal(fails.result.verification.result, 'fail')
+  let n = 0
+  const stays = await run({ task: 'add retries', reviewPolicy: 'always' }, defaults({
+    reviewer: { verdict: 'approve_with_notes', findings: [gap] },
+    verifier: (o) => (o.label === 'verify:evidence-gaps' ? PASS : ++n > 0 ? FAIL : PASS),
+  }))
+  assert.equal(stays.result.verification.result, 'fail', 'gap checks passing does not clear a failed verification')
+  const empty = await reviewed([gap], { verifier: (o) => (o.label === 'verify:evidence-gaps' ? VERIFY([]) : PASS) })
+  assert.equal(empty.result.verification.result, 'pass', 'a gap pass with no checks leaves the result alone')
+})
+
+test('review: a defect and a gap share one fix pass and one verification', async () => {
+  const { calls } = await reviewed([FINDING(), FINDING({ kind: 'evidence_gap', detail: 'open fact' })])
+  assert.deepEqual(labels(calls), ['fix:review', 'verify:after-review'])
+  assert.match(calls.find((c) => c.label === 'verify:after-review').prompt, /open fact/)
+})
+
+test('next_action: passing checks mean report, and no rework', async () => {
+  const { result } = await run({ task: 'add retries' }, defaults())
+  assert.equal(result.next_action.do, 'report')
+  assert.match(result.next_action.why, /Do not edit/)
+})
+
+test('next_action: a grep that expected exit 1 is not a failure to fix', async () => {
+  const { result } = await run({ task: 'add retries' }, defaults({ verifier: VERIFY([check('grep -rn oldName src', 1, 'pass', { expected_exit: 1 })]) }))
+  assert.equal(result.next_action.do, 'report')
+})
+
+test('next_action: real failures name the failed commands', async () => {
+  const { result } = await run({ task: 'add retries' }, defaults({ verifier: VERIFY([check('make lint', 0, 'pass'), check('go test ./...', 1, 'fail')], 'fail') }))
+  assert.deepEqual(result.next_action, { do: 'fix_failed_checks', failing: ['go test ./...'], why: result.next_action.why })
+})
+
+test('next_action: unverified or unfinished work is reported as such, not reworked', async () => {
+  const { result } = await run({ task: 'add retries' }, defaults({ verifier: VERIFY([]) }))
+  assert.equal(result.next_action.do, 'report')
+  assert.match(result.next_action.why, /unverified/)
+  const blocked = await run({ task: 'add retries' }, defaults({ implementer: IMPL('main', { status: 'blocked', unresolved: ['no API'] }) }))
+  assert.match(blocked.result.next_action.why, /did not finish/)
 })
 
 test('stages: a bounded S1 task without discover, architect or review runs Sonnet plan, build and verify only', async () => {

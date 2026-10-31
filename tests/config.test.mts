@@ -12,6 +12,10 @@ test('main-thread routing: V4 in auto mode with policy auto (model and effort to
   assert.equal(cfg.policy, 'auto')
 })
 
+test('automatic workflow entry ships off: no benchmark shows its value yet', () => {
+  assert.equal(cfg.autoWorkflow, false)
+})
+
 test('subagent routing runs in every session, as its own switch', () => {
   assert.equal(cfg.subagentsEverySession, true)
 })

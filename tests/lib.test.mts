@@ -703,7 +703,8 @@ test('consequence: the judge can raise but never lower; a failed judge floors at
   assert.equal(assess({ text: 'Rename a helper.', judge: { risk: 'none', confidence: 0.9 }, observedLevel: 'critical' }).level, 'critical', 'the diff layer raises')
 })
 
-import { subagentRoute } from '../hooks/lib/subagents.ts'
+import { readOnlyTask, subagentEffort, subagentRoute } from '../hooks/lib/subagents.ts'
+import { WORKFLOW_MIN_MODULES, editedModules, workflowValue } from '../hooks/lib/strategy.ts'
 
 test('subagents: built-in general-purpose of an Opus session goes to Sonnet at the task effort; everything else keeps its model', () => {
   const hard = demandOf({ tier: 'T3', complexity: 'complex', risk: 'none' })
@@ -976,4 +977,92 @@ test('attemptCost: new input is priced at the cache lifetime in use', () => {
   const x = (ttlMs) => ({ cache: { ...coldCache(0), ttlMs }, warm: {}, now: 0, prices: ANTHROPIC, neutral: true })
   const gap = attemptCost(c, d, x(HOUR)).usd - attemptCost(c, d, x(300_000)).usd
   assert.ok(Math.abs(gap - (983 * 2 * 0.75) / 1e6) < 1e-9)
+test('subagents: critical work keeps the parent family unless the task only reads', () => {
+  const critical = { type: 'general-purpose', demand: null, risk: 'critical' as const }
+  const write = subagentRoute({ ...critical, parentFamily: 'opus', prompt: 'fix the token check in auth.ts' })
+  assert.equal(write?.model, 'opus')
+  assert.equal(write?.effort, 'high')
+  assert.equal(subagentRoute({ ...critical, parentFamily: 'sonnet', prompt: 'fix the token check' })?.model, 'sonnet')
+  assert.equal(subagentRoute({ ...critical, parentFamily: 'opus' })?.model, 'opus', 'no prompt counts as a write')
+  assert.equal(subagentRoute({ ...critical, parentFamily: 'opus', prompt: 'map the call sites of verify()' })?.model, 'sonnet')
+  assert.equal(subagentRoute({ ...critical, parentFamily: 'sonnet', prompt: 'map the call sites of verify()' }), null)
+  assert.equal(subagentRoute({ ...critical, explicitModel: 'haiku', parentFamily: 'opus', prompt: 'fix it' }), null, 'an explicit model stays')
+})
+
+test('subagents: critical work holds effort at high or above, and other risk changes nothing', () => {
+  const easy = demandOf({ tier: 'T1', complexity: 'standard', risk: 'none' })
+  assert.equal(subagentRoute({ type: 'general-purpose', parentFamily: 'opus', demand: easy, risk: 'critical', prompt: 'list the callers' })?.effort, 'high')
+  assert.equal(subagentRoute({ type: 'general-purpose', parentFamily: 'opus', demand: easy, risk: 'elevated', prompt: 'fix it' })?.effort, 'medium')
+  assert.equal(subagentRoute({ type: 'general-purpose', parentFamily: 'opus', demand: easy, risk: 'elevated', prompt: 'fix it' })?.model, 'sonnet')
+})
+
+test('subagents: a read-only task opens with a read and names no write', () => {
+  assert.ok(readOnlyTask('find every caller of parse()'))
+  assert.ok(readOnlyTask('Which files read the config?'))
+  assert.ok(!readOnlyTask('find the bug and fix it'))
+  assert.ok(!readOnlyTask('run the migration'))
+  assert.ok(!readOnlyTask(''))
+})
+
+test('subagents: effort is the stronger of the policy and the helper; no helper keeps the policy', () => {
+  assert.equal(subagentEffort('xhigh', 'medium'), 'xhigh')
+  assert.equal(subagentEffort('medium', 'max'), 'max')
+  assert.equal(subagentEffort('high', null), 'high')
+  assert.equal(subagentEffort('high'), 'high')
+})
+
+test('subagents: a diagnoser runs on Sonnet when the task carries risk', () => {
+  const base = { type: 'automode:diagnoser', parentFamily: 'opus' as const, demand: null }
+  assert.equal(subagentRoute({ ...base, risk: 'elevated' })?.model, 'sonnet')
+  assert.equal(subagentRoute({ ...base, risk: 'critical' })?.model, 'sonnet')
+  assert.equal(subagentRoute({ ...base, risk: 'none' }), null)
+  assert.equal(subagentRoute(base), null)
+  assert.equal(subagentRoute({ ...base, risk: 'critical', explicitModel: 'haiku' }), null)
+})
+
+test('subagents: no reason quotes an unsupported figure', () => {
+  const r = subagentRoute({ type: 'general-purpose', parentFamily: 'opus', demand: null })
+  assert.doesNotMatch(r?.why ?? '', /%/)
+})
+
+const entry = (over = {}) => ({ autoWorkflow: false, alreadyRan: false, judged: null, complexity: 'standard' as const, risk: 'none' as const, confidence: 0.9, failures: 0, editedPaths: [] as string[], ...over })
+const criticalAsk = { judged: 'engineering-workflow' as const, complexity: 'complex' as const, risk: 'critical' as const }
+
+test('workflowValue: off by default, yet it says what it would have done', () => {
+  const v = workflowValue(entry(criticalAsk))
+  assert.equal(v.purpose, null)
+  assert.equal(v.would, true)
+  assert.match(v.reasons[0], /critical multi-module/)
+})
+
+test('workflowValue: on, a signal gives a purpose, and no signal gives none', () => {
+  assert.match(workflowValue(entry({ ...criticalAsk, autoWorkflow: true })).purpose ?? '', /critical multi-module/)
+  assert.equal(workflowValue(entry({ ...criticalAsk, autoWorkflow: true, confidence: 0.7 })).purpose, null)
+  assert.deepEqual(workflowValue(entry({ autoWorkflow: true })), { purpose: null, would: false, reasons: [] })
+})
+
+test('workflowValue: repeated failure needs real edits', () => {
+  assert.deepEqual(workflowValue(entry({ failures: 2, editedPaths: ['src/a.ts'] })).reasons, ['repeated failure after edits'])
+  assert.deepEqual(workflowValue(entry({ failures: 2 })).reasons, [])
+})
+
+test('workflowValue: real edits across three modules count, and the root does not', () => {
+  const paths = ['/repo/src/a/x.ts', '/repo/src/b/y.ts', '/repo/lib/c/z.ts']
+  assert.equal(editedModules(paths, '/repo'), WORKFLOW_MIN_MODULES)
+  assert.equal(editedModules(['/repo/src/a/x.ts', '/repo/src/a/y.ts', '/repo/src/a/z.ts'], '/repo'), 1)
+  assert.deepEqual(workflowValue(entry({ editedPaths: paths, root: '/repo' })).reasons, ['edits across 3 modules'])
+})
+
+test('workflowValue: one run per task, even with signals left', () => {
+  const v = workflowValue(entry({ ...criticalAsk, autoWorkflow: true, alreadyRan: true }))
+  assert.equal(v.purpose, null)
+  assert.equal(v.would, false)
+  assert.equal(v.reasons.length, 1)
+})
+
+test('choose: a purpose enters the workflow on any hint but direct', () => {
+  const base = { workflowPurpose: 'edits across 3 modules', risk: 'none' as const, designDecision: false, main: 'sonnet' as const, worker: 'haiku' as const, cache: { model: 'claude-sonnet-5-5', effort: null, prefixTokens: 0, lastRequestAt: null, ttlMs: 300_000, effortSharesCache: true }, work: workFromFiles([], 10), outputTokens: 1_500, prices: ANTHROPIC }
+  assert.equal(choose({ ...base, hint: null }, 0.9).chosen, 'engineering-workflow')
+  assert.equal(choose({ ...base, hint: 'direct' }, 0.9).chosen, 'direct')
+  assert.equal(choose({ ...base, hint: 'engineering-workflow', workflowPurpose: null }, 0.9).chosen, 'direct')
 })

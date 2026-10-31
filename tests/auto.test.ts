@@ -546,13 +546,13 @@ describe('Helpers get their own effort (upstream helpers, medium floor)', () => 
     expect(records(h.writes).some((x) => x.kind === 'model-call' && x.purpose === 'effortless-helper')).toBe(true)
   })
 
-  test('a general-purpose subagent of an Opus session runs Sonnet at the helper verdict, not the legacy threshold', async ($, on) => {
+  test('a general-purpose subagent of an Opus session runs Sonnet at the stronger of the helper verdict and the policy', async ($, on) => {
     const h = harness(on, auto({ judge: hard, effortJudge: (p: string) => (p.includes('subagent, not a message from the person') ? perModel({ sonnet: ['sonnet', 'high'] })(p) : perModel({ opus: ['opus', 'xhigh'], sonnet: ['opus', 'xhigh'] })(p)) }))
     await h.submit($, 'fix the intermittent deadlock in the flush path')
     await h.step($)
     const res: any = await $.agent.spawn({ subagentType: 'general-purpose', prompt: 'write a regression test for the deadlock', description: 'test', parentModel: 'claude-opus-5-5', fork: false, background: false, tool_use_id: 'y', provider: { plugin: 'engine', tier: 'core' } })
     await h.step($, 'claude-sonnet-5-5', res.agentId)
-    expect(h.steps.at(-1)).toMatchObject({ model: 'claude-sonnet-5-5', effort: 'high' })
+    expect(h.steps.at(-1)).toMatchObject({ model: 'claude-sonnet-5-5', effort: 'xhigh' })
   })
 })
 
