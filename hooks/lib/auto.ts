@@ -93,7 +93,10 @@ function opusRequired(i: Evidence): string | null {
 // eligibilityOf applies the rules above to one model. It never reads an own verdict, so the verdicts a session happens
 // to hold cannot change the answer.
 export function eligibilityOf(family: Family, i: Evidence): { eligibility: Eligibility; why: string[] } {
-  if (!i.need) return { eligibility: 'needs-verdict', why: ['no effortless answer yet'] }
+  if (!i.need) {
+    const missing = family === 'opus' ? null : opusRequired(i)
+    return missing ? { eligibility: 'ineligible', why: ['no effortless answer yet', missing] } : { eligibility: 'needs-verdict', why: ['no effortless answer yet'] }
+  }
   const why = [`effortless: the need names ${i.need.model}`]
   if (i.hm) why.push(`automode: ${i.hm.tier} (${hmModel(i.hm.tier)})`)
   if (family === 'opus') return { eligibility: 'eligible', why: [...why, 'opus: the strongest model'] }
@@ -128,11 +131,20 @@ export function secondCall(i: AutoInput, anchor: Family): Family | null {
   return null
 }
 
-// runningRuledOut: must the session leave its running model now? Only a provider limit, a quality floor or an escalation
-// says so. An upgrade that comes from the judges alone goes through the normal gate in the switch check.
-export function runningRuledOut(family: Family | undefined, choice: AutoChoice, floors: AutoFloors): boolean {
+// runningRuledOut: must the session leave its running model now? A provider limit, a quality floor and an escalation
+// say so. T4 counts as escalation evidence, because a focused attempt already failed. Haiku out of its rule means real
+// work on Haiku. Any other upgrade from the judges goes through the normal gate in the switch check.
+export function runningRuledOut(family: Family | undefined, choice: AutoChoice, floors: AutoFloors, hm: AutoInput['hm']): boolean {
   const own = family ? choice.candidates.find((c) => c.family === family) : undefined
-  return !!own && (own.eligibility === 'unavailable' || (own.eligibility === 'ineligible' && !!floors.exclude?.[own.family]))
+  if (!own) return false
+  if (own.eligibility === 'unavailable') return true
+  return own.eligibility === 'ineligible' && (!!floors.exclude?.[own.family] || hm?.tier === 'T4' || own.family === 'haiku')
+}
+
+// ownEffort: the effort a hold runs the running model at, when the optimizer worked one out. It holds the same rules as
+// any other route (floors, T3 and T4 never at low), also for a model the rules rule out.
+export function ownEffort(own: AutoCandidate | undefined): Effort | undefined {
+  return own && (own.verdictEffort || (own.eligibility === 'eligible' && Number.isFinite(own.attemptUsd))) ? own.effort : undefined
 }
 
 // optimizeAuto: the weakest model the rules allow, at its own effort. No retry charge, no score.
@@ -164,14 +176,16 @@ export function optimizeAuto(i: AutoInput): AutoChoice {
   const order = (a: AutoCandidate, b: AutoCandidate) => a.attemptUsd - b.attemptUsd || Number(b.family === i.current?.family) - Number(a.family === i.current?.family) || at(a.effort) - at(b.effort)
   if (field.length) return { best: field.sort(order)[0], candidates, inadequate: false, rule: field.length > 1 ? 'cheapest eligible pair' : 'the weakest eligible model' }
   // Nothing eligible with a known effort: the strongest available model, labeled inadequate when it was not eligible.
+  // With no need there is no evidence for Opus: Sonnet runs, unless a rule rules it out.
   const pool = candidates.filter((c) => c.eligibility !== 'unavailable')
-  const strongest = (pool.length ? pool : candidates).slice().sort((a, b) => RANK[b.family] - RANK[a.family])[0]
+  const waiting = i.need ? undefined : pool.find((c) => c.family === 'sonnet' && c.eligibility === 'needs-verdict')
+  const strongest = waiting ?? (pool.length ? pool : candidates).slice().sort((a, b) => RANK[b.family] - RANK[a.family])[0]
   const floored = maxEffort(i.verdicts[strongest.family]?.effort ?? i.current?.effort ?? 'high', effortMinFor(strongest.family, i) ?? 'low')
   // The same rule as above: a T3 or T4 task never runs at low, on the last model standing either.
   const effort = i.floors.fixedEffort ?? (i.hm && tierRank(i.hm.tier) >= 3 ? maxEffort(floored, 'medium') : floored)
   const best ={ ...strongest, effort, attemptUsd: i.cost(strongest.family, effort) }
   const inadequate = strongest.eligibility !== 'eligible' && strongest.eligibility !== 'needs-verdict'
-  return { best, candidates, inadequate, rule: inadequate ? 'no eligible model: the strongest available, labeled inadequate' : 'no effort verdict for an eligible model: the strongest available at its known or running effort' }
+  return { best, candidates, inadequate, rule: inadequate ? 'no eligible model: the strongest available, labeled inadequate' : waiting ? 'no need: sonnet at its known or running effort' : 'no effort verdict for an eligible model: the strongest available at its known or running effort' }
 }
 
 // fallbackModel: the effortless judge failed. The remaining judge decides the model, as the legacy policy does in

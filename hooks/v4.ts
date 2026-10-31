@@ -42,7 +42,7 @@ import { effortFor, helperEffort, takesEffort, looksLikeRedo, maxEffort, midTurn
 import { effortSharesCache, modeOf, providerOf, thinkingRisk, ttlMs, type ProviderEnv } from './lib/mode.ts'
 import { bounded, helperFloor, helperQuestion, JUDGE_CALL, JUDGE_SYSTEM as EFFORTLESS_SYSTEM, keepsEffort, parseVerdict } from './lib/effortless.ts'
 import { contextOf, judgeInputFor, NEED_ANCHOR } from './lib/effortless-adapt.ts'
-import { decisionRequired, escalationTarget, fallbackEffort, fallbackModel, firstCalls, legalEffort, optimizeAuto, runningRuledOut, secondCall, shortcutApplies, type AutoChoice, type AutoFloors, type FamilyVerdict } from './lib/auto.ts'
+import { decisionRequired, escalationTarget, fallbackEffort, fallbackModel, firstCalls, legalEffort, optimizeAuto, ownEffort, runningRuledOut, secondCall, shortcutApplies, type AutoChoice, type AutoFloors, type FamilyVerdict } from './lib/auto.ts'
 import { COMPACT_SYSTEM, transcriptOf } from './lib/compact.ts'
 import { routerOverrides } from './lib/settings.ts'
 import { currentOptions, storedOptions } from './options.ts'
@@ -920,13 +920,15 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   // Judge failures, state-aware. A failed verdict for the running model is replaced from the fallback table, so a
   // failed call never moves the session to another model. A failed AutoMode judge keeps the model as well.
   let fallback: string | undefined
+  let ownFallback: string | undefined // only the running model's effort failed: the need still decides the model
   const hm = answer ? { tier: answer.tier, complexity: answer.complexity } : null
   if (!shortcut) {
     if (S.current && !verdicts[S.current.family] && (!fixedFamily || fixedFamily === S.current.family)) {
       const fb = fallbackEffort({ sameTask: !boundary, sameStage: stage === previousStage, riskChanged, planBoundary: req.why.includes('planExited') || req.why.includes('planEntered'), previous: { family: S.current.family, effort: runningEffort()! }, previousAdequate: true, appEffort: S.appEffort, escalation: mq.escalated, effortMin: mq.floors.effortMin?.[S.current.family] })
       verdicts = { ...verdicts, [S.current.family]: { model: S.current.family, effort: fb.effort, why: 'fallback' } }
       verdictRec[S.current.family] = { model: S.current.family, effort: fb.effort, why: '', ok: false, cached: false, fallback: fb.source }
-      fallback = fb.source
+      if (askedNeed) { ownFallback = fb.source; steps.push(`own verdict failed: ${fb.source}`) }
+      else fallback = fb.source
     }
     // The need failed and the running model answered: nothing here can move the session.
     if (S.current && !askedNeed && !fixedFamily && !fallback) fallback = 'the need call failed: no model switch'
@@ -975,7 +977,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
       steps.push(`second effortless call: ${second}${j2.verdict ? ` -> ${j2.verdict.model}/${j2.verdict.effort}` : ' failed'}`)
     }
   }
-  if (cacheKey && answer && Object.values(verdicts).every(Boolean) && !fallback) S.verdictCache = Object.fromEntries([...Object.entries(S.verdictCache).slice(-40), [cacheKey, { verdicts, answer }]])
+  if (cacheKey && answer && Object.values(verdicts).every(Boolean) && !fallback && !ownFallback) S.verdictCache = Object.fromEntries([...Object.entries(S.verdictCache).slice(-40), [cacheKey, { verdicts, answer }]])
 
   // Step 6: the joint optimizer, or the shortcut's kept decision.
   const cost = autoCost(complexity, at)
@@ -991,9 +993,8 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   // A hold keeps the model, never its old effort: the held model runs at its own verdict for this prompt (or its
   // fallback verdict), within its floors. Found in tests: a failed judge on a new task held Opus at the previous xhigh.
   const ownVerdict = S.current ? verdicts[S.current.family] : null
-  const heldEffort = own && own.eligibility === 'eligible' && Number.isFinite(own.attemptUsd) ? own.effort
-    : S.current && ownVerdict ? maxEffort(ownVerdict.effort, mq.floors.effortMin?.[S.current.family] ?? 'low') : undefined
-  const currentInadequate = runningRuledOut(S.current?.family, choice, floors)
+  const heldEffort = ownEffort(own) ?? (S.current && ownVerdict ? maxEffort(ownVerdict.effort, mq.floors.effortMin?.[S.current.family] ?? 'low') : undefined)
+  const currentInadequate = runningRuledOut(S.current?.family, choice, floors, hm)
   const candidate = { tier: tierOf(choice.best.family, choice.best.effort), source: (shortcut ? 'continuation' : fallback ? 'fallback' : 'judge') as 'judge' | 'continuation' | 'fallback', confidence: answer?.confidence ?? 0.5, reason: `${shortcut ? 'short go-ahead keeps the task' : answer?.why || 'judges'}; ${choice.best.family} ${choice.best.effort} ${choice.best.eligibility}${choice.inadequate ? ' (inadequate)' : ''}` }
   S.votes = S.votes.tier === candidate.tier ? { tier: candidate.tier, n: S.votes.n + 1 } : { tier: candidate.tier, n: 1 }
   if (currentInadequate && S.current && tierRank(tierOf(choice.best.family, choice.best.effort)) > tierRank(mq.tier.tier))
@@ -1032,7 +1033,10 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   }
 
   // The unfinished task's decision, for a later "continue". Closing remarks and repository steps do not replace it.
-  if (!shortcut && stage !== 'complete' && stage !== 'repo-op' && stage !== 'reconsider') S.taskDecision = { taskId: env.taskId, family: routed.family, effort: routed.effort }
+  // A gate that held the running model below the rules is a delay: a later "continue" keeps the route the rules chose.
+  const heldBelow = own?.eligibility === 'ineligible' && routed.owner === 'cache-policy'
+  const decided = heldBelow ? choice.best : routed
+  if (!shortcut && stage !== 'complete' && stage !== 'repo-op' && stage !== 'reconsider') S.taskDecision = { taskId: env.taskId, family: decided.family, effort: decided.effort }
   S.lastAuto = shortcut ? S.lastAuto : { verdicts, need, hm, taskId: env.taskId }
   S.decidedPlanMode = S.planMode
   S.lastRisk = env.risk.effective
@@ -1061,7 +1065,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
     ...(legacy ? { compare: { policy: 'legacy' as const, route: `${legacy.best.family}/${legacy.best.effort}` } } : {}),
     ...(S.inadequate ? { inadequate: S.inadequate } : {}),
     routing: { cheapestAdequate: `${choice.best.family}/${choice.best.effort}`, chosen: `${routed.family}/${routed.effort}`, overRouted: routed.family !== choice.best.family || routed.effort !== choice.best.effort ? ((choice.candidates.find((c) => c.family === routed.family)?.attemptUsd ?? 0) > choice.best.attemptUsd || EFFORTS.indexOf(routed.effort) > EFFORTS.indexOf(choice.best.effort) ? routed.owner : null) : null, underRouted: own && S.current && routed.family === S.current.family && own.eligibility !== 'eligible' && own.eligibility !== 'needs-verdict' ? routed.owner : null },
-    auto: autoRecord(choice, verdictRec, hm ? { ...hm, ok: true, cached: hmCached } : shortcut ? null : { tier: '-', complexity: '-', ok: false, cached: false }, steps, required.why, fallback, needRecord(anchor, shortcut ? kept : askedNeed)),
+    auto: autoRecord(choice, verdictRec, hm ? { ...hm, ok: true, cached: hmCached } : shortcut ? null : { tier: '-', complexity: '-', ok: false, cached: false }, steps, required.why, fallback ?? ownFallback, needRecord(anchor, shortcut ? kept : askedNeed)),
   }
 }
 
@@ -1080,8 +1084,8 @@ function reoptimizeAuto(t: Trigger, event: string, at: number, turnId: string | 
   let floor = mq.tier
   if (t.mandatory) { const lift = tierOf(choice.best.family, choice.best.effort); if (tierRank(lift) > tierRank(floor.tier)) floor = { tier: lift, effort: choice.best.effort, because: [t.reason] } }
   const own = S.current ? choice.candidates.find((c) => c.family === S.current!.family) : undefined
-  const heldEffort = own && own.eligibility === 'eligible' && Number.isFinite(own.attemptUsd) ? own.effort : undefined
-  const currentInadequate = runningRuledOut(S.current?.family, choice, floors)
+  const heldEffort = ownEffort(own)
+  const currentInadequate = runningRuledOut(S.current?.family, choice, floors, S.lastAuto.hm)
   const candidate = { tier: tierOf(choice.best.family, choice.best.effort), source: 'rules' as const, confidence: 0.9, reason: `${t.reason}; ${choice.best.family} ${choice.best.effort} ${choice.best.eligibility}` }
   const route = resolve({
     floor, candidate, effortHint: choice.best.effort, heldEffort, ...(currentInadequate ? { currentInadequate } : {}), effortCost, current: usableCurrent(at),

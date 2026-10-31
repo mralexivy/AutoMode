@@ -31,7 +31,7 @@ import { DEFAULT_LADDER, resolve } from '../hooks/lib/authority.ts'
 import { DEFAULT_PARAMS } from '../hooks/lib/policy.ts'
 import { JUDGE_SYSTEM, keepsEffort, parseVerdict } from '../hooks/lib/effortless.ts'
 import { judgeInputFor } from '../hooks/lib/effortless-adapt.ts'
-import { fallbackModel, firstCalls, optimizeAuto, runningRuledOut, secondCall, shortcutApplies } from '../hooks/lib/auto.ts'
+import { fallbackModel, firstCalls, optimizeAuto, ownEffort, runningRuledOut, secondCall, shortcutApplies } from '../hooks/lib/auto.ts'
 import { stageOfText } from './calibrate.mts'
 import { haikuCall } from './lib/haiku-call.mts'
 import { total } from './lib/ledger.mts'
@@ -187,12 +187,12 @@ for (const [id, rs] of bySession) {
         const floors = { because: [], ...(fixedFallback ? { fixedFamily: fixedFallback } : {}), ...(d.risk?.effective === 'critical' && hm?.complexity !== 'trivial' ? { exclude: { haiku: 'critical' }, effortMin: { sonnet: 'high' } } : {}), ...(fixedFamily ? { fixedFamily } : {}), ...(ov?.effort ? { fixedEffort: ov.effort } : {}) }
         const choice = optimizeAuto({ allowed, verdicts, need: need ?? (fixedFallback ? verdicts[fixedFallback] : null), hm, consequence: d.risk?.effective, floors, current, cost })
         const own = current ? choice.candidates.find((c) => c.family === current.family) : null
-        const currentInadequate = runningRuledOut(current?.family, choice, floors)
+        const currentInadequate = runningRuledOut(current?.family, choice, floors, hm)
         const warm = !!d.cache?.warm
         const route = current ? resolve({
           ...(ov?.tier || ov?.effort ? { override: { tier: tierOf(choice.best.family, choice.best.effort), effort: choice.best.effort, reason: 'user command' } } : {}),
           floor: { tier: 'T0', because: [] }, candidate: { tier: tierOf(choice.best.family, choice.best.effort), source: 'judge', confidence: 0.9, reason: choice.rule },
-          effortHint: choice.best.effort, heldEffort: own && own.eligibility === 'eligible' && Number.isFinite(own.attemptUsd) ? own.effort : undefined, ...(currentInadequate ? { currentInadequate } : {}), current: { tier: tierOf(current.family, current.effort), family: current.family, model: DEFAULT_LADDER.models[current.family], effort: current.effort },
+          effortHint: choice.best.effort, heldEffort: ownEffort(own), ...(currentInadequate ? { currentInadequate } : {}), current: { tier: tierOf(current.family, current.effort), family: current.family, model: DEFAULT_LADDER.models[current.family], effort: current.effort },
           switchInput: { cache: { model: DEFAULT_LADDER.models[current.family], effort: current.effort, prefixTokens: prefix, lastRequestAt: warm ? d.at : null, ttlMs: HOUR, effortSharesCache: true }, now: d.at, votes: 1, requestsSinceSwitch: 5, verifiedSinceSwitch: false, sameTask: true, risk: d.risk?.effective ?? 'none', expectedOutputTokens: DEFAULT_PRIORS.outputPerStep[current.family], prices: ANTHROPIC, params: DEFAULT_PARAMS, requestsInPrompt: 0, remainingTable: REMAINING, switchesThisTask: 0, targetWarm: false },
         }) : null
         const fam = route?.family ?? choice.best.family, eff = route?.effort ?? choice.best.effort

@@ -5,6 +5,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { optimizeAuto, eligibilityOf, effortlessFloor, firstCalls, runningRuledOut, secondCall, fallbackModel, escalationTarget, decisionRequired, shortcutApplies, fallbackEffort, legalEffort } from '../hooks/lib/auto.ts'
+import { resolve } from '../hooks/lib/authority.ts'
+import { ANTHROPIC } from '../hooks/lib/prices.ts'
 import { judgeInputFor, contextOf, NEED_ANCHOR, PLAN_LINE, CLOSING_LINE, stripReminders } from '../hooks/lib/effortless-adapt.ts'
 import { keepsEffort } from '../hooks/lib/effortless.ts'
 
@@ -122,11 +124,44 @@ test('start invariance: same task, same verdicts, any start: the same first rout
   }
 })
 
-test('runningRuledOut: only a provider limit, a floor or an escalation is mandatory', () => {
+test('runningRuledOut: T4 and real work on Haiku are mandatory moves', () => {
+  const t4 = optimizeAuto(base({ hm: hmOf('T4', 'complex'), verdicts: { sonnet: v('sonnet', 'high'), opus: v('opus', 'high') } }))
+  assert.equal(runningRuledOut('sonnet', t4, { because: [] }, hmOf('T4', 'complex')), true)
+  const work = optimizeAuto(base({ hm: hmOf('T2'), verdicts: { sonnet: v('sonnet', 'high'), haiku: v('haiku', 'low') } }))
+  assert.equal(work.candidates.find((c) => c.family === 'haiku').eligibility, 'ineligible')
+  assert.equal(runningRuledOut('haiku', work, { because: [] }, hmOf('T2')), true)
+})
+
+test('a T4 upgrade is not stopped by the discretionary switch limit', () => {
+  const hm = hmOf('T4', 'complex')
+  const choice = optimizeAuto(base({ hm, verdicts: { sonnet: v('sonnet', 'high'), opus: v('opus', 'high') } }))
+  const r = resolve({
+    floor: { tier: 'T0', because: [] }, candidate: { tier: 'T3', source: 'judge', confidence: 0.9, reason: 'case' }, effortHint: 'high',
+    currentInadequate: runningRuledOut('sonnet', choice, { because: [] }, hm),
+    current: { tier: 'T2', family: 'sonnet', model: 'claude-sonnet-5-5', effort: 'high' },
+    switchInput: { cache: { model: 'claude-sonnet-5-5', effort: 'high', prefixTokens: 120_000, lastRequestAt: 1_000, ttlMs: 3_600_000, effortSharesCache: true }, now: 2_000, votes: 1, requestsSinceSwitch: 1, verifiedSinceSwitch: false, sameTask: true, risk: 'none', expectedOutputTokens: 600, prices: ANTHROPIC, requestsInPrompt: 0, switchesThisTask: 3 },
+  })
+  assert.equal(r.family, 'opus')
+  assert.equal(r.owner, 'quality-escalation')
+})
+
+test('a missing need is no reason for Opus: Sonnet, unless a rule requires Opus', () => {
+  const current = { family: 'opus', effort: 'medium' }
+  const old = optimizeAuto(base({ allowed: ['sonnet', 'opus'], hm: hmOf('T1'), need: null, verdicts: { opus: v('opus', 'medium') }, current }))
+  assert.equal(`${old.best.family}/${old.best.effort}`, 'sonnet/medium', 'a snapshot from before the need')
+  assert.equal(old.inadequate, false)
+  const big = optimizeAuto(base({ allowed: ['sonnet', 'opus'], hm: hmOf('T1'), need: null, verdicts: { haiku: v('haiku', 'medium') }, current: { family: 'haiku', effort: 'medium' } }))
+  assert.equal(big.best.family, 'sonnet', 'Haiku over its context limit with a failed need call')
+  assert.equal(optimizeAuto(base({ hm: hmOf('T4', 'complex'), need: null, current })).best.family, 'opus')
+  assert.equal(optimizeAuto(base({ hm: hmOf('T3', 'complex'), consequence: 'critical', need: null, current })).best.family, 'opus')
+  assert.equal(optimizeAuto(base({ allowed: ['opus'], hm: hmOf('T1'), need: null, current })).best.family, 'opus', 'nothing else is available')
+})
+
+test('runningRuledOut: an upgrade the judges ask for on Sonnet goes through the gate', () => {
   const judgesOnly = optimizeAuto(base({ hm: hmOf('T3', 'complex'), need: v('opus', 'high'), verdicts: { sonnet: v('opus', 'high'), opus: v('opus', 'high') } }))
   assert.equal(judgesOnly.best.family, 'opus')
   assert.equal(judgesOnly.candidates.find((c) => c.family === 'sonnet').eligibility, 'ineligible')
-  assert.equal(runningRuledOut('sonnet', judgesOnly, { because: [] }), false, 'the judges alone: the normal gate')
+  assert.equal(runningRuledOut('sonnet', judgesOnly, { because: [] }, hmOf('T3', 'complex')), false, 'the judges alone: the normal gate')
   const floors = { exclude: { sonnet: 'an escalation floor' }, because: ['an escalation floor'] }
   const escalated = optimizeAuto(base({ hm: hmOf('T2'), need: v('sonnet', 'high'), verdicts: { sonnet: v('sonnet', 'high'), opus: v('opus', 'high') }, floors }))
   assert.equal(escalated.best.family, 'opus', 'an escalation floor requires Opus')
