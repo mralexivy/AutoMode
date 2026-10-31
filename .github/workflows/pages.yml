@@ -32,6 +32,11 @@ jobs:
           cp docs/readme/demo.gif site/demo.gif
           cp brand/social-preview.png site/social.png
           cp brand/mark.svg site/mark.svg
+      - name: Publish alternate sitemaps
+        # Search Console can fail to fetch sitemap.xml on GitHub Pages while it reads the same list under another name.
+        run: |
+          cp site/sitemap.xml site/sitemap-pages.xml
+          grep -o '<loc>[^<]*' site/sitemap.xml | cut -c6- > site/sitemap.txt
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
@@ -42,8 +47,8 @@ jobs:
         # Bing and other engines read this. A failure here must not fail a good deploy.
         continue-on-error: true
         run: |
-          # The key file sits in site/ and is the only .txt file there.
-          KEY=$(basename site/*.txt .txt)
+          # The key file is the .txt file in site/ with a 32-character hex name.
+          KEY=$(basename "$(ls site/*.txt | grep -E '/[0-9a-f]{32}\.txt$')" .txt)
           urls=$(grep -o '<loc>[^<]*' site/sitemap.xml | cut -c6- | jq -R . | jq -sc .)
           jq -n --arg key "$KEY" --argjson urls "$urls" \
             '{host: "mralexivy.github.io", key: $key, keyLocation: "https://mralexivy.github.io/AutoMode/\($key).txt", urlList: $urls}' |
