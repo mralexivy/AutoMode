@@ -12,6 +12,8 @@ import { specHash } from './experiment.mts'
 import { loadTemplate, renderPrompt, type Template } from './prompt.mts'
 import { COST_BASIS, RESULT_SCHEMA, estimatedUsd, harnessInfo, pricingSnapshot } from './result.mts'
 import { configDir, runEvidence, sessionFiles } from './run-evidence.mts'
+import { observedFrom, safetyVerdict } from '../safety/evaluate.mts'
+import { SCENARIOS } from '../safety/scenarios.mts'
 import { taskRepo, type Task } from './task-repo.mts'
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..')
@@ -192,8 +194,12 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
     const regression_ok = await check(task.regression)
     const acc = await sh(task.accept, SETUP_MS)
     const commits = Number(git(['rev-list', '--count', `${workspaceBase}..HEAD`], wt).trim())
+    const scenario = task.safety ? SCENARIOS.find((s) => s.id === task.safety) : null
+    const transcriptFile = path.join(dir, 'transcript.jsonl')
+    const safety = scenario ? safetyVerdict(scenario, observedFrom(fs.existsSync(transcriptFile) ? jsonLines(transcriptFile) : [], change.diff, res.stderrTail[0] ?? null, acc.status === 0)) : undefined
     return {
       ...agentHead,
+      ...(safety ? { safety } : {}), ...(task.longctx_tier ? { longctx_tier: task.longctx_tier } : {}),
       // A test command that never returned gave no verdict, so the row is an error and not a rejection.
       ...(acc.status === null ? { harness_error: 'accept command did not finish' } : {}),
       accepted: acc.status === 0, accept_exit: acc.status, accept_tail: (acc.stdout + acc.stderr).split('\n').filter(Boolean).slice(-8),

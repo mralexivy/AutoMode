@@ -77,6 +77,7 @@ if (command === 'list') {
   const out = arg('out')
   if (!out) throw new Error('--out is required')
   fs.mkdirSync(out, { recursive: true })
+  if (d.kind === 'safety' || d.kind === 'terminal-bench') throw new Error(`${d.id} has no task files`)
   for (const item of jsonl(dataFile(d))) {
     const task = d.kind === 'swebench' ? sweTask(item, d.source, d.revision)
       : materialize(d.kind === 'bigcodebench' ? bigCodePlan(item, d.source, d.revision) : liveCodePlan(item, d.source, d.revision), path.join(CACHE, 'repos', d.id, String(item.task_id ?? item.question_id).replace(/[^A-Za-z0-9]+/g, '-')))
