@@ -4,6 +4,16 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Fixed
+
+- Native `/model` and `/effort` now stand for the session, until `am:reset`. Before, routing overwrote them without notice.
+- `routeModels: false` keeps the model you picked from the first prompt. A first-prompt judge failure does too.
+- A failed judge raises task risk only until a judge answers again.
+- A short message, or one the judge rates as no risk, still goes through the text and path risk checks.
+- A return to a warm model is priced for the turns its cache lacks, and a compaction clears that warm state.
+- The effort judge is asked as upstream asks it, and gets the closing line only when it gave no verdict. The line pushed some verdicts too low.
+- A calibrated `effortOutput` is read, a hold records the tier of its effort, and `underRouting` records only real corrections.
+
 ## [0.2.1] - 2026-10-30
 
 ### Fixed

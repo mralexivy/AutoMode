@@ -16,7 +16,7 @@
 // for a user-installed plugin (cc-plugin-sec-default). an external signals writer writes plan mode and compactions to
 // a signals file; syncSignals reads it. Only the Haiku summary stays lost.
 import type { EngineInterface } from 'claude-code'
-import type { CacheState, Complexity, EffectiveRoute, Effort, Family, Floor, Mode, Risk, Route, Strategy, TaskEnvelope, Tier, TokenUsage } from './lib/types.ts'
+import type { CacheState, Complexity, EffectiveRoute, Effort, Family, Floor, Mode, Owner, Risk, Route, Strategy, TaskEnvelope, Tier, TokenUsage } from './lib/types.ts'
 import { EFFORTS, maxRisk, tierRank } from './lib/types.ts'
 import { ANTHROPIC, familyOf, rowFor, usageUsd } from './lib/prices.ts'
 import { isTask, JUDGE_SYSTEM, JUDGE_SYSTEM_V3, JUDGE_SYSTEM_V4, judgePrompt, parseJudge, parseOverride, type JudgeAnswer } from './lib/classify.ts'
@@ -25,6 +25,7 @@ import { classifyError, sanitizeDetail, UNCLASSIFIED } from './lib/errors.ts'
 import { stageOf, type Stage } from './lib/stage.ts'
 import { BAND_OF, bandOf, demandBand, TIER_BAND } from './lib/bands.ts'
 import { interfaceChanges, observedRisk, prospectiveRisk } from './lib/risk.ts'
+import { textConsequence } from './lib/consequence.ts'
 import { DEFAULT_PARAMS, remainingFor } from './lib/policy.ts'
 import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, type StrategyChoice } from './lib/strategy.ts'
@@ -127,6 +128,11 @@ const S = {
   newInput: false,            // the next main request carries new input: a message typed mid-turn, or a note this mod added
   lastEffective: null as Effort | null, // the effort in effect at the API (per-message changes wait for new input)
   appEffort: undefined as Effort | undefined, // the effort the app itself asks for on main requests
+  appModel: undefined as string | undefined, // the model the app itself asks for on main requests
+  sessionModel: undefined as string | undefined, // the session's model before the first request
+  pinFamily: undefined as Family | undefined, // set by /model: routing keeps this model until am:reset
+  pinEffort: undefined as Effort | undefined, // set by /effort: routing keeps this effort until am:reset
+  judgeRiskTask: undefined as string | undefined, // the task whose risk a failed judge raised, until a judge answers
   toldPolicy: false,
   judgeBreaker: {} as Partial<Record<'effortless' | 'automode', { failures: number; until: number }>>,
   cwd: undefined as string | undefined, // the session's working directory, for the per-project first-request size
@@ -298,6 +304,7 @@ async function loadPriors($: EngineInterface): Promise<Priors> {
     return {
       ...DEFAULT_PRIORS,
       outputPerStep: { haiku: num(p.outputPerStep?.haiku, DEFAULT_PRIORS.outputPerStep.haiku), sonnet: num(p.outputPerStep?.sonnet, DEFAULT_PRIORS.outputPerStep.sonnet), opus: num(p.outputPerStep?.opus, DEFAULT_PRIORS.outputPerStep.opus) },
+      effortOutput: Object.fromEntries(EFFORTS.map((x) => [x, num(p.effortOutput?.[x], DEFAULT_PRIORS.effortOutput[x])])) as Priors['effortOutput'],
       newInputPerStep: num(p.newInputPerStep, DEFAULT_PRIORS.newInputPerStep),
       remainingRequests: num(p.remainingRequests, DEFAULT_PRIORS.remainingRequests),
       remaining: Array.isArray(p.remaining) && p.remaining.every((r) => [r.k, r.n, r.p25, r.median, r.p75].every((x) => typeof x === 'number')) && p.remaining.length ? p.remaining : undefined,
@@ -341,7 +348,7 @@ async function spawnOutsideAutoMode($: EngineInterface, e: any, next: any) {
 
 // Persistence: a headless --resume or a plugin reload starts a new module, but the session's cache
 // and task do not reset. The routing state is saved per session after each turn and read back once.
-const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier'] as const
+const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'appModel', 'sessionModel', 'pinFamily', 'pinEffort', 'judgeRiskTask', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier'] as const
 async function restore($: EngineInterface) {
   S.restored = true
   try { S.sessionId = await sid($) } catch {}
@@ -433,6 +440,13 @@ async function judge($: EngineInterface, text: string, midTurn: boolean, attachm
   return { answer, ms, usd }
 }
 
+// raiseForFailedJudge: without a verdict the task counts as elevated. It lasts until a judge answers again (taskBoundary).
+function raiseForFailedJudge() {
+  if (!S.envelope) return
+  if (S.envelope.risk.effective === 'none') S.judgeRiskTask = S.envelope.taskId
+  S.envelope = { ...S.envelope, risk: { ...S.envelope.risk, effective: maxRisk(S.envelope.risk.effective, 'elevated') } }
+}
+
 // taskBoundary opens a new task envelope on a boundary, or raises the running task's risk from the verdict.
 function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | null, override: ReturnType<typeof parseOverride>, followUp: boolean, at: number): { boundary: boolean; reason: 'none' | 'reset' | 'new-task' } {
   const boundary = isBoundary({ explicitNew: !!override?.newTask, cleared: false, judgeNewTask: !!answer?.newTask, judgeConfidence: answer?.confidence ?? 0, followUp, envelope: S.envelope })
@@ -451,9 +465,15 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
     S.verifiedAfterPlan = false
     S.judgedThisStage = false
     reason = 'new-task'
-  } else if (S.envelope && answer && maxRisk(answer.risk, answer.consequence ?? 'none') !== 'none') {
-    const risk = prospectiveRisk(text, { risk: maxRisk(answer.risk, answer.consequence ?? 'none'), why: answer.riskWhy })
-    S.envelope = withReview({ ...S.envelope, risk: { ...S.envelope.risk, prospective: risk, effective: risk.level === 'critical' ? 'critical' : S.envelope.risk.effective } }, 'none', false)
+  } else if (S.envelope) {
+    // The text and path layers run on every message: a short message or a silent judge must not skip them.
+    const judged = answer ? maxRisk(answer.risk, answer.consequence ?? 'none') : 'none'
+    const risk = prospectiveRisk(text, answer && judged !== 'none' ? { risk: judged, why: answer.riskWhy } : null)
+    if (judged !== 'none' || risk.level === 'critical') S.envelope = withReview({ ...S.envelope, risk: { ...S.envelope.risk, prospective: risk, effective: risk.level === 'critical' ? 'critical' : S.envelope.risk.effective } }, 'none', false)
+  }
+  if (answer && S.envelope && S.judgeRiskTask === S.envelope.taskId) {
+    if (S.envelope.risk.effective === 'elevated') S.envelope = { ...S.envelope, risk: { ...S.envelope.risk, effective: maxRisk(S.envelope.risk.prospective.level, S.envelope.risk.observed?.level ?? 'none') } }
+    S.judgeRiskTask = undefined
   }
   return { boundary, reason }
 }
@@ -550,7 +570,7 @@ async function decide($: EngineInterface, text: string, midTurn: boolean, attach
     // Safe fallback: the judge failed, timed out or answered out of contract. The consequence floor rises
     // to elevated (checks run), and the implementer must be adequate at the lower bound of a hard bounded
     // task: never a cheap guess, never below the running route.
-    if (method === 'fallback') S.envelope = { ...env, risk: { ...env.risk, effective: maxRisk(env.risk.effective, 'elevated') } }
+    if (method === 'fallback') raiseForFailedJudge()
     const demand = demandOf({ tier: 'T2', complexity: env.complexity, risk: S.envelope!.risk.effective, confidence: 0.5 }, S.planMode, substantiveFailures(env))
     S.lastDemand = demand
     used = demand
@@ -658,8 +678,8 @@ async function effortlessJudge($: EngineInterface, family: Family, prompt: strin
   // model is named at Anthropic's default effort: upstream's "keep the current pair" rule must not keep a stale xhigh.
   const fresh = !!S.cache?.lastRequestAt && (await now($)) - S.cache.lastRequestAt <= S.ttl && !o.newTask
   const effort = S.current?.family === family && fresh ? runningEffort()! : DEFAULT_EFFORT[family]
-  const input = judgeInputFor(prompt, { family, effort, messages: o.messages, midTurnEffort: o.midTurnEffort, attachments: o.attachments, planMode: S.planMode })
-  const ask = (model: string) => $.model.complete({ model, system: EFFORTLESS_SYSTEM, prompt: input, maxTokens: JUDGE_CALL.maxTokens, effort: JUDGE_CALL.effort, timeoutMs: (S.cfg as any).effortJudgeTimeoutMs ?? JUDGE_CALL.timeoutMs }).catch(() => null)
+  const inputFor = (closing: boolean) => judgeInputFor(prompt, { family, effort, messages: o.messages, midTurnEffort: o.midTurnEffort, attachments: o.attachments, planMode: S.planMode, closing })
+  const ask = (model: string, closing = false) => $.model.complete({ model, system: EFFORTLESS_SYSTEM, prompt: inputFor(closing), maxTokens: JUDGE_CALL.maxTokens, effort: JUDGE_CALL.effort, timeoutMs: (S.cfg as any).effortJudgeTimeoutMs ?? JUDGE_CALL.timeoutMs }).catch(() => null)
   // Upstream askHaiku: Haiku 5.5 by id, then the alias where 5.5 does not answer. A `$` call's time does not count
   // against the hook's budget, so the second attempt costs only latency.
   let r = await ask(JUDGE_CALL.model)
@@ -667,13 +687,26 @@ async function effortlessJudge($: EngineInterface, family: Family, prompt: strin
   // Bounded: the alias is tried only after an error reply from the API (a status code). A timeout or a dropped
   // connection (status null) is not retried, so one judge never waits longer than its timeout.
   if (r && !r.isAnswered && (r as any).reason === 'api-error' && (r as any).status != null) { r = await ask(JUDGE_RETRY_MODEL); attempts = 2 }
-  const ms = (await now($)) - t0
+  let ms = (await now($)) - t0
   const purpose = o.purpose ?? 'effortless-judge'
   if (!r || !r.isAnswered) { judgeOutcome('effortless', false, t0 + ms); S.records.push({ v: 1, kind: 'model-call', purpose, family, plan: S.planMode, at: t0, sessionId: S.sessionId, ok: false, ms, attempts, error: (r as any)?.error ?? (r ? (r as any).reason : 'threw') }); return { verdict: null, ms } }
-  const tokens = usageOf(r.usage)
-  const usd = usageUsd(tokens, ANTHROPIC.rates.haiku)
+  let tokens = usageOf(r.usage)
+  let usd = usageUsd(tokens, ANTHROPIC.rates.haiku)
   noteJudge(usd)
-  const v = parseVerdict(r.text)
+  let v = parseVerdict(r.text)
+  // A8: Haiku answered the message instead of judging it. One more call, with the closing line.
+  if (!v) {
+    const again = await ask(JUDGE_CALL.model, true)
+    attempts += 1
+    if (again?.isAnswered) {
+      tokens = usageOf(again.usage)
+      const more = usageUsd(tokens, ANTHROPIC.rates.haiku)
+      noteJudge(more)
+      usd += more
+      v = parseVerdict(again.text)
+    }
+  }
+  ms = (await now($)) - t0
   judgeOutcome('effortless', !!v, t0 + ms)
   S.records.push({ v: 1, kind: 'model-call', purpose, family, plan: S.planMode, at: t0, sessionId: S.sessionId, ok: !!v, ...(v ? {} : { error: 'unparsed reply' }), attempts, ms, model: (r.usage as any)?.model ?? JUDGE_CALL.model, usage: tokens, usd: { value: round6(usd), basis: 'measured', source: `${ANTHROPIC.provider} ${ANTHROPIC.checkedAt}` } })
   return { verdict: v ? { model: v.model, effort: v.effort, why: v.why, ...(v.sure !== undefined ? { sure: v.sure } : {}) } : null, ms, usd }
@@ -747,7 +780,33 @@ function autoCost(complexity: Complexity, at: number) {
   return (family: Family, effort: Effort) => attemptCost({ family, effort, cap: { lo: 0, hi: 0 } }, { steps: TASK_STEPS[complexity] }, x).usd
 }
 
-const appFamily = (): Family => familyOf(S.current?.model ?? '') ?? 'sonnet'
+const appFamily = (): Family => familyOf(S.appModel ?? '') ?? familyOf(S.sessionModel ?? '') ?? familyOf(S.current?.model ?? '') ?? 'sonnet'
+
+// noteAppChoice reads the app's own model and effort, which ride on every main request. A change the mod did not make
+// is the person's /model or /effort: it stands for the session, until am:reset.
+function noteAppChoice($: EngineInterface, e: any) {
+  const family = familyOf(String(e.model ?? ''))
+  if (S.appModel && family && family !== familyOf(S.appModel) && family !== S.current?.family && family !== S.pinFamily) {
+    S.pinFamily = family
+    $.ui.toast(`AutoMode: you chose ${family}, so model routing is off. Type am:reset to turn it back on.`)
+  }
+  if (typeof e.model === 'string') S.appModel = e.model
+  if (typeof e.effort !== 'string') return
+  if (S.appEffort !== undefined && e.effort !== S.appEffort && e.effort !== S.lastEffective && e.effort !== S.pinEffort) {
+    S.pinEffort = e.effort as Effort
+    $.ui.toast(`AutoMode: you set effort to ${e.effort}, so effort routing is off. Type am:reset to turn it back on.`)
+  }
+  S.appEffort = e.effort as Effort
+}
+
+// pinned applies the person's /model and /effort to a route. They outrank every routing step.
+function pinned<T extends { tier: Tier; family: Family; model: string; effort: Effort; owner: Owner }>(r: T, appModel: string): T {
+  if (!S.pinFamily && !S.pinEffort) return r
+  const family = S.pinFamily ?? r.family
+  const effort = S.pinEffort ?? r.effort
+  if (family === r.family && effort === r.effort) return r
+  return { ...r, family, model: S.pinFamily ? appModel : r.model, effort, tier: tierOf(family, effort), owner: 'user-override' }
+}
 // allowedAuto: step 1, provider constraints. allowedFamilies (breakers, unknown first prompt) plus Haiku's context limit,
 // which the legacy optimizer checks inside its own scoring.
 function allowedAuto(at: number): Family[] {
@@ -768,7 +827,8 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   await syncSignals($)
   const override = parseOverride(text)
   const redo = !!S.current && looksLikeRedo(text)
-  if (override?.reset) S.stayUp = 0
+  if (override?.reset) { S.stayUp = 0; S.pinFamily = undefined; S.pinEffort = undefined }
+  if (!S.appModel && !S.sessionModel) S.sessionModel = await $.session.model().then((m) => m.trim() || undefined).catch(() => undefined)
   if (redo) S.stayUp = REDO_STAY_PROMPTS
   else if (S.stayUp > 0) S.stayUp -= 1
   S.redoFloor = null // under auto a redo keeps the model (upstream); it never raises the effort
@@ -780,8 +840,8 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   const routeModels = (S.cfg as any).routeModels !== false
   const allowed = allowedAuto(at)
   // Step 2: explicit commands. A model command fixes the model; an effort command fixes the effort on the running model.
-  const fixedFamily: Family | undefined = !routeModels ? appFamily() : override?.tier ? DEFAULT_LADDER.tiers[override.tier].family : override?.effort && S.current ? S.current.family : undefined
-  const fixedEffort: Effort | undefined = override?.effort ?? (override?.tier === 'T4' ? 'max' : undefined)
+  const fixedFamily: Family | undefined = !routeModels ? appFamily() : override?.tier ? DEFAULT_LADDER.tiers[override.tier].family : override?.effort && S.current ? S.current.family : S.pinFamily
+  const fixedEffort: Effort | undefined = override?.effort ?? (override?.tier === 'T4' ? 'max' : S.pinEffort)
   if (!routeModels) steps.push('routeModels false: the app model is kept')
   if (override?.tier || override?.effort) steps.push(`command: ${fixedFamily ?? 'model by policy'}${fixedEffort ? ` at ${fixedEffort}` : ''}`)
   // Step 4 (before judging): transitions known without a judge.
@@ -793,7 +853,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   // which keeps the pair for a "yes" that does not answer a question mark).
   const approves = tr?.kind === 'begin-approved'
   const followUp = keepsEffort(text, ctx)
-  const shortcut = !!td && !redo && !approves && !attachList.length && shortcutApplies(followUp, text, req)
+  const shortcut = !!td && !redo && !approves && !attachList.length && shortcutApplies(followUp, text, req) && textConsequence(text).level !== 'critical'
 
   let answer: JudgeAnswer | null = null
   let anchor: Family = appFamily()
@@ -836,7 +896,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   // Task boundary and envelope (shared with legacy).
   // A short follow-up never opens a new task on the judge's word alone (an explicit am:new still does).
   const { boundary, reason } = taskBoundary($, text, answer, override, followUp && !!S.envelope, at)
-  if (!answer && method === 'judge' && S.envelope) S.envelope = { ...S.envelope, risk: { ...S.envelope.risk, effective: maxRisk(S.envelope.risk.effective, 'elevated') } }
+  if (!answer && method === 'judge') raiseForFailedJudge()
   const env = S.envelope!
   const riskChanged = env.risk.effective !== S.lastRisk && !boundary
   const complexity = answer?.complexity ?? env.complexity
@@ -947,7 +1007,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
       sameTask: !boundary && !S.planExited, risk: env.risk.effective, expectedOutputTokens: S.priors.outputPerStep[S.current?.family ?? 'sonnet'],
       prices: prices(), params: { ...DEFAULT_PARAMS, calibrated: S.priors.basis === 'calibrated' },
       requestsInPrompt: 0, newTaskSteps: boundary ? TASK_STEPS[complexity] : undefined, remainingTable: remainingTable(), switchesThisTask: S.switchesThisTask,
-      targetWarm: warmFor(choice.best.family, at), resetPrefixTokens: S.compactedAt ? S.basePrefix : undefined,
+      targetWarm: warmFor(choice.best.family, at), targetWarmPrefix: S.warm[choice.best.family]?.prefixTokens, resetPrefixTokens: S.compactedAt ? S.basePrefix : undefined,
     },
   }, S.resetPending)
   steps.push(`authority: ${route.owner} ${route.family}/${route.effort}${route.check?.gate ? ` (${route.check.gate})` : ''}`)
@@ -965,7 +1025,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
     if (c.choice === 'consult') {
       S.consulted = [...S.consulted, consultKey].slice(-20)
       const ownEffort = own?.effort ?? S.current.effort
-      routed = { ...S.current, effort: ownEffort, owner: 'quality-escalation', reason: `consult Opus instead of a switch: ${c.why}`, floor: mq.tier, candidate: route.candidate, overridden: [...route.overridden, { owner: route.owner, reason: 'opus switch replaced by a consult' }] }
+      routed = { ...S.current, tier: tierOf(S.current.family, ownEffort), effort: ownEffort, owner: 'quality-escalation', reason: `consult Opus instead of a switch: ${c.why}`, floor: mq.tier, candidate: route.candidate, overridden: [...route.overridden, { owner: route.owner, reason: 'opus switch replaced by a consult' }] }
       consult = packet
       steps.push('consult: Opus architect instead of a switch')
     }
@@ -1028,7 +1088,7 @@ function reoptimizeAuto(t: Trigger, event: string, at: number, turnId: string | 
       cache: cacheState(), now: at, votes: S.upgradeVotesFor(candidate.tier), requestsSinceSwitch: S.requestsSinceSwitch, verifiedSinceSwitch: S.verifiedSinceSwitch,
       sameTask: event !== 'plan-exit', risk: env.risk.effective, expectedOutputTokens: S.priors.outputPerStep[S.current?.family ?? 'sonnet'], prices: prices(),
       params: { ...DEFAULT_PARAMS, calibrated: S.priors.basis === 'calibrated' }, requestsInPrompt: S.requestsInPrompt, remainingTable: remainingTable(), switchesThisTask: S.switchesThisTask,
-      targetWarm: warmFor(choice.best.family, at), resetPrefixTokens: S.compactedAt ? S.basePrefix : undefined,
+      targetWarm: warmFor(choice.best.family, at), targetWarmPrefix: S.warm[choice.best.family]?.prefixTokens, resetPrefixTokens: S.compactedAt ? S.basePrefix : undefined,
     },
   }, reset)
   S.pending = route
@@ -1173,7 +1233,7 @@ function reoptimize(t: Trigger, event: string, at: number, turnId: string | unde
       cache: cacheState(), now: at, votes: S.upgradeVotesFor(candidate.tier), requestsSinceSwitch: S.requestsSinceSwitch, verifiedSinceSwitch: S.verifiedSinceSwitch,
       sameTask: event !== 'plan-exit', risk: env.risk.effective, expectedOutputTokens: S.priors.outputPerStep[S.current?.family ?? 'sonnet'], prices: prices(),
       params: { ...DEFAULT_PARAMS, calibrated: S.priors.basis === 'calibrated' }, requestsInPrompt: S.requestsInPrompt, remainingTable: remainingTable(), switchesThisTask: S.switchesThisTask,
-      targetWarm: warmFor(opt.best.family, at), resetPrefixTokens: S.compactedAt ? S.basePrefix : undefined,
+      targetWarm: warmFor(opt.best.family, at), targetWarmPrefix: S.warm[opt.best.family]?.prefixTokens, resetPrefixTokens: S.compactedAt ? S.basePrefix : undefined,
     },
   }, reset)
   S.pending = route
@@ -1391,7 +1451,7 @@ export async function v4PromptSubmit($: EngineInterface, e: any, next: any) {
   // Under-routing signal: the person corrects or retries the previous answer. Kept with the route it ran on.
   if (S.lastOutcome) {
     const signal = nextSignal(text)
-    S.records.push({ v: 1, kind: 'signal', at, sessionId: S.sessionId, turnId: S.lastOutcome.turnId, taskId: S.lastOutcome.taskId, next: signal, route: S.current ? `${S.current.family}/${S.current.effort}` : null, underRouting: next !== 'moved-on' })
+    S.records.push({ v: 1, kind: 'signal', at, sessionId: S.sessionId, turnId: S.lastOutcome.turnId, taskId: S.lastOutcome.taskId, next: signal, route: S.current ? `${S.current.family}/${S.current.effort}` : null, underRouting: signal !== 'moved-on' })
     S.lastOutcome = null
   }
   if (S.providerGuard && !S.toldGuard) {
@@ -1543,8 +1603,9 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
     const tr = trigger(trigState(), { kind: 'step-start', idleMs: t - S.cache.lastRequestAt, ttlMs: S.ttl })
     if (tr.action === 'reoptimize') reoptimize(tr, 'cache-expired', t, e.turnId, true)
   }
-  const r = S.pending!
-  if (typeof e.effort === 'string') S.appEffort = e.effort as Effort
+  noteAppChoice($, e)
+  const r = pinned(S.pending!, e.model)
+  S.pending = r
   const sameFamily = familyOf(e.model) === r.family
   const model = sameFamily ? e.model : r.model
   const w = S.warm[r.family]
@@ -2055,6 +2116,7 @@ async function noteCompaction($: EngineInterface, via: string) {
   S.compactedAt = await now($)
   S.basePrefixMeasured = false
   S.haikuOutUntilCompaction = false
+  S.warm = {} // the summary replaced the history those caches held
   S.records.push({ v: 1, kind: 'compaction', at: S.compactedAt, sessionId: S.sessionId, via })
   await persist($)
   await flush($)
@@ -2170,7 +2232,7 @@ function freshSession() {
     consulted: [], consultCounts: {}, resolvedCounts: {}, switchesThisTask: 0, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
-    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined,
+    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, judgeRiskTask: undefined,
     preflight: undefined, breakers: {}, lastNoResponse: null, failures: [], pendingErrors: [], signalErrorAt: 0, signalMode: '', compactionPricedAt: 0, haikuOutUntilCompaction: false, lastWorkBand: undefined, effortUnsupported: false, thinkingRisk: false, toldErrorClass: '', toldBreaker: false, firstPrefixSaved: false, inadequate: null, toldInadequateTask: '',
   }
 }

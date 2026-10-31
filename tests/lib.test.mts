@@ -565,6 +565,22 @@ test('economics: a target whose own cache is still warm costs no rewrite', () =>
   assert.equal(downgrade({ targetWarm: true }).economics.writePenaltyUsd, 0)
 })
 
+test('economics: a warm target still writes the turns its cache lacks', () => {
+  const r = downgrade({ cache: cache({ model: opusHigh.model, effort: 'high', prefixTokens: 100_000 }), targetWarm: true, targetWarmPrefix: 60_000 })
+  // 60k read at $0.10, 40k written at the 1-hour $4, less the 100k Opus read at $0.20 the current route would pay.
+  assert.ok(Math.abs(r.economics.writePenaltyUsd - (0.006 + 0.16 - 0.02)) < 1e-6)
+  assert.equal(r.verdict, 'hold')
+  assert.equal(r.gate, 'payback')
+})
+
+test('a hold that changes the effort records the tier of that effort', () => {
+  const sonnetT1 = { ...routeFor('T1'), effort: 'medium' as const }
+  const held = resolve({ floor: noFloor, candidate: cand('T3'), effortHint: 'high', heldEffort: 'high', current: sonnetT1, switchInput: base({ cache: cache({ model: sonnetT1.model, effort: 'medium', prefixTokens: 500_000 }), votes: 1, sameTask: true }) })
+  assert.equal(held.owner, 'cache-policy')
+  assert.equal(held.effort, 'high')
+  assert.equal(held.tier, 'T2')
+})
+
 test('anti-oscillation caps discretionary switches; mandatory escalation and user overrides bypass it', () => {
   const capped = switchCheck({ ...base({ votes: 2 }), current: sonnetMed, candidate: cand('T3'), target: opusHigh, floor: noFloor, mandatory: false, switchesThisTask: 3 })
   assert.equal(capped.gate, 'oscillation')

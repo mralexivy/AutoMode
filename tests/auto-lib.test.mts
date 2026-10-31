@@ -231,10 +231,12 @@ test('fallbackModel: when the effortless judge fails, the AutoMode judge decides
 })
 
 // A8: real prompts that ask for work made the judge do the work instead of judging it (14 of 27 calls, 2026-10-26).
-test('A8: the judge input ends with the closing line, after the message, and names no model or effort', () => {
-  const q = judgeInputFor('Draft the Slack reply about the GPU panel and fix the PromQL query.', { family: 'opus', effort: 'medium', messages: [] })
+test('A8: the closing line comes only on the retry, after the message, and names no model or effort', () => {
+  const first = judgeInputFor('Draft the Slack reply', { family: 'sonnet', effort: 'high', messages: [] })
+  assert.ok(!first.includes(CLOSING_LINE))
+  const q = judgeInputFor('Draft the Slack reply', { family: 'sonnet', effort: 'high', messages: [], closing: true })
   assert.ok(q.endsWith(CLOSING_LINE))
   assert.ok(q.indexOf('Draft the Slack reply') < q.indexOf(CLOSING_LINE))
   assert.ok(!/haiku|sonnet|opus|low|medium|high/i.test(CLOSING_LINE))
-  assert.ok(judgeInputFor('x', { family: 'sonnet', effort: 'high', messages: [], planMode: true }).endsWith(CLOSING_LINE))
+  assert.ok(judgeInputFor('x', { family: 'sonnet', effort: 'high', messages: [], planMode: true, closing: true }).endsWith(CLOSING_LINE))
 })

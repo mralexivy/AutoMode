@@ -54,6 +54,7 @@ export interface SwitchInput {
   remainingTable?: Remaining[]   // a person's calibrated residual table
   switchesThisTask?: number      // discretionary model switches already made in this task
   targetWarm?: boolean           // the target model's own cache is still warm (per-model warm state)
+  targetWarmPrefix?: number      // what that cache holds: the turns added since then are not in it
   resetPrefixTokens?: number     // after compaction: the system-and-tools prefix that stays cached (measured live: 48,836 of 72,742)
   reworkUsd?: number             // expected rework difference (target minus current), when known
 }
@@ -75,6 +76,19 @@ export function switchCostUsd(cache: CacheState, from: Route | null, to: Route, 
   if (!from) return write / 1e6
   const f = rateAt(prices.rates[from.family], tokens)
   return Math.max(0, write - tokens * f.input * f.cacheReadX) / 1e6
+}
+
+// returnCostUsd prices going back to a model whose cache is warm: it reads what it holds and writes the turns added
+// since. Like switchCostUsd, it is the extra cost over reading the prefix on the current route.
+export function returnCostUsd(cache: CacheState, held: number, from: Route | null, to: Route, prices: PriceRow, warm: boolean): number {
+  if (!warm || cache.prefixTokens === 0) return 0
+  const tokens = cache.prefixTokens
+  const kept = Math.min(held, tokens)
+  const t = rateAt(prices.rates[to.family], tokens)
+  const cost = kept * t.input * t.cacheReadX + (tokens - kept) * t.input * cacheWriteX(cache.ttlMs)
+  if (!from) return cost / 1e6
+  const f = rateAt(prices.rates[from.family], tokens)
+  return Math.max(0, cost - tokens * f.input * f.cacheReadX) / 1e6
 }
 
 // perRequestSavingUsd is what one later request saves on the target versus the current route.
@@ -117,8 +131,8 @@ export function switchCheck(i: SwitchInput, resetSinceLastRequest = false): Swit
   const warm = !low
   const sameRoute = i.current && i.current.model === i.target.model
   const effortOnly = sameRoute && i.current!.effort !== i.target.effort
-  // A target whose own cache is still warm reads its prefix instead of writing it.
-  const cost = sameRoute || i.targetWarm ? 0 : switchCostUsd(i.cache, i.current, i.target, i.prices, warm)
+  // A target whose own cache is still warm reads what it holds and writes only the turns added since.
+  const cost = sameRoute ? 0 : i.targetWarm ? returnCostUsd(i.cache, i.targetWarmPrefix ?? i.cache.prefixTokens, i.current, i.target, i.prices, warm) : switchCostUsd(i.cache, i.current, i.target, i.prices, warm)
   const rem = remainingFor(i)
   // What one later request saves on the target. With the effort of both configurations known, each is priced as it will
   // run (its own output per step) and the target's step count is scaled by the effort ratio.
