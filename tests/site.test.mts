@@ -60,6 +60,12 @@ test('the home page FAQ schema matches the visible questions', () => {
   for (const q of faq.mainEntity) assert.ok(html.includes(`<h3>${q.name}</h3>`), q.name)
 })
 
+test('the deploy publishes the alternate sitemaps', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8')
+  assert.ok(workflow.includes('cp site/sitemap.xml site/sitemap-pages.xml'))
+  assert.ok(workflow.includes('> site/sitemap.txt'))
+})
+
 test('the 404 page stays out of the index', () => {
   assert.ok(read('404.html').includes('<meta name="robots" content="noindex">'))
 })
