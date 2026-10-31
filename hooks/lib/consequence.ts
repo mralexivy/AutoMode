@@ -107,15 +107,17 @@ export interface ConsequenceAssessment {
   uncertain: boolean
 }
 
-// hardEvidence: what stands without an opinion. A command spelled out in the prompt counts when the prompt asks to run
-// it: a question about `terraform apply` does not, and neither does a clause that only documents or tests it.
+// hardEvidence: what stands without an opinion. A prompt counts only for a command in backticks: prose such as "refactor
+// the helm upgrade script" names a tool, it does not run one. A question about a command does not count, and neither
+// does a clause that only documents or tests it.
 function hardEvidence(i: ConsequenceInput, t: TextConsequence): string[] {
   const out: string[] = []
   if (i.observedLevel === 'critical') out.push('edited path')
   if (t.domains.includes('production') && t.intent !== 'communicate') out.push('production incident')
   if (t.intent === 'change' || t.intent === 'operate') {
     const acting = clausesOf(i.text).filter((c) => !SURFACE.test(c))
-    const op = acting.map(classifyOperation).find(Boolean)
+    const spelled = acting.flatMap((c) => [...c.matchAll(/`([^`\n]+)`/g)].map((m) => m[1]))
+    const op = spelled.map((c) => classifyOperation(c, { sql: true })).find(Boolean)
     if (op) out.push(`operation: ${op.reason}`)
     if (acting.some(productionTarget)) out.push('production target')
   }

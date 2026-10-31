@@ -10,6 +10,8 @@ const opusHigh = perModel({ opus: ['opus', 'high'], sonnet: ['opus', 'high'] })
 const pins = (w: Record<string, string>) => records(w).filter((x) => x.kind === 'pin')
 const escalations = (w: Record<string, string>) => records(w).filter((x) => x.kind === 'escalation')
 const FABLE = 'claude-fable-5-5'
+// A /model pick moves the session's model, so these tests start with the session itself, not the picker row.
+const always = { config: { activation: 'always' } }
 const failing = { result: 'Error: Exit code 1\n--- FAIL: TestX (0.00s)\n    x_test.go:9: got 1 want 2\nFAIL', isError: true, text: '' }
 const person = { origin: { kind: 'composer' } }
 const edit = (path = 'parser.go', o: Record<string, unknown> = {}) => ({ tool: 'Edit', file_path: path, old_string: 'a', new_string: 'b', ...o })
@@ -17,12 +19,13 @@ const edit = (path = 'parser.go', o: Record<string, unknown> = {}) => ({ tool: '
 describe('Pins', () => {
   test('/model of the model the route already runs is a pin: the echo guard is gone', async ($, on) => {
     let n = 0
-    const h = harness(on, auto({ judge: () => judge(n++ === 0 ? { tier: 'T3', complexity: 'complex' } : { tier: 'T1', newTask: true }), effortJudge: (p: string) => (n > 1 ? sonnetMedium(p) : opusHigh(p)) }))
+    const h = harness(on, auto({ ...always, judge: () => judge(n++ === 0 ? { tier: 'T3', complexity: 'complex' } : { tier: 'T1', newTask: true }), effortJudge: (p: string) => (n > 1 ? sonnetMedium(p) : opusHigh(p)) }))
     await h.submit($, 'design the cache layer')
     await h.step($)
     expect(h.steps[0].model).toBe('claude-opus-5-5')
     await h.complete($, 'claude-opus-5-5')
-    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2' }) // the person picked Opus: the app's value moved
+    h.setModel('claude-opus-5-5') // the person picked Opus
+    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2' })
     await h.complete($, 'claude-opus-5-5', undefined, 'done', { turnId: 't2' })
     await h.submit($, 'rename the flag')
     await h.step($, 'claude-opus-5-5', undefined, { turnId: 't3' })
@@ -43,13 +46,30 @@ describe('Pins', () => {
     expect(pins(h.writes).find((x) => x.action === 'pinned')).toMatchObject({ axis: 'effort', echo: true })
   })
 
+  test('an engine fallback is no pin: one step on another model, and a later easy task routes freely', async ($, on) => {
+    let n = 0
+    const h = harness(on, auto({ ...always, model: 'claude-opus-5-5', judge: () => judge(n++ === 0 ? { tier: 'T3', complexity: 'complex' } : { tier: 'T1', newTask: true }), effortJudge: (p: string) => (n > 1 ? sonnetMedium(p) : opusHigh(p)) }))
+    await h.submit($, 'design the cache layer')
+    await h.step($, 'claude-opus-5-5')
+    await h.step($, 'claude-sonnet-5-5', undefined, { index: 1, effort: 'high' }) // the engine fell back for one step
+    await h.step($, 'claude-opus-5-5', undefined, { index: 2 })
+    await h.complete($, 'claude-opus-5-5')
+    expect(pins(h.writes).filter((x) => x.action === 'pinned').length).toBe(0)
+    expect(pins(h.writes).some((x) => x.why === 'model: the session did not move')).toBe(true)
+    await h.clock.advance(2 * 3_600_000)
+    await h.submit($, 'rename the flag')
+    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2' })
+    expect(h.steps.at(-1)?.model).toBe('claude-sonnet-5-5')
+  })
+
   test('an am: command beats a pin for its turn, then the pin stands again', async ($, on) => {
-    const h = harness(on, auto({ judge: easy, effortJudge: sonnetMedium }))
+    const h = harness(on, auto({ ...always, judge: easy, effortJudge: sonnetMedium }))
     await h.submit($, 'add a flag to the importer')
     await h.step($)
     await h.complete($)
     await h.submit($, 'add a second flag')
-    await h.step($, 'claude-haiku-5-5', undefined, { turnId: 't2' }) // /model haiku
+    h.setModel('claude-haiku-5-5') // /model haiku
+    await h.step($, 'claude-haiku-5-5', undefined, { turnId: 't2' })
     await h.complete($, 'claude-haiku-5-5', undefined, 'done', { turnId: 't2' })
     await h.submit($, 'am:opus check the design')
     await h.step($, 'claude-haiku-5-5', undefined, { turnId: 't3' })
@@ -77,7 +97,7 @@ describe('Pins', () => {
   })
 
   test('an am: command still gets its turn on an unroutable model; choosing a routed model turns routing back on', async ($, on) => {
-    const h = harness(on, auto({ judge: easy, effortJudge: sonnetMedium }))
+    const h = harness(on, auto({ ...always, judge: easy, effortJudge: sonnetMedium }))
     await h.submit($, 'add a flag')
     await h.step($, FABLE)
     await h.complete($, FABLE)
@@ -85,6 +105,7 @@ describe('Pins', () => {
     await h.step($, FABLE, undefined, { turnId: 't2' })
     expect(h.steps.at(-1)?.model).toBe('claude-opus-5-5')
     await h.complete($, FABLE, undefined, 'done', { turnId: 't2' })
+    h.setModel('claude-sonnet-5-5')
     await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't3' })
     await h.complete($, 'claude-sonnet-5-5', undefined, 'done', { turnId: 't3' })
     await h.submit($, 'add a second flag')
@@ -217,12 +238,29 @@ describe('The ladder', () => {
     expect(escalations(h.writes).length).toBe(1)
   })
 
+  test('a stale failure is no regression: a check fails, an edit fixes it, and three later tool errors stay weak', async ($, on) => {
+    let fixed = false
+    const h = harness(on, { ...sonnetAt('medium'), bash: () => (fixed ? { result: 'ok', isError: false, text: '' } : failing), tools: { Read: () => ({ result: 'no', isError: true, text: '' }) } })
+    await h.submit($, 'fix the parser')
+    await h.step($)
+    await $.tool.call(edit())
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await h.clock.advance(1000)
+    await $.tool.call(edit())
+    fixed = true
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await h.clock.advance(1000)
+    for (let i = 0; i < 3; i++) await $.tool.call({ tool: 'Read', file_path: 'a.go' })
+    expect(escalations(h.writes).map((x) => x.level)).toEqual(['weak'])
+  })
+
   test('a check that passed and now fails is strong on its first failure', async ($, on) => {
     let broken = false
     const h = harness(on, { ...sonnetAt('high'), bash: () => (broken ? failing : { result: 'ok', isError: false, text: '' }) })
     await h.submit($, 'fix the parser')
     await h.step($)
     await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await h.clock.advance(1000)
     broken = true
     const out = await fail($)
     expect(JSON.stringify(out)).toContain('automode:architect')

@@ -24,11 +24,12 @@ export function simpleCommands(command: string): string[] {
 const WRAPPERS: RegExp[] = [
   /^[({]\s*/,                                                                  // a subshell or a group
   /^[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|\S*)\s+/,                                  // FOO=1 npm test
-  /^env(?:\s+-[uCS]\s+\S+|\s+-\S+)*\s+/,
-  /^(?:time|command|exec|nohup|sudo|caffeinate|unbuffer)\s+/,
+  /^env(?:\s+-[uCS]\s+[^-\s]\S*|\s+-\S+)*\s+/,
+  /^(?:time|command|exec|nohup|caffeinate|unbuffer)\s+/,
+  /^sudo(?:\s+-[ugUh]\s+[^-\s]\S*|\s+-\S+)*\s+/,                               // sudo -u postgres dropdb app
   /^nice(?:\s+-n\s+\S+|\s+-\d+)?\s+/,
   /^(?:ionice|stdbuf|xvfb-run)(?:\s+-\S+)*\s+/,
-  /^g?timeout(?:\s+-[ks]\s+\S+|\s+--?\S+)*\s+\d\S*\s+/,                         // timeout 60 npm test
+  /^g?timeout(?:\s+-[ks]\s+[^-\s]\S*|\s+-\S+)*\s+\d\S*\s+/,                   // timeout 60 npm test
   /^(?:uv|poetry|pipenv|pdm|hatch|rye)\s+run(?:\s+-\S+)*\s+(?:[\w-]+:(?=\S))?/, // uv run pytest
   /^conda\s+run(?:\s+-\S+(?:\s+[^-\s]\S*)?)*\s+/,
   /^bundle\s+exec\s+/,
@@ -51,10 +52,13 @@ export function unwrapped(simple: string): string {
   return s
 }
 
+// A heredoc's body is data, not commands. Whatever follows the marker on its line stays.
+const HEREDOC = /<<-?\s*(['"]?)(\w+)\1([^\n]*)\n[\s\S]*?\n[ \t]*\2\b[^\n]*/g
+
 // tools: each simple command of a line with its wrappers gone. `bash -c "..."` is read through once.
 export function tools(command: string): string[] {
   const out: string[] = []
-  for (const part of simpleCommands(command)) {
+  for (const part of simpleCommands(command.replace(HEREDOC, '$3'))) {
     const s = unwrapped(part)
     const inner = s.match(/^(?:ba|z|da)?sh(?:\s+-[a-z]+)*\s+-[a-z]*c\s+(?:"([^"]*)"|'([^']*)')\s*$/)
     if (inner) out.push(...simpleCommands(inner[1] ?? inner[2]).map(unwrapped))

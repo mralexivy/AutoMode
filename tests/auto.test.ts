@@ -1002,11 +1002,12 @@ describe('The person keeps the last word on model and effort', () => {
   })
 
   test('/model stands against a verdict for a cheaper model', async ($, on) => {
-    const h = harness(on, auto({ judge: easy, effortJudge: sonnetMedium }))
+    const h = harness(on, auto({ config: { activation: 'always' }, judge: easy, effortJudge: sonnetMedium }))
     await h.submit($, 'add a flag to the importer')
     await h.step($)
     await h.complete($)
     await h.submit($, 'add a second flag')
+    h.setModel('claude-opus-5-5')
     await h.step($, 'claude-opus-5-5')
     expect(h.steps[1].model).toBe('claude-opus-5-5')
     await h.complete($)

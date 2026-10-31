@@ -134,6 +134,8 @@ export function harness(on: any, setup: Setup) {
     turnStart: async (_$: any) => {},
     setPrefix: (n: number) => { prefix = n },
     setMode: (m: string) => { mode = m },
+    // The person's /model: the session's model moves. A step with another model and no setModel is an engine fallback.
+    setModel: (m: string) => { sessionModel = m },
     // The provider refuses this model (no response): for provider-unavailability tests.
     failModel: (m: string | null) => { failModel = m },
     // A second session in the same process: new id, optional model; module state starts over.

@@ -795,12 +795,17 @@ const appFamily = (): Family => familyOf(S.appModel ?? '') ?? familyOf(S.session
 // noteAppChoice reads the app's own model and effort, which ride on every main request (lib/pins.ts). A change the mod
 // did not make is the person's /model or /effort: it stands for the session, until am:reset. Each pin leaves a `pin`
 // record, and `echo` says the new value equals what this mod sent: a live run shows there whether detection misfired.
-function noteAppChoice($: EngineInterface, e: any, at: number) {
+async function noteAppChoice($: EngineInterface, e: any, at: number) {
   const c = readAppChoice({ model: S.appModel, effort: S.appEffort }, e, { family: S.pinFamily, effort: S.pinEffort }, S.planMode || S.appPlan !== S.planMode)
   S.appPlan = S.planMode
   const from = { model: S.appModel ?? null, effort: S.appEffort ?? null }
-  if (typeof e.model === 'string') S.appModel = e.model
-  if (typeof e.effort === 'string') S.appEffort = e.effort as Effort
+  // A request can name a fallback's model. Only a session that moved too is the person's /model. A fallback leaves the
+  // seen values alone, so the step back to the session's model is no change either.
+  const fallback = !!c.family && familyOf(await sessionModel($).catch(() => '')) !== c.family
+  if (!fallback) {
+    if (typeof e.model === 'string') S.appModel = e.model
+    if (typeof e.effort === 'string') S.appEffort = e.effort as Effort
+  }
   const record = (axis: string, action: string, why: string, extra: Record<string, unknown> = {}) => S.records.push({ v: 1, kind: 'pin', at, sessionId: S.sessionId, axis, action, why, via: 'request', from, to: { model: e.model ?? null, effort: e.effort ?? null }, route: S.current ? `${S.current.family}/${S.current.effort}` : null, plan: S.planMode, ...extra })
   if (c.unroutable !== S.unroutable) {
     S.unroutable = c.unroutable
@@ -810,6 +815,7 @@ function noteAppChoice($: EngineInterface, e: any, at: number) {
   // Routing off: nothing routed stays waiting, unless an am: command owns this turn.
   if (c.unroutable && !S.turnOverride?.family) { S.pending = null; S.heldRoute = null; S.current = null }
   for (const why of c.skipped) record(why.split(':')[0], 'skipped', why)
+  if (fallback) { record('model', 'skipped', 'model: the session did not move'); return }
   if (c.family) {
     record('model', 'pinned', 'the app model changed', { echo: c.family === S.current?.family })
     S.pinFamily = c.family
@@ -1664,7 +1670,7 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
   const t = await now($)
   if (e.index === 0) await syncSignals($, { turnId: e.turnId })
   S.turnRequests.set(e.turnId, (S.turnRequests.get(e.turnId) ?? 0) + 1)
-  if (S.mode === 'auto') noteAppChoice($, e, t)
+  if (S.mode === 'auto') await noteAppChoice($, e, t)
   if (S.mode === 'shadow' || !S.pending) {
     // Shadow: no rewrite. The request is still recorded, for calibration and replay.
     const res = yield* next(e)

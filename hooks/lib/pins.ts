@@ -3,9 +3,10 @@
 // what the app asks for on main requests. A request alone cannot show a pick equal to the app's value, so the first
 // source covers that case.
 //
-// A rewrite this mod sends changes that request, not the session (TurnStepInput: `e.model` is "as the engine resolved
-// it"). 335 model rewrites and 684 effort rewrites were never echoed back. So the app's value is the person's, and a
-// change in it needs no check against the running route. The `pin` record carries `echo` to catch a build where that fails.
+// A rewrite this mod sends changes that request, not the session: 335 model rewrites and 684 effort rewrites were never
+// echoed back. So a change needs no check against the running route. The app's value is still not always the person's:
+// `e.model` is "the session's, a fallback's" (TurnStepInput). The caller therefore pins a model only if the session's
+// model moved too. The `pin` record carries `echo` to catch a build that does echo a rewrite.
 import type { Effort, Family, Owner, Route, Tier } from './types.ts'
 import { EFFORTS } from './types.ts'
 import { familyOf } from './prices.ts'

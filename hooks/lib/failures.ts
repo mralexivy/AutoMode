@@ -5,7 +5,9 @@ import { tierRank, TIERS } from './types.ts'
 import { tools } from './shell.ts'
 
 // A verification tool, read after shell.ts removed its wrappers. Package managers may carry flags before the script.
-const PM_FLAGS = String.raw`(?:\s+--?[\w-]+(?:[= ]\S+)?)*`
+// Each flag must read one way only, or a failed match tries every split, and this runs synchronously before the tool
+// call. So a value cannot start with a dash, and a name cannot: `--x` is never `-` plus `-x`.
+const PM_FLAGS = String.raw`(?:\s+--?\w[\w-]*(?:=\S+|\s+[^-\s]\S*)?)*`
 const CHECKS = [
   String.raw`go (test|vet|build)\b`,
   String.raw`npm${PM_FLAGS}\s+(t|test|run${PM_FLAGS}\s+(test|lint|build|typecheck|check))\b`,
@@ -152,15 +154,18 @@ const NO_ESCALATION: Escalation = { level: 'none', because: '', key: '', cause: 
 const COMPILE_ERROR = /\berror TS\d+|\bSyntaxError\b|cannot find symbol|\bundefined: \w|error\[E\d+\]|declared and not used|compilation (failed|error)/i
 const TEST_PATH = /(^|\/)(tests?|__tests__|spec|specs)\/|[._-](test|spec)\.[a-z]+$/i
 
+// resolved: the failure's own command passed after it, so the failure is history and says nothing about now.
+const resolved = (f: FailureRecord, passed: Record<string, number>) => (passed[f.command] ?? -Infinity) > f.at
+
 // regression: this repair broke something that worked. A command that passed and now fails, a build that now fails
 // where tests ran before, or tests that newly fail. A failure after edits to tests alone is not one: that is a new test.
 export function regression(history: FailureRecord[], s: Pick<LadderSignals, 'passed' | 'editedSincePass'>): 'test' | 'compile' | null {
   const last = history[history.length - 1]
-  if (!last?.editedSince || last.class !== 'defect') return null
+  if (!last?.editedSince || last.class !== 'defect' || resolved(last, s.passed)) return null
   const before = [...history.slice(0, -1)].reverse().find((f) => f.command === last.command)
   const compile = COMPILE_ERROR.test(last.evidence)
   const passedAt = s.passed[last.command]
-  if (passedAt !== undefined && (!before || passedAt > before.at)) {
+  if (passedAt !== undefined && passedAt < last.at && (!before || passedAt > before.at)) {
     const edited = s.editedSincePass?.(passedAt) ?? []
     if (edited.length && edited.every((p) => TEST_PATH.test(p))) return null
     return compile ? 'compile' : 'test'
@@ -180,7 +185,7 @@ export function escalation(history: FailureRecord[], s: LadderSignals): Escalati
   if (s.reviewerBlockers > 0 && open(`reviewer:${s.reviewerBlockers}`)) return pick('strong', 'the reviewer found a blocker', `reviewer:${s.reviewerBlockers}`, 'reviewer')
   if (s.reverts > 0 && open(`revert:${s.reverts}`)) return pick('strong', 'the task reverted its own work', `revert:${s.reverts}`, 'revert')
   const last = history[history.length - 1]
-  if (last) {
+  if (last && !resolved(last, s.passed)) {
     const fp = last.fingerprint
     const kind = regression(history, s)
     if (kind && open(`regression:${fp}`)) return pick('strong', `${kind} regression (${last.command.slice(0, 60)})`, `regression:${fp}`, fp, last)
@@ -201,8 +206,8 @@ export function escalation(history: FailureRecord[], s: LadderSignals): Escalati
 // A new ladder starts empty. A task from an earlier version has none.
 export const EMPTY_LADDER: LadderState = { raised: {}, passed: {}, toolErrors: 0, scopeGrew: false, reverts: 0, reviewerBlockers: 0, fired: [] }
 
-// isRevert: a command that throws away the task's work.
-const REVERT = /^git\s+(revert\b|reset\s+--hard\b|checkout\s+(--\s|\.\s*$)|restore\s+(?!.*--staged)(--\s+)?\.\s*$)/
+// isRevert: a command that throws away the task's work. `git restore` counts as guard.ts counts it: all but --staged.
+const REVERT = /^git\s+(revert\b|reset\s+--hard\b|checkout\s+(--\s|\.\s*$)|restore\b(?!.*--staged))/
 export const isRevert = (command: string) => tools(command).some((t) => REVERT.test(t))
 
 // reviewerBlocked: agents/reviewer.md uses `changes_required` only when a finding is a blocker.

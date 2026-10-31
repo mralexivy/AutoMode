@@ -30,6 +30,16 @@ test('check detection: a command that only names a check is not one', () => {
   for (const c of NOT_CHECKS) assert.equal(isCheck(c), false, c)
 })
 
+test('check detection: a heredoc body is data', () => {
+  assert.equal(isCheck('cat > run.sh <<EOF\nnpm test\nEOF'), false)
+})
+
+test('check detection: a failed match stays fast, because it runs before the tool call', () => {
+  const t0 = performance.now()
+  for (const c of [`npm ${'--x '.repeat(40)}!`, `pnpm ${'-x '.repeat(40)}!`, `yarn ${'--x=1 '.repeat(40)}!`, `npm run ${'--x '.repeat(40)}!`, `env ${'-u '.repeat(40)}x`, `timeout ${'-k '.repeat(40)}x`, `timeout ${'--x '.repeat(40)}x`, `sudo ${'-u '.repeat(40)}x`, `make ${'-j '.repeat(40)}!`]) assert.equal(isCheck(c), false, c)
+  assert.ok(performance.now() - t0 < 100, 'no exponential backtracking')
+})
+
 test('shell: splits outside quotes and keeps a redirect whole', () => {
   assert.deepEqual(simpleCommands('a && b; c | d'), ['a', 'b', 'c', 'd'])
   assert.deepEqual(simpleCommands('echo "a; b" && c'), ['echo "a; b"', 'c'])
@@ -101,6 +111,14 @@ test('regression: a check that passed and now fails after a code edit, but not a
   assert.equal(regression([fail(10, false)], { passed: { 'go test ./...': 5 } }), null, 'no edit: not this repair')
 })
 
+test('regression: a failure whose own command passed after it is history', () => {
+  const f = fail(10, true)
+  assert.equal(regression([f], { passed: { 'go test ./...': 20 }, editedSincePass: () => [] }), null, 'failed, fixed, passed')
+  assert.equal(escalation([fail(1, true), f], { ...base, passed: { 'go test ./...': 20 } }).level, 'none', 'a fixed repeat is no evidence now')
+  assert.equal(escalation([f], { ...base, passed: { 'go test ./...': 20 }, toolErrors: 3 }).level, 'weak', 'tool errors alone stay weak')
+  assert.equal(regression([f], { passed: { 'go test ./...': 10 }, editedSincePass: () => ['src/a.go'] }), null, 'the pass must come before the failure')
+})
+
 test('regression: a compile error where tests ran before; tests that newly fail', () => {
   const tests = fail(1, true)
   const broken = fail(2, true, 'src/a.ts(1,1): error TS2304: Cannot find name x')
@@ -118,8 +136,8 @@ test('escalation: a regression is strong on its first failure', () => {
 })
 
 test('signals: reverts, reviewer verdicts and scope', () => {
-  for (const c of ['git revert HEAD', 'git reset --hard', 'git reset --hard HEAD~1', 'git checkout -- .', 'git checkout .', 'git restore .', 'cd a && git revert abc']) assert.equal(isRevert(c), true, c)
-  for (const c of ['git status', 'git reset HEAD a.go', 'git restore --staged .', 'git checkout main', 'git checkout -b x', 'git restore a.go', 'echo git revert']) assert.equal(isRevert(c), false, c)
+  for (const c of ['git revert HEAD', 'git reset --hard', 'git reset --hard HEAD~1', 'git checkout -- .', 'git checkout .', 'git restore .', 'git restore a.go', 'cd a && git revert abc']) assert.equal(isRevert(c), true, c)
+  for (const c of ['git status', 'git reset HEAD a.go', 'git restore --staged .', 'git checkout main', 'git checkout -b x', 'git restore --staged a.go', 'echo git revert']) assert.equal(isRevert(c), false, c)
   assert.equal(reviewerBlocked('Verdict: changes_required\n- blocker a.ts:1'), true)
   assert.equal(reviewerBlocked('Verdict: approve_with_notes'), false)
   assert.equal(scopeGrew(['a', 'b', 'c', 'd'], new Set(['z']), 4, 8), true, 'four outside the discovered set')
