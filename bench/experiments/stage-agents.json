@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "stage-agents",
+  "track": "automode-system",
+  "arms": [
+    "auto-workflow"
+  ],
+  "tasks": [
+    "feature-marked-emstrongmask-hook",
+    "longctx-dnspython-edns-padding",
+    "migration-tomli-decode-error-api",
+    "security-ejs-prototype-gadgets"
+  ],
+  "repeats": 3,
+  "parallel": 1,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 5,
+  "budget_usd": 40,
+  "window_usd": 100
+}
