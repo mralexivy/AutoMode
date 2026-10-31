@@ -23,11 +23,14 @@ const baseSettings = {
   },
 }
 
+// The copy must hold only what the mod ships. bench/.cache holds every task's answer, so it must never reach a run's folder.
+export const EXCLUDED_FROM_PLUGIN = /^(\.git|\.claude|bench|tests|docs|brand|dist|node_modules)([\\/]|$)/
+
 // v2Plugin copies the working-tree plugin into the run folder with one config change, so arms
 // that run at the same time never share a config file.
 function v2Plugin(dir: string, config: Record<string, unknown>) {
   const dest = path.join(dir, 'plugin-v2')
-  fs.cpSync(V2_PLUGIN, dest, { recursive: true, filter: (src) => !/[\\/](\.git|bench|tests|docs|brand|node_modules)([\\/]|$)/.test(path.relative(V2_PLUGIN, src)) })
+  fs.cpSync(V2_PLUGIN, dest, { recursive: true, filter: (src) => !EXCLUDED_FROM_PLUGIN.test(path.relative(V2_PLUGIN, src)) })
   const cfgPath = path.join(dest, 'config.json')
   const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'))
   fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg, ...config }, null, 2))

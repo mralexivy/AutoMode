@@ -1,0 +1,173 @@
+{
+  "tolerance": 0.02,
+  "runs": 3,
+  "missing": 0,
+  "pass": 3,
+  "results": [
+    {
+      "batch": "stage-a.jsonl",
+      "run": "trivial-bottle-if-none-match__auto__r1__99125f241f",
+      "oursUsd": 0.11515460000000002,
+      "reported": 0.1153101,
+      "transcriptless": 0.0001555,
+      "router": 0,
+      "incomplete": 0,
+      "attributions": [],
+      "gap": -0.001348537552217673,
+      "explainedGap": 2.4070376849581187e-16,
+      "pass": true,
+      "rows": [
+        {
+          "model": "claude-sonnet-5-5",
+          "ours": {
+            "input": 18,
+            "output": 2989,
+            "cache_read": 315886,
+            "cache_write": 13410,
+            "usd": 0.11515460000000002,
+            "requests": 9,
+            "incomplete": 0
+          },
+          "reported": {
+            "input": 18,
+            "output": 2989,
+            "cache_read": 315886,
+            "cache_write": 13410,
+            "cost_usd": 0.1151546
+          },
+          "outputGap": 0,
+          "usdGap": 2.7755575615628914e-17
+        },
+        {
+          "model": "claude-haiku-5-5",
+          "ours": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0,
+            "usd": 0
+          },
+          "reported": {
+            "input": 1465,
+            "output": 18,
+            "cache_read": 0,
+            "cache_write": 0,
+            "cost_usd": 0.0001555
+          },
+          "outputGap": -18,
+          "usdGap": -0.0001555
+        }
+      ]
+    },
+    {
+      "batch": "stage-a.jsonl",
+      "run": "trivial-bottle-if-none-match__sonnet-high__r1__ae086e7e41",
+      "oursUsd": 0.1048153,
+      "reported": 0.1049708,
+      "transcriptless": 0.0001555,
+      "router": 0,
+      "incomplete": 0,
+      "attributions": [],
+      "gap": -0.0014813643413216138,
+      "explainedGap": 0,
+      "pass": true,
+      "rows": [
+        {
+          "model": "claude-sonnet-5-5",
+          "ours": {
+            "input": 16,
+            "output": 2708,
+            "cache_read": 270233,
+            "cache_write": 12670,
+            "usd": 0.1048153,
+            "requests": 8,
+            "incomplete": 0
+          },
+          "reported": {
+            "input": 16,
+            "output": 2708,
+            "cache_read": 270233,
+            "cache_write": 12670,
+            "cost_usd": 0.1048153
+          },
+          "outputGap": 0,
+          "usdGap": 0
+        },
+        {
+          "model": "claude-haiku-5-5",
+          "ours": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0,
+            "usd": 0
+          },
+          "reported": {
+            "input": 1465,
+            "output": 18,
+            "cache_read": 0,
+            "cache_write": 0,
+            "cost_usd": 0.0001555
+          },
+          "outputGap": -18,
+          "usdGap": -0.0001555
+        }
+      ]
+    },
+    {
+      "batch": "stage-a.jsonl",
+      "run": "trivial-bottle-if-none-match__opus-high__r1__4a8f924877",
+      "oursUsd": 0.4288946,
+      "reported": 0.42905360000000003,
+      "transcriptless": 0.00015900000000000002,
+      "router": 0,
+      "incomplete": 0,
+      "attributions": [],
+      "gap": -0.00037058306934150006,
+      "explainedGap": 0,
+      "pass": true,
+      "rows": [
+        {
+          "model": "claude-opus-5-5",
+          "ours": {
+            "input": 14,
+            "output": 8163,
+            "cache_read": 272653,
+            "cache_write": 26381,
+            "usd": 0.4288946,
+            "requests": 7,
+            "incomplete": 0
+          },
+          "reported": {
+            "input": 14,
+            "output": 8163,
+            "cache_read": 272653,
+            "cache_write": 26381,
+            "cost_usd": 0.4288946
+          },
+          "outputGap": 0,
+          "usdGap": 0
+        },
+        {
+          "model": "claude-haiku-5-5",
+          "ours": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0,
+            "usd": 0
+          },
+          "reported": {
+            "input": 1465,
+            "output": 25,
+            "cache_read": 0,
+            "cache_write": 0,
+            "cost_usd": 0.00015900000000000002
+          },
+          "outputGap": -25,
+          "usdGap": -0.00015900000000000002
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "migration-jsyaml-max-total-merge-keys",
+  "cohort": "migration",
+  "repo": "https://github.com/nodeca/js-yaml",
+  "license": "MIT",
+  "base": "39d00d65eb6b88362a5c806cea57541e687aaccb",
+  "reference": "3105455b81dee69e0fd36e09ac0b2ccfdb54adc1",
+  "task": "Replace the load option maxMergeSeqLength (default 20) with maxTotalMergeKeys (default 10000). The sequence limit does not stop a merge bomb built from a chain of aliases. The new option caps the total number of keys processed by merge (<<) across one whole load() or loadAll() call. Every key visited during a merge counts, even one that turns out to be already present, and in loadAll the counter is shared across all documents, not reset per document. Past the limit, throw a YAMLException with the message \"merge keys exceeded maxTotalMergeKeys (<limit>)\". A value of -1 disables the check. Remove maxMergeSeqLength and its check entirely, and also remove the deduplication of repeated sources in <<: [...], so repeated sources are processed and counted again. Update the option list in README.md. Examples: three sources of one key each pass with maxTotalMergeKeys 5 and -1 and throw with 2. Two documents that each merge two keys pass loadAll with 4 and throw with 3. A chain of 150 anchors where each mapping merges the previous one and adds a key loads with -1 and the last mapping has 150 keys. The same chain with 100000 anchors throws a YAMLException under the default limit with YAML11_SCHEMA.",
+  "hidden_tests": [
+    "test/core/pathological.test.mjs",
+    "test/core/tags/merge.test.mjs",
+    "test/core/units/load-options.test.mjs"
+  ],
+  "accept": "npm run build --silent && node --test test/core/pathological.test.mjs test/core/tags/merge.test.mjs test/core/units/load-options.test.mjs",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

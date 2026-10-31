@@ -7,6 +7,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { prepareWorkspace, removeTree } from './lib/run-one.mts'
 import { loadTasks, problems, taskRepo, type Task } from './lib/task-repo.mts'
 
 const argv = process.argv.slice(2)
@@ -21,23 +22,30 @@ export function validate(task: Task) {
   if (bad.length) return { id: task.id, valid: false, problems: bad }
   const cache = taskRepo(task)
   const w = path.join(scratch, task.id)
-  fs.rmSync(w, { recursive: true, force: true })
   fs.mkdirSync(scratch, { recursive: true })
-  git(['clone', '-q', '--no-checkout', cache, w])
+  // The same workspace a real run gets, so a task that needs git history fails here and not in a paid run.
+  const fresh = (commit: string) => {
+    removeTree(w)
+    prepareWorkspace(cache, commit, w)
+    if (task.setup) {
+      const s = spawnSync('sh', ['-c', task.setup], { cwd: w, encoding: 'utf8', timeout: 10 * 60_000 })
+      if (s.status !== 0) throw new Error(`setup failed at ${commit.slice(0, 8)}`)
+    }
+  }
   try {
-    git(['checkout', '-q', '--detach', task.base], w)
-    if (task.setup) spawnSync('sh', ['-c', task.setup], { cwd: w, encoding: 'utf8', timeout: 10 * 60_000 })
+    fresh(task.base)
     for (const t of task.hidden_tests) {
       fs.mkdirSync(path.dirname(path.join(w, t)), { recursive: true })
       fs.writeFileSync(path.join(w, t), git(['show', `${task.reference}:${t}`], cache))
     }
     const atBase = accepts(task, w)
-    git(['checkout', '-q', '--force', '--detach', task.reference], w)
-    if (task.setup) spawnSync('sh', ['-c', task.setup], { cwd: w, encoding: 'utf8', timeout: 10 * 60_000 })
+    fresh(task.reference)
     const atReference = accepts(task, w)
     return { id: task.id, base_with_hidden: atBase ? 'pass' : 'fail', reference: atReference ? 'pass' : 'fail', valid: !atBase && atReference }
+  } catch (e) {
+    return { id: task.id, valid: false, problems: [(e as Error).message] }
   } finally {
-    fs.rmSync(w, { recursive: true, force: true })
+    removeTree(w)
   }
 }
 

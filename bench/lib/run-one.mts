@@ -67,15 +67,18 @@ function judgeCost(dir: string) {
   return { usd, calls: lines.filter((x) => x.ev === 'judge').length, verdicts: lines.filter((x) => x.ev === 'verdict').map((v) => ({ path: v.path, effort: v.effort, by: v.by, risks: v.risks })) }
 }
 
-// v4JudgeCost sums the V4 judge's measured Haiku cost for one session from the decision records in
-// the profile's plugin data folder.
-function v4JudgeCost(sessionId: string | null | undefined) {
-  const file = path.join(configDir(), 'plugins', 'data', 'automode', 'decisions.jsonl')
-  if (!sessionId || !fs.existsSync(file)) return null
-  const rows = jsonLines(file).filter((r) => r.sessionId === sessionId)
+// v4JudgeCost sums the V4 judges' measured Haiku cost for one session from the plugin's records. The CLI's total leaves
+// these calls out. A session writes records/<id>.jsonl; older versions wrote one shared decisions.jsonl.
+export function v4JudgeCost(sessionId: string | null | undefined) {
+  if (!sessionId) return null
+  const data = path.join(configDir(), 'plugins', 'data', 'automode')
+  const files = [path.join(data, 'records', `${sessionId}.jsonl`), path.join(data, 'decisions.jsonl')].filter((f) => fs.existsSync(f))
+  if (!files.length) return null
+  const rows = files.flatMap(jsonLines).filter((r) => r.sessionId === sessionId)
   const decisions = rows.filter((r) => r.kind === 'decision')
+  const calls = rows.filter((r) => r.kind === 'model-call')
   return {
-    usd: decisions.reduce((a, r) => a + (r.judge?.usd || 0), 0), calls: decisions.filter((r) => r.judge?.called).length,
+    usd: calls.length ? calls.reduce((a, r) => a + (r.usd?.value || 0), 0) : decisions.reduce((a, r) => a + (r.judge?.usd || 0), 0), calls: calls.length || decisions.filter((r) => r.judge?.called).length,
     verdicts: decisions.map((r) => ({ tier: r.effective?.tier, model: r.effective?.model, effort: r.effective?.effort, owner: r.effective?.owner, risk: r.risk?.effective, review: r.risk?.reviewRequired, strategy: r.strategy?.chosen })),
     workers: rows.filter((r) => r.kind === 'worker').map((r) => ({ agent: r.agent, status: r.status, tokens: r.tokens })),
     escalations: rows.filter((r) => r.kind === 'escalation').length,
@@ -95,11 +98,18 @@ export function agentChange(wt: string, base: string, hiddenTests: string[]) {
   const untracked = lines(git(['ls-files', '--others', '--exclude-standard'], wt))
   return {
     diff: git(['diff', base], wt) + untracked.map((f) => `\n--- new file: ${f}\n${fs.readFileSync(path.join(wt, f), 'utf8').slice(0, 20000)}`).join(''),
-    shortstat: git(['diff', '--shortstat', base, '--', '.', ...hiddenTests.map((t) => `:!${t}`)], wt).trim(),
+    // Staged for a moment, so that new files count too.
+    shortstat: (() => { git(['add', '-A'], wt); const stat = git(['diff', '--cached', '--shortstat', base, '--', '.', ...hiddenTests.map((t) => `:!${t}`)], wt).trim(); git(['reset', '-q'], wt); return stat })(),
     // A patch that applies, for a harness that scores the change elsewhere. Staging is undone, so nothing else sees it.
     patch: () => { git(['add', '-A'], wt); const p = git(['diff', '--cached', '--binary', base], wt); git(['reset', '-q'], wt); return p },
     files: new Set([...lines(git(['diff', '--name-only', base], wt)), ...untracked]).size,
   }
+}
+
+// removeTree retries, because a test's child process can still be writing. A failed cleanup must never lose a result that
+// a run already paid for, so it warns and goes on.
+export function removeTree(dir: string) {
+  try { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 8, retryDelay: 250 }) } catch (e) { console.error(`could not remove ${path.basename(dir)}: ${(e as Error).message}`) }
 }
 
 // prepareWorkspace writes the tree at `base` into a new repository with one commit. A clone would carry the reference
@@ -111,6 +121,14 @@ export function prepareWorkspace(cache: string, base: string, wt: string) {
   git(['init', '-q'], wt)
   git(['add', '-A', '-f'], wt)
   git(['-c', 'user.name=bench', '-c', 'user.email=bench@example.com', 'commit', '-q', '--allow-empty', '-m', 'base'], wt)
+  return git(['rev-parse', 'HEAD'], wt).trim()
+}
+
+// sealSetup commits what setup left behind, and returns the new base. Without this, a generated file that the project does
+// not ignore would count as the agent's change.
+export function sealSetup(wt: string) {
+  git(['add', '-A'], wt)
+  git(['-c', 'user.name=bench', '-c', 'user.email=bench@example.com', 'commit', '-q', '--allow-empty', '-m', 'setup'], wt)
   return git(['rev-parse', 'HEAD'], wt).trim()
 }
 
@@ -143,13 +161,13 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
   const started = performance.now()
   const elapsed = () => Math.round(performance.now() - started)
   const dir = path.join(ctx.scratch, runId)
-  fs.rmSync(dir, { recursive: true, force: true })
+  removeTree(dir)
   fs.mkdirSync(dir, { recursive: true })
   const wt = path.join(dir, 'wt')
   const cache = (ctx.repoFor ?? taskRepo)(task)
   // Third-party test code never runs on the host.
   if (task.requirements?.sandbox && !runner.sandbox) throw new Error(`${task.id} needs a sandboxed runner`)
-  const workspaceBase = prepareWorkspace(cache, task.base, wt)
+  let workspaceBase = prepareWorkspace(cache, task.base, wt)
   try {
     // Commands run where the runner says. In a sandbox, so do the tests: they execute code the model wrote.
     const box = runner.sandbox?.(wt)
@@ -161,6 +179,7 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
     if (task.setup) {
       const setup = await sh(task.setup, SETUP_MS, true)
       if (setup.status !== 0) return { ...rowHead, exit_reason: 'setup_error' as ExitReason, setup_exit: setup.status, at: new Date().toISOString() }
+      workspaceBase = sealSetup(wt)
     }
     const setupDone = elapsed()
     const res = await runner.run({ armId, workspace: wt, dir, prompt: prompt.text, timeoutMs: task.limits?.wall_seconds ? task.limits.wall_seconds * 1000 : ctx.timeoutMs, runCap: ctx.runCap })
@@ -215,6 +234,6 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
       stderr_tail: res.stderrTail, at: new Date().toISOString(),
     }
   } finally {
-    fs.rmSync(wt, { recursive: true, force: true })
+    removeTree(wt)
   }
 }

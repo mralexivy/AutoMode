@@ -3,3 +3,4 @@ dist/
 .DS_Store
 bench/.cache/
 bench/results/ledger.jsonl
+bench/results/diffs/

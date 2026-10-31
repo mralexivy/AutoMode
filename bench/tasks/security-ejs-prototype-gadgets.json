@@ -1,0 +1,14 @@
+{
+  "id": "security-ejs-prototype-gadgets",
+  "cohort": "security",
+  "repo": "https://github.com/mde/ejs",
+  "license": "Apache-2.0",
+  "base": "34c68a16ccb466635170ef81a8ce2862b248ebe2",
+  "reference": "82e73e58228af29ac29ed4b69cb121c609083fe4",
+  "task": "Templates run inside with (locals), so anything an attacker manages to set on Object.prototype shows up as a template variable and can shadow EJS internals such as escapeFn, include and __append. Close this gadget. The source is lib/esm/ejs.js; lib/cjs is generated from it, so only edit the ESM file. By default the compiled template function must receive a shallow copy of the data in a null-prototype object, so the prototype chain of locals is not visible in the template. With Object.prototype.escapeFn set to a hijacking function, ejs.render(\"<%= name %>\", { name: \"<script>alert(1)</script>\" }) must still return &lt;script&gt;alert(1)&lt;/script&gt;. With Object.prototype.include polluted, <%- include(\"hello-world\") %> must not call the polluted function, and with Object.prototype.__append polluted, ejs.render(\"<%= name %>\", { name: \"foo\" }) must return foo without calling it. Add an opt-in boolean option, unsafePrototypeLocals, default false, that keeps the old behaviour: with function Data() {} and Data.prototype.greeting = \"hi\", ejs.render(\"<%= greeting %>\", new Data(), { unsafePrototypeLocals: true }) returns hi. Setting Object.prototype.unsafePrototypeLocals = true must not turn the option on. A missing data argument must keep working.",
+  "hidden_tests": [
+    "test/ejs.js"
+  ],
+  "accept": "npx jake compile && node -e \"const Mocha = require('mocha'); const m = new Mocha({ ui: 'tdd' }); m.addFile('test/ejs.js'); m.run((f) => { process.exitCode = f ? 1 : 0 })\"",
+  "setup": "npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund --before=2026-05-26T00:00:00Z"
+}

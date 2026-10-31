@@ -2,7 +2,9 @@
 
 A task is one JSON file in this folder. See [`bench/README.md`](../README.md) for how the benchmark works. The runner (`node bench/run.mts`), the grader (`bench/grade.mts`) and the fixture check (`node bench/validate-fixture.mts`) read every `*.json` file here.
 
-**This folder has no tasks yet.** Adding the first six is the most useful contribution to AutoMode. Without them, we cannot publish a result.
+This folder holds 12 tasks, two per cohort. The target is about 80. More tasks are the most useful contribution to AutoMode, because results under 30 tasks are a pilot.
+
+The Python tasks passed on Python 3.9.6, and they target that version: their base commits are older code, and `refactor-pymarkdown-block-level` needs `pkg_resources`. Newer Python may fail them for reasons unrelated to an agent. Run `node bench/validate-fixture.mts` on your own machine before a paid run.
 
 ## The task file
 
@@ -46,6 +48,6 @@ The harness also reads schema 2, which nests the commands under `evaluation` and
 node bench/validate-fixture.mts your-task-id
 ```
 
-The check validates the task file, clones the repository into `bench/.cache/` (ignored by git), and runs `accept` at `base` and at `reference`. It makes no model call and costs nothing. A valid task prints `"valid":true`.
+The check validates the task file, clones the repository into `bench/.cache/` (ignored by git), and runs `accept` at `base` and at `reference` in the same kind of workspace a real run gets: the tree at that commit, with no project history. It makes no model call and costs nothing. A valid task prints `"valid":true`.
 
 Then open a pull request. Do not add anything from a private repository, and do not add real chat history to a task.
