@@ -45,6 +45,9 @@ export function parseGrade(reply: unknown): Record<string, any> | null {
   try {
     const j = JSON.parse(String(reply).match(/\{[\s\S]*\}/)[0])
     if (!DIMENSIONS.every((k) => Number.isInteger(j[k]) && j[k] >= 1 && j[k] <= 5)) return null
-    return { ...Object.fromEntries(DIMENSIONS.map((k) => [k, j[k]])), defects: (j.defects || []).slice(0, 5), vs_reference: j.vs_reference }
+    // Only the three labels are kept: anything else here would be model text in a result file.
+    const vs_reference = /\b(better|equal|worse)\b/.exec(String(j.vs_reference))?.[1]
+    if (!vs_reference) return null
+    return { ...Object.fromEntries(DIMENSIONS.map((k) => [k, j[k]])), defects: (j.defects || []).slice(0, 5), vs_reference }
   } catch { return null }
 }

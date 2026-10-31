@@ -542,3 +542,10 @@ test('the judge cost comes from the session records the plugin writes', () => {
   assert.equal(j.verdicts[0].tier, 'T1')
   assert.equal(v4JudgeCost('missing-session')?.usd ?? 0, 0)
 })
+
+test('a grade keeps only the three reference labels', () => {
+  const reply = (vs: string) => JSON.stringify({ correctness: 4, completeness: 4, scope: 4, tests: 4, maintainability: 4, vs_reference: vs })
+  assert.equal(parseGrade(reply('slightly worse')).vs_reference, 'worse')
+  assert.equal(parseGrade(reply('equal')).vs_reference, 'equal')
+  assert.equal(parseGrade(reply('hard to say')), null)
+})
