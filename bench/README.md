@@ -4,7 +4,7 @@ This folder measures AutoMode and compares models. It has three tracks, and thei
 
 | Track | Question | Runner | Experiment files |
 |---|---|---|---|
-| `automode-system` | Does AutoMode beat plain Claude Code? | `claude -p` | `light`, `effort`, `auto`, `stage-a`, `stage-b`, `stage-c` |
+| `automode-system` | Does AutoMode beat plain Claude Code? | `claude -p` | `light`, `effort`, `auto`, `stage-a`, `stage-b`, `stage-c`, `stage-c-opus` |
 | `neutral-model` | How good is a model under one shared scaffold? | Neutral agent in Docker | `frontier-core` |
 | `claude-compatible` | Does another vendor's model work inside Claude Code? | `claude -p` through a gateway | `claude-compatible` |
 

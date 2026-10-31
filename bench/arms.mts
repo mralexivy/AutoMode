@@ -90,6 +90,8 @@ export const EFFORT_ARMS: Record<string, Arm> = {
   'sonnet-auto-effort': { label: 'Sonnet 5.5, AutoMode Auto with routeModels false (effort only)', model: 'claude-sonnet-5-5', effort: 'medium', pinModel: 'claude-sonnet-5-5', v4: true, plugin: automode({ routeModels: false, pickerModel: 'claude-sonnet-5-5' }) },
   // The value users get. A native 1M model may drop the suffix; the row records what ran.
   'auto': { label: 'AutoMode Auto: model and effort routing', model: HM_MODEL, v4: true, plugin: automode({}) },
+  // The same router, for a person whose session starts on Opus. Does it move them down when Sonnet is enough?
+  'auto-from-opus': { label: 'AutoMode Auto, session started on Opus', model: 'claude-opus-5-5', v4: true, plugin: automode({}) },
 }
 
 // The neutral track: the same loop, tools and prompt for every model (bench/runners/neutral-agent.mts). Ids come from

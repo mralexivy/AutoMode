@@ -562,3 +562,9 @@ test('a grade keeps only the three reference labels', () => {
   assert.equal(parseGrade(reply('equal')).vs_reference, 'equal')
   assert.equal(parseGrade(reply('hard to say')), null)
 })
+
+test('auto-from-opus runs the same router as auto and starts the session on Opus', () => {
+  assert.equal(ARMS['auto-from-opus'].model, 'claude-opus-5-5')
+  assert.deepEqual(ARMS['auto-from-opus'].plugin, ARMS.auto.plugin)
+  assert.equal(ARMS['auto-from-opus'].pinModel, undefined, 'the router must be free to move the model')
+})
