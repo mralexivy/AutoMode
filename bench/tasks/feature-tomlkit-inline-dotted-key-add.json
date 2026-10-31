@@ -1,0 +1,14 @@
+{
+  "id": "feature-tomlkit-inline-dotted-key-add",
+  "cohort": "feature",
+  "repo": "https://github.com/python-poetry/tomlkit",
+  "license": "MIT",
+  "base": "eaa897d6d0300f7ffc78188c8957b98aaa5c8c65",
+  "reference": "a076a6afbe035694bd6b1cfdbd8ad7284e93b862",
+  "task": "Adding a key through a dotted key inside an inline table corrupts the output.\n\nStart with doc = parse('a = {b.c = 1}\\n') and run doc['a']['b']['d'] = 2. The rendered text loses the b. prefix on the new key or the separator between the pairs. It must be exactly 'a = {b.c = 1, b.d = 2}\\n'. parse(rendered) must equal {'a': {'b': {'c': 1, 'd': 2}}}, and parse(rendered).as_string() must equal rendered.\n\nThe same applies through several levels. Start with doc = parse('a = {b.c.e = 1}\\n') and run doc['a']['b']['c']['g'] = 2. The output must be exactly 'a = {b.c.e = 1, b.c.g = 2}\\n'. parse(rendered) must equal {'a': {'b': {'c': {'e': 1, 'g': 2}}}}, and parse(rendered).as_string() must equal rendered.\n\nDotted keys in inline tables that are not modified must render as they were parsed. Everything else must keep working.",
+  "hidden_tests": [
+    "tests/test_items.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests --ignore=tests/test_toml_tests.py",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 PyYAML==6.0.2"
+}

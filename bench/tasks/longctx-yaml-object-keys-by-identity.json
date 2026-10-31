@@ -1,0 +1,21 @@
+{
+  "id": "longctx-yaml-object-keys-by-identity",
+  "cohort": "longctx",
+  "repo": "https://github.com/eemeli/yaml",
+  "license": "ISC",
+  "base": "be377fb5ef089ef2b8ac91de920263a6dc5aa503",
+  "reference": "43fe536f978322954390136820f0f4ea5bbcf6d4",
+  "task": "Maps and sets lose track of non-scalar keys. YAMLMap and YAMLSet keep their entries in a public values Map. Today, a key that is an object gets a fresh unique symbol as its entry key in values. So an object key can't be looked up by the object you created it with, and two views of the same collection can't be compared by key.\n\nThe rule for the entry key in values, on both YAMLMap and YAMLSet: a Pair stands for its key, a Scalar stands for its value, null and undefined become null, and anything else is used as it is. Symbols must no longer appear as generated entry keys. The object itself is the entry key: the original JavaScript value for collections made from JavaScript data, and the parsed key node for parsed documents. The mapKey option and Schema.mapKey may therefore return any value, and their return type widens to unknown.\n\nLookups with a map:\n\nconst a1 = [1]\nconst doc = new Document(new Map([[1, 2], ['1', '2'], [a1, [2]]]))\n\ndoc.get(1) matches { value: 2 }. doc.get('1') matches { value: '2' }. doc.get([1]) is undefined, because a different array is a different key. doc.get(a1) matches [{ value: 2 }].\n\nLookups with a set. Given const doc = new Document([1, 2, [3]], { tag: '!!set', version: '1.1' }) and set = doc.value, set.values has the entries 1, 2 and the array [3], the last one mapped to the sequence node. set.get(1) matches { value: 1 }, set.get(0) and set.get('1') are undefined, and set.get([3]) is undefined. set.has(new Scalar(1)) is true. set.has(seq) is true, where seq is the last node in set.values.values(). Looking up by a node object that is a value rather than an entry key must still work, on sets and on maps.\n\nCreated from JavaScript. With mapKey = new Map([['w', 'five'], ['v', 6]]), createNode(new Map([['x', 3], ['y', new Set([4])], [mapKey, 'z']])) gives values with the entries 'x', 'y' and mapKey. The third pair has a YAMLMap key and the value 'z'. With version '1.1', createNode(new Set([3, new Set(['four', 5])])) gives a YAMLSet whose values has the entry 3 and an entry keyed by that inner JavaScript Set, which maps to a nested YAMLSet with entries 'four' and 5.\n\nParsed documents. For parseDocument('? - 1\\nx:\\n'), the first entry key in values is the key sequence node holding 1, and the second is 'x'. For '? - 1\\n[x]: y\\n', both entry keys are the key sequence nodes. For '? []: x', the outer entry key is the key map node, and that map has the empty sequence node as its own entry key. A null key still has the entry key null.\n\nkeyOf on maps and sets returns the entry key. With allowMissing it returns the mapped key even when it is absent, and it no longer makes a symbol.\n\nEverything else must keep working, including set, delete and has.",
+  "hidden_tests": [
+    "tests/_utils.ts",
+    "tests/cli.ts",
+    "tests/collection-access.ts",
+    "tests/doc/anchors.ts",
+    "tests/doc/comments.ts",
+    "tests/doc/createNode.ts",
+    "tests/doc/errors.ts",
+    "tests/doc/parse.ts"
+  ],
+  "accept": "npm test --silent -- --exclude 'tests/*-test-suite.ts'",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

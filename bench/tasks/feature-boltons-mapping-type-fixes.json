@@ -1,0 +1,14 @@
+{
+  "id": "feature-boltons-mapping-type-fixes",
+  "cohort": "feature",
+  "repo": "https://github.com/mahmoud/boltons",
+  "license": "BSD-3-Clause",
+  "base": "40fffc5ba0a84315c79813daa47db35157d64556",
+  "reference": "bbadc7ae1dcfbb0e71ec3a852e8bca3a6f75199b",
+  "task": "Several mapping types misbehave. Fix all of these.\n\nOMD equality ignores trailing (None, None) items. OMD([(None, None)]) must not equal OMD([(None, None), (None, None)]), in either direction. QueryParamDict must behave the same way.\n\nOMD.update with an iterable of pairs drops values when a key that is new to the mapping repeats in the iterable. After omd = OMD(); omd.update([('a', 1), ('a', 3)]), getlist('a') must be [1, 3]. Starting from [('a', 0), ('b', 0)], update([('a', 1), ('c', 2), ('a', 3), ('c', 4)]) must give getlist('a') == [1, 3], getlist('c') == [2, 4] and getlist('b') == [0]. QueryParamDict must behave the same way.\n\nOneToOne.update must accept a one-shot iterator of pairs: update(iter([('a', 1), ('b', 2)])) on an empty mapping must give {'a': 1, 'b': 2} with inv {1: 'a', 2: 'b'}. An unhashable value anywhere in the input must raise TypeError and leave the mapping unchanged. OneToOne must support |= in place, keeping its identity: OneToOne({'a': 1}) |= {'c': 2, 'd': 1} gives {'c': 2, 'd': 1} with inv {1: 'd', 2: 'c'}.\n\nManyToMany.add('new', []) must raise TypeError and leave the key out, so the mapping stays empty. ManyToMany(other) must make an independent copy in both directions: adding to the copy must not change the original, and adding through the original's inv must not change the copy. replace(key, newkey) onto a key that already exists must merge: ManyToMany([('a', 1), ('new', 2)]).replace('a', 'new') leaves no 'a', gives m2m['new'] == frozenset([1, 2]), and both inv[1] and inv[2] equal frozenset(['new']).\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/test_dictutils.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5"
+}

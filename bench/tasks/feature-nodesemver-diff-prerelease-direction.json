@@ -1,0 +1,14 @@
+{
+  "id": "feature-nodesemver-diff-prerelease-direction",
+  "cohort": "feature",
+  "repo": "https://github.com/npm/node-semver",
+  "license": "ISC",
+  "base": "27817677794f592b592bf6181a80a4824ff762b2",
+  "reference": "fc2f3df0b5d25253b3580607e111a9a280d888ca",
+  "task": "semver.diff gives wrong answers when a prerelease version is compared with a stable release. It reports diff('1.0.0-1', '2.0.0') as 'premajor', although going from 1.0.0-1 to 2.0.0 reaches a stable version. It reports diff('0.0.0-1', '0.0.0') as 'prerelease', although that step is a release.\n\nThe result must not depend on argument order. Take the higher and the lower version of the two, then apply these rules.\n\nThe 'pre' prefix appears only when the higher version is a prerelease. So diff('1.0.0-1', '2.0.0') is 'major', diff('0.0.2-1', '0.0.3') is 'patch', diff('0.0.2-1', '0.1.0') is 'minor', and diff('0.0.2-1', '1.0.0') is 'major'. When the higher version is a prerelease the prefix stays: diff('1.0.0-1', '2.0.0-1') is 'premajor', diff('1.0.0-1', '1.1.0-1') is 'preminor', diff('1.0.0-1', '1.0.1-1') is 'prepatch', diff('1.2.3', '2.0.0-pre') is 'premajor', and diff('1.2.3', '1.2.4-pre') is 'prepatch'.\n\nWhen major, minor and patch are all equal and both versions are prereleases, the result is 'prerelease': diff('1.1.0-pre-1', '1.1.0-pre-2').\n\nWhen major, minor and patch are all equal and only the lower version is a prerelease, the result is the smallest bump that reaches the stable version. It is 'patch' if the patch number is not zero: diff('0.0.2-1', '0.0.2') and diff('1.0.1-1', '1.0.1'). Otherwise it is 'minor' if the minor number is not zero: diff('0.1.0-1', '0.1.0') and diff('1.1.0', '1.1.0-pre'). Otherwise it is 'major': diff('1.0.0-1', '1.0.0') and diff('0.0.0-1', '0.0.0').\n\nEqual versions still return null, including prereleases: diff('1.0.0-1', '1.0.0-1'). Stable pairs keep their results. Everything else must keep working.",
+  "hidden_tests": [
+    "test/functions/diff.js"
+  ],
+  "accept": "npx tap --no-coverage",
+  "setup": "npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund --legacy-peer-deps --before=2023-04-13T23:59:59Z"
+}

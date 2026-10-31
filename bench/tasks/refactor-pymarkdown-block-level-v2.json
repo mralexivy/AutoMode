@@ -1,0 +1,14 @@
+{
+  "id": "refactor-pymarkdown-block-level-v2",
+  "cohort": "refactor",
+  "repo": "https://github.com/Python-Markdown/markdown",
+  "license": "BSD-3-Clause",
+  "base": "7dad12c07e3e701da42474696398cb32e5c9979f",
+  "reference": "1e7fd3f236f63f9ca9b85de9cd172b77e7f9be80",
+  "task": "The block level element list is a module constant behind util.isBlockLevel, so an extension cannot change it per instance. Move it onto the Markdown class. Add a class attribute Markdown.block_level_elements with the same names as util.BLOCK_LEVEL_ELEMENTS, and a method Markdown.is_block_level(tag) that returns True when tag is a string whose lowercased form, with any trailing slash removed, is in that list, and False for anything that is not a string, such as an ElementTree Comment tag. Keep util.isBlockLevel working but mark it deprecated with the existing util.deprecated decorator and the message \"Use 'Markdown.is_block_level' instead.\". Then replace every call to isBlockLevel inside the markdown package with self.md.is_block_level. No call to isBlockLevel may remain in the package outside its own definition. The rendered output must not change.",
+  "hidden_tests": [
+    "tests/test_apis.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m unittest tests.test_apis.testETreeComments tests.test_apis.testElementTailTests tests.test_apis.TestBlockParser tests.test_apis.TestHtmlStash tests.test_apis.testSerializers tests.test_apis.testAtomicString tests.test_apis.TestEscapeAppend tests.test_apis.TestAncestorExclusion tests.test_legacy tests.test_extensions && PYTHONPATH=.bench-deps python3 -m unittest discover -s tests/test_syntax -t . && test -z \"$(grep -rn 'isBlockLevel' markdown --include='*.py' | grep -v 'def isBlockLevel')\"",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps PyYAML==6.0.2 && python3 -m pip install -q --disable-pip-version-check --no-input --no-deps --no-build-isolation --target .bench-deps . && rm -rf .bench-deps/markdown build Markdown.egg-info"
+}

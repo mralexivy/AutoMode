@@ -1,0 +1,14 @@
+{
+  "id": "feature-tomlkit-scalar-after-dotted-header",
+  "cohort": "feature",
+  "repo": "https://github.com/python-poetry/tomlkit",
+  "license": "MIT",
+  "base": "21a4942ed31e773061c9fc047d55b1bb3c637ee3",
+  "reference": "495a42ecc9119eaaeb895def0fd025a71cd1cf60",
+  "task": "A top-level scalar added to a document can silently move into a table.\n\nStart with doc = parse('a.b = 1\\n'). Run doc['a']['c'] = {} and then doc['z'] = 2. The document now renders z after a [a.c] header, so z re-parses as a.c.z. A scalar set on the document must stay at the top level, ahead of any table header.\n\nFor that example, doc.as_string() must be exactly:\n\nz = 2\n\na.b = 1\n\n[a.c]\n\nwith a trailing newline after [a.c], and parse(doc.as_string()) must equal {'z': 2, 'a': {'b': 1, 'c': {}}}.\n\nThe same must hold however deep the header sits: any dotted-key entry that renders a table header or an array of tables, directly or through nested dotted keys, counts.\n\nA dotted key that renders only inline must not change. After doc = parse('a.b = 1\\n') and doc['z'] = 2, doc.as_string() must be 'a.b = 1\\nz = 2\\n'.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/test_toml_document.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests --ignore=tests/test_toml_tests.py",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 PyYAML==6.0.2"
+}

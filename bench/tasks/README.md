@@ -2,9 +2,11 @@
 
 A task is one JSON file in this folder. See [`bench/README.md`](../README.md) for how the benchmark works. The runner (`node bench/run.mts`), the grader (`bench/grade.mts`) and the fixture check (`node bench/validate-fixture.mts`) read every `*.json` file here.
 
-This folder holds 12 tasks, two per cohort. The target is about 80. More tasks are the most useful contribution to AutoMode, because results under 30 tasks are a pilot.
+This folder holds 76 tasks. The first 12 are the dev set, two per cohort. Every arm passed all 12, so they never count as proof. The other 64 are candidates for the task screen: 54 new tasks from 29 repositories, and 10 `-v2` tasks. A candidate has no hard or easy label until the screen gives it one. See [`bench/experiments/PREREGISTERED.md`](../experiments/PREREGISTERED.md). More tasks are the most useful contribution to AutoMode, because results under 30 tasks are a pilot.
 
-The Python tasks passed on Python 3.9.6, and they target that version: their base commits are older code, and `refactor-pymarkdown-block-level` needs `pkg_resources`. Newer Python may fail them for reasons unrelated to an agent. Run `node bench/validate-fixture.mts` on your own machine before a paid run.
+A `-v2` task is an existing task with its location hints removed, its `accept` widened, or both. It keeps the same commits. A study runs one version of a task, never both.
+
+The Python tasks passed on Python 3.9.6, and they target that version: `refactor-pymarkdown-block-level` needs `pkg_resources`, and later Python may fail tasks for reasons unrelated to an agent. The Node tasks passed on Node 26. Run `node bench/validate-fixture.mts` on your own machine before a paid run.
 
 ## The task file
 
@@ -31,7 +33,7 @@ The Python tasks passed on Python 3.9.6, and they target that version: their bas
 | `base`, `reference` | Full 40-character SHAs. `reference` must be a descendant of `base`. |
 | `hidden_tests` | Test files that the reference commit adds or changes. The runner copies them from `reference` after the agent finishes. |
 | `accept` | Must fail with the hidden tests at `base` and pass at `reference`. |
-| `cohort` | One of the six. Aim for at least two tasks per cohort. |
+| `cohort` | One of the six. Aim for at least two tasks per cohort. It names the shape of the change, not its difficulty: a bug fix in one area is `feature`, and a fix that crosses modules is `longctx`. |
 
 The harness also reads schema 2, which nests the commands under `evaluation` and adds `regression`, `typecheck`, `limits` and `requirements`. The model never sees those fields, including `risk_tags`. See `normalizeTask` in `bench/lib/task-repo.mts`.
 
@@ -41,6 +43,10 @@ The harness also reads schema 2, which nests the commands under `evaluation` and
 - The task text states everything the hidden tests check. A test that needs a fact the agent cannot know is unfair to every arm.
 - One language per task. The test command can be any shell command, so a task is not tied to Go, Node or Python.
 - The task is a real change from the repository's history, not an invented one.
+- The task can separate models. Lead with the symptom, as a person files a bug. State every fact the tests check, but not where or how to fix it: no file paths, no private names, no hint at the fix. A path is fine only when a test imports it.
+- `accept` runs the full relevant suite, not one narrow file, so a regression counts. Leave out a test only when it fails at `reference` on its own, such as one that needs the network or a missing submodule.
+- A test that only pins a time limit is not a fair task. It depends on the machine.
+- Use at most 3 tasks per repository.
 
 ## Check your task
 

@@ -1,0 +1,15 @@
+{
+  "id": "feature-jinja-undefined-copy-pickle-state",
+  "cohort": "feature",
+  "repo": "https://github.com/pallets/jinja",
+  "license": "BSD-3-Clause",
+  "base": "39d9ffff1f33a5e5141af655857f9dbe6b6df03d",
+  "reference": "d4fb0e8c401a8596be0e67622174b5ad35daeec2",
+  "task": "Undefined objects do not survive copying or pickling. This hits Undefined, ChainableUndefined, DebugUndefined and StrictUndefined.\n\nTake undef = undefined_type(\"a hint\", [\"foo\"], \"a name\", TemplateRuntimeError). The four arguments land in the instance attributes _undefined_hint, _undefined_obj, _undefined_name and _undefined_exception. Today a copy or a pickled copy loses that state, and with ChainableUndefined copying can fail outright. For each of the four classes:\n\n- copy.copy(undef) must return a new object. All four attributes must be the same objects as on the original.\n- copy.deepcopy(undef) must keep the same hint, name and exception objects. _undefined_obj must be a separate list equal to [\"foo\"].\n- pickle.loads(pickle.dumps(undef)) must restore all four attributes. The exception class must come back as the same class, and the hint, obj and name must be equal copies.\n\nThese classes must keep their __slots__, so instances stay free of an instance __dict__. Reading __slots__ from each class must work and must no longer raise AttributeError.\n\nAttribute access must keep to these rules:\n- On Undefined and its subclasses, a missing name that both starts and ends with two underscores raises AttributeError, which lets Python protocol probing work. Any other missing name, including one that only starts with two underscores such as __foo, raises the undefined error.\n- On ChainableUndefined, a missing name that both starts and ends with two underscores raises AttributeError. Any other missing name returns the same object, so chains such as {{ missing.bar[\"baz\"] }} still render as an empty string. Item access always returns the same object, whatever the key.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/test_api.py",
+    "tests/test_runtime.py"
+  ],
+  "accept": "PYTHONPATH=src:.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 trio markupsafe"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "longctx-pyparsing-empty-dict-as-dict",
+  "cohort": "longctx",
+  "repo": "https://github.com/pyparsing/pyparsing",
+  "license": "MIT",
+  "base": "6f2fbcbd359fcf0e66038fa7f57470a30d597c59",
+  "reference": "a6ae98ba59b993d0b6d0475e7cb3b0a33c853f22",
+  "task": "A named Dict that matches nothing turns into a list in as_dict(), and ParseResults does not survive pickling exactly. Fix both.\n\nTake parser1 = pp.Dict(pp.ZeroOrMore(pp.Group(pp.Word(pp.alphas) + pp.Word(pp.alphas)))) and parser2 = parser1.copy()('fubar').\n\nThese already work and must keep working: parser1.parse_string('foo bar').as_dict() gives {'foo': 'bar'}, parser2.parse_string('foo bar').as_dict() gives {'fubar': {'foo': 'bar'}}, and parser1.parse_string('').as_dict() gives {}.\n\nThis one is wrong: parser2.parse_string('').as_dict() gives {'fubar': []}. It must give {'fubar': {}}. The result from Dict must keep its dict meaning even when it has no entries.\n\nPickling must keep the whole state of a ParseResults, in every pickle protocol from 0 to pickle.HIGHEST_PROTOCOL. Take result = pp.make_html_tags('BODY')[0].parse_string(\"<BODY BGCOLOR='#00FFBB' FGCOLOR=black>\", parse_all=True) and newresult = pickle.loads(pickle.dumps(result, protocol)). For every name in pp.ParseResults.__slots__ except '_parent', getattr(result, name) must equal getattr(newresult, name). Today this raises AttributeError or reports a mismatch. Any new state you add must meet the same rule, and any slot that no longer serves a purpose should go. newresult.dump() must equal result.dump().\n\nFor that check to hold, ParseResults values must compare with ==. Two ParseResults are equal when they have the same type, the same results name, the same as_list() and the same as_dict(). An object equals itself.\n\nDict must not fail when the first token of one of its groups is a nested ParseResults, because such a value cannot be a dict key. Parsing must succeed, and that group simply gets no key.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/test_unit.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests --ignore=tests/test_matplotlib_cases.py",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 railroad-diagrams jinja2"
+}

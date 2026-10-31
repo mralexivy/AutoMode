@@ -1,0 +1,14 @@
+{
+  "id": "feature-picomatch-scan-complete-parts",
+  "cohort": "feature",
+  "repo": "https://github.com/micromatch/picomatch",
+  "license": "MIT",
+  "base": "4f41a8edade7a5ab19832f7b40ecce46b288767f",
+  "reference": "f2011653e8eaa13bae6dffed7e7016ea8e123485",
+  "task": "picomatch.scan returns incomplete parts. With { parts: true }, a pattern with no path separator returns [] and not one part, empty leading and trailing segments go missing, and separators inside nested or escaped parentheses split the pattern. Fix all of these.\n\nPatterns below are raw text, with single backslashes.\n\nA pattern with no top-level separator returns one part. '' gives ['']. Each of these returns itself as the only part: *, .*, **, foo, foo*, {1..9}, c!(.)z, (b|a).(a), +(a|b\\[)*, @(a|b).md, (a/b), (a\\b), foo\\[a\\/], foo[/]bar. The negation prefix stays out of parts: !foo gives ['foo'].\n\nEmpty leading and trailing segments are kept: / gives ['', ''], /* gives ['', '*'], /a gives ['', 'a'], /a/b gives ['', 'a', 'b'], /a/b/ gives ['', 'a', 'b', ''], and */ gives ['*', '']. The ./ prefix stays out of parts, so ./ gives [''].\n\nOnly separators that are not escaped and not inside parentheses split the pattern, at any nesting depth:\n\n- /dev\\/@(tcp|udp)\\/*\\/* gives ['', 'dev\\/@(tcp|udp)\\/*\\/*']\n- !(!(bar)/baz) gives ['!(!(bar)/baz)']\n- (!(b/a)) gives ['(!(b/a))']\n- a/((b)/c)/d gives ['a', '((b)/c)', 'd']\n- a/(b\\)/c)/d gives ['a', '(b\\)/c)', 'd']\n- (a|b)/c gives ['(a|b)', 'c']\n- ./directory/(a|b)/*.js gives ['directory', '(a|b)', '*.js']\n- a/@(!(b)/c)/*.js gives ['a', '@(!(b)/c)', '*.js']\n\nscan with { tokens: true } must fill parts too, without { parts: true }: / gives ['', ''], /a/b gives ['', 'a', 'b'], !foo gives ['foo'], ./!a/b gives ['a', 'b'], and a/b/*/c gives ['a', 'b', '*', 'c'].\n\nExisting results must stay the same: ./foo gives ['foo'], ../foo gives ['..', 'foo'], and base, glob, tokens and the other fields of scan keep their values. Everything else must keep working.",
+  "hidden_tests": [
+    "test/api.scan.js"
+  ],
+  "accept": "npx mocha --reporter dot",
+  "setup": "npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund --legacy-peer-deps --before=2026-08-23T23:59:59Z"
+}

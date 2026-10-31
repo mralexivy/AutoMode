@@ -1,0 +1,14 @@
+{
+  "id": "security-yaml-recursive-merge-alias-limit",
+  "cohort": "security",
+  "repo": "https://github.com/eemeli/yaml",
+  "license": "ISC",
+  "base": "b91c3747333c7379bfd6edb6000fa163ca33805b",
+  "reference": "deab903262f7af665cf68f6ddb29be7d4e9051e9",
+  "task": "Merge keys bypass the alias limit, so a crafted document can exhaust the stack.\n\nTake src = '&A { <<: *A, B: b }\\n' and doc = parseDocument(src, { merge: true }). doc.errors and doc.warnings stay empty. doc.toJS() today fails with 'Maximum call stack size exceeded'. It must instead throw a ReferenceError with the message 'Excessive alias count indicates a resource exhaustion attack'. doc.toJS({ maxAliasCount: 0 }), doc.toJS({ maxAliasCount: 1 }) and doc.toJS({ maxAliasCount: 2 }) must each throw ReferenceError too. String(doc) must still equal src.\n\nA merge through an alias must count as an alias use, like any other alias.\n\nMerge pair built from a map alias. Start with parseDocument('[{ a: A }, { b: B }]', { merge: true }), and call the two maps a and b. Give a the anchor AA with an alias, and run b.set(doc.createPair('<<', alias)). doc.toJS() must match [{ a: 'A' }, { a: 'A', b: 'B' }]. doc.toJS({ maxAliasCount: 0 }) must throw ReferenceError. String(doc) must be '[ &AA { a: A }, { b: B, <<: *AA } ]\\n'.\n\nMerge pair built from an alias to a sequence of aliases. Start with parseDocument('[{ a: A }, [], { b: B }]', { merge: true }), and call the items a, seq and b. Set seq.anchor = 'SEQ', run seq.push(doc.createAlias(a, 'AA')), and run b.set(doc.createPair('<<', doc.createAlias(seq))). doc.toJS() must match [{ a: 'A' }, [{ a: 'A' }], { a: 'A', b: 'B' }]. doc.toJS({ maxAliasCount: 0 }) must throw ReferenceError. String(doc) must be '[ &AA { a: A }, &SEQ [ *AA ], { b: B, <<: *SEQ } ]\\n'.\n\nEverything else must keep working, including the resolved values of ordinary aliases and merges within the limit.",
+  "hidden_tests": [
+    "tests/doc/anchors.ts"
+  ],
+  "accept": "npm test --silent -- --exclude 'tests/*-test-suite.ts'",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

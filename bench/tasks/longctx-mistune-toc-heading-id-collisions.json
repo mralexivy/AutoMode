@@ -1,0 +1,14 @@
+{
+  "id": "longctx-mistune-toc-heading-id-collisions",
+  "cohort": "longctx",
+  "repo": "https://github.com/lepture/mistune",
+  "license": "BSD-3-Clause",
+  "base": "d1970cc9c1e439c9bdca89e6d94ee21fc7e6f22d",
+  "reference": "4a382986bf6ea948d2bed9ac433d493019f3299e",
+  "task": "Table of contents ids behave differently between the toc directive and add_toc_hook, and both can overwrite ids. Fix all of these.\n\nIn the examples below, md = create_markdown(escape=False, plugins=[FencedDirective([TableOfContents()])]), with FencedDirective and TableOfContents from mistune.directives. The \\n sequences stand for line breaks.\n\nThe toc directive ignores ids already present in raw HTML. Rendering '<div id=\"toc_1\"></div>\\n<div id=\"toc_1_1\"></div>\\n\\n```{toc}\\n```\\n\\n# title\\n' must give <h1 id=\"toc_1_2\">title</h1> and href=\"#toc_1_2\". The id must skip every taken value in sequence, the way add_toc_hook's automatic ids already do.\n\nThe toc directive overwrites an id that a heading already has. Suppose an earlier hook, added with md.before_render_hooks.insert(0, hook), sets token['attrs']['id'] = 'existing' on each heading token. Rendering '```{toc}\\n```\\n\\n# title\\n' must give <h1 id=\"existing\">title</h1> and href=\"#existing\", and the text id=\"toc_1\" must not appear.\n\nadd_toc_hook overwrites an existing id too. With md = create_markdown(escape=False), append the same id-setting hook to md.before_render_hooks, then call add_toc_hook(md). After html, state = md.parse('# title\\n'), html must contain <h1 id=\"existing\">title</h1>, and render_toc_ul(state.env['toc_items']) must contain href=\"#existing\".\n\nTwo toc sections in one document must share the ids. Rendering '```{toc}\\n```\\n\\n```{toc}\\n```\\n\\n# title\\n' must contain <h1 id=\"toc_1\">title</h1> exactly once and href=\"#toc_1\" exactly twice.\n\nA custom heading_id function passed to add_toc_hook still produces exactly the ids it returns, with no uniqueness suffix. Everything else must keep working.",
+  "hidden_tests": [
+    "tests/test_security_toc.py"
+  ],
+  "accept": "PYTHONPATH=src:.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests -k 'not near_linear'",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5"
+}

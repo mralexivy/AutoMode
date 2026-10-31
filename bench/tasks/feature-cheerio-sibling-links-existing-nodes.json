@@ -1,0 +1,14 @@
+{
+  "id": "feature-cheerio-sibling-links-existing-nodes",
+  "cohort": "feature",
+  "repo": "https://github.com/cheeriojs/cheerio",
+  "license": "MIT",
+  "base": "3c9db60229eb73192ce084305f13ef71530aa762",
+  "reference": "815ba8a01d0975e62f0ba8effdd18034f437c933",
+  "task": "Moving nodes that are already in the document corrupts the tree. The children array can look right while node.prev and node.next point at the wrong nodes. Inserting empty content also breaks links.\n\nStart from doc = load('<main><i id=\"a\"></i><i id=\"b\"></i><i id=\"c\"></i><i id=\"d\"></i><i id=\"e\"></i></main>'). After each operation below, doc('main').contents() must have the ids in the given order. Each node must be the same object as before, not a clone. Each node's parent must be the main element. prev and next must point at the neighbors in that order, and must be null, not undefined, at the two ends.\n\ndoc('main').append(doc('#e')) gives abcde.\ndoc('main').prepend(doc('#a')) gives abcde.\ndoc('#b').after(doc('#c')) gives abcde.\ndoc('#c').before(doc('#b')) gives abcde.\ndoc('main').prepend(doc('#e')) gives eabcd.\ndoc('main').append(doc('#a')) gives bcdea.\ndoc('#d').before(doc('#a, #b, #e')) gives cabed.\ndoc('#d').before([doc('#e')[0], doc('#b')[0], doc('#a')[0]]) gives cebad.\ndoc('main').append('') gives abcde.\ndoc('main').prepend('') gives abcde.\ndoc('#c').after('') gives abcde.\ndoc('#c').before('') gives abcde.\ndoc('#c').replaceWith('') gives abde.\n\nWrapping with an element that is already a neighbor must work too. Take <main><section id=\"wrapper\"></section><i id=\"target\"></i><i id=\"tail\"></i></main>, and the same with target before wrapper. After doc('#target').wrap(doc('#wrapper')), with wrapper and tail held from before the call: main's element children are [wrapper, tail], wrapper's first child is target, wrapper.prev is null, wrapper.next is tail, tail.prev is wrapper, and tail.next is null.\n\nText and comment siblings must keep correct links. With doc = load('<main>lead<i id=\"a\"></i><!--middle--><i id=\"b\"></i>tail</main>'), doc('#b').before(doc('#a')) must make doc('main').html() equal 'lead<!--middle--><i id=\"a\"></i><i id=\"b\"></i>tail', and every child's prev and next must match its neighbors, with null at the ends.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "src/api/manipulation.spec.ts"
+  ],
+  "accept": "npx vitest run",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

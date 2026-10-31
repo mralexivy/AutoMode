@@ -4,7 +4,7 @@ This folder measures AutoMode and compares models. It has three tracks, and thei
 
 | Track | Question | Runner | Experiment files |
 |---|---|---|---|
-| `automode-system` | Does AutoMode beat plain Claude Code? | `claude -p` | `light`, `effort`, `auto`, `stage-a`, `stage-b`, `stage-c`, `stage-c-fixed`, `stage-agents` |
+| `automode-system` | Does AutoMode beat plain Claude Code? | `claude -p` | `light`, `effort`, `auto`, `stage-a`, `stage-b`, `stage-c`, `stage-c-fixed`, `stage-agents`, `screen` |
 | `neutral-model` | How good is a model under one shared scaffold? | Neutral agent in Docker | `frontier-core` |
 | `claude-compatible` | Does another vendor's model work inside Claude Code? | `claude -p` through a gateway | `claude-compatible` |
 
@@ -39,7 +39,7 @@ This is a pilot. It supports no saving claim.
 
 - The workspace holds only the tree at `base`, in a new repository. The reference commit is out of reach through git.
 - Hidden tests go in after the agent's change is saved, so the grader never sees them.
-- Each `run_id` hashes the arm, the prompt and the task, so a resume never reuses a row from another setup.
+- Each `run_id` hashes the arm, the plugin code that arm runs, the prompt and the task, so a resume never reuses a row from another setup.
 - A usage limit, a failed setup or a test command that never returns is not a result. Those rows stay out of the numbers.
 - A run whose transcript shows the reference commit, the repository cache or another project's memory is left out.
 - Intervals resample tasks, then repeats, stratified by cohort. Under 30 tasks, a report says pilot.
@@ -47,6 +47,12 @@ This is a pilot. It supports no saving claim.
 Claude Code runs on the host, so `leak_refs` detects reading the cache by path but does not prevent it. The neutral track prevents it with a sandbox.
 
 A run with a test command that hangs is left out as a harness error, even when the agent's change caused the hang. Check the harness-error count in each report.
+
+## Select tasks and confirm a claim
+
+The first 12 tasks do not separate the arms, because every arm passes them. [`experiments/PREREGISTERED.md`](experiments/PREREGISTERED.md) fixes how the candidate tasks are screened, how hard and easy tasks are picked, when to stop, and which gates a claim must pass. `screen` runs fixed arms only, and its rows never count. Commit that file before the first screen run. Thresholds cannot change after results exist.
+
+An experiment names its tasks, so a new task file never joins an older study.
 
 ## Run the neutral track
 

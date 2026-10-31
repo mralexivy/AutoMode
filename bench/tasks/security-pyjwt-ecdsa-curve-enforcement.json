@@ -1,0 +1,15 @@
+{
+  "id": "security-pyjwt-ecdsa-curve-enforcement",
+  "cohort": "security",
+  "repo": "https://github.com/jpadilla/pyjwt",
+  "license": "MIT",
+  "base": "04947d75dc45ba1a4a66eaa2b24fbb0eb512ceab",
+  "reference": "5b8622773358e56d3d3c0a9acf404809ff34433a",
+  "task": "The ECDSA algorithms accept keys on any elliptic curve. A P-384 key signs and verifies under ES256, and a weak P-192 key works for ES256 too. RFC 7518 section 3.4 ties each algorithm to one curve, so these keys must be rejected.\n\nThe curves are: ES256 uses SECP256R1, ES256K uses SECP256K1, ES384 uses SECP384R1, and both ES512 and ES521 use SECP521R1. These are the curve classes from cryptography.hazmat.primitives.asymmetric.ec.\n\nECAlgorithm must take an optional second argument, expected_curve, with default None, so that ECAlgorithm(ECAlgorithm.SHA256, SECP256R1) works. It must store the value in a public attribute of the same name. The value is the curve class, so get_default_algorithms()[\"ES256\"].expected_curve == SECP256R1, and likewise for the other four algorithms above.\n\nWith expected_curve set, prepare_key must raise jwt.exceptions.InvalidKeyError for a key on another curve. This applies to key objects, private and public, and to PEM text in str or bytes form, private and public. The error message must contain both curve names. Using a P-384 key with SECP256R1, the message contains \"secp384r1\" and \"secp256r1\". Using a P-192 PEM private key with SECP256R1, it contains \"secp192r1\" and \"secp256r1\". A key on the right curve passes, and a key object comes back as the same object.\n\nWith expected_curve left as None, any curve must be accepted, as before: P-256, P-384, P-521 and secp256k1 keys all pass prepare_key on ECAlgorithm(ECAlgorithm.SHA256).\n\nThe check must reach the public API. jwt.encode({\"hello\": \"world\"}, p384_private_key, algorithm=\"ES256\") must raise InvalidKeyError. jwt.decode(token, p384_public_key, algorithms=[\"ES256\"]) must raise InvalidKeyError for a token signed with a P-256 key, and the matching P-256 public key must still decode to {\"hello\": \"world\"}. Each of ES256, ES256K, ES384 and ES512 must still round trip with a key on its own curve.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/test_algorithms.py",
+    "tests/test_api_jws.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests --deselect tests/test_jwks_client.py::TestPyJWKClient::test_get_jwt_set_sslcontext_no_ca",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 cryptography"
+}

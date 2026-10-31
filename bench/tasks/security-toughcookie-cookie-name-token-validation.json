@@ -1,0 +1,14 @@
+{
+  "id": "security-toughcookie-cookie-name-token-validation",
+  "cohort": "security",
+  "repo": "https://github.com/salesforce/tough-cookie",
+  "license": "BSD-3-Clause",
+  "base": "5b7c67b154419c8af031e8abc447f952a665bf36",
+  "reference": "ebcb3cce544e9b71c0314fa4b976bf34d9a03a7e",
+  "task": "Cookie.prototype.validate() checks the value and other attributes but not the name. new Cookie({ key: 'a b', value: 'value' }).validate() returns true, and so do names with control characters or non-ASCII text. A cookie name must be a non-empty HTTP token, as RFC 6265 requires.\n\nThe valid characters are exactly: ! # $ % & ' * + - . ^ _ ` | ~ and the digits 0-9 and letters A-Z and a-z. validate() must return true for a cookie whose name is any one of these characters, and for one name made of all of them, when the value is otherwise valid, such as 'value'.\n\nvalidate() must return false when the name is empty or holds any other character. That covers every other ASCII character from code 0 to 127, in any position, for example a${c}b, so control characters, DEL, space, and all of \" ( ) , / : ; < = > ? @ [ \\ ] { }. It must also return false for these names: 'name\\n', 'name\\r\\n', 'café', '名前', 'a=b', 'a;b', 'a b', '=', '\\x7f', '\\x80', '\\xa0', '\\xff', '🍪', and a lone surrogate '\\ud800'.\n\nThis check applies to explicit validation only. Parsing and storage must stay permissive:\n- Cookie.parse('a b=value') keeps key 'a b', and its validate() is false.\n- jar.setCookie('a b=value', 'https://example.com/') stores it, with key 'a b' and validate() false, and jar.getCookieString('https://example.com/') returns 'a b=value'.\n- A jar with looseMode: true stores 'value' from setCookie('value', url) with key '', validate() is false, and getCookieString returns 'value'.\n\nAdd a new module, lib/cookie/cookieName.ts, that exports both a value and a type named CookieName. CookieName.parse(input: string) returns the same string when it is a valid name, and undefined otherwise: for example '', 'name\\n', 'name\\r\\n', 'café', 'a=b' and 'a b'. The type is a branded string. A CookieName is assignable to string, a plain string is not assignable to CookieName, and parse has the return type CookieName | undefined.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "lib/__tests__/cookieNameValidation.spec.ts"
+  ],
+  "accept": "npx vitest run",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

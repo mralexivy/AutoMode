@@ -1,0 +1,16 @@
+{
+  "id": "security-nodesemver-whitespace-regex-dos",
+  "cohort": "security",
+  "repo": "https://github.com/npm/node-semver",
+  "license": "ISC",
+  "base": "2f738e9a70d9b9468b7b69e9ed3e12418725c650",
+  "reference": "717534ee353682f3bcf33e60a8af4292626d4441",
+  "task": "Ranges and comparators with huge runs of whitespace hang for minutes, or fail to parse. This is a regular expression denial of service. Fix it.\n\nLet s = ' '.repeat(500000), and let r = `1.2.3 ${s} <1.3.0`. Each of these must hold, and a test file that runs all of them must finish within 30 seconds:\n\n- new Range(r).range === '1.2.3 <1.3.0'\n- validRange(r) === '1.2.3 <1.3.0'\n- minVersion(r).version === '1.2.3'\n- minSatisfying(['1.2.3'], r) === '1.2.3'\n- maxSatisfying(['1.2.3'], r) === '1.2.3'\n\nComparators must accept surrounding and inner whitespace of any length: new Comparator(`${s}<${s}1.2.3${s}`).value must be '<1.2.3'.\n\nVersions keep their length limit: new SemVer(' '.repeat(125) + '1.2.3' + ' '.repeat(125)).version must be '1.2.3', and new SemVer(`${s}1.2.3${s}`) must throw.\n\nThe require path internal/re must also export a new array named safeRe, beside the existing src, re and t. It holds one RegExp for each token, at the same index as in re. The source of each entry must not contain the text \\s+ or the text \\s*. The existing src and re exports must stay as they are, for code that uses them directly.\n\nEverything else must keep working, including all current range and comparator parsing results.",
+  "hidden_tests": [
+    "test/integration/whitespace.js",
+    "test/internal/re.js",
+    "test/map.js"
+  ],
+  "accept": "npx tap --no-coverage",
+  "setup": "npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund --legacy-peer-deps --before=2023-06-15T23:59:59Z"
+}

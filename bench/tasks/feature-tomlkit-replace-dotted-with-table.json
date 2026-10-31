@@ -1,0 +1,14 @@
+{
+  "id": "feature-tomlkit-replace-dotted-with-table",
+  "cohort": "feature",
+  "repo": "https://github.com/python-poetry/tomlkit",
+  "license": "MIT",
+  "base": "86f45625bf67b5ae875fec8ced6d9032aef886e1",
+  "reference": "ee4eedbacc8eb72872af050996c7396ecce190b9",
+  "task": "Replacing a value with a table gives wrong TOML when dotted keys are involved. Fix all of these.\n\nA duplicated prefix. With doc = parse('fruit.apple = true\\n'), doc['fruit'] = {'a': 1} must make doc.as_string() exactly '[fruit]\\na = 1\\n', and parse(doc.as_string())['fruit'] must equal {'a': 1}. Today the dotted prefix stays on the new header.\n\nA header that captures a following sibling. The new table must move past every entry that still renders inline, so that the next parse does not nest those entries under it.\n\nWith doc = parse('a.b = 1\\nc.d = 2\\n'), doc['a'] = {} must render exactly 'c.d = 2\\n\\n[a]\\n', and parse(doc.as_string()) must equal {'c': {'d': 2}, 'a': {}}.\n\nWith the same start, doc['a'] = {'x': 9} must render exactly 'c.d = 2\\n\\n[a]\\nx = 9\\n', and parse(doc.as_string()) must equal {'c': {'d': 2}, 'a': {'x': 9}}.\n\nThe same applies when a plain value becomes a table ahead of a dotted key. With doc = parse('x = 1\\nc.d = 2\\n'), doc['x'] = {} must render exactly 'c.d = 2\\n\\n[x]\\n', and parse(doc.as_string()) must equal {'c': {'d': 2}, 'x': {}}.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/test_toml_document.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests --ignore=tests/test_toml_tests.py",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 PyYAML==6.0.2"
+}

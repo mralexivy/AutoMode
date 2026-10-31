@@ -1,0 +1,14 @@
+{
+  "id": "feature-sqlparse-strip-comments-keep-hints",
+  "cohort": "feature",
+  "repo": "https://github.com/andialbrecht/sqlparse",
+  "license": "BSD-3-Clause",
+  "base": "a2c7e642dc992d5b3972641144c4b05d6c6623ff",
+  "reference": "af6df6c6627b5fcf98bc7bb46f780e1fa0d1a7ef",
+  "task": "sqlparse.format(sql, strip_comments=True) deletes optimizer hints, which changes what the query does. Hints must stay, and ordinary comments must still go.\n\nThese must come back unchanged:\n- 'select --+full(u)'\n- '#+ hint\\nselect * from foo'\n- 'SELECT /*+cluster(T)*/* FROM T_EEE T where A >:1'\n- 'insert /*+ DIRECT */ into sch.table_name as select * from foo'\n\nWhen a hint and an ordinary comment appear together, only the ordinary comment goes:\n- 'select --+full(u)\\n--comment simple' must become 'select --+full(u)\\n'\n- '#+ hint\\nselect * from foo\\n# comment simple' must become '#+ hint\\nselect * from foo\\n'\n\nThe empty string must still give the empty string: sqlparse.format('', strip_comments=True) == ''.\n\nThe formatter must finish on every input, including input where a hint comes before or after other comments.\n\nEverything else must keep working, including the existing whitespace handling when an ordinary comment is removed.",
+  "hidden_tests": [
+    "tests/test_format.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5"
+}

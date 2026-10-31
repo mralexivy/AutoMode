@@ -1,0 +1,14 @@
+{
+  "id": "feature-packaging-specifierset-equivalent-duplicates",
+  "cohort": "feature",
+  "repo": "https://github.com/pypa/packaging",
+  "license": "BSD-2-Clause",
+  "base": "f59d6ee9afe2330cc9524f825417ee1c31e5e684",
+  "reference": "9b972011a53185a3c9be97dc1f86c042307e0e5a",
+  "task": "SpecifierSet treats equivalent specifiers as distinct when they are spelled differently.\n\nSpecifier(\">1.0.0\") == Specifier(\">1.0\") is True, because trailing zeros do not matter. Yet SpecifierSet(\">1.0.0,>1.0\") != SpecifierSet(\">1.0\"). Their hashes and their strings differ too. Both sets describe the same versions.\n\nWith a = SpecifierSet(\">1.0.0,>1.0\") and b = SpecifierSet(\">1.0\"), all of these must hold:\n- a == b\n- hash(a) == hash(b)\n- str(a) == str(b), so str(a) is \">1.0\"\n\nThe result must not depend on the order in which the two spellings were written. SpecifierSet(\">1.0,>1.0.0\") must give the same equality, hash and string as a.\n\nCombining sets must still drop duplicates. str(SpecifierSet(\">=1.0\") & SpecifierSet(\">=1.0,<5.0\")) must be \"<5.0,>=1.0\".\n\nEverything else must keep working, including the sorted order of str() and the prerelease rules of &.",
+  "hidden_tests": [
+    "tests/test_specifiers.py"
+  ],
+  "accept": "PYTHONPATH=src:.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests --ignore=tests/test_elffile.py",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 pretend hypothesis tomli tomli_w"
+}

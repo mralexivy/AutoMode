@@ -1,0 +1,14 @@
+{
+  "id": "feature-marshmallow-schema-validator-data-key",
+  "cohort": "feature",
+  "repo": "https://github.com/marshmallow-code/marshmallow",
+  "license": "MIT",
+  "base": "a578ed23092bd558acfbd9cd09a164108689326d",
+  "reference": "9f751e1cef943e2ca1a77f93d3483b4a171d4303",
+  "task": "When a schema-level validator raises ValidationError with field_name set to a field that has a data_key, the error lands under the Python attribute name and not under the data_key. Errors for one field then split across two keys in the error dict.\n\nExample:\n\nclass MySchema(Schema):\n    foo = fields.Int(data_key=\"fooKey\")\n\n    @validates(\"foo\")\n    def validate_foo(self, value, **kwargs):\n        raise ValidationError(\"from validates\")\n\n    @validates_schema(skip_on_field_errors=False)\n    def validate_schema(self, data, **kwargs):\n        raise ValidationError(\"from validates_schema str\", field_name=\"foo\")\n\n    @validates_schema(skip_on_field_errors=False)\n    def validate_schema2(self, data, **kwargs):\n        raise ValidationError({\"fooKey\": \"from validates_schema dict\"})\n\nMySchema().load({\"fooKey\": 42}) raises ValidationError. Today its messages hold a separate \"foo\" key. The messages must be exactly:\n\n{\"fooKey\": [\"from validates\", \"from validates_schema str\", \"from validates_schema dict\"]}\n\nThe rule: a field_name given in a schema validator's ValidationError is the name of the field, so the error is reported under that field's data_key when it has one. A field that has no data_key reports under its own name. The default schema-level key, \"_schema\", stays as it is. A field declared on the schema but left out of this instance by only or exclude still uses its data_key. A field_name that matches no declared field stays as written. Messages given as a dict are already keyed by the caller and stay as written.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/test_decorators.py"
+  ],
+  "accept": "PYTHONPATH=src:.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests --ignore=tests/test_version_attributes.py",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 simplejson packaging"
+}

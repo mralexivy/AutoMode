@@ -3,6 +3,7 @@
 // Every arm gets the same isolation: project settings only (the fixture commits have none), no MCP
 // servers, the 5.5 alias pins, and the Anthropic backend.
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import type { ContextSpec, ModelSpec, ProviderId } from './lib/experiment.mts'
@@ -39,6 +40,28 @@ function v2Plugin(dir: string, config: Record<string, unknown>) {
   m.version = `bench+${execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: REPO, encoding: 'utf8' }).trim()}-wt`
   fs.writeFileSync(manifest, JSON.stringify(m, null, 2))
   return dest
+}
+
+// pluginCodeHash hashes what a run's plugin copy holds: each file's path and bytes. A resume after a code change then
+// starts new runs and never keeps old rows. It uses the copy's own filter, so the hash cannot miss a shipped file.
+export function pluginCodeHash(root = V2_PLUGIN) {
+  const hash = createHash('sha256')
+  const walk = (dir: string) => {
+    for (const name of fs.readdirSync(dir).sort()) {
+      const file = path.join(dir, name), rel = path.relative(root, file)
+      if (name === '.DS_Store' || EXCLUDED_FROM_PLUGIN.test(rel)) continue
+      if (fs.statSync(file).isDirectory()) walk(file)
+      else hash.update(rel).update('\0').update(fs.readFileSync(file)).update('\0')
+    }
+  }
+  walk(root)
+  return hash.digest('hex').slice(0, 16)
+}
+
+// armCode names the code an arm runs besides Claude Code. A fixed arm runs none, so its run ids stay put when the mod changes.
+export function armCode(armId: string, root = V2_PLUGIN) {
+  const kind = ARMS[armId]?.plugin?.kind
+  return kind === 'automode' ? pluginCodeHash(root) : kind === 'effortless' ? EFFORTLESS_SHA : null
 }
 
 // effortlessPlugin: upstream effortless as its author ships it, at the pinned commit, fetched once into bench/.cache

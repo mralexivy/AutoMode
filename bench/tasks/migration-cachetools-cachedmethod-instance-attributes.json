@@ -1,0 +1,16 @@
+{
+  "id": "migration-cachetools-cachedmethod-instance-attributes",
+  "cohort": "migration",
+  "repo": "https://github.com/tkem/cachetools",
+  "license": "MIT",
+  "base": "263cf3185fcec33aceb93704252e5f34e8f9d3e3",
+  "reference": "86352aed2bedb23aa0cc461a58e76bd667617eaa",
+  "task": "Methods decorated with @cachedmethod have an awkward API. The helper attributes live on the class-level function and need the instance passed by hand. On an instance, cached.get.cache_clear() raises TypeError for a missing argument, and cached.get.cache is a function, not the cache. Move this API to the instance, and deprecate the classmethod form.\n\nFor an instance obj with a method get decorated by @cachedmethod, obj.get must be a callable bound to obj, with these attributes, and no instance argument:\n\nobj.get.cache is the cache object itself, the same object the cache function returns for obj.\nobj.get.cache_key is the key function given to the decorator. By default it is cachetools.keys.methodkey.\nobj.get.cache_lock is the lock object for obj, or None if the decorator has no lock. With only condition= given, it is the condition object.\nobj.get.cache_condition is the condition object for obj, or None.\nobj.get.cache_clear() takes no argument and clears the cache. It enters the lock or condition once if there is one.\nobj.get.__wrapped__(obj, 0) calls the undecorated function, with the instance passed explicitly, and does not touch the cache.\n\nCached calls must behave as now, also with a counting lock or condition. With lock= only, a miss enters the lock twice and a hit once. With condition=, a miss enters three times, calls wait_for once and notify_all once, and a hit enters once and calls wait_for once. An instance whose __hash__ raises TypeError must still work with the default key. weakref-valued caches must still work.\n\nStacking @classmethod over @cachedmethod is now deprecated, and must keep working on every supported Python version. Each call, hit or miss, through the class or an instance, must emit exactly one DeprecationWarning. So cached.get(0) followed by Cached.get(0) gives two warnings. Results are as before: both calls share one cache, with lock=, condition= and key=keys.typedmethodkey too, where lock and condition are real threading objects held on the class. Cached.get.cache_clear(cached) with an instance as the argument must still clear that cache.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/__init__.py",
+    "tests/test_cached.py",
+    "tests/test_cachedmethod.py",
+    "tests/test_classmethod.py"
+  ],
+  "accept": "PYTHONPATH=src python3 -m unittest discover -s tests -t ."
+}

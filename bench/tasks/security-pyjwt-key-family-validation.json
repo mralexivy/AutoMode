@@ -1,0 +1,16 @@
+{
+  "id": "security-pyjwt-key-family-validation",
+  "cohort": "security",
+  "repo": "https://github.com/jpadilla/pyjwt",
+  "license": "MIT",
+  "base": "9b3f9ad380e9bb9051ce33551a2d3645d9653dfc",
+  "reference": "d5ca701dd87ed8d336175153eba9bd7c60435bdb",
+  "task": "A signing algorithm accepts a PEM or SSH key from the wrong key family. RSAAlgorithm(RSAAlgorithm.SHA256).prepare_key(ec_private_key_pem) returns an elliptic curve key and raises nothing. The failure then shows up later as a confusing error from cryptography. An Ed25519 PEM key passes RSAAlgorithm.prepare_key the same way.\n\nprepare_key must check the family of every key it loads, for PEM and SSH text, private and public:\n- RSAAlgorithm and RSAPSSAlgorithm accept only RSA keys.\n- ECAlgorithm accepts only elliptic curve keys.\n- OKPAlgorithm accepts only Ed25519 and Ed448 keys.\nA key of another family raises jwt.exceptions.InvalidKeyError. The message must name the key class it got and the algorithm class.\n\nAdd a public method to the Algorithm base class: check_crypto_key_type(self, key). All algorithms inherit it. For the cryptography-based families, it raises InvalidKeyError when key is not of an allowed class for that family, and does nothing for an allowed key. It raises ValueError when cryptography is not installed, or when called on an algorithm that does not use cryptography keys. So NoneAlgorithm().check_crypto_key_type(\"key\") raises ValueError, and so does the same call on HMACAlgorithm.\n\nOKPAlgorithm.prepare_key must also handle these inputs:\n- PEM text works for Ed25519 keys, both \"-----BEGIN PRIVATE KEY-----\" and \"-----BEGIN PUBLIC KEY-----\", as well as the SSH form. Signing and verifying with the loaded keys must work. Verifying a tampered signature returns False.\n- Passing the result of prepare_key back into prepare_key returns an equal key.\n- A string that is neither PEM nor SSH, such as \"not a valid key\", raises InvalidKeyError.\n- A value that is not str, bytes or an allowed key object raises InvalidKeyError.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/keys/testkey_ed25519.pem",
+    "tests/keys/testkey_ed25519.pub.pem",
+    "tests/test_algorithms.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests --deselect tests/test_jwks_client.py::TestPyJWKClient::test_get_jwt_set_sslcontext_no_ca",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 cryptography"
+}

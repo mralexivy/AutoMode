@@ -1,0 +1,14 @@
+{
+  "id": "feature-markdown-unclosed-markup-in-code-spans",
+  "cohort": "feature",
+  "repo": "https://github.com/Python-Markdown/markdown",
+  "license": "BSD-3-Clause",
+  "base": "82ac9056350e67411cdb1da34363950b1e18a271",
+  "reference": "1279074ea97807c0131a2b82893189bc07bf2dd8",
+  "task": "An unclosed tag, processing instruction or declaration inside a code span breaks the raw HTML that follows it. The start of the construct is taken as the start of real HTML, and it consumes the text after it, including the next HTML block.\n\nEach of these inputs is the given line, a blank line, and then the block <div>, hello or foo, </div>, each on its own line. The div block must stay raw, and the code span must be a normal code span.\n\nInput `<div`. followed by <div>\\nhello\\n</div> must render <p><code>&lt;div</code>.</p> followed by <div>\\nhello\\n</div>.\n\nInput ` <div `. with spaces inside the backticks, followed by the same block, must render the same output: <p><code>&lt;div</code>.</p> and then the block.\n\nInput `<?php` followed by <div>\\nfoo\\n</div> must render <p><code>&lt;?php</code></p> followed by the block.\n\nInput `<!` followed by <div>\\nfoo\\n</div> must render <p><code>&lt;!</code></p> followed by the block.\n\nInput `<![` followed by <div>\\nfoo\\n</div> must render <p><code>&lt;![</code></p> followed by the block.\n\nA backtick must not be accepted as part of a tag name, an attribute name or a bare attribute value. A processing instruction or a declaration is a raw block only where a raw block can begin. Elsewhere its opening characters are plain text. The md_in_html extension must behave the same way, and inside a markdown-enabled element those constructs must keep their current handling.\n\nEverything else must keep working, including raw processing instructions, declarations, CDATA and tags at the start of a line.",
+  "hidden_tests": [
+    "tests/test_syntax/blocks/test_html_blocks.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m unittest tests.test_legacy tests.test_extensions && PYTHONPATH=.bench-deps python3 -m unittest discover -s tests/test_syntax -t .",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps PyYAML==6.0.2 && python3 -m pip install -q --disable-pip-version-check --no-input --no-deps --no-build-isolation --target .bench-deps . && rm -rf .bench-deps/markdown build Markdown.egg-info"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "feature-postcss-inserted-sibling-visit-order",
+  "cohort": "feature",
+  "repo": "https://github.com/postcss/postcss",
+  "license": "MIT",
+  "base": "f2fa53f11daab3a16c7eb8bcaf5a945142341df3",
+  "reference": "24f681471645cd960ee760ab7f9e348fbabfd42c",
+  "task": "Exit events fire too early when a visitor plugin inserts a node right after the node it is visiting. The inserted sibling should be visited first, and only then should exit events run.\n\nTake this plugin. It has a Rule visitor and a RootExit visitor, and each one records what it saw in an order array. Rule(rule) pushes 'Rule ' + rule.selector, and then calls rule.each(child => { if (child.type === 'rule') { child.selector = rule.selector + ' ' + child.selector; rule.after(child) } }). RootExit() pushes 'RootExit'. The plugin unwraps nested rules.\n\nRun postcss([plugin]).process('a { b { c {} } }', { from: 'a.css' }).css. Today the moved rules are not all visited before RootExit, so the order is wrong. The order must be exactly:\n\n['Rule a', 'Rule a b', 'Rule a b c', 'RootExit', 'Rule a', 'Rule a b', 'RootExit']\n\nThe synchronous and asynchronous walks must agree. Reading .css on the LazyResult and awaiting the process() call must give the same order array for this plugin.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "test/visitor.test.ts"
+  ],
+  "accept": "npm run --silent unit",
+  "setup": "npx -y pnpm@10 install --frozen-lockfile --ignore-scripts"
+}

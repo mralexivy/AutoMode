@@ -1,0 +1,14 @@
+{
+  "id": "longctx-pyparsing-parse-action-indexerror",
+  "cohort": "longctx",
+  "repo": "https://github.com/pyparsing/pyparsing",
+  "license": "MIT",
+  "base": "4140acf331a06dbe45e791582b6b2876c987cda6",
+  "reference": "0fcc013745a427756b7c021758048a5c96ab6dc2",
+  "task": "An IndexError raised inside a user's parse action gets hidden. pyparsing treats it as a failed match, so the user sees a ParseException, or a later alternative matches, and the real bug in the action never surfaces.\n\nExample:\n\nimport pyparsing as pp\n\nnumber = pp.Word(pp.nums)\n\ndef number_action():\n    raise IndexError\n\nnumber.add_parse_action(number_action)\nsymbol = pp.Word(\"abcd\", max=1)\nexpr = pp.Group(number) ^ symbol\nexpr.parse_string(\"1 + 2\", parse_all=True)\n\nToday this raises a ParseException, with the IndexError only as its cause. It must raise the IndexError itself, the same exception object the action raised. No ParseException may wrap it. The same must hold for a bare element, for | (MatchFirst), for ^ (Or), and for an action nested inside other expressions such as Group, whichever way the action is attached. The old alias spellings setParseAction and parseString must behave the same.\n\nThe arity handling for parse actions must keep working. Actions that take zero, one, two or three arguments must still be called the right way, and a TypeError raised inside an action must still propagate as it does now.\n\nAn IndexError that does not come from a parse action must still count as a failed match. Running off the end of the input while matching must still give a normal ParseException.\n\nrun_tests must say where the failure came from. When an exception escapes a parse action during run_tests, the output line must read FAIL-EXCEPTION (raised in parse action 'number_action'): IndexError: followed by the exception text, where the quoted name is the name of the action function. An exception that did not come from a parse action must keep the plain form FAIL-EXCEPTION: IndexError: and so on.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/test_unit.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests --ignore=tests/test_matplotlib_cases.py",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 railroad-diagrams jinja2"
+}

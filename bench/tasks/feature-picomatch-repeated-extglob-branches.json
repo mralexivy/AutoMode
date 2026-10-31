@@ -1,0 +1,14 @@
+{
+  "id": "feature-picomatch-repeated-extglob-branches",
+  "cohort": "feature",
+  "repo": "https://github.com/micromatch/picomatch",
+  "license": "MIT",
+  "base": "69a2d181b9c0c7bc5454eb2e188b4763427e9000",
+  "reference": "628930764fb2cd8f619d53947d5b1b39d347e837",
+  "task": "Repeated extglobs with star branches silently lose every branch but one. isMatch('b', '+(*(a)|*(b))') returns false, and so does isMatch('ab', '+(*(a)|*(b))'). isMatch('c', '*(*(a)|c)') returns false too. These patterns are rewritten for safety against catastrophic backtracking, and the rewrite must keep the full meaning of the pattern while staying a single flat repetition.\n\nWhen every branch of such a repeated extglob reduces to single characters, the result must be one character class that covers all branches, in branch order, with repeats removed:\n\n- makeRe('+(*(a)|*(b))').source must be '^(?:(?=.)[ab]*)$'\n- makeRe('*(*(a)|c)').source must be '^(?:(?=.)[ac]*)$'\n\nisMatch against '+(*(a)|*(b))' must be true for 'a', 'b', 'ab', 'ba' and 'aabb', and false for 'c'. isMatch against '*(*(a)|c)' must be true for 'c', 'a', 'aca' and 'cac', and false for 'd'.\n\nIf a branch beside a star branch cannot reduce to single characters, the whole extglob is treated as risky and becomes literal text, as '+(a|aa)' does.\n\nThe current results must stay: makeRe('*(*(f))').source is '^(?:(?=.)f*)$', makeRe('pre*(*(f)*(o))post').source is '^(?:pre[fo]*post)$', makeRe('*(*(f)*(o))', { capture: true }).source is '^(?:(?=.)([fo]*))$', and '+(a|aa)' stays literal. Everything else must keep working.",
+  "hidden_tests": [
+    "test/options.maxExtglobRecursion.js"
+  ],
+  "accept": "npx mocha --reporter dot",
+  "setup": "npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund --legacy-peer-deps --before=2026-07-02T23:59:59Z"
+}

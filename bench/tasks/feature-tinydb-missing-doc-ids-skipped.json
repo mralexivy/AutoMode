@@ -1,0 +1,14 @@
+{
+  "id": "feature-tinydb-missing-doc-ids-skipped",
+  "cohort": "feature",
+  "repo": "https://github.com/msiemens/tinydb",
+  "license": "MIT",
+  "base": "8a2dc204c265c07ce8506a3599a28e720b6dcdd7",
+  "reference": "76d21d26c682e1ca6ca25bd8e81edf9f609ac52f",
+  "task": "get and update and remove disagree about a document ID that does not exist. get(doc_id=99) returns None and get(doc_ids=[99]) returns [], but update(fields, doc_ids=[99]) and remove(doc_ids=[99]) raise KeyError. Worse, update(fields, doc_ids=[1, 99]) can change document 1 before it raises, and later reads still see the change.\n\nThe new behavior, on a table with three documents, IDs 1 to 3, each with 'int': 1:\n\n- db.update({'int': 9}, doc_ids=[99]) returns [] and changes nothing, so count(where('int') == 9) is 0 and count(where('int') == 1) is 3.\n- db.remove(doc_ids=[99]) returns [] and len(db) stays 3.\n- db.update({'int': 9}, doc_ids=[1, 99]) returns only the IDs that were updated, here [1]. Then count(where('int') == 9) is 1 and count(where('int') == 1) is 2.\n- db.remove(doc_ids=[1, 99]) returns [1]. Then len(db) is 2, get(doc_id=1) is None and get(doc_id=2) is not None.\n\nMissing IDs are skipped, and neither call raises for them. The returned list holds only IDs that existed in the table at the moment of the write. No existing document may change or go away before the set of existing targets is known.\n\nupsert with a Document that names a doc_id that does not exist must still insert that document, and upsert with an existing doc_id must still update it.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/test_tinydb.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 PyYAML==6.0.2"
+}

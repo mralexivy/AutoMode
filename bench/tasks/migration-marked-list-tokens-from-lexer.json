@@ -1,0 +1,17 @@
+{
+  "id": "migration-marked-list-tokens-from-lexer",
+  "cohort": "migration",
+  "repo": "https://github.com/markedjs/marked",
+  "license": "MIT",
+  "base": "244941a19225303f94aa60cb728373dc56e1dadf",
+  "reference": "7b192315b286a444a0cc6407ca28cdee04af0f5d",
+  "task": "List tokens from marked.lexer do not describe what renders. The parser and renderer invent tokens and reshape them at render time. So a walkTokens hook or a custom renderer sees a different structure from the final HTML, and loose task lists render with a stray newline. All list structure must be final when the lexer returns.\n\nTask checkboxes become real tokens. For '- [ ] item 1\\n- [x] item 2\\n', each list_item keeps task: true, checked (false, then true), loose: false and text ('item 1', then 'item 2'), and its raw stays the same. Its tokens now start with a checkbox token ahead of the text token: { type: 'checkbox', raw: '[ ] ', checked: false } and { type: 'checkbox', raw: '[x] ', checked: true }. The Tokens.Checkbox type has type, raw and checked.\n\nA list item that is not a task must have no checked property at all, not even checked: undefined.\n\nIn a loose list, block text tokens inside items become type 'paragraph', with raw, text and tokens unchanged. For '- item 1\\n\\n- item 2' the first token of each item has type 'paragraph'. For an item with two blocks, as in '- item 2\\n\\n  item 2a\\n', both are paragraphs, with the space token between them.\n\nIn a loose task item, the checkbox token goes first inside the tokens of the item's first paragraph, and that paragraph's raw and text gain the checkbox raw as a prefix. If the item has no leading paragraph or text token, a new paragraph token holds just the checkbox.\n\nRendering. renderer.checkbox receives the token and now writes its own trailing space: '<input disabled=\"\" type=\"checkbox\"> ', with checked=\"\" ahead of disabled when checked. renderer.listitem just wraps the parsed tokens in <li> and </li>, and no longer looks at task or loose. A checkbox token must render at both block and inline level, in Parser.parse and Parser.parseInline. TextRenderer gets a checkbox method that returns the raw text.\n\nmarked.parse('- [ ] item 1\\n\\n- [ ] item 2') must return exactly '<ul>\\n<li><p><input disabled=\"\" type=\"checkbox\"> item 1</p>\\n</li>\\n<li><p><input disabled=\"\" type=\"checkbox\"> item 2</p>\\n</li>\\n</ul>\\n'.\n\nThe parser stops reshaping text. Parser.parse takes only tokens, and the top argument goes away. Block text tokens render on their own through renderer.text, with no merging and no paragraph wrapper, so parsing [{ type: 'text', text: 'text 1' }, { type: 'text', text: 'text 2' }] gives 'text 1text 2'. A list item given a checkbox token and a text token renders <li><input disabled=\"\" type=\"checkbox\"> item 1</li>. A loose item given a paragraph token renders <li><p>item 1</p></li>.\n\nEverything else must keep working, including the CommonMark and GFM spec output.",
+  "hidden_tests": [
+    "test/types/marked.ts",
+    "test/unit/Lexer.test.js",
+    "test/unit/Parser.test.js",
+    "test/unit/marked.test.js"
+  ],
+  "accept": "npm run build:esbuild --silent && node --test test/unit/*.test.js test/run-spec-tests.js",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

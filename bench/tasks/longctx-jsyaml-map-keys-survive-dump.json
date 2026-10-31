@@ -1,0 +1,14 @@
+{
+  "id": "longctx-jsyaml-map-keys-survive-dump",
+  "cohort": "longctx",
+  "repo": "https://github.com/nodeca/js-yaml",
+  "license": "MIT",
+  "base": "461c1acbaea0bb370c551c84fdc4f258b1a31a9b",
+  "reference": "f6178e3c260506df3736639dd97dcf718f793653",
+  "task": "dump flattens Map keys, so non-string keys do not survive a round trip with the real Map tag. With schema = CORE_SCHEMA.withTags(realMapTag), dumping a Map turns every key into a string. Numeric keys come back as strings, keys such as 1 and '1' collapse into one entry, and array or Map keys become garbage.\n\nA dump followed by a load with that schema must keep the keys. Below, result = load(dump(source, { schema }), { schema }).\n\nNumber, string and collection keys. Let source be a Map with the entries 1 -> 'one', 'a' -> 'str', [1, 2] -> 'arr', and a second Map holding x -> 1 as a key with the value 'obj'. result must be a Map, and [...result] must deep-strict-equal [...source], with the same order, so the array key returns as an array and the Map key returns as a Map.\n\nKeys that differ only by type. Let source be a Map with 1 -> 'num' and '1' -> 'str'. result.size must be 2, result.get(1) must be 'num', and result.get('1') must be 'str'.\n\nPlain objects. load(dump({ a: 1, b: 2 }, { schema }), { schema }) must be a Map, and [...result] must deep-strict-equal [['a', 1], ['b', 2]].\n\nA collection used as a mapping key must be written inline, as in [1, 2] or {x: 1}, so that it can sit on a key line in block style. Scalar keys render as they did.\n\nThe default schema's output for plain objects must not change, including sortKeys, the replacer and its this value, and the flow and block styles. The replacer must still receive a string key.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "test/core/units/real-map.mjs"
+  ],
+  "accept": "npm run build --silent && node --test 'test/core/**/*.test.mjs'",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

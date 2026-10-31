@@ -1,0 +1,14 @@
+{
+  "id": "feature-markdownit-image-alt-escapes",
+  "cohort": "feature",
+  "repo": "https://github.com/markdown-it/markdown-it",
+  "license": "MIT",
+  "base": "5915b84a676632c6a350081aed5dee0d74e434f9",
+  "reference": "974e2d7f3bf1356123032a68c831735c5891ec05",
+  "task": "Backslash escapes and HTML entities disappear from image alt text. The escaped character or the entity is missing from the alt attribute, while the rest of the text survives.\n\nThe Markdown below is raw source, with single backslashes. With the default markdownit(), md.render must return:\n\n- ![a \\* b](/u) gives <p><img src=\"/u\" alt=\"a * b\"></p>\\n\n- ![a &amp; b](/u) gives <p><img src=\"/u\" alt=\"a &amp; b\"></p>\\n\n- ![a &lt; b](/u) gives <p><img src=\"/u\" alt=\"a &lt; b\"></p>\\n\n- ![a \\* *b* &amp; c](/u) gives <p><img src=\"/u\" alt=\"a * b &amp; c\"></p>\\n\n\nThe last case mixes an escape, emphasis and an entity. Emphasis markup still flattens to its plain text in alt. Everything else must keep working.",
+  "hidden_tests": [
+    "test/markdown-it/misc.test.mjs"
+  ],
+  "accept": "npm run --silent test:markdown-it && npm run --silent test:cmspec",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

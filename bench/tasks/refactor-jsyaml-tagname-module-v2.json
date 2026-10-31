@@ -1,0 +1,14 @@
+{
+  "id": "refactor-jsyaml-tagname-module-v2",
+  "cohort": "refactor",
+  "repo": "https://github.com/nodeca/js-yaml",
+  "license": "MIT",
+  "base": "4dd582bd0034092f7ed07ac05b40d5b0b6aefcc5",
+  "reference": "33e364065e30aac851ecbeb041c1793513bf5c4d",
+  "task": "The tag name helpers live in the wrong place: src/parser/constructor.ts imports from src/ast/tagname_tools.ts. Move them into a new module, src/common/tagname.ts, and delete src/ast/tagname_tools.ts. The new module exports only tagNameFull(rawTag, tagHandlers?) and tagNameShort(fullTag), with their behaviour unchanged, and it must not import anything from src/ast or src/parser. tagPercentEncode, tagPercentDecode and tagHandlePrefix stop being exported, so keep them private or inline them. nodeTagShort needs the Node type and has one caller, so it becomes a private function in src/ast/presenter.ts. Update every importer, including test/spec/spec.test.mjs, and move test/core/ast/tagname_tools.test.mjs to test/core/common/tagname.test.mjs, dropping the tests for the helpers that are no longer exported. This is a pure refactor: no behaviour changes, and the build must still pass.",
+  "hidden_tests": [
+    "test/core/common/tagname.test.mjs"
+  ],
+  "accept": "npm run build --silent && node --test 'test/core/**/*.test.mjs' && test ! -e src/ast/tagname_tools.ts",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

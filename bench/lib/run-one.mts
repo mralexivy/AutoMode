@@ -3,7 +3,7 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { ARMS, armSpec } from '../arms.mts'
+import { ARMS, armCode, armSpec } from '../arms.mts'
 import { claudeCodeRunner } from '../runners/claude-code.mts'
 import type { AgentRunner } from '../runners/runner.mts'
 import { ANTHROPIC, usageUsd } from '../../hooks/lib/prices.ts'
@@ -31,9 +31,11 @@ export interface RunContext {
   runnerFor?: (armId: string) => AgentRunner
 }
 
-// runIdFor names a run. The hash covers the arm's whole setup, the prompt template and the task's commits and commands.
+// runIdFor names a run. The hash covers the arm's whole setup, the plugin code it runs, the prompt template and the
+// task's commits and commands. An arm with no plugin adds no key, so its old rows keep their ids.
 export function runIdFor(task: Task, armId: string, rep: number, template: Template) {
-  const hash = specHash({ arm: armSpec(armId), template: template.sha256, task: [task.base, task.reference, task.accept, task.hidden_tests, task.task] })
+  const code = armCode(armId)
+  const hash = specHash({ arm: armSpec(armId), ...(code ? { code } : {}), template: template.sha256, task: [task.base, task.reference, task.accept, task.hidden_tests, task.task] })
   return { runId: `${task.id}__${armId}__r${rep}__${hash}`, hash }
 }
 

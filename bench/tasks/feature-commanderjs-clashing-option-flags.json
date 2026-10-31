@@ -1,0 +1,14 @@
+{
+  "id": "feature-commanderjs-clashing-option-flags",
+  "cohort": "feature",
+  "repo": "https://github.com/tj/commander.js",
+  "license": "MIT",
+  "base": "d90e81eddf9fbef9f265c3f05be93836b809f629",
+  "reference": "b96af407cd7980aa9cd6d0a08c793a8c09122cee",
+  "task": "Commander silently accepts two options that use the same flag, so one of them never receives a value. This code runs without complaint:\n\nprogram.option('-c, --cheese <type>', 'cheese type').option('-c, --conflict');\n\nAdding an option whose short or long flag is already used by another option on the same command must throw an Error whose message starts with 'Cannot add option'. This applies to .option() and .addOption(new Option(...)), for a short clash such as '-c, --conflict' and for a long clash such as '-H, --cheese'. The .version() option must be checked in the same way.\n\nUse this message form, naming the new option, the command when it has a name, the clashing flag, and the option that already holds it:\n\nCannot add option '-c, --conflict' to command 'sub' due to conflicting flag '-c'\n-  already used by option '-c, --cheese <type>'\n\nThese must not throw. A program may define its own help option with .option('-h, --help', 'display help'), because the implicit help option is not a registered option. A subcommand may reuse a flag from its parent: program.option('e, --example') together with program.command('sub').option('e, --example') is fine.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/options.registerClash.test.js"
+  ],
+  "accept": "npx jest",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

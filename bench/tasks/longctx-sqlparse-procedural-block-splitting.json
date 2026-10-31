@@ -1,0 +1,14 @@
+{
+  "id": "longctx-sqlparse-procedural-block-splitting",
+  "cohort": "longctx",
+  "repo": "https://github.com/andialbrecht/sqlparse",
+  "license": "BSD-3-Clause",
+  "base": "897eb2df8c0608b9ee4682e9728f669adf13595e",
+  "reference": "8f978caa7cc777d845d358bfc82ea30110395d32",
+  "task": "sqlparse.split loses track of nesting in anonymous BEGIN ... END blocks that hold procedural control flow. Each input below must split as stated. Line breaks in the inputs are as shown.\n\nFOR ... DO ... END FOR gives one statement, which contains 'END FOR;':\n\nBEGIN\n    SELECT 1;\n    FOR R DO\n        SELECT 1;\n    END FOR;\nEND;\n\nAn inline CASE inside IF gives one statement, which contains 'END AS COUNT;':\n\nBEGIN\n    SELECT 1;\n    IF 1 THEN\n        SELECT CASE WHEN 1 THEN 2 ELSE 3 END AS COUNT;\n    ELSE\n        SELECT 2;\n    END IF;\nEND;\n\nFOR UPDATE and FOR SHARE are not loops. This gives 2 statements, and the second contains 'SELECT 3;':\n\nBEGIN\n    SELECT * FROM foo FOR UPDATE;\n    SELECT * FROM bar FOR SHARE;\nEND;\nSELECT 3;\n\nSequential loops balance. This gives 2 statements, and the second contains 'SELECT 3;':\n\nBEGIN\n    FOR x IN select_query LOOP\n        SELECT 1;\n    END LOOP;\n    FOR y IN select_query LOOP\n        SELECT 2;\n    END LOOP;\nEND;\nSELECT 3;\n\nA procedural CASE closed by END CASE balances. This gives 2 statements, and the second contains 'SELECT 3;':\n\nBEGIN\n    CASE val\n        WHEN 1 THEN SELECT 'one';\n        WHEN 2 THEN SELECT 'two';\n        ELSE SELECT 'other';\n    END CASE;\nEND;\nSELECT 3;\n\nOutside any block, 'SELECT * FROM foo FOR UPDATE; SELECT 3;' gives exactly ['SELECT * FROM foo FOR UPDATE;', 'SELECT 3;'].\n\nEverything else must keep working, including the transaction forms of BEGIN, such as BEGIN; and BEGIN TRANSACTION;, DECLARE ... BEGIN blocks in CREATE statements, and CASE and IF inside procedures.",
+  "hidden_tests": [
+    "tests/test_split.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5"
+}
