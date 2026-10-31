@@ -7,12 +7,12 @@ import os from 'node:os'
 import path from 'node:path'
 import { GRADER_MODEL, grade, gradePrompt, parseGrade, referenceDiff } from './lib/grade-core.mts'
 import { chargedUsd, classifyRun, isDone, isResult } from './lib/outcome.mts'
-import { armEnv, armInvocation, armSpec, ARMS } from './arms.mts'
+import { armEnv, armInvocation, armSpec, ARMS, EXCLUDED_FROM_PLUGIN } from './arms.mts'
 import { canonical, experimentProblems, loadExperiment, specHash } from './lib/experiment.mts'
 import { loadTemplate, renderPrompt } from './lib/prompt.mts'
 import { estimatedUsd, rowProblems } from './lib/result.mts'
 import { RunQueue, WINDOW_MS, waitMs, windowSpend } from './lib/pacer.mts'
-import { oneRun, removeTree, runIdFor } from './lib/run-one.mts'
+import { oneRun, removeTree, runIdFor, v4JudgeCost } from './lib/run-one.mts'
 import { normalizeTask, problems } from './lib/task-repo.mts'
 import { brier, ece, effortDistance, nll, replicaForecast, spearman, withinOne } from './lib/calibration.mts'
 import { buildManifest, verifyManifest } from './lib/manifest.mts'
@@ -516,4 +516,29 @@ test('a failed cleanup warns and does not throw', () => {
   const warn = console.error
   console.error = () => {}
   try { assert.doesNotThrow(() => removeTree(path.join(ROOT, 'x'))) } finally { (fs as any).rmSync = saved; console.error = warn }
+})
+
+test('the plugin copy holds what the mod ships and never the answer cache', () => {
+  for (const p of ['bench', 'bench/.cache/repos/x', '.git/config', '.claude/worktrees/x', 'node_modules/a', 'tests/a.ts', 'docs', 'dist/a', 'brand/a']) assert.ok(EXCLUDED_FROM_PLUGIN.test(p), p)
+  for (const p of ['', 'hooks/v4.ts', '.claude-plugin/plugin.json', 'config.json', 'agents/a.md', 'hooks/lib/bench.ts']) assert.equal(EXCLUDED_FROM_PLUGIN.test(p), false, p)
+  const dir = fs.mkdtempSync(path.join(ROOT, 'plugin-'))
+  const { args } = armInvocation('auto', dir, 'p')
+  const copy = args[args.indexOf('--plugin-dir') + 1]
+  assert.ok(fs.existsSync(path.join(copy, 'hooks', 'register.ts')) && fs.existsSync(path.join(copy, '.claude-plugin', 'plugin.json')))
+  assert.equal(fs.existsSync(path.join(copy, 'bench')), false)
+  assert.equal(fs.existsSync(path.join(copy, '.git')), false)
+})
+
+test('the judge cost comes from the session records the plugin writes', () => {
+  const dir = path.join(process.env.CLAUDE_CONFIG_DIR, 'plugins', 'data', 'automode', 'records')
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, 's1.jsonl'), [
+    { kind: 'model-call', sessionId: 's1', usd: { value: 0.0001 } }, { kind: 'model-call', sessionId: 's1', usd: { value: 0.0002 } },
+    { kind: 'decision', sessionId: 's1', judge: { called: true, usd: 0.0003 }, effective: { tier: 'T1', effort: 'medium' } },
+  ].map((r) => JSON.stringify(r)).join('\n') + '\n')
+  const j = v4JudgeCost('s1')
+  assert.ok(Math.abs(j.usd - 0.0003) < 1e-12, 'each call counts once')
+  assert.equal(j.calls, 2)
+  assert.equal(j.verdicts[0].tier, 'T1')
+  assert.equal(v4JudgeCost('missing-session')?.usd ?? 0, 0)
 })

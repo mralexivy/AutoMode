@@ -17,7 +17,7 @@ export function harnessInfo(runner = 'claude-code'): HarnessInfo {
   const git = (...args: string[]) => execFileSync('git', args, { cwd: REPO, encoding: 'utf8' }).trim()
   const version = spawnSync('claude', ['--version'], { encoding: 'utf8', timeout: 20_000 })
   cached = {
-    git_sha: git('rev-parse', 'HEAD'), dirty: git('status', '--porcelain').length > 0, runner,
+    git_sha: git('rev-parse', 'HEAD'), dirty: git('status', '--porcelain', '--untracked-files=no').length > 0, runner,
     runner_version: version.status === 0 ? version.stdout.trim() : null, node: process.version, platform: `${process.platform}-${process.arch}`,
   }
   return cached

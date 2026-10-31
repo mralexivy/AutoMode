@@ -67,15 +67,18 @@ function judgeCost(dir: string) {
   return { usd, calls: lines.filter((x) => x.ev === 'judge').length, verdicts: lines.filter((x) => x.ev === 'verdict').map((v) => ({ path: v.path, effort: v.effort, by: v.by, risks: v.risks })) }
 }
 
-// v4JudgeCost sums the V4 judge's measured Haiku cost for one session from the decision records in
-// the profile's plugin data folder.
-function v4JudgeCost(sessionId: string | null | undefined) {
-  const file = path.join(configDir(), 'plugins', 'data', 'automode', 'decisions.jsonl')
-  if (!sessionId || !fs.existsSync(file)) return null
-  const rows = jsonLines(file).filter((r) => r.sessionId === sessionId)
+// v4JudgeCost sums the V4 judges' measured Haiku cost for one session from the plugin's records. The CLI's total leaves
+// these calls out. A session writes records/<id>.jsonl; older versions wrote one shared decisions.jsonl.
+export function v4JudgeCost(sessionId: string | null | undefined) {
+  if (!sessionId) return null
+  const data = path.join(configDir(), 'plugins', 'data', 'automode')
+  const files = [path.join(data, 'records', `${sessionId}.jsonl`), path.join(data, 'decisions.jsonl')].filter((f) => fs.existsSync(f))
+  if (!files.length) return null
+  const rows = files.flatMap(jsonLines).filter((r) => r.sessionId === sessionId)
   const decisions = rows.filter((r) => r.kind === 'decision')
+  const calls = rows.filter((r) => r.kind === 'model-call')
   return {
-    usd: decisions.reduce((a, r) => a + (r.judge?.usd || 0), 0), calls: decisions.filter((r) => r.judge?.called).length,
+    usd: calls.length ? calls.reduce((a, r) => a + (r.usd?.value || 0), 0) : decisions.reduce((a, r) => a + (r.judge?.usd || 0), 0), calls: calls.length || decisions.filter((r) => r.judge?.called).length,
     verdicts: decisions.map((r) => ({ tier: r.effective?.tier, model: r.effective?.model, effort: r.effective?.effort, owner: r.effective?.owner, risk: r.risk?.effective, review: r.risk?.reviewRequired, strategy: r.strategy?.chosen })),
     workers: rows.filter((r) => r.kind === 'worker').map((r) => ({ agent: r.agent, status: r.status, tokens: r.tokens })),
     escalations: rows.filter((r) => r.kind === 'escalation').length,
