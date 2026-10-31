@@ -93,6 +93,8 @@ jobs:
         run: npm run typecheck
       - name: Node tests
         run: npm test
+      - name: Check benchmark task files
+        run: node bench/validate-fixture.mts --offline
       # These two commands read and test the mod itself. They need no sign-in and no network.
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
