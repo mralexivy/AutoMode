@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 // AutoMode benchmark runner. Resumable: a run whose id is already in the results file is skipped.
 //
-// Usage: node bench/run.mts [--experiment light|effort|auto|stage-a|stage-b|stage-c|file.json] [--tasks a,b] [--arms x,y] [--repeats 3] [--parallel 2]
+// Usage: node bench/run.mts [--experiment light|effort|auto|stage-a|stage-b|stage-c|file.json] [--tasks a,b] [--arms x,y] [--repeats 3] [--parallel 1]
 //                           [--run-cap-usd 3] [--budget-usd 15] [--scratch dir] [--out file] [--timeout-min 40] [--dry-run]
+//
+// Usage window: --window-usd caps list-price-equivalent spend per rolling 5 hours, from the ledger (default 10). A full
+// window waits, or ends the run with --stop-at-window. A usage limit waits --quota-wait-min (30), then tries the same
+// run again, up to --quota-retries times (10). Stopping is always safe: a resume continues.
 //
 // Spend limits: --run-cap-usd passes --max-budget-usd to each claude run (a hard stop per run).
 // --budget-usd stops scheduling new runs once the recorded API-equivalent cost reaches it (runs
@@ -26,7 +30,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { ARMS } from './arms.mts'
 import { loadExperiment } from './lib/experiment.mts'
-import { add, LEDGER, total } from './lib/ledger.mts'
+import { add, entries, LEDGER, total } from './lib/ledger.mts'
+import { RunQueue, waitMs } from './lib/pacer.mts'
 import { loadTemplate } from './lib/prompt.mts'
 import { chargedUsd, isDone } from './lib/outcome.mts'
 import { oneRun, runIdFor, type RunContext } from './lib/run-one.mts'
@@ -44,12 +49,16 @@ const allTasks = loadTasks(opt('tasks-dir', TASKS_DIR))
 const tasks = opt('tasks') ? allTasks.filter((t) => opt('tasks').split(',').includes(t.id)) : allTasks
 const arms = opt('arms') ? opt('arms').split(',') : Object.keys(ARMS)
 const repeats = Number(opt('repeats', 3))
-const parallelRuns = Number(opt('parallel', 2))
+const parallelRuns = Number(opt('parallel', 1))
 const scratch = opt('scratch', path.join(os.tmpdir(), 'am-bench'))
 const out = opt('out', path.join(REPO, 'bench', 'results', 'results.jsonl'))
 const timeoutMs = Number(opt('timeout-min', 40)) * 60_000
 const runCap = opt('run-cap-usd') ? Number(opt('run-cap-usd')) : null
 const budget = opt('budget-usd') ? Number(opt('budget-usd')) : null
+// A run on a plan stays under a share of the 5-hour window. Off for an API account (BENCH_AUTH=api) unless asked for.
+const windowUsd = Number(opt('window-usd', experiment?.window_usd ?? (process.env.BENCH_AUTH === 'api' ? 0 : 10)))
+const quotaWaitMs = Number(opt('quota-wait-min', 30)) * 60_000
+const quotaRetries = Number(opt('quota-retries', 10))
 for (const t of allTasks) { const bad = problems(t, { allowLocal: process.env.BENCH_ALLOW_LOCAL === '1' }); if (bad.length) throw new Error(`task ${t.id ?? '?'}: ${bad.join('; ')}`) }
 if (!tasks.length) { console.log('No tasks to run. Add one in bench/tasks (see bench/tasks/README.md).'); process.exit(0) }
 for (const a of arms) if (!ARMS[a]) throw new Error(`unknown arm ${a}; known: ${Object.keys(ARMS).join(', ')}`)
@@ -73,19 +82,40 @@ fs.mkdirSync(path.dirname(out), { recursive: true })
 const ctx: RunContext = { scratch, out, timeoutMs, runCap, experiment: experiment?.id, template: templateId }
 // One batch per results file, so a resume keeps counting what the earlier runs spent.
 const batch = `run:${path.basename(out)}`
-let next = 0
 let spent = total(LEDGER, batch)
+const queue = new RunQueue(todo, quotaRetries)
+let stopped = false
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+// paced returns once a run may start, or false if the study stops here.
+async function paced() {
+  for (;;) {
+    const wait = Math.max(queue.pausedUntil - Date.now(), waitMs(entries(), Date.now(), windowUsd))
+    if (wait <= 0) return true
+    if (flag('stop-at-window')) { console.log('The usage window is full. Run the same command later to continue.'); return false }
+    console.log(`Usage window: waiting ${Math.ceil(wait / 60_000)} min. Stop any time; a resume continues.`)
+    await sleep(Math.min(wait, 60_000))
+  }
+}
+
 async function worker() {
-  while (next < todo.length) {
+  while (queue.size && !stopped) {
     if (budget && spent >= budget) { console.log(`Budget $${budget} reached ($${spent.toFixed(2)} spent). No new runs start.`); return }
-    const [t, a, r] = todo[next++]
-    const row: any = await oneRun(t, a, r, ctx).catch((e) => ({ run_id: idOf([t, a, r]), task_id: t.id, cohort: t.cohort, arm: a, repeat: r, harness_error: String(e.message || e), at: new Date().toISOString() }))
+    if (!(await paced())) { stopped = true; return }
+    const item = queue.take()
+    if (!item) return
+    const [t, a, r] = item
+    const row: any = await oneRun(t, a, r, ctx).catch((e) => ({ run_id: idOf(item), task_id: t.id, cohort: t.cohort, arm: a, repeat: r, harness_error: String(e.message || e), at: new Date().toISOString() }))
     const charge = chargedUsd(row.cost_usd_api_equiv, runCap)
     spent += charge.usd
     add({ batch, what: row.run_id, usd: charge.usd, source: charge.known ? 'cli total_cost_usd' : 'run cap: no cost reported' })
     fs.appendFileSync(out, JSON.stringify(row) + '\n')
     console.log(`${row.run_id}: ${row.harness_error ? 'HARNESS ERROR ' + row.harness_error : row.exit_reason === 'quota' ? 'USAGE LIMIT, will rerun' : row.exit_reason === 'setup_error' ? 'SETUP FAILED, will rerun' : (row.accepted ? 'accepted' : 'rejected')} ` +
       `$${row.cost_usd_api_equiv?.toFixed?.(2) ?? '?'} ${row.wall_s ?? '?'}s`)
+    if (row.exit_reason === 'quota' && !queue.limitHit(item, Date.now(), quotaWaitMs)) {
+      console.log('The usage limit did not clear. Stopping. Run the same command later to continue.')
+      stopped = true
+    }
   }
 }
 await Promise.all(Array.from({ length: parallelRuns }, worker))

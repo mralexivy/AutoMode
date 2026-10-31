@@ -1,11 +1,13 @@
 // One benchmark run: clone, agent, hidden tests, one result row. bench/run.mts schedules these.
 // Raw results never contain prompt text or file contents.
-import { execFileSync, spawn, spawnSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { ARMS, armInvocation, armSpec } from '../arms.mts'
+import { ARMS, armSpec } from '../arms.mts'
+import { claudeCodeRunner } from '../runners/claude-code.mts'
+import type { AgentRunner } from '../runners/runner.mts'
 import { ANTHROPIC, usageUsd } from '../../hooks/lib/prices.ts'
-import { classifyRun, type ExitReason } from './outcome.mts'
+import type { ExitReason } from './outcome.mts'
 import { specHash } from './experiment.mts'
 import { loadTemplate, renderPrompt, type Template } from './prompt.mts'
 import { COST_BASIS, RESULT_SCHEMA, estimatedUsd, harnessInfo, pricingSnapshot } from './result.mts'
@@ -24,29 +26,13 @@ export interface RunContext {
   experiment?: string
   template?: string
   repoFor?: (task: Task) => string
+  runnerFor?: (armId: string) => AgentRunner
 }
 
 // runIdFor names a run. The hash covers the arm's whole setup, the prompt template and the task's commits and commands.
 export function runIdFor(task: Task, armId: string, rep: number, template: Template) {
   const hash = specHash({ arm: armSpec(armId), template: template.sha256, task: [task.base, task.reference, task.accept, task.hidden_tests, task.task] })
   return { runId: `${task.id}__${armId}__r${rep}__${hash}`, hash }
-}
-
-function runClaude(args: string[], env: NodeJS.ProcessEnv, cwd: string, timeoutMs: number) {
-  return new Promise<{ code: number | null; signal: string | null; json: any; wall_s: number; timedOut: boolean; stderr_tail: string[] }>((resolve) => {
-    const started = Date.now()
-    const child = spawn('claude', args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] })
-    let stdout = '', stderr = '', timedOut = false
-    child.stdout.on('data', (d) => { stdout += d })
-    child.stderr.on('data', (d) => { stderr += d })
-    const timer = setTimeout(() => { timedOut = true; child.kill('SIGTERM') }, timeoutMs)
-    child.on('close', (code, signal) => {
-      clearTimeout(timer)
-      let json = null
-      try { json = JSON.parse(stdout) } catch {}
-      resolve({ code, signal, json, wall_s: Math.round((Date.now() - started) / 1000), timedOut, stderr_tail: stderr.split('\n').filter(Boolean).slice(-3) })
-    })
-  })
 }
 
 // memoryRefs counts references to another project's auto-memory folder in the run's transcripts.
@@ -117,13 +103,16 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
   const { runId, hash } = runIdFor(task, armId, rep, template)
   const prompt = renderPrompt(template, task.task)
   const spec = armSpec(armId)
+  const runner = (ctx.runnerFor ?? (() => claudeCodeRunner))(armId)
   const rowHead = {
     schema_version: RESULT_SCHEMA, run_id: runId, task_id: task.id, cohort: task.cohort, arm: armId, repeat: rep,
     experiment: ctx.experiment ?? 'adhoc', spec_hash: hash, model: spec.model, alias_map: spec.alias_map, arm_env: spec.env, plugin: spec.plugin,
     prompt: { template_id: template.id, template_sha256: template.sha256, rendered_sha256: prompt.sha256, tool_schema_sha256: null as string | null },
     task_ref: { base: task.base, reference: task.reference, dataset: task.provenance?.dataset ?? 'automode-native' },
-    harness: harnessInfo(), cost_basis: COST_BASIS, pricing_snapshot: pricingSnapshot(),
+    harness: harnessInfo(runner.id), auth: process.env.BENCH_AUTH === 'api' ? 'api' : 'subscription', cost_basis: COST_BASIS, pricing_snapshot: pricingSnapshot(),
   }
+  const started = performance.now()
+  const elapsed = () => Math.round(performance.now() - started)
   const dir = path.join(ctx.scratch, runId)
   fs.rmSync(dir, { recursive: true, force: true })
   fs.mkdirSync(dir, { recursive: true })
@@ -136,16 +125,16 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
       const setup = spawnSync('sh', ['-c', task.setup], { cwd: wt, encoding: 'utf8', timeout: SETUP_MS })
       if (setup.status !== 0) return { ...rowHead, exit_reason: 'setup_error' as ExitReason, setup_exit: setup.status, at: new Date().toISOString() }
     }
-    const { args, env } = armInvocation(armId, dir, prompt.text)
-    if (ctx.runCap) args.push('--max-budget-usd', String(ctx.runCap))
-    const res = await runClaude(args, env, wt, task.limits?.wall_seconds ? task.limits.wall_seconds * 1000 : ctx.timeoutMs)
-    const exit_reason = classifyRun(res)
-    const j = res.json || {}
-    const evidence = runEvidence(j.session_id)
+    const setupDone = elapsed()
+    const res = await runner.run({ armId, workspace: wt, dir, prompt: prompt.text, timeoutMs: task.limits?.wall_seconds ? task.limits.wall_seconds * 1000 : ctx.timeoutMs, runCap: ctx.runCap })
+    const agentDone = elapsed()
+    const exit_reason = res.exitReason
+    const evidence = (res.evidence as any) ?? runEvidence(res.sessionId)
+    rowHead.prompt.tool_schema_sha256 = res.toolSchemaSha256 ?? null
     const agentHead = {
-      ...rowHead, exit_reason, claude_exit: res.code, claude_signal: res.signal, is_error: j.is_error ?? null, num_turns: j.num_turns ?? null,
-      cost_usd_api_equiv: j.total_cost_usd ?? null, estimated_cost_usd: estimatedUsd(evidence), reported_cost_usd: null as number | null,
-      wall_s: res.wall_s, session_id: j.session_id ?? null, run_cap_usd: ctx.runCap, evidence,
+      ...rowHead, exit_reason, claude_exit: res.exitCode, claude_signal: res.signal, is_error: res.isError, num_turns: res.turns,
+      cost_usd_api_equiv: res.costUsd, estimated_cost_usd: estimatedUsd(evidence), reported_cost_usd: null as number | null,
+      wall_s: res.wallS, session_id: res.sessionId, run_cap_usd: ctx.runCap, evidence,
     }
     if (exit_reason === 'quota') return { ...agentHead, at: new Date().toISOString() }
 
@@ -169,16 +158,15 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
       // A test command that never returned gave no verdict, so the row is an error and not a rejection.
       ...(acc.status === null ? { harness_error: 'accept command did not finish' } : {}),
       accepted: acc.status === 0, accept_exit: acc.status, accept_tail: (acc.stdout + acc.stderr).split('\n').filter(Boolean).slice(-8),
-      model_usage: j.modelUsage ? Object.fromEntries(Object.entries<any>(j.modelUsage).map(([m, u]) => [m, {
-        input: u.inputTokens ?? null, output: u.outputTokens ?? null, cache_read: u.cacheReadInputTokens ?? null,
-        cache_write: u.cacheCreationInputTokens ?? null, cost_usd: u.costUSD ?? null }])) : null,
+      model_usage: res.modelUsage,
       diff_shortstat: change.shortstat,
       diff_chars: change.diff.length,
       lint_clean: lint ? lint.status === 0 : null, typecheck_ok, regression_ok, files_touched: change.files, commits_made: commits,
-      trace: usageTrace(j.session_id)?.trace ?? null,
-      memory_refs: memoryRefs(j.session_id),
-      judge: ARMS[armId].v4 ? v4JudgeCost(j.session_id) : judgeCost(dir),
-      stderr_tail: res.stderr_tail, at: new Date().toISOString(),
+      trace: usageTrace(res.sessionId)?.trace ?? null,
+      memory_refs: memoryRefs(res.sessionId),
+      judge: ARMS[armId].v4 ? v4JudgeCost(res.sessionId) : judgeCost(dir),
+      latency: { total_ms: elapsed(), setup_ms: setupDone, agent_ms: agentDone - setupDone, model_ms: res.modelMs, tool_ms: res.modelMs === null ? null : Math.max(0, agentDone - setupDone - res.modelMs), test_ms: elapsed() - agentDone },
+      stderr_tail: res.stderrTail, at: new Date().toISOString(),
     }
   } finally {
     fs.rmSync(wt, { recursive: true, force: true })
