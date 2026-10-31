@@ -4,7 +4,7 @@ This folder measures AutoMode and compares models. It has three tracks, and thei
 
 | Track | Question | Runner | Experiment files |
 |---|---|---|---|
-| `automode-system` | Does AutoMode beat plain Claude Code? | `claude -p` | `light`, `effort`, `auto`, `stage-a`, `stage-b`, `stage-c`, `stage-c-opus`, `stage-agents` |
+| `automode-system` | Does AutoMode beat plain Claude Code? | `claude -p` | `light`, `effort`, `auto`, `stage-a`, `stage-b`, `stage-c`, `stage-c-fixed`, `stage-agents` |
 | `neutral-model` | How good is a model under one shared scaffold? | Neutral agent in Docker | `frontier-core` |
 | `claude-compatible` | Does another vendor's model work inside Claude Code? | `claude -p` through a gateway | `claude-compatible` |
 
@@ -24,6 +24,16 @@ Runs use your signed-in plan. An API key in your shell does not reach them, unle
 **The usage window.** `--window-usd` caps list-price-equivalent spend per rolling 5 hours, from the ledger. It starts at $10, which is a cautious guess because plans publish no number. Tune it from Stage A. A full window waits. `--stop-at-window` ends the run instead. A usage limit waits, then retries the same run. Stopping is always safe: run the same command, and it continues.
 
 **Confirm first.** The usage-limit pattern in `lib/outcome.mts` has not met a real limit message. The first real limit should print `USAGE LIMIT, will rerun`. If it prints `rejected`, fix the pattern before you trust the run.
+
+## Plan usage
+
+`--window-usd` is list-price spend, not plan usage. The real signal is in `claude -p --output-format stream-json --verbose`: a `rate_limit_event` holds `rate_limit_info.unifiedWindows.five_hour.utilization` and `seven_day.utilization`. On Max 5x, about $33 of list spend was 18% of the five-hour window and 6% of the week. A watcher on that signal is safer than a low `--window-usd`.
+
+## Results so far
+
+Stage C ran 12 tasks, 4 arms and 3 repeats on code from before the routing redesign. All 144 runs passed, so these tasks cannot separate the arms. They show cost only. `bench/results/stage-c-post49.jsonl` holds 21 partial rows on code from after #49. `bench/results/session-switch.jsonl` holds 12 mid-session runs on one task. In `bench/results/stage-agents.jsonl`, six rows were cut off by the print-mode wait ceiling, so leave them out of any comparison.
+
+This is a pilot. It supports no saving claim.
 
 ## What keeps a run honest
 
