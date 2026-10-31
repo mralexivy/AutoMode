@@ -14,7 +14,8 @@ import { estimatedUsd, rowProblems } from './lib/result.mts'
 import { RunQueue, WINDOW_MS, waitMs, windowSpend } from './lib/pacer.mts'
 import { oneRun, runIdFor } from './lib/run-one.mts'
 import { normalizeTask, problems } from './lib/task-repo.mts'
-import { bootstrapCI } from './lib/stats.mts'
+import { buildManifest, verifyManifest } from './lib/manifest.mts'
+import { bootstrapCI, discordant, holm, mcnemarExact, pairedDelta, paretoFrontier, routeSummary, routingRegret } from './lib/stats.mts'
 
 const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'am-bench-test-'))
 const SOURCE = path.join(ROOT, 'source')
@@ -316,4 +317,88 @@ test('timing is split by phase, and the row records the auth mode', async () => 
   assert.ok(row.latency.total_ms >= row.latency.setup_ms + row.latency.agent_ms)
   assert.ok(row.latency.agent_ms > 0)
   assert.equal(row.auth, 'subscription')
+})
+
+test('mcnemarExact matches hand-computed values', () => {
+  assert.equal(mcnemarExact(0, 0), 1)
+  assert.equal(mcnemarExact(0, 5), 0.0625)
+  assert.equal(mcnemarExact(1, 6), 0.125)
+  assert.equal(mcnemarExact(6, 1), 0.125)
+  assert.equal(mcnemarExact(3, 3), 1)
+  assert.ok(Math.abs(mcnemarExact(2, 12) - 0.012939453125) < 1e-12)
+})
+
+test('holm matches a worked example and keeps the input order', () => {
+  const h = holm([0.04, 0.01, 0.03])
+  for (const [i, want] of [0.06, 0.03, 0.06].entries()) assert.ok(Math.abs(h[i] - want) < 1e-12)
+  assert.deepEqual(holm([0.9, 0.9]), [1, 1])
+  assert.deepEqual(holm([]), [])
+})
+
+test('the bootstrap resamples repeats within tasks and stays inside its cohorts', () => {
+  const rows = [{ t: 'a', c: 'x', ok: 1 }, { t: 'a', c: 'x', ok: 0 }, { t: 'b', c: 'y', ok: 1 }, { t: 'b', c: 'y', ok: 1 }]
+  const m = (s: typeof rows) => s.reduce((a, r) => a + r.ok, 0) / s.length
+  const [lo, hi] = bootstrapCI(rows, (r) => r.t, m, { cohortOf: (r) => r.c })
+  assert.equal(hi, 1)
+  assert.ok(lo >= 0.5, 'stratification keeps the all-solved cohort in every draw')
+})
+
+test('pairedDelta compares only shared tasks and keeps a task pair together', () => {
+  const r = (t: string, ok: number) => ({ t, ok })
+  const a = [r('p', 0), r('q', 1), r('only-a', 1)]
+  const b = [r('p', 1), r('q', 1)]
+  const d = pairedDelta(a, b, (x) => x.t, (rs) => rs.reduce((s, x) => s + x.ok, 0) / rs.length)
+  assert.equal(d.tasks, 2)
+  assert.equal(d.delta, 0.5)
+  assert.deepEqual(d.ci, [0, 1])
+  const fixed = pairedDelta([r('p', 0), r('q', 0), r('s', 0)], [r('p', 1), r('q', 1), r('s', 1)], (x) => x.t, (rs) => rs[0].ok)
+  assert.deepEqual(fixed.ci, [1, 1], 'an always-better arm has no spread, however hard the tasks are')
+})
+
+test('discordant takes the majority of repeats and treats a tie as not solved', () => {
+  const r = (t: string, ok: boolean) => ({ t, ok })
+  const d = discordant([r('a', true), r('a', true), r('a', false), r('b', true), r('b', false)], [r('a', false), r('b', true), r('x', true)], (x) => x.t, (x) => x.ok)
+  assert.deepEqual(d, { onlyA: 1, onlyB: 1 })
+})
+
+test('paretoFrontier drops dominated arms and keeps ties', () => {
+  const p = (id: string, quality: number, cost: number) => ({ id, quality, cost })
+  assert.deepEqual(paretoFrontier([p('cheap', 0.5, 1), p('strong', 0.9, 5), p('bad', 0.5, 2), p('twin', 0.5, 1)]).map((x) => x.id), ['cheap', 'strong', 'twin'])
+})
+
+test('routing regret and the weight-free measures', () => {
+  const o = (arm: string, quality: number, cost: number, wall = 0) => ({ arm, quality, cost, wall })
+  const t = [o('auto', 1, 2), o('sonnet', 1, 1), o('opus', 1, 5)]
+  assert.ok(Math.abs(routingRegret(t, 'auto', 0.1, 0) - 0.1) < 1e-12)
+  assert.equal(routingRegret(t, 'sonnet', 0.1, 0), 0)
+  assert.equal(routingRegret([o('auto', 1, 1)], 'auto', 0.1, 0), null)
+  const failed = [o('auto', 0, 1), o('opus', 1, 5)]
+  const s = routeSummary([t, failed], 'auto')
+  assert.deepEqual(s, { tasks: 2, pareto_share: 0.5, median_excess_usd: 1, failures: 1, failures_another_arm_solved: 1, solved: 1, solved_where_cheaper_arm_also_solved: 1 })
+})
+
+test('a manifest detects a changed input', () => {
+  const dir = fs.mkdtempSync(path.join(ROOT, 'manifest-'))
+  const file = path.join(dir, 'r.jsonl')
+  fs.writeFileSync(file, JSON.stringify({ experiment: 'stage-a', spec_hash: 'h', harness: { git_sha: 'abc' }, pricing_snapshot: '2026-10-17', cost_basis: 'api-list-equivalent' }) + '\n')
+  const m = buildManifest([file])
+  assert.deepEqual(m.experiments, ['stage-a'])
+  assert.equal(m.files[0].rows, 1)
+  assert.deepEqual(verifyManifest(m, dir), [])
+  fs.appendFileSync(file, '{}\n')
+  assert.deepEqual(verifyManifest(m, dir), ['r.jsonl'])
+})
+
+test('report: paired, Pareto and routing sections come from the rows, and a small study says pilot', () => {
+  const row = (id: string, t: string, arm: string, accepted: boolean, cost: number) => ({ run_id: id, task_id: t, cohort: 'feature', arm, accepted, cost_usd_api_equiv: cost, wall_s: 10 })
+  const file = path.join(ROOT, 'paired.jsonl')
+  const rows = ['t1', 't2', 't3', 't4'].flatMap((t, i) => [row(`a${i}`, t, 'auto', true, 1), row(`b${i}`, t, 'sonnet-high', i < 2, 2)])
+  fs.writeFileSync(file, rows.map((r) => JSON.stringify(r)).join('\n'))
+  const manifest = path.join(ROOT, 'paired.manifest.json')
+  const r = spawnSync(process.execPath, ['bench/report.mts', '--manifest', manifest, file], { encoding: 'utf8' })
+  assert.equal(r.status, 0, r.stderr)
+  assert.match(r.stdout, /Pilot: 4 tasks/)
+  assert.match(r.stdout, /\| 4 \| \+50 pts .*\| -\$1\.00 .*\| 0 \| 2 \| 0\.500 \|/)
+  assert.match(r.stdout, /Solved rate and mean cost: auto/)
+  assert.equal(JSON.parse(fs.readFileSync(manifest, 'utf8')).files[0].rows, 8)
 })
