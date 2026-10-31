@@ -5,7 +5,7 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import type { ContextSpec, ModelSpec } from './lib/experiment.mts'
+import type { ContextSpec, ModelSpec, ProviderId } from './lib/experiment.mts'
 
 const REPO = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim()
 const V2_PLUGIN = REPO
@@ -57,6 +57,9 @@ export interface Arm {
   model: string
   effort?: string // a level, or 'default' to send none so the API default applies
   pinModel?: string
+  runner?: 'neutral-agent'
+  provider?: ProviderId
+  gateway?: { baseUrl: string; keyEnv: string; capabilities?: string }
   plugin?: { kind: 'effortless' } | { kind: 'automode'; config: Record<string, unknown> }
   v4?: boolean
   env?: Record<string, string>
@@ -86,6 +89,30 @@ export const EFFORT_ARMS: Record<string, Arm> = {
   'auto': { label: 'AutoMode Auto: model and effort routing', model: HM_MODEL, v4: true, plugin: automode({}) },
 }
 
+// The neutral track: the same loop, tools and prompt for every model (bench/runners/neutral-agent.mts). Ids come from
+// bench/pricing, read from each vendor's page. Effort arms use a level that vendor documents.
+const neutral = (label: string, provider: ProviderId, model: string, effort?: string): Arm => ({ label: `Neutral: ${label}`, runner: 'neutral-agent', provider, model, effort, caveat: 'Measures the model under a shared scaffold, not AutoMode or a vendor agent.' })
+export const NEUTRAL_ARMS: Record<string, Arm> = {
+  'n-opus': neutral('Claude Opus 5.5, high', 'anthropic', 'claude-opus-5-5', 'high'),
+  'n-sonnet': neutral('Claude Sonnet 5.5, high', 'anthropic', 'claude-sonnet-5-5', 'high'),
+  'n-haiku': neutral('Claude Haiku 5.5, high', 'anthropic', 'claude-haiku-5-5', 'high'),
+  'n-gpt-sol': neutral('GPT-6.1 Sol, high', 'openai', 'gpt-6.1-sol', 'high'),
+  'n-gpt-luna': neutral('GPT-6 Luna', 'openai', 'gpt-6-luna'),
+  'n-gemini-argon': neutral('Gemini 4 Argon', 'google', 'gemini-4-argon'),
+  'n-gemini-flash': neutral('Gemini 3.8 Flash', 'google', 'gemini-3.8-flash'),
+  'n-deepseek-pro': neutral('DeepSeek V4 Pro, high', 'deepseek', 'deepseek-v4-pro', 'high'),
+  'n-deepseek-flash': neutral('DeepSeek V4.1 Flash, high', 'deepseek', 'deepseek-flash', 'high'),
+  'n-grok': neutral('Grok 4.7', 'xai', 'grok-4.7'),
+  'n-mistral-small': neutral('Mistral Small 4', 'mistral', 'mistral-small-2603'),
+  'n-local': neutral('local server', 'local', process.env.BENCH_LOCAL_MODEL ?? 'local-model'),
+}
+
+// The experimental track: another vendor's model inside Claude Code. It measures compatibility as well as skill, so it
+// never joins the main comparison. The key is read at run time and never stored in the arm.
+export const COMPATIBLE_ARMS: Record<string, Arm> = {
+  'cc-deepseek-pro': { label: 'Experimental: DeepSeek V4 Pro through Claude Code', model: 'deepseek-v4-pro[1m]', gateway: { baseUrl: 'https://api.deepseek.com/anthropic', keyEnv: 'DEEPSEEK_API_KEY' }, env: { ANTHROPIC_DEFAULT_OPUS_MODEL: 'deepseek-v4-pro[1m]', ANTHROPIC_DEFAULT_SONNET_MODEL: 'deepseek-v4-pro[1m]', ANTHROPIC_DEFAULT_HAIKU_MODEL: 'deepseek-flash', CLAUDE_CODE_SUBAGENT_MODEL: 'deepseek-flash' }, caveat: 'Claude Code has model-specific assumptions, so this is not a fair model comparison.' },
+}
+
 export const ARMS: Record<string, Arm> = {
   ...FIXED,
   'sonnet': { label: 'Plain Sonnet 5.5', model: 'sonnet' },
@@ -99,6 +126,8 @@ export const ARMS: Record<string, Arm> = {
   'sonnet-medium-200k': { label: 'Sonnet 5.5, medium, held to a 200K window', model: 'claude-sonnet-5-5', effort: 'medium', pinModel: 'claude-sonnet-5-5', context: { cap200k: true } },
   'sonnet-medium-compact-200k': { label: 'Sonnet 5.5, medium, compaction window 200K', model: 'claude-sonnet-5-5', effort: 'medium', pinModel: 'claude-sonnet-5-5', context: { compactWindow: 200_000 } },
   ...EFFORT_ARMS,
+  ...NEUTRAL_ARMS,
+  ...COMPATIBLE_ARMS,
 }
 
 // armEnv maps an arm's controls to the variables Claude Code documents.
@@ -119,13 +148,13 @@ export function armSpec(armId: string) {
   if (!arm) throw new Error(`unknown arm ${armId}`)
   const { compactWindow, compactPct } = arm.context ?? {}
   const model: ModelSpec = {
-    provider: 'anthropic',
+    provider: arm.provider ?? (arm.gateway ? 'deepseek' : 'anthropic'),
     requestedModel: arm.model,
     reasoning: arm.effort && arm.effort !== 'default' ? { mode: 'effort', requestedEffort: arm.effort } : { mode: 'provider-default' },
     context: { policy: arm.context?.cap200k ? 'capped-200k' : 'native', ...(compactWindow ? { compactWindow } : {}), ...(compactPct ? { compactPct } : {}) },
     cache: { enabled: arm.cache !== false },
   }
-  return { model, alias_map: baseSettings.env, env: armEnv(arm), plugin: arm.plugin ?? null }
+  return { model, runner: arm.runner ?? 'claude-code', gateway: arm.gateway?.baseUrl ?? null, alias_map: arm.runner ? null : baseSettings.env, env: armEnv(arm), plugin: arm.plugin ?? null }
 }
 
 // billingEnv is the environment for a model call. Runs use the signed-in plan, so an API key in the shell must not
@@ -134,6 +163,12 @@ export function billingEnv(): NodeJS.ProcessEnv {
   if (process.env.BENCH_AUTH === 'api') return { ...process.env }
   const { ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ...env } = process.env
   return env
+}
+
+function gatewayKey(name: string) {
+  const key = process.env[name]
+  if (!key) throw new Error(`${name} is not set`)
+  return key
 }
 
 // armInvocation returns { args, env } for one run. `dir` is the run's private folder.
@@ -147,5 +182,6 @@ export function armInvocation(armId: string, dir: string, prompt: string) {
     '--settings', settingsFile, '--strict-mcp-config', '--permission-mode', 'bypassPermissions']
   if (arm.effort && arm.effort !== 'default') args.push('--effort', arm.effort)
   if (arm.plugin) args.push('--plugin-dir', arm.plugin.kind === 'effortless' ? effortlessPlugin() : v2Plugin(dir, arm.plugin.config))
-  return { args, env: { ...billingEnv(), CLAUDE_CODE_USE_VERTEX: '0', ...env } }
+  const gateway = arm.gateway ? { ANTHROPIC_BASE_URL: arm.gateway.baseUrl, ANTHROPIC_AUTH_TOKEN: gatewayKey(arm.gateway.keyEnv) } : {}
+  return { args, env: { ...billingEnv(), CLAUDE_CODE_USE_VERTEX: '0', ...env, ...gateway } }
 }

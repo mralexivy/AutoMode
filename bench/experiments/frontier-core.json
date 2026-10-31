@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "frontier-core",
+  "track": "neutral-model",
+  "description": "Needs Docker and each vendor's API key. Spends real money, so get approval first.",
+  "arms": ["n-opus", "n-sonnet", "n-gpt-sol", "n-gpt-luna", "n-gemini-argon", "n-gemini-flash", "n-deepseek-pro", "n-deepseek-flash", "n-grok"],
+  "repeats": 3,
+  "parallel": 1,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 3,
+  "budget_usd": 50
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "claude-compatible",
+  "track": "claude-compatible",
+  "description": "Experimental. Measures compatibility with Claude Code as well as model skill. Do not merge with the neutral leaderboard.",
+  "arms": ["cc-deepseek-pro"],
+  "repeats": 1,
+  "parallel": 1,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 1,
+  "budget_usd": 5
+}

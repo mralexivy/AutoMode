@@ -1,6 +1,7 @@
 // A runner lets one agent try one task in a prepared workspace. It owns how the agent starts and how its reply reads.
 // It never reads the hidden tests and never decides whether a task passed: bench/lib/run-one.mts does that.
 import type { ExitReason } from '../lib/outcome.mts'
+import type { Sandbox } from './sandbox.mts'
 
 export interface RunRequest {
   armId: string
@@ -32,4 +33,6 @@ export interface AgentRun {
 export interface AgentRunner {
   readonly id: string
   run(req: RunRequest): Promise<AgentRun>
+  // A sandboxed runner also evaluates inside the sandbox, because the task's tests run code the model wrote.
+  sandbox?: (workspace: string) => Sandbox
 }

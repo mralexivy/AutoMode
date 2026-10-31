@@ -145,8 +145,15 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
   const cache = (ctx.repoFor ?? taskRepo)(task)
   const workspaceBase = prepareWorkspace(cache, task.base, wt)
   try {
+    // Commands run where the runner says. In a sandbox, so do the tests: they execute code the model wrote.
+    const box = runner.sandbox?.(wt)
+    const sh = async (command: string, timeoutMs: number, network = false) => {
+      if (box) return box.exec(command, { timeoutMs, network })
+      const r = spawnSync('sh', ['-c', command], { cwd: wt, encoding: 'utf8', timeout: timeoutMs })
+      return { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' }
+    }
     if (task.setup) {
-      const setup = spawnSync('sh', ['-c', task.setup], { cwd: wt, encoding: 'utf8', timeout: SETUP_MS })
+      const setup = await sh(task.setup, SETUP_MS, true)
       if (setup.status !== 0) return { ...rowHead, exit_reason: 'setup_error' as ExitReason, setup_exit: setup.status, at: new Date().toISOString() }
     }
     const setupDone = elapsed()
@@ -157,7 +164,7 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
     rowHead.prompt.tool_schema_sha256 = res.toolSchemaSha256 ?? null
     const agentHead = {
       ...rowHead, exit_reason, claude_exit: res.exitCode, claude_signal: res.signal, is_error: res.isError, num_turns: res.turns,
-      cost_usd_api_equiv: res.costUsd, estimated_cost_usd: estimatedUsd(evidence), reported_cost_usd: null as number | null,
+      cost_usd_api_equiv: res.costUsd, estimated_cost_usd: res.runner === 'claude-code' ? estimatedUsd(evidence) : res.costUsd, reported_cost_usd: null as number | null,
       wall_s: res.wallS, session_id: res.sessionId, run_cap_usd: ctx.runCap, evidence,
     }
     if (exit_reason === 'quota') return { ...agentHead, at: new Date().toISOString() }
@@ -171,11 +178,11 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
       fs.mkdirSync(path.dirname(path.join(wt, t)), { recursive: true })
       fs.writeFileSync(path.join(wt, t), git(['show', `${task.reference}:${t}`], cache))
     }
-    const lint = task.lint ? spawnSync('sh', ['-c', task.lint], { cwd: wt, encoding: 'utf8', timeout: 5 * 60_000 }) : null
-    const check = (cmd?: string) => (cmd ? spawnSync('sh', ['-c', cmd], { cwd: wt, encoding: 'utf8', timeout: SETUP_MS }).status === 0 : null)
-    const typecheck_ok = check(task.typecheck)
-    const regression_ok = check(task.regression)
-    const acc = spawnSync('sh', ['-c', task.accept], { cwd: wt, encoding: 'utf8', timeout: SETUP_MS })
+    const lint = task.lint ? await sh(task.lint, 5 * 60_000) : null
+    const check = async (cmd?: string) => (cmd ? (await sh(cmd, SETUP_MS)).status === 0 : null)
+    const typecheck_ok = await check(task.typecheck)
+    const regression_ok = await check(task.regression)
+    const acc = await sh(task.accept, SETUP_MS)
     const commits = Number(git(['rev-list', '--count', `${workspaceBase}..HEAD`], wt).trim())
     return {
       ...agentHead,
@@ -186,7 +193,7 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
       diff_shortstat: change.shortstat,
       diff_chars: change.diff.length,
       lint_clean: lint ? lint.status === 0 : null, typecheck_ok, regression_ok, files_touched: change.files, commits_made: commits,
-      trace: usageTrace(res.sessionId)?.trace ?? null,
+      trace: usageTrace(res.sessionId)?.trace ?? null, tool_efficiency: evidence?.tool_calls ?? null,
       memory_refs: memoryRefs(res.sessionId),
       leak_refs: leakRefs(res.sessionId, task),
       judge: ARMS[armId].v4 ? v4JudgeCost(res.sessionId) : judgeCost(dir),

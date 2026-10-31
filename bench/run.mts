@@ -35,6 +35,8 @@ import { RunQueue, waitMs } from './lib/pacer.mts'
 import { loadTemplate } from './lib/prompt.mts'
 import { chargedUsd, isDone } from './lib/outcome.mts'
 import { oneRun, runIdFor, type RunContext } from './lib/run-one.mts'
+import { claudeCodeRunner } from './runners/claude-code.mts'
+import { neutralRunner } from './runners/neutral-agent.mts'
 import { loadTasks, problems, TASKS_DIR, type Task } from './lib/task-repo.mts'
 
 const REPO = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim()
@@ -48,6 +50,7 @@ const flag = (name: string) => process.argv.includes(`--${name}`)
 const allTasks = loadTasks(opt('tasks-dir', TASKS_DIR))
 const tasks = opt('tasks') ? allTasks.filter((t) => opt('tasks').split(',').includes(t.id)) : allTasks
 const arms = opt('arms') ? opt('arms').split(',') : Object.keys(ARMS)
+for (const a of arms) if (!ARMS[a]) throw new Error(`unknown arm ${a}; known: ${Object.keys(ARMS).join(', ')}`)
 const repeats = Number(opt('repeats', 3))
 const parallelRuns = Number(opt('parallel', 1))
 const scratch = opt('scratch', path.join(os.tmpdir(), 'am-bench'))
@@ -56,12 +59,12 @@ const timeoutMs = Number(opt('timeout-min', 40)) * 60_000
 const runCap = opt('run-cap-usd') ? Number(opt('run-cap-usd')) : null
 const budget = opt('budget-usd') ? Number(opt('budget-usd')) : null
 // A run on a plan stays under a share of the 5-hour window. Off for an API account (BENCH_AUTH=api) unless asked for.
-const windowUsd = Number(opt('window-usd', experiment?.window_usd ?? (process.env.BENCH_AUTH === 'api' ? 0 : 10)))
+const usesPlan = arms.some((a) => !ARMS[a].runner && !ARMS[a].gateway)
+const windowUsd = Number(opt('window-usd', experiment?.window_usd ?? (process.env.BENCH_AUTH === 'api' || !usesPlan ? 0 : 10)))
 const quotaWaitMs = Number(opt('quota-wait-min', 30)) * 60_000
 const quotaRetries = Number(opt('quota-retries', 10))
 for (const t of allTasks) { const bad = problems(t, { allowLocal: process.env.BENCH_ALLOW_LOCAL === '1' }); if (bad.length) throw new Error(`task ${t.id ?? '?'}: ${bad.join('; ')}`) }
 if (!tasks.length) { console.log('No tasks to run. Add one in bench/tasks (see bench/tasks/README.md).'); process.exit(0) }
-for (const a of arms) if (!ARMS[a]) throw new Error(`unknown arm ${a}; known: ${Object.keys(ARMS).join(', ')}`)
 
 function doneIds() {
   if (!fs.existsSync(out)) return new Set()
@@ -79,7 +82,8 @@ console.log(`${plan.length} runs planned, ${plan.length - todo.length} already d
 if (flag('dry-run')) { for (const [t, a, r] of todo) console.log(`  ${t.id} / ${a} / r${r}`); process.exit(0) }
 
 fs.mkdirSync(path.dirname(out), { recursive: true })
-const ctx: RunContext = { scratch, out, timeoutMs, runCap, experiment: experiment?.id, template: templateId }
+const neutral = neutralRunner()
+const ctx: RunContext = { scratch, out, timeoutMs, runCap, experiment: experiment?.id, template: templateId, runnerFor: (armId) => (ARMS[armId].runner === 'neutral-agent' ? neutral : claudeCodeRunner) }
 // One batch per results file, so a resume keeps counting what the earlier runs spent.
 const batch = `run:${path.basename(out)}`
 let spent = total(LEDGER, batch)
