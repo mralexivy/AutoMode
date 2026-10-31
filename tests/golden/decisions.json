@@ -205,14 +205,75 @@
       "gate": "dwell"
     },
     {
-      "name": "downgrade at a cold cache: switch",
+      "name": "downgrade at a cold cache, same task, no dwell: hold (a cold cache keeps the task's gates)",
       "current": "T3",
       "target": "T1",
       "votes": 1,
       "prefix": 60000,
       "warm": false,
       "sameTask": true,
-      "expect": "switch"
+      "expect": "hold",
+      "gate": "dwell"
+    },
+    {
+      "name": "downgrade at a cold cache, new task: switch, and the rewrite is cheaper than staying",
+      "current": "T3",
+      "target": "T1",
+      "votes": 1,
+      "prefix": 60000,
+      "warm": false,
+      "expect": "switch",
+      "expectUsd": -0.24
+    },
+    {
+      "name": "Opus to Haiku in a task, past dwell, at no cache cost: hold (cost cannot see lost thinking)",
+      "current": "T3",
+      "target": "T0",
+      "votes": 1,
+      "prefix": 60000,
+      "warm": true,
+      "sameTask": true,
+      "dwelt": true,
+      "expect": "hold",
+      "gate": "continuity",
+      "expectUsd": 0
+    },
+    {
+      "name": "warm return after a drop: the turns added since are written",
+      "current": "T1",
+      "target": "T3",
+      "votes": 2,
+      "prefix": 97729,
+      "warm": true,
+      "targetWarmPrefix": 107535,
+      "dropped": { "opus": 19806 },
+      "expect": "switch",
+      "expectUsd": 0.0917
+    },
+    {
+      "name": "compaction clears the flag: Opus to Haiku in a task switches",
+      "current": "T3",
+      "target": "T0",
+      "votes": 1,
+      "prefix": 60000,
+      "warm": true,
+      "sameTask": true,
+      "dwelt": true,
+      "reset": 30000,
+      "expect": "switch",
+      "continuity": "cleared"
+    },
+    {
+      "name": "Sonnet to Opus on Bedrock in a task: hold, thinking does not carry there",
+      "current": "T1",
+      "target": "T3",
+      "votes": 2,
+      "prefix": 60000,
+      "warm": true,
+      "sameTask": true,
+      "provider": "bedrock",
+      "expect": "hold",
+      "gate": "continuity"
     },
     {
       "name": "effort only, same model, shared cache: switch",

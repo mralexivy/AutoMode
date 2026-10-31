@@ -29,7 +29,7 @@ export interface Economics {
   current: string | null          // model/effort now
   candidate: string               // model/effort proposed
   prefixTokens: number
-  writePenaltyUsd: number         // the cache rewrite a model change costs now
+  writePenaltyUsd: number         // the cache rewrite a model change costs now; below zero at a low point where the target writes for less
   ttlMs: number
   effortSharesCache: boolean      // provider rule
   remaining: { k: number; p25: number; median: number; p75: number; n: number }
@@ -39,12 +39,29 @@ export interface Economics {
 }
 export interface SwitchCheck {
   verdict: 'switch' | 'hold'
-  gate?: 'votes' | 'quality' | 'dwell' | 'payback' | 'context' | 'provider-effort' | 'oscillation'
+  gate?: 'votes' | 'quality' | 'dwell' | 'payback' | 'context' | 'provider-effort' | 'oscillation' | 'continuity'
   estUsd: number
   basis: Basis
   lowPenaltyPoint: boolean
   reason?: string
   economics?: Economics
+  continuity?: 'kept' | 'lost' | 'cleared' // whether the target reads the running model's thinking; a compaction clears the flag
+  rent?: RentVerdict             // shadow only: the rent rule's verdict, recorded and never applied
+}
+
+export type Boundary = 'new-task' | 'checkpoint' | 'cold' | 'compaction' | 'none'
+
+// The rent rule's price for a move: the way out, and pi times the way back.
+export interface Transition { hiUsd: number; retWarmUsd: number; retExpiredUsd: number; pi: number; totalUsd: number }
+
+export interface RentVerdict {
+  verdict: 'switch' | 'hold'
+  to: Family
+  boundary: Boundary
+  rentUsd: number
+  stepRatio: number
+  transition: Transition
+  heldBy?: SwitchCheck['gate']   // a gate the rule keeps, when that gate held the move
 }
 
 export interface EffectiveRoute extends Route {
@@ -111,6 +128,7 @@ export interface CacheState {
   lastRequestAt: number | null
   ttlMs: number
   effortSharesCache: boolean
+  outputTokens?: number // the last request's output: the next prompt carries it
 }
 
 export interface TokenUsage { input: number; output: number; cacheRead: number; cacheWrite5m: number; cacheWrite1h: number }

@@ -25,3 +25,11 @@ test('calibrate: a stage with enough prompts gets its own residual table, and th
   assert.ok(by.implement[0].median > by['repo-op'][0].median * 2, 'implementation leaves much more work than a commit')
   assert.ok(!JSON.stringify(out).includes('importer'), 'no prompt text in the output')
 })
+
+test('calibrate: route runs count requests in a row on one model, across prompts, per session', () => {
+  const req = (model) => ({ model, tokens: { input: 1, output: 1, cacheRead: 0, cacheWrite5m: 0, cacheWrite1h: 0, thinking: null } })
+  const O = req('claude-opus-5-5')
+  const S = req('claude-sonnet-5-5')
+  const out = calibrate([{ prompts: [{ requests: [O, O] }, { requests: [O, S] }, { requests: [req('unknown'), S] }] }, { prompts: [{ requests: [S] }] }])
+  assert.deepEqual({ n: out.observed.routeRuns.n, median: out.observed.routeRuns.median }, { n: 3, median: 2 })
+})
