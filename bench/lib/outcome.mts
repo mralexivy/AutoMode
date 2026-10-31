@@ -26,13 +26,14 @@ export function classifyRun(res: AgentExit): ExitReason {
   return QUOTA.test(`${res.json?.result ?? ''}\n${res.stderr_tail.join('\n')}`) ? 'quota' : 'agent_error'
 }
 
-interface Row { exit_reason?: ExitReason; harness_error?: string; memory_refs?: number | null }
+interface Row { exit_reason?: ExitReason; harness_error?: string; memory_refs?: number | null; external_eval?: string; accepted?: boolean | null }
 
 // isDone: a resume skips this row. A quota or setup stop says nothing about the arm, so that run happens again.
 export const isDone = (r: Row) => r.exit_reason !== 'quota' && r.exit_reason !== 'setup_error'
 
 // isResult: this row counts in the numbers and goes to the grader.
-export const isResult = (r: Row) => !r.harness_error && isDone(r)
+// A task scored by another harness has no result until its verdict comes back.
+export const isResult = (r: Row) => !r.harness_error && isDone(r) && !(r.external_eval && (r.accepted === null || r.accepted === undefined))
 
 // chargedUsd is what a run adds to the budget. A timed-out run reports no cost, so it counts as its cap.
 export function chargedUsd(cost: number | null | undefined, runCap: number | null): { usd: number; known: boolean } {

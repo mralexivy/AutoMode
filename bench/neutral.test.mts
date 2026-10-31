@@ -7,7 +7,13 @@ import os from 'node:os'
 import path from 'node:path'
 import { ARMS, armInvocation, armSpec } from './arms.mts'
 import { isPeak, loadCatalog, rateFor, requestUsd } from './lib/catalog.mts'
+import { bigCodePlan, liveCodePlan, liveCodeTest, materialize } from './datasets/codegen.mts'
+import { DATASETS } from './datasets/catalog.mts'
+import { applyReport, evaluationCommand, predictions, sweRunName, sweTask } from './datasets/swebench.mts'
+import { harborCommand, summarizeTrials, trialReward } from './datasets/terminal-bench.mts'
+import { isResult } from './lib/outcome.mts'
 import { oneRun } from './lib/run-one.mts'
+import { problems } from './lib/task-repo.mts'
 import * as anthropic from './providers/anthropic.mts'
 import * as chat from './providers/chat-completions.mts'
 import * as gemini from './providers/gemini.mts'
@@ -325,4 +331,104 @@ test('the same evaluator judges a neutral run, inside the sandbox, with a hidden
   assert.deepEqual(row.tool_efficiency.calls, { write_file: 1 })
   assert.match(row.prompt.tool_schema_sha256, /^[0-9a-f]{64}$/)
   assert.ok(seen.includes('node add.test.js'), 'the hidden test ran in the sandbox')
+})
+
+const sweItem = { repo: 'astropy/astropy', instance_id: 'astropy__astropy-12907', base_commit: 'd'.repeat(40), problem_statement: 'Fix the separability matrix.' }
+
+test('SWE-bench: an item is a valid task that another harness scores', () => {
+  const t = sweTask(sweItem, 'princeton-nlp/SWE-bench_Verified', 'rev')
+  assert.deepEqual(problems(t), [])
+  assert.equal(t.repo, 'https://github.com/astropy/astropy')
+  assert.equal(t.external_eval, 'swebench')
+  assert.equal(t.task, 'Fix the separability matrix.')
+  assert.equal(isResult({ external_eval: 'swebench', accepted: null }), false)
+  assert.equal(isResult({ external_eval: 'swebench', accepted: false }), true)
+})
+
+test('SWE-bench: predictions use one file per arm and repeat, and upstream verdicts come back', () => {
+  const rows = [{ run_id: 'a', task_id: 'i1', arm: 'n-opus', repeat: 1 }, { run_id: 'b', task_id: 'i2', arm: 'n-opus', repeat: 1 }, { run_id: 'c', task_id: 'i3', arm: 'n-opus', repeat: 1 }, { run_id: 'd', task_id: 'i1', arm: 'n-sonnet', repeat: 2 }]
+  const p = predictions(rows, (id) => (id === 'b' ? null : `patch-${id}`))
+  assert.deepEqual([...p.keys()], ['n-opus__r1', 'n-sonnet__r2'])
+  assert.deepEqual(p.get('n-opus__r1')[0], { instance_id: 'i1', model_name_or_path: 'n-opus__r1', model_patch: 'patch-a' })
+  assert.equal(p.get('n-opus__r1')[1].model_patch, '')
+  assert.ok(evaluationCommand('d', 'f', sweRunName('x', 1)).includes('swebench.harness.run_evaluation'))
+  const scored = applyReport(rows, { resolved_ids: ['i1'], unresolved_ids: ['i2'], empty_patch_ids: [], infra_failure_ids: ['i3'] }, 'n-opus__r1')
+  assert.equal(scored[0].accepted, true)
+  assert.equal(scored[1].accepted, false)
+  assert.equal(scored[2].accepted, undefined, 'an infrastructure failure gives no verdict')
+  assert.equal(scored[3].accepted, undefined, 'another run is untouched')
+  assert.throws(() => applyReport(rows, {}, 'x'), /upstream format changed/)
+})
+
+test('a SWE-bench run saves an applying patch and gets no local verdict', async () => {
+  const source = path.join(ROOT, 'swe-src')
+  fs.mkdirSync(source)
+  const git = (...a: string[]) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', ...a], { cwd: source, encoding: 'utf8' }).trim()
+  git('init', '-q'); fs.writeFileSync(path.join(source, 'a.txt'), 'old\n'); git('add', '.'); git('commit', '-q', '-m', 'base')
+  const task = sweTask({ ...sweItem, instance_id: 'x__y-1', base_commit: git('rev-parse', 'HEAD') }, 'd', 'r')
+  const runner = neutralRunner({ adapter: () => script([tool('write_file', { path: 'a.txt', content: 'new\n' }), tool('write_file', { path: 'b.txt', content: 'added\n' }), end()]), sandbox: hostShell, sleep: async () => {} })
+  const out = path.join(ROOT, 'swe', 'r.jsonl')
+  const row: any = await oneRun(task, 'n-gpt-sol', 1, { scratch: path.join(ROOT, 'swes'), out, timeoutMs: 20_000, runCap: null, repoFor: () => source, runnerFor: () => runner })
+  assert.equal(row.accepted, null)
+  assert.equal(isResult(row), false)
+  const patchFile = path.join(ROOT, 'swe', 'diffs', `${row.run_id}.patch`)
+  execFileSync('git', ['checkout', '-q', 'HEAD', '--', '.'], { cwd: source })
+  execFileSync('git', ['apply', '--check', patchFile], { cwd: source })
+})
+
+test('Terminal-Bench: a changed trial shape stops the import instead of reading as zero', () => {
+  assert.equal(trialReward({ verifier_result: { rewards: { reward: 1 } } }), 1)
+  assert.throws(() => trialReward({ score: 1 }), /Harbor format/)
+  assert.deepEqual(summarizeTrials([{ verifier_result: { rewards: { reward: 1 } } }, { verifier_result: { rewards: { reward: 0 } } }]), { trials: 2, solved: 1, mean_reward: 0.5 })
+  assert.deepEqual(harborCommand('claude-code', 'm', 5).slice(0, 4), ['harbor', 'run', '-d', 'terminal-bench/terminal-bench-2'])
+})
+
+test('BigCodeBench: the base holds no answer and no test, and the reference holds both', () => {
+  const plan = bigCodePlan({ task_id: 'BigCodeBench/7', instruct_prompt: 'Add numbers.', code_prompt: 'def task_func(a, b):\n', canonical_solution: '    return a + b\n', test: 'import unittest\nclass T(unittest.TestCase):\n    def test_a(self):\n        self.assertEqual(task_func(1, 2), 3)\n' }, 'd', 'r')
+  const dir = path.join(ROOT, 'bcb')
+  const task = materialize(plan, dir)
+  assert.equal(task.id, 'bcb-bigcodebench-7')
+  assert.equal(task.requirements.sandbox, true)
+  const show = (ref: string, f: string) => spawnSync('git', ['show', `${ref}:${f}`], { cwd: dir, encoding: 'utf8' })
+  assert.doesNotMatch(show(task.base, 'solution.py').stdout, /return a \+ b/)
+  assert.notEqual(show(task.base, 'test_solution.py').status, 0)
+  assert.match(show(task.reference, 'solution.py').stdout, /return a \+ b/)
+  assert.deepEqual(problems(task), [])
+})
+
+test('LiveCodeBench: public tests only, in both test styles', () => {
+  const stdin = liveCodeTest([{ input: '1 2', output: '3', testtype: 'stdin' }], '')
+  assert.match(stdin, /subprocess\.run/)
+  const fn = liveCodeTest([{ input: '[1]\n2', output: '3', testtype: 'functional' }], 'class Solution:\n    def addUp(self, a, b):\n        pass')
+  assert.match(fn, /"addUp"/)
+  assert.throws(() => liveCodeTest([{ input: '1', output: '1', testtype: 'functional' }], ''), /starter/)
+  const plan = liveCodePlan({ question_id: 'abc 1', question_content: 'Q', starter_code: '', public_test_cases: '[{"input":"1","output":"1","testtype":"stdin"}]', private_test_cases: 'PICKLED' }, 'd', 'r')
+  assert.equal(plan.id, 'lcb-abc-1')
+  assert.doesNotMatch(JSON.stringify(plan), /PICKLED/)
+})
+
+test('generated python tests run as written', { skip: spawnSync('python3', ['--version']).status !== 0 }, () => {
+  const dir = fs.mkdtempSync(path.join(ROOT, 'py-'))
+  fs.writeFileSync(path.join(dir, 'solution.py'), 'import sys\nprint(sum(map(int, sys.stdin.read().split())))\n')
+  fs.writeFileSync(path.join(dir, 'test_solution.py'), liveCodeTest([{ input: '1 2', output: '3', testtype: 'stdin' }], ''))
+  assert.equal(spawnSync('python3', ['test_solution.py'], { cwd: dir }).status, 0)
+  fs.writeFileSync(path.join(dir, 'solution.py'), 'class Solution:\n    def addUp(self, a, b):\n        return a + b\n')
+  fs.writeFileSync(path.join(dir, 'test_solution.py'), liveCodeTest([{ input: '1\n2', output: '3', testtype: 'functional' }], 'class Solution:\n    def addUp(self, a, b):\n        pass'))
+  assert.equal(spawnSync('python3', ['test_solution.py'], { cwd: dir }).status, 0)
+  fs.writeFileSync(path.join(dir, 'test_solution.py'), liveCodeTest([{ input: '1\n2', output: '4', testtype: 'functional' }], 'class Solution:\n    def addUp(self, a, b):\n        pass'))
+  assert.notEqual(spawnSync('python3', ['test_solution.py'], { cwd: dir, stdio: 'ignore' }).status, 0, 'a wrong answer fails')
+})
+
+test('a sandbox-only task is refused on an unsandboxed runner', async () => {
+  const plan = bigCodePlan({ task_id: 'x/1', instruct_prompt: 'p', code_prompt: '', canonical_solution: '', test: '' }, 'd', 'r')
+  const dir = path.join(ROOT, 'box-repo')
+  const task = materialize(plan, dir)
+  await assert.rejects(oneRun(task, 'sonnet-high', 1, { scratch: path.join(ROOT, 'bs'), out: path.join(ROOT, 'b.jsonl'), timeoutMs: 1000, runCap: null, repoFor: () => dir }), /needs a sandboxed runner/)
+})
+
+test('every dataset is pinned, and the CLI lists them with no network', () => {
+  for (const d of Object.values(DATASETS)) if (d.kind !== 'terminal-bench') assert.match(d.revision, /^[0-9a-f]{40}$/, d.id)
+  const r = spawnSync(process.execPath, ['bench/datasets/cli.mts', 'list'], { encoding: 'utf8' })
+  assert.equal(r.status, 0, r.stderr)
+  assert.match(r.stdout, /swebench-verified/)
 })
