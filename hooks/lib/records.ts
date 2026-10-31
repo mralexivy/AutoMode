@@ -29,6 +29,7 @@ export interface DecisionRecord {
   override?: { source: string; scope: string }
   transition?: string
   stage?: string
+  workflow?: { purpose: string | null; would: boolean; reasons: string[] } // the automatic entry check, recorded even while it is off
   costTotal?: { mainUsd: number; switchUsd: number; judgeUsd: number; reviewRequired: boolean; consult: boolean; basis: string; excluded: string }
   firstRequest?: { tokens: number; source: string }
   inadequate?: { need: number; shortfall: number; route: string }

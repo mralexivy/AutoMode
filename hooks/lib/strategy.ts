@@ -1,7 +1,7 @@
 // Decision B: where the reasoning runs. Direct in the main cached session, an isolated worker, or
 // the engineering workflow. Forks were dropped: a mod cannot spawn one (spike S2), and S6 never ran. Every estimate lists its parts and the
 // assumptions behind them, and carries its basis: until calibrated, a parameter is an estimate.
-import type { Basis, CacheState, Family, Risk, Strategy } from './types.ts'
+import type { Basis, CacheState, Complexity, Family, Risk, Strategy } from './types.ts'
 import type { PriceRow } from './prices.ts'
 import { cacheWriteX, rateAt } from './prices.ts'
 
@@ -31,7 +31,7 @@ export interface StrategyChoice { chosen: Strategy; estimates: StrategyEstimate[
 
 export interface StrategyInput {
   hint: Strategy | null          // the judge's or the user's strategy
-  workflowPurpose?: string | null // why the workflow pays here; without one a workflow hint runs direct
+  workflowPurpose?: string | null // why the workflow pays here (workflowValue); without one a workflow hint runs direct
   risk: Risk
   designDecision: boolean        // the task is a design or architecture decision
   main: Family
@@ -85,7 +85,8 @@ export function choose(i: StrategyInput, confidence: number): StrategyChoice {
   const estimates = estimate(i)
   const pick = (chosen: Strategy, reason: string): StrategyChoice => ({ chosen, estimates, reason, confidence, basis })
   // The workflow costs a plan, workers and a review: it needs a stated purpose, not just "complex".
-  if (i.hint === 'engineering-workflow' && i.workflowPurpose) return pick('engineering-workflow', i.workflowPurpose)
+  // Only a direct hint (am:direct, plan mode) stands in its way.
+  if (i.workflowPurpose && i.hint !== 'direct') return pick('engineering-workflow', i.workflowPurpose)
   if (i.hint === 'direct') return pick('direct', 'hint: direct')
   if (i.risk === 'critical' || i.designDecision) return pick('direct', 'critical risk or design decision: keep reasoning in the session')
   if (confidence < p.minConfidence) return pick('direct', `low confidence ${confidence}`)
@@ -93,6 +94,43 @@ export function choose(i: StrategyInput, confidence: number): StrategyChoice {
   const best = estimates.filter((e) => e.strategy !== 'direct').sort((a, b) => a.usd.p75 - b.usd.p75)[0]
   if (best && best.usd.p75 < p.isolationMargin * d.usd.p50) return pick(best.strategy, `${best.strategy} p75 $${best.usd.p75.toFixed(4)} < ${p.isolationMargin} x direct p50 $${d.usd.p50.toFixed(4)}`)
   return pick('direct', 'isolation does not clear the margin')
+}
+
+// workflowValue is the one entry check for the automatic workflow, and am:run does not pass through it.
+// Measured runs cost 2 to 2.7 times a direct Opus run with no quality gain shown, so autoWorkflow ships
+// off. Off, it still returns every signal that fired: the record shows what entry would have done.
+// Disjoint-owner subtasks are also a signal for this work, but only a plan can show them.
+export interface WorkflowValueInput {
+  autoWorkflow: boolean
+  alreadyRan: boolean            // the workflow already ran on this task
+  judged?: Strategy | null       // the judge's strategy
+  complexity?: Complexity
+  risk: Risk
+  confidence: number
+  failures: number               // substantive failures on this task
+  editedPaths: string[]          // what the task really edited
+  root?: string                  // the session's working directory
+}
+export interface WorkflowValue { purpose: string | null; would: boolean; reasons: string[] }
+
+export const WORKFLOW_MIN_MODULES = 3
+
+// editedModules counts the folders a task edited, by their first two levels under the root. A file at
+// the root belongs to no module.
+export function editedModules(paths: string[], root = ''): number {
+  const base = root.replace(/\/+$/, '')
+  const dirs = paths.map((p) => (base && p.startsWith(`${base}/`) ? p.slice(base.length + 1) : p).split('/').filter(Boolean).slice(0, -1).slice(0, 2).join('/'))
+  return new Set(dirs.filter(Boolean)).size
+}
+
+export function workflowValue(i: WorkflowValueInput): WorkflowValue {
+  const reasons: string[] = []
+  if (i.failures > 0 && i.editedPaths.length > 0) reasons.push('repeated failure after edits')
+  const modules = editedModules(i.editedPaths, i.root)
+  if (modules >= WORKFLOW_MIN_MODULES) reasons.push(`edits across ${modules} modules`)
+  if (i.judged === 'engineering-workflow' && i.complexity === 'complex' && i.risk === 'critical' && i.confidence >= 0.8) reasons.push('critical multi-module work: plan, build, verify and review')
+  const would = reasons.length > 0 && !i.alreadyRan
+  return { purpose: would && i.autoWorkflow ? reasons.join('; ') : null, would, reasons }
 }
 
 // workFromFiles estimates the tokens a task reads from file sizes: a heuristic, labeled as such.

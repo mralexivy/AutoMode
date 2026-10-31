@@ -591,3 +591,113 @@ describe('V4: activation always (the shipped default)', () => {
     expect(out.context.length).toBe(0)
   })
 })
+
+describe('V4: workflow entry', () => {
+  const critical = judge({ tier: 'T3', complexity: 'complex', risk: 'critical', strategy: 'engineering-workflow', confidence: 0.9 })
+  const ask = 'rebuild the payments ledger across the billing services'
+
+  test('autoWorkflow off: a judged workflow runs direct, and the record says what entry would have done', async ($, on) => {
+    const h = harness(on, { judge: critical })
+    const out = await h.submit($, ask)
+    expect(out.context.join('\n').includes('Run Workflow')).toBe(false)
+    await h.step($)
+    await h.complete($)
+    const d = records(h.writes).find((x) => x.kind === 'decision')
+    expect(d.strategy.chosen).toBe('direct')
+    expect(d.workflow).toMatchObject({ purpose: null, would: true })
+    expect(records(h.writes).filter((x) => x.kind === 'workflow-entry').length).toBe(0)
+  })
+
+  test('autoWorkflow on: the same prompt enters the workflow with the real args and next_action', async ($, on) => {
+    const h = harness(on, { judge: critical, config: { autoWorkflow: true } })
+    const out = await h.submit($, ask)
+    const text = out.context.join('\n')
+    expect(text.includes('Run Workflow')).toBe(true)
+    expect(text.includes('"tier":"critical"')).toBe(true)
+    expect(text.includes('next_action')).toBe(true)
+  })
+
+  test('am:run works with autoWorkflow off, and a workflow never called is recorded', async ($, on) => {
+    const h = harness(on, { judge: judge({ tier: 'T2', complexity: 'standard' }) })
+    const out = await h.submit($, 'am:run add retries to the uploader')
+    expect(out.context.join('\n').includes('Run Workflow')).toBe(true)
+    expect(out.context.join('\n').includes('"tier":"complex"')).toBe(true)
+    await h.step($)
+    await h.complete($)
+    expect(records(h.writes).find((x) => x.kind === 'workflow-entry')).toMatchObject({ source: 'user', called: false })
+  })
+
+  test('a chosen workflow that the main session calls is recorded as called', async ($, on) => {
+    const h = harness(on, { judge: judge({ tier: 'T2', complexity: 'standard' }) })
+    await h.submit($, 'am:run add retries to the uploader')
+    await h.step($)
+    await $.tool.call({ tool: 'Workflow', name: 'automode:run' } as never)
+    await h.complete($)
+    expect(records(h.writes).find((x) => x.kind === 'workflow-entry')).toMatchObject({ source: 'user', called: true })
+  })
+})
+
+describe('V4: workflow calls that do not count', () => {
+  test('another workflow, by tool call or by its agents, leaves the chosen one uncalled', async ($, on) => {
+    const h = harness(on, { judge: judge({ tier: 'T2', complexity: 'standard' }) })
+    await h.submit($, 'am:run add retries to the uploader')
+    await h.step($)
+    await $.tool.call({ tool: 'Workflow', name: 'other:flow' } as never)
+    await $.agent.spawn({ subagentType: 'other:worker', prompt: 'x', description: 'x', model: 'sonnet', workflow: { runId: 'r1', agentIndex: 0 } } as never)
+    await h.complete($)
+    expect(records(h.writes).find((x) => x.kind === 'workflow-entry')).toMatchObject({ called: false })
+  })
+
+  test('an agent of this workflow counts as called', async ($, on) => {
+    const h = harness(on, { judge: judge({ tier: 'T2', complexity: 'standard' }) })
+    await h.submit($, 'am:run add retries to the uploader')
+    await h.step($)
+    await $.agent.spawn({ subagentType: 'automode:explorer', prompt: 'x', description: 'x', model: 'haiku', workflow: { runId: 'r1', agentIndex: 0 } } as never)
+    await h.complete($)
+    expect(records(h.writes).find((x) => x.kind === 'workflow-entry')).toMatchObject({ called: true })
+  })
+})
+
+describe('V4: subagents take the task risk', () => {
+  const risky = judge({ tier: 'T2', complexity: 'standard', risk: 'critical' })
+
+  test('critical work: a general-purpose agent keeps the Opus parent unless it only reads', async ($, on) => {
+    const h = harness(on, { policy: 'legacy', judge: risky })
+    await h.submit($, 'rotate the signing keys for session tokens')
+    await $.agent.spawn({ subagentType: 'general-purpose', prompt: 'fix the token check', description: 'x', parentModel: 'claude-opus-5-5' })
+    expect(h.spawned.at(-1)?.model).toBe('opus')
+    await $.agent.spawn({ subagentType: 'general-purpose', prompt: 'map the call sites', description: 'x', parentModel: 'claude-opus-5-5' })
+    expect(h.spawned.at(-1)?.model).toBe('sonnet')
+  })
+
+  test('policy auto: a failed helper judge falls back to the policy effort, not to medium', async ($, on) => {
+    const h = harness(on, { policy: 'auto', judge: risky, effortJudge: (p: string) => (p.includes('fix the token check') ? null : says('sonnet', 'high')(p)) })
+    await h.submit($, 'rotate the signing keys for session tokens')
+    const res = await $.agent.spawn({ subagentType: 'general-purpose', prompt: 'fix the token check', description: 'x', parentModel: 'claude-opus-5-5' })
+    await h.step($, 'claude-opus-5-5', res.agentId, { turnId: 'a1' })
+    expect(h.steps.at(-1)?.effort).toBe('high')
+  })
+
+  test('a diagnoser spawn on risky work runs on Sonnet and keeps its read-only guard', async ($, on) => {
+    const h = harness(on, { policy: 'legacy', judge: risky })
+    await h.submit($, 'rotate the signing keys for session tokens')
+    const res = await $.agent.spawn({ subagentType: 'automode:diagnoser', prompt: 'why did it fail', description: 'x', parentModel: 'claude-opus-5-5' })
+    expect(h.spawned.at(-1)?.model).toBe('sonnet')
+    const denied = await $.tool.call({ tool: 'Write', file_path: 'a.go', content: 'x', agentId: res.agentId } as never)
+    expect(String((denied as any).deny ?? '').includes('read-only')).toBe(true)
+  })
+
+  test('the main session asks for a diagnoser on risky work: the Agent call goes out on Sonnet', async ($, on) => {
+    const h = harness(on, { policy: 'legacy', judge: risky })
+    await h.submit($, 'rotate the signing keys for session tokens')
+    await $.tool.call({ tool: 'Agent', subagent_type: 'automode:diagnoser', prompt: 'why', description: 'x' } as never)
+    expect(h.spawned.at(-1)).toEqual({ subagentType: 'automode:diagnoser', model: 'sonnet' })
+  })
+
+  test('no risk: the diagnoser stays on Haiku', async ($, on) => {
+    const h = harness(on, { policy: 'legacy', judge: judge({ tier: 'T1', complexity: 'standard', risk: 'none' }) })
+    await h.submit($, 'tidy the helper names')
+    await $.tool.call({ tool: 'Agent', subagent_type: 'automode:diagnoser', prompt: 'why', description: 'x' } as never)
+    expect(h.spawned.at(-1)).toEqual({ subagentType: 'automode:diagnoser', model: 'haiku' })
+  })
+})

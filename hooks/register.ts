@@ -354,7 +354,7 @@ export const register: Register = (on, options) => {
   on('agent.spawn', async ($, e, next) => ((await useV4($)) ? v4AgentSpawn($, e, next) : next(e))).catch(($, e, next) => next(e))
   on('prompt.attachment', async ($, e, next) => ((await useV4($)) ? v4Attachment($, e, next) : next(e))).catch(($, e, next) => next(e))
   on('session.append', async ($, e, next) => ((await useV4($)) ? v4Append($, e, next) : next(e))).catch(($, e, next) => next(e))
-  for (const tool of ['Agent', 'Read', 'Grep', 'Glob', 'Edit', 'Write', 'MultiEdit', 'NotebookEdit', 'WebFetch', 'WebSearch']) {
+  for (const tool of ['Agent', 'Workflow', 'Read', 'Grep', 'Glob', 'Edit', 'Write', 'MultiEdit', 'NotebookEdit', 'WebFetch', 'WebSearch']) {
     on('tool.call', { tool }, async ($, e, next) => ((await useV4($)) ? v4ToolCall($, e, next) : next(e)))
       .catch(($, e, next) => (next.called ? next(e) : { deny: 'AutoMode guard failed; the call was not run.' }))
   }

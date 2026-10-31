@@ -1,10 +1,10 @@
 export const meta = {
   name: 'run',
   description: 'AutoMode V2: risk-banded routing. Haiku discovery (or a direct handoff), Opus or Sonnet plan, Sonnet build on a bounded task graph, code-checked verification, evidence-first Opus review by policy',
-  whenToUse: 'A non-trivial coding task while the AutoMode model profile is active. Pass args { task, tier, mode, reviewPolicy, maxConcurrency, source_version }.',
+  whenToUse: 'A non-trivial coding task while the AutoMode model profile is active. Pass args { task, tier, mode, stages, reviewPolicy, planModel, reviewModel, maxConcurrency, source_version }.',
   phases: [
     { title: 'Discover', detail: 'explorer on Haiku, read-only, 1 to 3 agents with disjoint scopes. Skipped in handoff mode and for S0.', model: 'haiku' },
-    { title: 'Plan', detail: 'architect on Opus (Sonnet for low-risk S1). One bounded call, plus at most one evidence round.', model: 'opus' },
+    { title: 'Plan', detail: 'architect on Opus (Sonnet for low-risk S1, or below S3 when the router leaves the architect out). One bounded call, plus at most one evidence round.', model: 'opus' },
     { title: 'Build', detail: 'implementer on Sonnet, one agent per workstream, dependency-ordered, at most 2 at a time', model: 'sonnet' },
     { title: 'Verify', detail: 'verifier on Sonnet, at most 2 rounds. Code decides pass or fail from the checks.', model: 'sonnet' },
     { title: 'Review', detail: 'reviewer on Opus, by review policy and mandatory risk rules', model: 'opus' },
@@ -23,18 +23,27 @@ const tierHint = TIERS.includes(A.tier) ? A.tier : 'standard'
 // handoff: the architect reads the code itself and plans. Sonnet then takes over.
 let mode = ['discover', 'handoff'].includes(A.mode) ? A.mode : 'discover'
 // stages (optional, from the router's stagesFor): the stages this task needs. Absent means all, as in V2.
+// When present, stages wins over mode: the router sends both, and only stages knows this task.
 // implement and verify always run. Without 'discover' the architect reads the code itself (handoff).
-// Without 'architect' a Sonnet planner plans, but only for bands S0-S1; S2+ always gets the Opus plan.
-// Without 'review' the review runs only when a mandatory rule fires: a required review is never skipped.
+// Without 'architect' a Sonnet planner plans, but only for bands S0-S2. A band that reaches S3 gets an
+// Opus plan, even after a Sonnet plan. Without 'review' size alone does not force a review, and neither
+// does a bare review_required from the planner, which asked in 7 of 7 measured runs. Every other
+// mandatory rule stands: S3, the infra rule, a high-severity risk, failed checks, an unfinished
+// workstream, an escalation and blocking evidence.
 const STAGES = ['discover', 'architect', 'implement', 'verify', 'review']
 const stages = Array.isArray(A.stages) ? STAGES.filter((s) => A.stages.includes(s) || s === 'implement' || s === 'verify') : STAGES
-if (!stages.includes('discover') && A.mode === undefined) mode = 'handoff'
+if (Array.isArray(A.stages)) mode = stages.includes('discover') ? 'discover' : 'handoff'
+const reviewLeftOut = Array.isArray(A.stages) && !stages.includes('review')
 // always: an Opus review on every S1+ run. risk: only when a mandatory rule applies.
 const reviewPolicy = !stages.includes('review') ? 'risk' : ['always', 'risk'].includes(A.reviewPolicy) ? A.reviewPolicy : 'risk'
 const maxConcurrency = Math.min(2, Math.max(1, Number(A.maxConcurrency) || 1))
 const useDag = A.dag !== false
 // Off by default: a Sonnet plan for small, risk-free S1 tasks saves Opus spend but is not measured yet.
 const sonnetPlansSmallS1 = A.sonnetPlanSmall === true
+// Bench knobs for the plan and review models. S3 stays on Opus whatever they say, and so do escalations.
+const MODEL_ARGS = ['sonnet', 'opus']
+const planModel = MODEL_ARGS.includes(A.planModel) ? A.planModel : 'opus'
+const reviewModel = MODEL_ARGS.includes(A.reviewModel) ? A.reviewModel : 'opus'
 const sourceVersion = String(A.source_version || 'unknown')
 const MAX_VERIFY_ROUNDS = 2
 const MAX_ESCALATIONS = 2
@@ -65,10 +74,14 @@ const RISK_RULES = [
   { band: 'S2', reason: 'infrastructure or deployment', text: /\b(helm|terraform|kubernetes|k8s|dockerfile|ci pipeline|deploy\w*)\b/i, path: /(^|\/)(helm|terraform|k8s|deploy|\.github|\.gitlab-ci)|Dockerfile$|\.gitlab-ci\.yml$/i },
 ]
 const higher = (a, b) => (BANDS.indexOf(a) >= BANDS.indexOf(b) ? a : b)
+// extra.cited: the files are ones an explorer cited, not ones the change touches. A citation can raise
+// the band through an S3 rule, where a miss is costly, but the module and infra rules need real plan
+// or changed files. A citation says the code is relevant, not that the change touches it.
 function classifyRisk(text, files, extra) {
   let band = 'S0'
   const reasons = []
   for (const r of RISK_RULES) {
+    if (extra.cited && r.band !== 'S3') continue
     const hitText = r.text && r.text.test(text)
     const hitPath = r.path && files.some((f) => r.path.test(f))
     if (hitText || hitPath) {
@@ -76,8 +89,9 @@ function classifyRisk(text, files, extra) {
       reasons.push(`${r.band}: ${r.reason} (${hitPath ? 'path' : 'task text'})`)
     }
   }
-  const modules = new Set(files.map((f) => f.split('/').slice(0, 2).join('/')))
-  if (modules.size >= 3) { band = higher(band, 'S2'); reasons.push(`S2: ${modules.size} modules touched`) }
+  // A module is a folder, by its first two levels. Three files in one folder are one module.
+  const modules = new Set(files.map((f) => f.split('/').slice(0, -1).slice(0, 2).join('/')).filter(Boolean))
+  if (!extra.cited && modules.size >= 3) { band = higher(band, 'S2'); reasons.push(`S2: ${modules.size} modules touched`) }
   if (extra.workstreams > 1) { band = higher(band, 'S2'); reasons.push(`S2: ${extra.workstreams} workstreams`) }
   if (extra.unknowns > 0) { band = higher(band, 'S2'); reasons.push(`S2: ${extra.unknowns} open unknowns`) }
   return { band, reasons }
@@ -110,10 +124,11 @@ function note(msg) { notes.push(msg); log(msg) }
 async function run(role, prompt, opts) {
   const r = ROLE[role]
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const res = await agent(prompt, { ...opts, agentType: r.agentType, model: r.model, effort: r.effort })
+    const model = opts.model && band !== 'S3' ? opts.model : r.model
+    const res = await agent(prompt, { ...opts, agentType: r.agentType, model, effort: r.effort })
     trace.push({
       workflow_id: workflowId, task_id: taskId, seq: trace.length + 1, stage: opts.phase || r.stage, role,
-      model_id: r.model, label: opts.label, status: res === null ? 'null_result' : 'ok',
+      model_id: model, effort: r.effort, label: opts.label, status: res === null ? 'null_result' : 'ok',
       retry_reason: attempt > 1 ? 'null_result' : null, schema_version: SCHEMA_VERSION,
       artifact_hash: res === null ? null : fnv1a(res), band, review_policy: reviewPolicy, source_version: sourceVersion,
     })
@@ -196,6 +211,7 @@ const VERIFY = {
       properties: {
         cmd: STR,
         exit_code: { type: ['integer', 'null'] },
+        expected_exit: { type: 'integer' },
         outcome: { type: 'string', enum: ['pass', 'fail', 'skipped', 'pre-existing'] },
         failure_summary: STR,
       },
@@ -216,10 +232,11 @@ const REVIEW = {
       type: 'object',
       properties: {
         severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
+        kind: { type: 'string', enum: ['defect', 'evidence_gap'] },
         area: { type: 'string', enum: ['correctness', 'architecture', 'security', 'api', 'concurrency', 'performance', 'tests', 'other'] },
         file: STR, detail: STR, fix: STR,
       },
-      required: ['severity', 'area', 'file', 'detail', 'fix'],
+      required: ['severity', 'kind', 'area', 'file', 'detail', 'fix'],
     }),
   },
   required: ['verdict', 'findings'],
@@ -227,13 +244,23 @@ const REVIEW = {
 
 // verdictFromChecks decides the verification result in code, from the commands and exit codes.
 // Any failing check fails the run, whatever the agent's own summary says. No checks means the
-// result is unverified, which counts as uncertain.
+// result is unverified, which counts as uncertain. A check fails on outcome "fail", or when its exit
+// code differs from the expected one. That is 0, and 1 only when the agent asks for it on one plain
+// grep, rg or diff, where exit 1 means "no match". A test runner can never pass on a nonzero exit.
+function searchOnly(cmd) {
+  const bare = String(cmd).replace(/'[^']*'|"[^"$`]*"/g, '')
+  return /^\s*(grep|egrep|fgrep|rg|diff)\s/.test(bare) && !/[|;&\n`]|\$\(/.test(bare)
+}
+function checkFailed(c) {
+  if (c.outcome === 'pre-existing' || c.outcome === 'skipped') return false
+  if (c.outcome === 'fail') return true
+  const expected = c.expected_exit === 1 && searchOnly(c.cmd) ? 1 : 0
+  return Number.isInteger(c.exit_code) && c.exit_code !== expected
+}
 function verdictFromChecks(v) {
   if (!v) return 'unverified'
-  const counted = v.checks.filter((c) => c.outcome !== 'pre-existing')
-  if (!counted.length) return 'unverified'
-  const failed = counted.some((c) => c.outcome === 'fail' || (Number.isInteger(c.exit_code) && c.exit_code !== 0 && c.outcome !== 'skipped'))
-  return failed ? 'fail' : 'pass'
+  if (!v.checks.some((c) => c.outcome !== 'pre-existing')) return 'unverified'
+  return v.checks.some(checkFailed) ? 'fail' : 'pass'
 }
 
 // ---------- pre-plan classification from the task text ----------
@@ -322,8 +349,7 @@ if (mode === 'discover') {
     refit()
     const found = Object.values(byLens)
     const files = [...new Set(found.flatMap((d) => d.findings.map((x) => String(x.where).split(':')[0])))]
-    const unknowns = found.reduce((n, d) => n + d.open_questions.length, 0)
-    raiseBand(classifyRisk(task + '\n' + found.flatMap((d) => d.constraints).join('\n'), files, { workstreams: 0, unknowns }), 'Discovery')
+    raiseBand(classifyRisk(task + '\n' + found.flatMap((d) => d.constraints).join('\n'), files, { workstreams: 0, unknowns: 0, cited: true }), 'Discovery')
   }
 }
 
@@ -338,14 +364,21 @@ function planPrompt(extraEvidence) {
     'List in missing_evidence any fact you need but could not establish, instead of guessing. ' +
     'Set evidence_blocking to true only when a decision in this plan could be wrong without those facts; otherwise the gaps go to the reviewer as notes.'
 }
-// S0 gets a Sonnet plan. With sonnetPlanSmall on, so does S1 with small, risk-free discovery.
+// S0 gets a Sonnet plan, and so does S1 or S2 when the router left the architect out. With
+// sonnetPlanSmall on, so does S1 with small, risk-free discovery.
 // Anything else, or any doubt, gets Opus.
 const discoveredFiles = new Set(Object.values(byLens).flatMap((d) => d.findings.map((x) => String(x.where).split(':')[0])))
-const sonnetPlans = band === 'S0' || (!stages.includes('architect') && band === 'S1') || (sonnetPlansSmallS1 && band === 'S1' && mode === 'discover' && discoveredFiles.size > 0 && discoveredFiles.size <= 2 &&
+const sonnetPlans = band === 'S0' || (!stages.includes('architect') && BANDS.indexOf(band) <= 2) || (sonnetPlansSmallS1 && band === 'S1' && mode === 'discover' && discoveredFiles.size > 0 && discoveredFiles.size <= 2 &&
   Object.values(byLens).every((d) => !d.open_questions.length))
-let plan = await run(sonnetPlans ? 'planner' : 'architect', planPrompt(), { phase: 'Plan', label: 'plan', schema: PLAN })
+const planRole = sonnetPlans ? 'planner' : 'architect'
+const planPick = sonnetPlans ? {} : { model: planModel }
+let planOnOpus = !sonnetPlans && planModel === 'opus'
+let opusDown = false
+let plan = await run(planRole, planPrompt(), { phase: 'Plan', label: 'plan', schema: PLAN, ...planPick })
 if (!plan && !sonnetPlans) {
   note('The Opus architect returned no plan. Sonnet makes the plan instead, and the review becomes mandatory.')
+  opusDown = true
+  planOnOpus = false
   plan = await run('planner', planPrompt(), { phase: 'Plan', label: 'plan:fallback', schema: PLAN })
   if (plan) bandReasons.push('review mandatory: Opus plan unavailable')
 }
@@ -368,8 +401,8 @@ if (plan.missing_evidence.length && !plan.evidence_blocking) {
     if (extra) {
       byLens.missing_evidence = extra
       refit()
-      const replan = await run(sonnetPlans ? 'planner' : 'architect', planPrompt('The previous plan asked for evidence. It is now in the "missing_evidence" lens above.\n\n'),
-        { phase: 'Plan', label: 'plan:with-evidence', schema: PLAN })
+      const replan = await run(planRole, planPrompt('The previous plan asked for evidence. It is now in the "missing_evidence" lens above.\n\n'),
+        { phase: 'Plan', label: 'plan:with-evidence', schema: PLAN, ...planPick })
       if (replan) plan = replan
     }
   }
@@ -379,9 +412,26 @@ if (plan.missing_evidence.length && !plan.evidence_blocking) {
   }
 }
 
-const planFiles = [...new Set(plan.workstreams.flatMap((w) => w.files))]
-raiseBand(classifyRisk(task + '\n' + plan.decisions.join('\n'), planFiles, { workstreams: plan.workstreams.length, unknowns: 0 }), 'Plan')
-if (BANDS.indexOf(plan.risk_class) > BANDS.indexOf(band)) raiseBand({ band: plan.risk_class, reasons: [`${plan.risk_class}: architect risk class`] }, 'Plan')
+function raiseFromPlan() {
+  const planFiles = [...new Set(plan.workstreams.flatMap((w) => w.files))]
+  raiseBand(classifyRisk(task + '\n' + plan.decisions.join('\n'), planFiles, { workstreams: plan.workstreams.length, unknowns: evidenceIncomplete ? plan.missing_evidence.length : 0 }), 'Plan')
+  if (BANDS.indexOf(plan.risk_class) > BANDS.indexOf(band)) raiseBand({ band: plan.risk_class, reasons: [`${plan.risk_class}: architect risk class`] }, 'Plan')
+}
+raiseFromPlan()
+// A Sonnet plan that turns out to be S3 does not stand. One Opus re-plan follows, never a loop.
+if (band === 'S3' && !planOnOpus && !opusDown) {
+  note('The Sonnet plan reached S3. Opus plans again, from what the Sonnet plan found.')
+  const stronger = await run('architect', planPrompt(`A Sonnet plan reached risk band S3, so you plan this instead. Its plan, for reference (JSON):\n${JSON.stringify(plan)}\n\n`),
+    { phase: 'Plan', label: 'plan:opus', schema: PLAN })
+  if (stronger) {
+    plan = stronger
+    evidenceIncomplete = Boolean(plan.evidence_blocking && plan.missing_evidence.length)
+    evidenceNotes = plan.evidence_blocking ? [] : plan.missing_evidence
+    raiseFromPlan()
+  } else {
+    note('The Opus re-plan returned nothing. The Sonnet plan stands.')
+  }
+}
 const planBrief = JSON.stringify({
   summary: plan.summary, decisions: plan.decisions, assumptions: plan.assumptions, forbidden_changes: plan.forbidden_changes,
   acceptance_criteria: plan.acceptance_criteria, validation_commands: plan.validation_commands, risks: plan.risks,
@@ -503,12 +553,13 @@ phase('Verify')
 let verify = null
 let verifyStatus = 'unverified'
 const verifyHistory = []
+const EXIT_RULE = 'Report every command you ran with its real exit code. Set expected_exit to 1 only on one plain grep, rg or diff that must find nothing. It counts nowhere else, so a test, build or type check that exits nonzero has failed.\n'
 for (let round = 1; round <= MAX_VERIFY_ROUNDS; round++) {
   const prior = verify ? `\n\nThe previous round left these failures:\n${JSON.stringify(verify.remaining_failures)}\nFixes already made: ${JSON.stringify(verify.fixes_made)}` : ''
   verify = await run('verifier',
     `Verify the change for this task:\n${task}\n\nAcceptance criteria (JSON):\n${JSON.stringify(plan.acceptance_criteria)}\n\nChanged files: ${changedFiles.join(', ') || '(use git status)'}\n` +
     `Validation commands: ${plan.validation_commands.join(' ; ') || '(find them in the repository)'}\n` +
-    'Report every command you ran with its real exit code. Use outcome "pre-existing" only for a failure you showed exists without this change.\n' +
+    EXIT_RULE + 'Use outcome "pre-existing" only for a failure you showed exists without this change.\n' +
     `This is verification round ${round} of ${MAX_VERIFY_ROUNDS}.${prior}\n${GIT_RULES}`,
     { phase: 'Verify', label: `verify:${round}`, schema: VERIFY })
   verifyStatus = verdictFromChecks(verify)
@@ -522,10 +573,12 @@ for (let round = 1; round <= MAX_VERIFY_ROUNDS; round++) {
 // ---------- Phase E: Review (Opus, evidence-first) ----------
 const highRisk = plan.risks.some((r) => r.severity === 'high')
 const mandatory = []
-if (BANDS.indexOf(band) >= 2) mandatory.push(`band ${band}`)
+// With review left out, an S2 forces it only through the infra rule, not through size.
+const infraRule = bandReasons.some((r) => r.includes('infrastructure or deployment'))
+if (reviewLeftOut ? band === 'S3' || infraRule : BANDS.indexOf(band) >= 2) mandatory.push(`band ${band}`)
 if (verifyStatus !== 'pass') mandatory.push(`verification ${verifyStatus}`)
 if (buildFailed) mandatory.push('a workstream did not finish')
-if (plan.review_required) mandatory.push('architect requested review')
+if (!reviewLeftOut && plan.review_required) mandatory.push('architect requested review')
 if (highRisk) mandatory.push('high-severity risk in plan')
 if (evidenceIncomplete) mandatory.push('plan evidence incomplete')
 for (const r of bandReasons) if (r.startsWith('review mandatory')) mandatory.push(r.replace('review mandatory: ', ''))
@@ -546,19 +599,44 @@ if (!needReview) {
     `Verification checks, as run (JSON):\n${JSON.stringify(verify ? verify.checks : [])}\nComputed verification result: ${verifyStatus}\n\n` +
     `Workstreams that did not finish (JSON):\n${JSON.stringify(Object.fromEntries(Object.entries(stopReasons)))}\n\n` +
     `Changed files (read the diff for these yourself): ${changedFiles.join(' ') || '(use git status)'}`,
-    { phase: 'Review', label: 'review', schema: REVIEW })
-  const blockers = review ? review.findings.filter((f) => f.severity === 'blocker') : []
-  if (blockers.length) {
-    note(`The reviewer found ${blockers.length} blocker(s). One Sonnet fix pass and one verification pass follow. Opus does not review again.`)
-    const fix = await run('implementer',
-      `Fix these review blockers. Change nothing else.\n\nTask:\n${task}\n\nBlockers (JSON):\n${JSON.stringify(blockers)}\n${GIT_RULES}`,
-      { phase: 'Review', label: 'fix:blockers', schema: IMPL })
-    const reverify = await run('verifier',
-      `Verify the blocker fixes and run the validation commands again, with real exit codes: ${plan.validation_commands.join(' ; ')}\nBlockers that were fixed (JSON):\n${JSON.stringify(blockers)}\n${GIT_RULES}`,
-      { phase: 'Review', label: 'verify:after-review', schema: VERIFY })
-    postReviewFix = { fix, verify: reverify, computed: verdictFromChecks(reverify) }
-    if (reverify) { verify = reverify; verifyStatus = postReviewFix.computed }
+    { phase: 'Review', label: 'review', schema: REVIEW, model: reviewModel })
+  // A defect gets fixed. An evidence gap is a fact nobody checked, so an implementer has nothing to
+  // change: it goes to the verifier. A finding with no kind counts as a defect.
+  const found = review ? review.findings : []
+  const toFix = found.filter((f) => f.kind !== 'evidence_gap' && (f.severity === 'blocker' || (f.severity === 'major' && ['correctness', 'security'].includes(f.area))))
+  const gaps = found.filter((f) => f.kind === 'evidence_gap' && f.severity !== 'minor')
+  if (toFix.length || gaps.length) {
+    note(`The reviewer found ${toFix.length} defect(s) to fix and ${gaps.length} evidence gap(s). One verification pass follows, after one Sonnet fix pass if a defect needs it. Opus does not review again.`)
+    const fix = !toFix.length ? null : await run('implementer',
+      `Fix these review defects. Change nothing else.\n\nTask:\n${task}\n\nDefects (JSON):\n${JSON.stringify(toFix)}\n${GIT_RULES}`,
+      { phase: 'Review', label: 'fix:review', schema: IMPL })
+    const verifyFixes = toFix.length
+      ? `Verify the defect fixes and run the validation commands again: ${plan.validation_commands.join(' ; ')}\nDefects that were fixed (JSON):\n${JSON.stringify(toFix)}\n`
+      : ''
+    const verifyGaps = gaps.length
+      ? `Settle these open facts from the code or with a command. Do not change code for them. Report each one as a check, with outcome "fail" only if it shows a real defect.\nOpen facts (JSON):\n${JSON.stringify(gaps)}\n`
+      : ''
+    const reverify = await run('verifier', verifyFixes + verifyGaps + EXIT_RULE + GIT_RULES,
+      { phase: 'Review', label: toFix.length ? 'verify:after-review' : 'verify:evidence-gaps', schema: VERIFY })
+    postReviewFix = { fix, defects: toFix.length, gaps: gaps.length, verify: reverify, computed: verdictFromChecks(reverify) }
+    // A gap pass runs only its own checks, so alone it can fail the run but never pass it.
+    if (reverify && (toFix.length || postReviewFix.computed === 'fail')) { verify = reverify; verifyStatus = postReviewFix.computed }
   }
+}
+
+// next_action tells the main session what to do with this result, so it does not redo finished work.
+function nextAction() {
+  if (verifyStatus === 'fail') {
+    return { do: 'fix_failed_checks', failing: verify.checks.filter(checkFailed).map((c) => c.cmd).slice(0, 5), why: 'The checks really failed. Fix only these, run them again, then report.' }
+  }
+  const open = []
+  if (verifyStatus !== 'pass') open.push('the change is unverified')
+  if (buildFailed) open.push('a workstream did not finish')
+  if (needReview && !review) open.push('the required review did not run')
+  const p = postReviewFix
+  if (p && p.defects && (!p.fix || p.fix.status !== 'done')) open.push('a review defect was not fixed')
+  else if (p && p.defects && !p.verify) open.push('the review fix was not verified')
+  return { do: 'report', why: `Report this result to the user. Do not edit, verify or review again.${open.length ? ` Say that ${open.join(' and ')}.` : ''}` }
 }
 
 // ---------- result ----------
@@ -583,6 +661,7 @@ return {
   review: review || (needReview ? { verdict: 'agent_failed' } : { verdict: 'skipped' }),
   review_reasons: needReview ? (mandatory.length ? mandatory : [`policy ${reviewPolicy}`]) : [],
   post_review_fix: postReviewFix,
+  next_action: nextAction(),
   model_calls: { by_model: byModel },
   trace,
   notes,

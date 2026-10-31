@@ -171,7 +171,7 @@ Each prompt takes one of four paths:
 - **Chat and non-code requests:** answered directly.
 - **Code changes with a clear goal:** Sonnet does them itself and must show a passing test or build before it says done.
 - **High-risk changes:** after the checks pass, one Opus reviewer checks the diff.
-- **Open-ended work:** the `automode:run` workflow runs.
+- **Open-ended work:** run `am:run <request>` for the `automode:run` workflow. Automatic entry is off by default (`autoWorkflow`).
 
 <p align="center">
   <img src="docs/readme/workflow.svg" alt="The workflow: risk band, discover, plan, build, verify, review" width="100%">
@@ -179,12 +179,12 @@ Each prompt takes one of four paths:
 
 | Stage | What runs |
 |---|---|
-| **Risk band** | Code, not a model. It sets S0 to S3 from the task text, the file paths, the module count and the unknowns. The band only goes up. |
+| **Risk band** | Code, not a model. It sets S0 to S3 from the task text, the planned and changed files, and blocking unknowns. The band only goes up. |
 | **Discover** | Haiku. One agent for S1. Three agents with separate scopes for S2 and S3. |
 | **Plan** | Opus. Workstreams, acceptance criteria and risks. |
 | **Build** | Sonnet. Workstreams that share files never run together. `maxConcurrency` defaults to 1. |
 | **Verify** | Sonnet runs the commands. Code decides pass or fail from the exit codes. At most 2 rounds. |
-| **Review** | Opus reads the diff. It is mandatory for S2 and S3, failed checks, unfinished work and incomplete evidence. |
+| **Review** | Opus reads the diff. It is mandatory for S2 and S3, failed checks, unfinished work and incomplete evidence. If the router leaves review out, size alone does not force it. Sonnet fixes blockers and major correctness or security defects. The verifier checks evidence gaps. |
 
 **The S3 rule.** If a prompt matches security or credentials, migrations or destructive operations, concurrency, external contracts, or payments and sensitive data, the Opus review is mandatory.
 
@@ -199,7 +199,7 @@ Each prompt takes one of four paths:
 | `implementer` | Sonnet | Read, Edit, Write, Grep, Glob, Bash | Builds one workstream. Edits only the files it owns. |
 | `verifier` | Sonnet | Read, Edit, Write, Grep, Glob, Bash | Runs tests, type check and build. Fixes defects the change introduced. |
 | `reviewer` | Opus | Read, Grep, Glob, Bash (git diff only) | Evidence-first review against the task. |
-| `diagnoser` | Haiku | Read, Grep, Glob | Reads a failing run and finds the cause. Changes nothing. |
+| `diagnoser` | Haiku, Sonnet when the task carries risk | Read, Grep, Glob | Reads a failing run and finds the cause. Changes nothing. |
 
 ## Guardian
 
@@ -221,6 +221,7 @@ Defaults live in [`config.json`](config.json). To override them, put a `config.j
 | `pickerModel` | `claude-sonnet-5-5[1m]` | The model ID for `activation: picker`. Claude Code 2.1.311 strips the suffix, so use `always` |
 | `policy` | `auto` | The routing policy |
 | `defaultPath` | `direct` | `workflow` sends every standard task through the workflow |
+| `autoWorkflow` | `false` | `true` lets the router enter the workflow by itself. `am:run` works either way. Decision records show what entry would have done |
 | `reviewPolicy` | `risk` | `always` adds an Opus review to every change |
 | `maxConcurrency` | `1` | Workstreams built at once (maximum 2) |
 | `blockGitWritesWhenActive` | `true` | Deny git writes from subagents |

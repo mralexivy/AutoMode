@@ -30,7 +30,7 @@ import { DEFAULT_PARAMS, remainingFor } from './lib/policy.ts'
 import { continuity, noteDrop, observedDrop } from './lib/continuity.ts'
 import { accrueRent, type Rent } from './lib/rent.ts'
 import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
-import { choose, consultOrSwitch, workFromFiles, type StrategyChoice } from './lib/strategy.ts'
+import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, summaryOf, withReview } from './lib/envelope.ts'
 import { checkPassed, escalation, evidencePacket, failureOf, fnv1a, isCheck, markFlaky, withPipefail } from './lib/failures.ts'
 import { guardTool, READ_ONLY_AGENTS, subagentBlocked } from './lib/guard.ts'
@@ -38,8 +38,8 @@ import { BUDGET_STOP, clampGrep, clampRead, diagnosePrompt, DISCOVERY_REPORT, HA
 import { decisionRecord, needRecord, nextSignal, outcomeRecord, requestRecord, shouldRotate, type NeedRecord } from './lib/records.ts'
 import { adequacy, attemptCost, CAPABILITY, DEFAULT_PRIORS, demandOf, FLOOR_CAPABILITY, mid, optimize, TASK_STEPS, tierOf, type Choice, type Demand, type Priors } from './lib/optimizer.ts'
 import { trigger, type Trigger } from './lib/triggers.ts'
-import { stagesFor } from './lib/stages.ts'
-import { subagentRoute } from './lib/subagents.ts'
+import { workflowArgs } from './lib/stages.ts'
+import { subagentEffort, subagentRoute } from './lib/subagents.ts'
 import { effortFor, helperEffort, takesEffort, looksLikeRedo, maxEffort, midTurnNote, REDO_STAY_PROMPTS, thinkingOf } from './lib/effort.ts'
 import { effortSharesCache, modeOf, providerOf, thinkingRisk, ttlMs, type ProviderEnv } from './lib/mode.ts'
 import { bounded, helperFloor, helperQuestion, JUDGE_CALL, JUDGE_SYSTEM as EFFORTLESS_SYSTEM, keepsEffort, parseVerdict } from './lib/effortless.ts'
@@ -54,6 +54,8 @@ import { sid, fsRead, sessionModel, fsWrite } from './lib/io.ts'
 
 const V4_DEFAULTS = {
   router: 'classic', mode: 'shadow' as Mode, activation: 'always' as 'always' | 'picker', pickerModel: 'claude-sonnet-5-5[1m]', workflowName: 'automode:run',
+  // Automatic workflow entry stays off until a benchmark shows value. am:run always works.
+  autoWorkflow: false,
   standardMode: 'discover', reviewPolicy: 'risk', maxConcurrency: 1, judgeModel: 'haiku', judgeVersion: 2, judgeTimeoutMs: 8000,
   compactWith: 'haiku', compactModel: 'claude-haiku-5-5', redirectExplore: true, workerTools: true, workerDeadlineMs: 180_000,
   // Opt-in: route built-in subagents (lib/subagents.ts) in every session, not only while AutoMode is the model. Needs no
@@ -142,6 +144,8 @@ const S = {
   preflight: undefined as number | null | undefined, // the first request's raw size from the composed prompt and tools; undefined until computed
   prefixEstimate: null as number | null, // the median first-request prompt size of earlier sessions, measured
   firstPrefixSaved: false,
+  workflowPending: null as null | { taskId: string; source: 'user' | 'auto'; called: boolean }, // this turn's prompt chose the workflow
+  workflowRanTask: undefined as string | undefined, // the task the workflow last ran on
   consulted: [] as string[], // failure fingerprints an Opus consult already answered: the next repeat switches
   consultCounts: {} as Record<string, number>, // failures of that fingerprint when the consult ran
   resolvedCounts: {} as Record<string, number>, // policy auto: failures of that fingerprint when its command passed again
@@ -494,6 +498,7 @@ interface Decision {
   consult?: string // an Opus architect consult replaces a switch: the evidence packet it gets
   costTotal?: { mainUsd: number; switchUsd: number; judgeUsd: number; reviewRequired: boolean; consult: boolean; basis: 'estimate'; excluded: string }
   firstRequest?: { tokens: number; source: string } // the prompt size the first route was priced on, and where it came from
+  workflow?: WorkflowValue // the automatic entry check, kept when a signal fired
   compare?: { policy: 'legacy' | 'auto'; route: string; inadequate?: boolean; band?: number }
   inadequate?: { need: number; shortfall: number; route: string }
   auto?: AutoRecord
@@ -605,9 +610,8 @@ async function decide($: EngineInterface, text: string, midTurn: boolean, attach
   // Decision B. Work size: unknown before reading, so a conservative guess from the judge's view.
   const hint: Strategy | null = S.planMode ? 'direct' : override?.strategy ?? answer?.strategy ?? null
   const work = hint === 'isolated-worker' ? { p50: 40_000, p75: 80_000, source: 'estimate: judge marked large exploration' } : workFromFiles([], text.length)
-  // The workflow needs a purpose beyond "complex": critical multi-module work, where its plan and review pay.
-  const purpose = answer?.strategy === 'engineering-workflow' && answer.complexity === 'complex' && env.risk.effective === 'critical' && answer.confidence >= 0.8 ? 'critical multi-module work: plan, build, verify and review' : null
-  const strategy = choose({ hint, workflowPurpose: purpose, risk: env.risk.effective, designDecision: routed.tier === 'T3' && (answer?.complexity === 'complex'), main: routed.family, worker: 'haiku', cache: cacheState(), work, outputTokens: 1_500, prices: prices() }, answer?.confidence ?? 0.5)
+  const entry = entryValue(answer, env)
+  const strategy = choose({ hint, workflowPurpose: entry.purpose, risk: env.risk.effective, designDecision: routed.tier === 'T3' && (answer?.complexity === 'complex'), main: routed.family, worker: 'haiku', cache: cacheState(), work, outputTokens: 1_500, prices: prices() }, answer?.confidence ?? 0.5)
 
   const injected = injection(env, reason, S.lastSummary)
   // An explicit user strategy (am:explore, am:run, am:direct) is final, like a model override.
@@ -626,6 +630,7 @@ async function decide($: EngineInterface, text: string, midTurn: boolean, attach
   return {
     route: routed, strategy: chosen, strategyChoice: strategy, method, judge: judgeInfo, answer, newTask: boundary, contextNote: injected, optimizer: opt, redo,
     ...(consult ? { consult } : {}),
+    ...(entry.reasons.length ? { workflow: entry } : {}),
     ...(costTotal ? { costTotal } : {}),
     ...(override ? { override: { source: /^am:/i.test(text) ? 'am-command' as const : 'typed-command' as const, scope: 'turn' as const } } : {}),
     ...(tr && tr.kind !== 'ambiguous' ? { transition: tr.kind } : {}),
@@ -1051,8 +1056,8 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   // Decision B, the header and the records: as legacy.
   const hint: Strategy | null = S.planMode ? 'direct' : override?.strategy ?? answer?.strategy ?? null
   const work = hint === 'isolated-worker' ? { p50: 40_000, p75: 80_000, source: 'estimate: judge marked large exploration' } : workFromFiles([], text.length)
-  const purpose = answer?.strategy === 'engineering-workflow' && answer.complexity === 'complex' && env.risk.effective === 'critical' && answer.confidence >= 0.8 ? 'critical multi-module work: plan, build, verify and review' : null
-  const strategy = choose({ hint, workflowPurpose: purpose, risk: env.risk.effective, designDecision: routed.tier === 'T3' && answer?.complexity === 'complex', main: routed.family, worker: 'haiku', cache: cacheState(), work, outputTokens: 1_500, prices: prices() }, answer?.confidence ?? 0.5)
+  const entry = entryValue(answer, env)
+  const strategy = choose({ hint, workflowPurpose: entry.purpose, risk: env.risk.effective, designDecision: routed.tier === 'T3' && answer?.complexity === 'complex', main: routed.family, worker: 'haiku', cache: cacheState(), work, outputTokens: 1_500, prices: prices() }, answer?.confidence ?? 0.5)
   const injected = injection(env, reason, S.lastSummary)
   const chosen: Strategy = override?.strategy ?? strategy.chosen
   const needBand = hm ? TIER_BAND[hm.tier] : 0
@@ -1063,6 +1068,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   return {
     route: routed, strategy: chosen, strategyChoice: strategy, method, judge: judgeInfo, answer, newTask: boundary, contextNote: injected, optimizer: null, redo,
     ...(consult ? { consult } : {}),
+    ...(entry.reasons.length ? { workflow: entry } : {}),
     costTotal: { mainUsd: round6(mainUsd !== undefined && Number.isFinite(mainUsd) ? mainUsd : choice.best.attemptUsd), switchUsd: round6(routed.check?.estUsd ?? 0), judgeUsd: round6(judgeInfo?.usd ?? 0), reviewRequired: env.reviewRequired.value, consult: !!consult, basis: 'estimate', excluded: 'retries and rework (no outcome data); subagents and reviews are route-independent' },
     ...(override ? { override: { source: /^am:/i.test(text) ? 'am-command' as const : 'typed-command' as const, scope: 'turn' as const } } : {}),
     ...(tr && tr.kind !== 'ambiguous' ? { transition: tr.kind } : {}),
@@ -1165,6 +1171,21 @@ function heldEffortFor(demand: Demand, floor: { tier: Tier }, at: number, opt: C
   return held.best.feasible ? held.best.effort : undefined
 }
 
+// entryValue: the one automatic workflow entry check (lib/strategy.ts), for both policies.
+function entryValue(answer: JudgeAnswer | null, env: TaskEnvelope): WorkflowValue {
+  return workflowValue({
+    autoWorkflow: S.cfg.autoWorkflow, alreadyRan: S.workflowRanTask === env.taskId, judged: answer?.strategy, complexity: answer?.complexity,
+    risk: env.risk.effective, confidence: answer?.confidence ?? 0, failures: substantiveFailures(env), editedPaths: env.editedPaths, root: S.cwd,
+  })
+}
+
+// noteWorkflowCall: the main session did call the workflow the router chose. Another workflow does not
+// count. A spawn names only its agent type, so there the mod's own agent prefix stands for the workflow.
+function noteWorkflowCall() {
+  if (S.workflowPending) S.workflowPending.called = true
+  S.workflowRanTask = S.envelope?.taskId
+}
+
 // needsGuidance: guidance goes in only when it changes what the model should do.
 function needsGuidance(d: Decision, env: TaskEnvelope): boolean {
   if (d.strategy !== 'direct') return true
@@ -1182,8 +1203,11 @@ function routeHeader(d: Decision, env: TaskEnvelope): string {
   if (d.inadequate) lines.push(`No available model meets this task's need (band ${d.inadequate.need}; ${d.inadequate.route} is ${d.inadequate.shortfall} band${d.inadequate.shortfall === 1 ? '' : 's'} short). Treat the result as unverified: run the checks and get the independent review before you call it done, and tell the user about this limit.`)
   if (d.strategy === 'isolated-worker' && S.cfg.workerTools) lines.push(delegation('discover', env))
   if (d.strategy === 'engineering-workflow') {
-    const stages = S.lastDemand ? stagesFor(S.lastDemand, { userAsked: d.method === 'override' || /^am:run\b/i.test(env.spec.text.trim()) }) : undefined
-    lines.push(`This is open-ended multi-module work. Run Workflow({ name: "${S.cfg.workflowName}", args: { task: "<the full task with every constraint>", tier: "${env.risk.effective === 'critical' ? 'critical' : 'complex'}", mode: "${S.cfg.standardMode}", reviewPolicy: "${env.reviewRequired.value ? 'always' : S.cfg.reviewPolicy}", maxConcurrency: ${S.cfg.maxConcurrency}${stages ? `, stages: ${JSON.stringify(stages)}` : ''} } }) and do not implement it yourself until it returns.`)
+    const args = workflowArgs({
+      demand: S.lastDemand, userAsked: d.method === 'override' || /^am:run\b/i.test(env.spec.text.trim()), risk: env.risk.effective, complexity: env.complexity,
+      reviewRequired: env.reviewRequired.value, mode: S.cfg.standardMode, reviewPolicy: S.cfg.reviewPolicy, maxConcurrency: S.cfg.maxConcurrency,
+    })
+    lines.push(`This is open-ended multi-module work. Run Workflow({ name: "${S.cfg.workflowName}", args: ${JSON.stringify(args)} }) and do not implement it yourself until it returns. Then follow its next_action: report the result, and change code only if next_action says the checks failed.`)
   }
   if (d.strategy !== 'engineering-workflow' && (env.complexity !== 'trivial' || env.risk.effective !== 'none')) lines.push('Before you call a change done, run the relevant tests or build and show that they pass.')
   if (env.reviewRequired.value && d.strategy !== 'engineering-workflow') lines.push('After your checks pass, call the Agent tool with subagent_type "automode:reviewer" (Opus, read-only) and wait for it. Give it the original request, the acceptance criteria, each check with its output, and the changed files. Fix every blocker, run the checks again, and do not call it a second time.')
@@ -1414,6 +1438,7 @@ function pushDecision(point: 'prompt' | 'compact' | 'escalation' | 'spawn' | 'tr
     ...(d?.override ? { override: d.override } : {}),
     ...(d?.transition ? { transition: d.transition } : {}),
     ...(d?.stage ? { stage: d.stage } : {}),
+    ...(d?.workflow ? { workflow: d.workflow } : {}),
     ...(d?.firstRequest ? { firstRequest: d.firstRequest } : {}),
     ...(d?.costTotal ? { costTotal: d.costTotal } : {}),
     ...(d?.compare ? { compare: d.compare } : {}),
@@ -1517,6 +1542,7 @@ export async function v4PromptSubmit($: EngineInterface, e: any, next: any) {
     $.ui.toast(`AutoMode: no available model fully meets this task (${d.inadequate.shortfall} band short). Running ${d.inadequate.route}. Checks and review stay required.`)
   }
   statusLine($, d.route)
+  if (d.strategy === 'engineering-workflow') S.workflowPending = { taskId: env.taskId, source: d.override ? 'user' : 'auto', called: false }
   pushDecision('prompt', d, true, at, e.turnId)
   noteVerdict(d)
   await publish($)
@@ -1773,6 +1799,11 @@ export async function v4TurnComplete($: EngineInterface, e: any, next: any) {
   const at = await now($)
   const requests = S.turnRequests.get(e.turnId) ?? 0
   S.turnRequests.delete(e.turnId)
+  // The router chose the workflow: did the main session call it? "called: false" is routing that only advised.
+  if (S.workflowPending) {
+    S.records.push({ v: 1, kind: 'workflow-entry', at, sessionId: S.sessionId, turnId: e.turnId, ...S.workflowPending })
+    S.workflowPending = null
+  }
   // The turn was aborted by the person: a no-response request in it was an interrupt, not a refusal.
   if ((e.isAborted || e.reason === 'aborted') && S.lastNoResponse && S.lastNoResponse.turnId === e.turnId) {
     const k = S.lastNoResponse.key
@@ -1814,6 +1845,7 @@ export async function v4TurnComplete($: EngineInterface, e: any, next: any) {
 }
 
 export async function v4AgentSpawn($: EngineInterface, e: any, next: any) {
+  if (e.workflow && String(e.subagentType).startsWith(`${S.cfg.workflowName.split(':')[0]}:`)) noteWorkflowCall()
   if (S.mode === 'off') return next(e)
   if (!(await activeV4($))) return S.cfg.subagentsEverySession && S.mode === 'auto' ? spawnOutsideAutoMode($, e, next) : next(e)
   if (S.mode === 'shadow') {
@@ -1835,23 +1867,25 @@ export async function v4AgentSpawn($: EngineInterface, e: any, next: any) {
     }
     return res
   }
-  // Built-in general-purpose subagents of an Opus session run on Sonnet at the task's effort.
-  const sr = subagentRoute({ type: e.subagentType, explicitModel: e.model, parentFamily: familyOf(e.parentModel ?? S.current?.model ?? ''), demand: S.lastDemand })
-  if (sr) {
+  // Built-in general-purpose subagents of an Opus session run on Sonnet at the task's effort. Task risk raises that.
+  const sr = subagentRoute({ type: e.subagentType, explicitModel: e.model, parentFamily: familyOf(e.parentModel ?? S.current?.model ?? ''), demand: S.lastDemand, risk: S.envelope?.risk.effective, prompt: String(e.prompt ?? '') })
+  if (sr && !WORKERS[e.subagentType]) {
     // Policy auto: the subagent's own task is judged for its own model (upstream helpers); the thresholds stay legacy's.
     const hp = S.policy === 'auto' ? await helperPick($, e, sr.model === 'haiku' ? 'claude-haiku-5-5' : 'claude-sonnet-5-5') : null
-    const effort = hp?.effort ?? sr.effort
+    const effort = subagentEffort(sr.effort, hp?.effort)
     const res = await next({ ...e, model: sr.model })
     if (res?.agentId) S.agents.set(res.agentId, { type: e.subagentType, effort, routed: true, judged: !!hp })
     noteAgent(res, e, sr.model, true, effort)
-    S.records.push({ v: 1, kind: 'spawn', at: await now($), sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', type: e.subagentType, from: e.parentModel ?? null, to: sr.model, effort, why: hp?.why ?? sr.why, agentId: res?.agentId })
+    S.records.push({ v: 1, kind: 'spawn', at: await now($), sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', type: e.subagentType, from: e.parentModel ?? null, to: sr.model, effort, why: effort === sr.effort ? sr.why : hp?.why ?? sr.why, agentId: res?.agentId })
     return res
   }
-  const hp = S.policy === 'auto' ? await helperPick($, e, e.model) : null
-  const res = await next(e)
-  if (res?.agentId) S.agents.set(res.agentId, { type: e.subagentType, routed: false, ...(hp ? { effort: hp.effort, judged: true } : {}) })
-  noteAgent(res, e, e.model, false, hp?.effort)
-  if (hp && res?.agentId) S.records.push({ v: 1, kind: 'spawn', at: await now($), sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', type: e.subagentType, to: e.model ?? null, effort: hp.effort, why: hp.why, agentId: res.agentId })
+  // A worker keeps the guards below, so a route changes only its model.
+  const model = sr?.model ?? e.model
+  const hp = S.policy === 'auto' ? await helperPick($, e, model) : null
+  const res = await next(sr ? { ...e, model } : e)
+  if (res?.agentId) S.agents.set(res.agentId, { type: e.subagentType, routed: !!sr, ...(hp ? { effort: hp.effort, judged: true } : {}) })
+  noteAgent(res, e, model, !!sr, hp?.effort)
+  if (hp && res?.agentId) S.records.push({ v: 1, kind: 'spawn', at: await now($), sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', type: e.subagentType, to: model ?? null, effort: hp.effort, why: hp.why, agentId: res.agentId })
   // Every agent the session starts is recorded with its type, so required-review completion can be measured.
   if (res?.agentId) S.records.push({ v: 1, kind: 'agent', at: await now($), sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', type: e.subagentType, agentId: res.agentId })
   if (S.cfg.debugLog) S.records.push({ v: 1, kind: 'debug-spawn', type: e.subagentType, model: e.model, resKeys: res ? Object.keys(res) : null, agentId: res?.agentId })
@@ -1887,6 +1921,7 @@ export async function v4ToolCall($: EngineInterface, e: any, next: any) {
     }
     return next(e)
   }
+  if (e.tool === 'Workflow' && input.name === S.cfg.workflowName) noteWorkflowCall()
   // Main session: the worker calls the router asked for.
   // Discovery reuse (advisory): a new exploration is told what the task's earlier discoveries covered.
   const exploring = e.tool === 'Agent' && (input.subagent_type === 'Explore' || input.subagent_type === 'automode:explorer') && S.envelope
@@ -1899,7 +1934,8 @@ export async function v4ToolCall($: EngineInterface, e: any, next: any) {
     const taskId = S.envelope.taskId
     // Foreground, so the report is this tool's result (this Claude Code starts agents in the background).
     S.expectWorker += 1
-    const out = await next({ ...e, ...withReuse, model: 'haiku', run_in_background: false } as never)
+    const workerModel = subagentRoute({ type: String(input.subagent_type), parentFamily: null, demand: null, risk: S.envelope.risk.effective })?.model ?? 'haiku'
+    const out = await next({ ...e, ...withReuse, model: workerModel, run_in_background: false } as never)
     if (S.cfg.debugLog) S.records.push({ v: 1, kind: 'debug-agent', keys: Object.keys(out), resultType: typeof out.result, sample: JSON.stringify(out.result ?? out.text ?? '').slice(0, 200) })
     if (out.deny) return out
     const text = resultText(out)
@@ -2269,7 +2305,7 @@ function freshSession() {
     toldJudgeDown: false, taskSeq: 0, lastOutcome: null, sessionId: 'unknown', restored: false, expectWorker: 0,
     warm: {}, turnRequests: new Map(), stayUp: 0, redoFloor: null, heldRoute: null, planMode: false, planExited: false, editLog: [],
     consulted: [], consultCounts: {}, resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
-    compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0,
+    compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
     judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, judgeRiskTask: undefined,
     preflight: undefined, breakers: {}, lastNoResponse: null, failures: [], pendingErrors: [], signalErrorAt: 0, signalMode: '', compactionPricedAt: 0, haikuOutUntilCompaction: false, lastWorkBand: undefined, effortUnsupported: false, thinkingRisk: false, toldErrorClass: '', toldBreaker: false, firstPrefixSaved: false, inadequate: null, toldInadequateTask: '',
