@@ -66,7 +66,7 @@ describe('Scenarios A-F', () => {
     await h.complete($, 'claude-opus-5-5')
     await h.clock.advance(2 * HOUR)
     await h.submit($, 'add a --verbose flag to the usage command')
-    await h.step($, 'claude-opus-5-5', undefined, { turnId: 't2' })
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't2' })
     await h.complete($)
     const d = decisions(records(h.writes))[1]
     expect(d.effective.model).toBe('claude-sonnet-5-5')
@@ -205,7 +205,7 @@ describe('Adaptive edges', () => {
     await h.step($)
     await h.complete($, 'claude-haiku-5-5')
     await h.submit($, 'add a --dry-run flag to the setup command')
-    await h.step($, 'claude-haiku-5-5', undefined, { turnId: 't2' })
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't2' })
     expect(h.steps[1].model).toBe('claude-sonnet-5-5')
     const d = records(h.writes).filter((x) => x.kind === 'decision')[1]
     expect(d.effective.owner).toBe('quality-escalation')

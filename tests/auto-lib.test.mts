@@ -4,7 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { optimizeAuto, eligibilityOf, effortlessFloor, firstCalls, runningRuledOut, secondCall, fallbackModel, escalationTarget, decisionRequired, shortcutApplies, fallbackEffort, legalEffort } from '../hooks/lib/auto.ts'
+import { optimizeAuto, eligibilityOf, effortlessFloor, firstCalls, runningRuledOut, secondCall, fallbackModel, decisionRequired, shortcutApplies, fallbackEffort, legalEffort } from '../hooks/lib/auto.ts'
 import { resolve } from '../hooks/lib/authority.ts'
 import { ANTHROPIC } from '../hooks/lib/prices.ts'
 import { judgeInputFor, contextOf, NEED_ANCHOR, PLAN_LINE, CLOSING_LINE, stripReminders } from '../hooks/lib/effortless-adapt.ts'
@@ -250,15 +250,6 @@ test('nothing eligible: the strongest available, labeled inadequate', () => {
 test('a cost tie keeps the running model', () => {
   const c = optimizeAuto(base({ hm: hmOf('T0', 'trivial'), current: { family: 'sonnet', effort: 'medium' }, cost: () => 1, need: v('haiku', 'low'), verdicts: { sonnet: v('haiku', 'medium'), haiku: v('haiku', 'medium') } }))
   assert.equal(c.best.family, 'sonnet')
-})
-
-test('escalation: one step up, never past its tier; no max after two failures on high', () => {
-  assert.deepEqual(escalationTarget({ family: 'opus', effort: 'high' }, 'T4', ['sonnet', 'opus']), { family: 'opus', effort: 'xhigh', band: 4 })
-  assert.deepEqual(escalationTarget({ family: 'opus', effort: 'xhigh' }, 'T4', ['sonnet', 'opus']), { family: 'opus', effort: 'max', band: 5 })
-  assert.deepEqual(escalationTarget({ family: 'sonnet', effort: 'medium' }, 'T3', ['sonnet', 'opus']), { family: 'sonnet', effort: 'high', band: 2 })
-  assert.deepEqual(escalationTarget({ family: 'sonnet', effort: 'high' }, 'T3', ['sonnet', 'opus']), { family: 'opus', effort: 'high', band: 3 })
-  assert.equal(escalationTarget({ family: 'opus', effort: 'high' }, 'T3', ['sonnet', 'opus']).effort, 'high', 'a T3 floor does not raise Opus high')
-  assert.deepEqual(escalationTarget({ family: 'opus', effort: 'xhigh' }, 'T3', ['sonnet', 'opus']), { family: 'opus', effort: 'xhigh', band: 4 }, 'never lower than the running route')
 })
 
 test('resolution step 4 and 5: the shortcut never skips a required decision or a closing remark', () => {

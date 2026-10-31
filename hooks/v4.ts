@@ -23,8 +23,8 @@ import { isTask, JUDGE_SYSTEM, JUDGE_SYSTEM_V3, JUDGE_SYSTEM_V4, judgePrompt, pa
 import { transitionOf } from './lib/transition.ts'
 import { classifyError, sanitizeDetail, UNCLASSIFIED } from './lib/errors.ts'
 import { stageOf, type Stage } from './lib/stage.ts'
-import { BAND_OF, bandOf, demandBand, TIER_BAND } from './lib/bands.ts'
-import { interfaceChanges, observedRisk, prospectiveRisk } from './lib/risk.ts'
+import { BAND_OF, bandOf, demandBand, ladderStep, nextEffort, TIER_BAND } from './lib/bands.ts'
+import { DEFAULT_LARGE, interfaceChanges, observedRisk, prospectiveRisk, reviewerFamily } from './lib/risk.ts'
 import { textConsequence } from './lib/consequence.ts'
 import { DEFAULT_PARAMS, remainingFor } from './lib/policy.ts'
 import { continuity, noteDrop, observedDrop } from './lib/continuity.ts'
@@ -32,7 +32,9 @@ import { accrueRent, type Rent } from './lib/rent.ts'
 import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, summaryOf, withReview } from './lib/envelope.ts'
-import { checkPassed, escalation, evidencePacket, failureOf, fnv1a, isCheck, markFlaky, withPipefail } from './lib/failures.ts'
+import { checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, reviewerBlocked, scopeGrew, withPipefail } from './lib/failures.ts'
+import { classifyOperation } from './lib/operations.ts'
+import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
 import { guardTool, READ_ONLY_AGENTS, subagentBlocked } from './lib/guard.ts'
 import { BUDGET_STOP, clampGrep, clampRead, diagnosePrompt, DISCOVERY_REPORT, HAIKU_BUDGET, priorCoverage, validateReport } from './lib/workers.ts'
 import { decisionRecord, needRecord, nextSignal, outcomeRecord, requestRecord, shouldRotate, type NeedRecord } from './lib/records.ts'
@@ -44,7 +46,7 @@ import { effortFor, helperEffort, takesEffort, looksLikeRedo, maxEffort, midTurn
 import { effortSharesCache, modeOf, providerOf, thinkingRisk, ttlMs, type ProviderEnv } from './lib/mode.ts'
 import { bounded, helperFloor, helperQuestion, JUDGE_CALL, JUDGE_SYSTEM as EFFORTLESS_SYSTEM, keepsEffort, parseVerdict } from './lib/effortless.ts'
 import { contextOf, judgeInputFor, NEED_ANCHOR } from './lib/effortless-adapt.ts'
-import { decisionRequired, escalationTarget, fallbackEffort, fallbackModel, firstCalls, legalEffort, optimizeAuto, ownEffort, runningRuledOut, secondCall, shortcutApplies, type AutoChoice, type AutoFloors, type FamilyVerdict } from './lib/auto.ts'
+import { decisionRequired, fallbackEffort, fallbackModel, firstCalls, legalEffort, optimizeAuto, ownEffort, runningRuledOut, secondCall, shortcutApplies, type AutoChoice, type AutoFloors, type FamilyVerdict } from './lib/auto.ts'
 import { COMPACT_SYSTEM, transcriptOf } from './lib/compact.ts'
 import { routerOverrides } from './lib/settings.ts'
 import { currentOptions, storedOptions } from './options.ts'
@@ -92,7 +94,7 @@ const S = {
   lastSummary: '', resetPending: true, votes: { tier: null as Tier | null, n: 0 },
   requestsSinceSwitch: 0, verifiedSinceSwitch: false, cache: null as CacheState | null,
   lastReply: '', lastPromptText: '', turnPrompt: new Map<string, { text: string; at: number }>(),
-  workers: new Map<string, { type: string; tokens: number; stop: boolean; validate?: boolean }>(),
+  workers: new Map<string, { type: string; tokens: number; stop: boolean; validate?: boolean; workflow?: boolean }>(),
   lastCheck: null as null | { command: string; passed: boolean },
   editedSinceCheck: false, records: [] as unknown[], toldJudgeDown: false, taskSeq: 0,
   lastOutcome: null as null | { turnId: string; taskId: string },
@@ -136,6 +138,10 @@ const S = {
   sessionModel: undefined as string | undefined, // the session's model before the first request
   pinFamily: undefined as Family | undefined, // set by /model: routing keeps this model until am:reset
   pinEffort: undefined as Effort | undefined, // set by /effort: routing keeps this effort until am:reset
+  turnOverride: null as Pins | null, // what an am: command fixed for this turn: it beats a pin
+  unroutable: false,          // the app's model is not one this router runs: requests pass through unrewritten
+  appPlan: false,             // plan mode at the last main request: leaving it changes the app's model too
+  ladderNote: null as string | null, // an escalation note for the next main tool result or prompt
   judgeRiskTask: undefined as string | undefined, // the task whose risk a failed judge raised, until a judge answers
   toldPolicy: false,
   judgeBreaker: {} as Partial<Record<'effortless' | 'automode', { failures: number; until: number }>>,
@@ -477,7 +483,8 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
     // The text and path layers run on every message: a short message or a silent judge must not skip them.
     const judged = answer ? maxRisk(answer.risk, answer.consequence ?? 'none') : 'none'
     const risk = prospectiveRisk(text, answer && judged !== 'none' ? { risk: judged, why: answer.riskWhy } : null)
-    if (judged !== 'none' || risk.level === 'critical') S.envelope = withReview({ ...S.envelope, risk: { ...S.envelope.risk, prospective: risk, effective: risk.level === 'critical' ? 'critical' : S.envelope.risk.effective } }, 'none', false)
+    const routing = risk.routing ?? risk.level
+    if (judged !== 'none' || routing === 'critical') S.envelope = withReview({ ...S.envelope, risk: { ...S.envelope.risk, prospective: risk, effective: routing === 'critical' ? 'critical' : S.envelope.risk.effective } }, 'none', false)
   }
   if (answer && S.envelope && S.judgeRiskTask === S.envelope.taskId) {
     if (S.envelope.risk.effective === 'elevated') S.envelope = { ...S.envelope, risk: { ...S.envelope.risk, effective: maxRisk(S.envelope.risk.prospective.level, S.envelope.risk.observed?.level ?? 'none') } }
@@ -514,7 +521,7 @@ async function decide($: EngineInterface, text: string, midTurn: boolean, attach
   const tr = attachments ? null : transitionOf(text, S.lastReply)
   // effortless redo: the last answer was not good enough, so stay at least one step up for a while.
   const redo = !!S.current && looksLikeRedo(text)
-  if (override?.reset) { S.stayUp = 0; S.redoFloor = null }
+  if (override?.reset) { S.stayUp = 0; S.redoFloor = null; S.pinFamily = undefined; S.pinEffort = undefined }
   const followUp = !!tr && tr.bypassJudge && !!S.envelope && !redo && !override?.reset
   if (redo) { S.stayUp = REDO_STAY_PROMPTS; S.redoFloor = TIER_ORDER[Math.min(4, tierRank(S.current!.tier) + 1)] }
   else if (S.stayUp > 0) S.stayUp -= 1
@@ -726,18 +733,10 @@ async function effortlessJudge($: EngineInterface, family: Family, prompt: strin
 const normalizeText = (t: string) => t.trim().toLowerCase().replace(/\s+/g, ' ')
 const CHEAPER: Record<Family, Family[]> = { haiku: [], sonnet: ['haiku'], opus: ['haiku', 'sonnet'] }
 
-// escalationStep: the defect escalation the task's failures ask for now, as one step from the running route.
+// escalationStep: the floor the ladder set for this task, until a check passes.
 function escalationStep(env: TaskEnvelope, allowed: Family[]): { family: Family; effort: Effort; band: number; because: string } | null {
-  if (!S.current) return null
-  let esc = escalation(env.failures, S.current.tier)
-  const last = env.failures[env.failures.length - 1]
-  if (esc.floor && last && S.consultCounts[last.fingerprint] !== undefined && env.failures.filter((f) => f.fingerprint === last.fingerprint).length <= S.consultCounts[last.fingerprint]) esc = { ...esc, floor: null }
-  if (esc.floor && last && S.resolvedCounts[last.fingerprint] !== undefined && env.failures.filter((f) => f.fingerprint === last.fingerprint).length <= S.resolvedCounts[last.fingerprint]) esc = { ...esc, floor: null }
-  if (!esc.floor) return null
-  const running = { family: S.current.family, effort: runningEffort()! }
-  const t = escalationTarget(running, esc.floor, allowed)
-  if (BAND_OF[t.family][t.effort] <= BAND_OF[running.family][running.effort]) return null
-  return { ...t, because: esc.because }
+  const floor = env.ladder?.floor
+  return floor && (!allowed.length || allowed.includes(floor.family)) ? floor : null
 }
 
 // autoFloors: the mandatory-quality step as constraints on the candidates, and the same as a tier floor for resolve().
@@ -793,31 +792,66 @@ function autoCost(complexity: Complexity, at: number) {
 
 const appFamily = (): Family => familyOf(S.appModel ?? '') ?? familyOf(S.sessionModel ?? '') ?? familyOf(S.current?.model ?? '') ?? 'sonnet'
 
-// noteAppChoice reads the app's own model and effort, which ride on every main request. A change the mod did not make
-// is the person's /model or /effort: it stands for the session, until am:reset.
-function noteAppChoice($: EngineInterface, e: any) {
-  const family = familyOf(String(e.model ?? ''))
-  if (S.appModel && family && family !== familyOf(S.appModel) && family !== S.current?.family && family !== S.pinFamily) {
-    S.pinFamily = family
-    $.ui.toast(`AutoMode: you chose ${family}, so model routing is off. Type am:reset to turn it back on.`)
+// noteAppChoice reads the app's own model and effort, which ride on every main request (lib/pins.ts). A change the mod
+// did not make is the person's /model or /effort: it stands for the session, until am:reset. Each pin leaves a `pin`
+// record, and `echo` says the new value equals what this mod sent: a live run shows there whether detection misfired.
+async function noteAppChoice($: EngineInterface, e: any, at: number) {
+  const c = readAppChoice({ model: S.appModel, effort: S.appEffort }, e, { family: S.pinFamily, effort: S.pinEffort }, S.planMode || S.appPlan !== S.planMode)
+  S.appPlan = S.planMode
+  const from = { model: S.appModel ?? null, effort: S.appEffort ?? null }
+  // A request can name a fallback's model. Only a session that moved too is the person's /model. A fallback leaves the
+  // seen values alone, so the step back to the session's model is no change either.
+  const fallback = !!c.family && familyOf(await sessionModel($).catch(() => '')) !== c.family
+  if (!fallback) {
+    if (typeof e.model === 'string') S.appModel = e.model
+    if (typeof e.effort === 'string') S.appEffort = e.effort as Effort
   }
-  if (typeof e.model === 'string') S.appModel = e.model
-  if (typeof e.effort !== 'string') return
-  if (S.appEffort !== undefined && e.effort !== S.appEffort && e.effort !== S.lastEffective && e.effort !== S.pinEffort) {
-    S.pinEffort = e.effort as Effort
-    $.ui.toast(`AutoMode: you set effort to ${e.effort}, so effort routing is off. Type am:reset to turn it back on.`)
+  const record = (axis: string, action: string, why: string, extra: Record<string, unknown> = {}) => S.records.push({ v: 1, kind: 'pin', at, sessionId: S.sessionId, axis, action, why, via: 'request', from, to: { model: e.model ?? null, effort: e.effort ?? null }, route: S.current ? `${S.current.family}/${S.current.effort}` : null, plan: S.planMode, ...extra })
+  if (c.unroutable !== S.unroutable) {
+    S.unroutable = c.unroutable
+    record('model', c.unroutable ? 'unroutable' : 'routable', c.unroutable ? 'the app model is outside the routed families' : 'the app model is routable again')
+    if (c.unroutable) $.ui.toast(`AutoMode: routing does not run ${String(e.model).slice(0, 40)}, so routing is off. Choose Haiku, Sonnet or Opus to turn it back on.`)
   }
-  S.appEffort = e.effort as Effort
+  // Routing off: nothing routed stays waiting, unless an am: command owns this turn.
+  if (c.unroutable && !S.turnOverride?.family) { S.pending = null; S.heldRoute = null; S.current = null }
+  for (const why of c.skipped) record(why.split(':')[0], 'skipped', why)
+  if (fallback) { record('model', 'skipped', 'model: the session did not move'); return }
+  if (c.family) {
+    record('model', 'pinned', 'the app model changed', { echo: c.family === S.current?.family })
+    S.pinFamily = c.family
+    $.ui.toast(`AutoMode: you chose ${c.family}, so model routing is off. Type am:reset to turn it back on.`)
+  }
+  if (c.effort) {
+    record('effort', 'pinned', 'the app effort changed', { echo: c.effort === S.lastEffective })
+    S.pinEffort = c.effort
+    $.ui.toast(`AutoMode: you set effort to ${c.effort}, so effort routing is off. Type am:reset to turn it back on.`)
+  }
 }
 
-// pinned applies the person's /model and /effort to a route. They outrank every routing step.
-function pinned<T extends { tier: Tier; family: Family; model: string; effort: Effort; owner: Owner }>(r: T, appModel: string): T {
-  if (!S.pinFamily && !S.pinEffort) return r
-  const family = S.pinFamily ?? r.family
-  const effort = S.pinEffort ?? r.effort
-  if (family === r.family && effort === r.effort) return r
-  return { ...r, family, model: S.pinFamily ? appModel : r.model, effort, tier: tierOf(family, effort), owner: 'user-override' }
+// v4CommandRun: /model <name> and /effort <level>. A pick equal to the app's value changes no request, so this is the
+// only place it shows. The engine's own command runs first: a pin never outlives a command that failed by throwing.
+export async function v4CommandRun($: EngineInterface, e: any, next: any) {
+  const out = await next(e)
+  try {
+    const byPerson = e.origin?.kind === 'composer' || e.origin?.kind === 'bridge' || e.origin?.kind === 'sdk'
+    const c = byPerson ? commandChoice(e.command, e.args) : null
+    if (!c || !(await useV4($)) || !(await activeV4($)) || S.mode !== 'auto') return out
+    if (e.command === 'model') { S.pinFamily = c.family; S.appModel = undefined; S.appEffort = undefined }
+    else { S.pinEffort = c.effort; S.appEffort = undefined }
+    S.records.push({ v: 1, kind: 'pin', at: await now($), sessionId: S.sessionId, axis: e.command, action: c.release ? 'released' : 'pinned', why: `/${e.command}`, via: 'command', to: c.family ?? c.effort ?? null, route: S.current ? `${S.current.family}/${S.current.effort}` : null, plan: S.planMode })
+    await persist($)
+    if (!c.release) $.ui.toast(e.command === 'model' ? `AutoMode: you chose ${c.family}, so model routing is off. Type am:reset to turn it back on.` : `AutoMode: you set effort to ${c.effort}, so effort routing is off. Type am:reset to turn it back on.`)
+  } catch { /* a pin that cannot be noted never fails the person's command */ }
+  return out
 }
+
+// pinned applies this turn's am: command and the person's /model and /effort to a route. They outrank every routing step.
+function pinned<T extends { tier: Tier; family: Family; model: string; effort: Effort; owner: Owner }>(r: T, appModel: string): T {
+  return applyPins(r, { family: S.pinFamily, effort: S.pinEffort }, S.turnOverride ?? {}, appModel, DEFAULT_LADDER.models)
+}
+// The effort the person fixed, for helpers as for the main loop.
+const pinnedEffort = (): Effort | undefined => S.turnOverride?.effort ?? S.pinEffort
+
 // allowedAuto: step 1, provider constraints. allowedFamilies (breakers, unknown first prompt) plus Haiku's context limit,
 // which the legacy optimizer checks inside its own scoring.
 function allowedAuto(at: number): Family[] {
@@ -839,7 +873,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   const override = parseOverride(text)
   const redo = !!S.current && looksLikeRedo(text)
   if (override?.reset) { S.stayUp = 0; S.pinFamily = undefined; S.pinEffort = undefined }
-  if (!S.appModel && !S.sessionModel) S.sessionModel = await $.session.model().then((m) => m.trim() || undefined).catch(() => undefined)
+  if (!S.appModel && !S.sessionModel) S.sessionModel = await sessionModel($).then((m) => m.trim() || undefined).catch(() => undefined)
   if (redo) S.stayUp = REDO_STAY_PROMPTS
   else if (S.stayUp > 0) S.stayUp -= 1
   S.redoFloor = null // under auto a redo keeps the model (upstream); it never raises the effort
@@ -857,7 +891,8 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   if (override?.tier || override?.effort) steps.push(`command: ${fixedFamily ?? 'model by policy'}${fixedEffort ? ` at ${fixedEffort}` : ''}`)
   // Step 4 (before judging): transitions known without a judge.
   const pendingEscalation = S.envelope ? escalationStep(S.envelope, allowed) : null
-  const req = decisionRequired({ planEntered: S.planMode && !S.decidedPlanMode, planExited: S.planExited, escalation: !!pendingEscalation, command: !!override, compacted: S.compactedPending })
+  const belowFloor = !!pendingEscalation && !!S.current && bandOf(S.current.family, runningEffort()!) < pendingEscalation.band
+  const req = decisionRequired({ planEntered: S.planMode && !S.decidedPlanMode, planExited: S.planExited, escalation: belowFloor, command: !!override, compacted: S.compactedPending })
   // Step 5: the upstream shortcut, only with nothing required and for the same unfinished task.
   const td = S.taskDecision && S.envelope && S.taskDecision.taskId === S.envelope.taskId ? S.taskDecision : null
   // An approval ("yes" to a proposal or a hand-over) starts the work it approves: it is judged (deviation from upstream,
@@ -1147,6 +1182,8 @@ async function helperPick($: EngineInterface, e: any, model: string | undefined)
   if (e.fork || e.isTeammate || e.workflow || e.resume) return null
   const family = familyOf(model ?? '') ?? familyOf(e.parentModel ?? '') ?? null
   if (!family) return null
+  const fixed = pinnedEffort()
+  if (fixed) return { effort: fixed, why: `the person set ${fixed}` }
   const floor = helperFloor('low', 'max')
   const j = await effortlessJudge($, family, helperQuestion(String(e.prompt ?? ''), String(e.subagentType ?? 'subagent')), { messages: await sessionMessages($), purpose: 'effortless-helper' })
   if (!j.verdict) return { effort: floor, why: 'helper judge failed: helper floor medium' }
@@ -1191,7 +1228,7 @@ function needsGuidance(d: Decision, env: TaskEnvelope): boolean {
   if (d.strategy !== 'direct') return true
   if (d.inadequate || d.consult) return true
   if (env.reviewRequired.value || env.risk.effective !== 'none') return true
-  if (env.failures.length && escalation(env.failures, d.route.tier).action !== 'none') return true
+  if (env.failures.length && failureStep(env.failures, d.route.tier).action !== 'none') return true
   return d.route.owner === 'user-override' || d.route.owner === 'quality-escalation'
 }
 
@@ -1210,9 +1247,9 @@ function routeHeader(d: Decision, env: TaskEnvelope): string {
     lines.push(`This is open-ended multi-module work. Run Workflow({ name: "${S.cfg.workflowName}", args: ${JSON.stringify(args)} }) and do not implement it yourself until it returns. Then follow its next_action: report the result, and change code only if next_action says the checks failed.`)
   }
   if (d.strategy !== 'engineering-workflow' && (env.complexity !== 'trivial' || env.risk.effective !== 'none')) lines.push('Before you call a change done, run the relevant tests or build and show that they pass.')
-  if (env.reviewRequired.value && d.strategy !== 'engineering-workflow') lines.push('After your checks pass, call the Agent tool with subagent_type "automode:reviewer" (Opus, read-only) and wait for it. Give it the original request, the acceptance criteria, each check with its output, and the changed files. Fix every blocker, run the checks again, and do not call it a second time.')
-  if (env.failures.length && escalation(env.failures, r.tier).action === 'report') lines.push(`The last check failed for an environment reason (${env.failures[env.failures.length - 1].command}). Tell the user what is missing instead of changing code.`)
-  if (escalation(env.failures, r.tier).action === 'diagnose') lines.push(delegation('diagnose', env))
+  if (env.reviewRequired.value && d.strategy !== 'engineering-workflow') lines.push(`After your checks pass, call the Agent tool with subagent_type "automode:reviewer" (${reviewerFamily(env.reviewRequired.because) === 'sonnet' ? 'Sonnet' : 'Opus'}, read-only) and wait for it. Give it the original request, the acceptance criteria, each check with its output, and the changed files. Fix every blocker, run the checks again, and do not call it a second time.`)
+  if (env.failures.length && failureStep(env.failures, r.tier).action === 'report') lines.push(`The last check failed for an environment reason (${env.failures[env.failures.length - 1].command}). Tell the user what is missing instead of changing code.`)
+  if (failureStep(env.failures, r.tier).action === 'diagnose') lines.push(delegation('diagnose', env))
   lines.push('Commit or push only when the user asks you to.')
   return lines.join('\n')
 }
@@ -1231,7 +1268,7 @@ function optimizerRecord(o: Choice) {
 }
 
 function floorFor(env: TaskEnvelope, complexity: string): { tier: Tier; band?: number; because: string[] } {
-  let esc = escalation(env.failures, S.current?.tier ?? 'T1')
+  let esc = failureStep(env.failures, S.current?.tier ?? 'T1')
   // A consult is the remedy for this defect until it fails again after the consult: no floor before that.
   // Found live (L5B): a passing check right after the consult re-ran the floors and moved the session.
   const last = env.failures[env.failures.length - 1]
@@ -1505,6 +1542,9 @@ export async function v4PromptSubmit($: EngineInterface, e: any, next: any) {
     $.ui.toast(`AutoMode: auto routing is not verified on ${S.provider}; observing only. Claude Code runs as usual.`)
   }
   if (S.mode === 'shadow') { S.lastPromptText = text; S.turnPrompt.set('next', { text, at }); await publish($); return next(e) }
+  // Routing is off on a model it cannot run: no judge call, nothing to apply. An am: command still gets its turn.
+  const typed = parseOverride(text)
+  if (S.unroutable && !typed?.tier && !typed?.effort && !typed?.reset) { await publish($); return next(e) }
 
   await syncSignals($)
   const midTurn = e.turnId !== undefined
@@ -1521,7 +1561,7 @@ export async function v4PromptSubmit($: EngineInterface, e: any, next: any) {
   // effortless heldPick: a message typed mid-turn may raise the running route at once, but a lower
   // pick waits for the turn to end, so a steer never weakens the work in progress.
   if (midTurn && S.pending && capOf(d.route) < capOf(S.pending)) S.heldRoute = d.route
-  else { S.pending = d.route; S.heldRoute = null }
+  else { S.pending = d.route; S.heldRoute = null; S.turnOverride = turnAxes(typed, d.route) ?? (midTurn ? S.turnOverride : null) }
   // An inadequate route keeps the review required. The envelope is updated before the header and the task state are built.
   if (d.inadequate && S.envelope && !S.envelope.reviewRequired.because.includes(INADEQUATE_REVIEW)) S.envelope = { ...S.envelope, reviewRequired: { value: true, because: [...S.envelope.reviewRequired.because, INADEQUATE_REVIEW] }, revision: S.envelope.revision + 1 }
   const env = S.envelope!
@@ -1531,7 +1571,8 @@ export async function v4PromptSubmit($: EngineInterface, e: any, next: any) {
   // Task state: with guidance, or after a reset in the middle of a task (compaction, reload); never as
   // overhead on an ordinary new task.
   const state = d.contextNote && (guide || !d.newTask) ? d.contextNote : null
-  const parts = [header, state].filter(Boolean) as string[]
+  const parts = [header, state, S.ladderNote].filter(Boolean) as string[]
+  S.ladderNote = null
   if (state) {
     S.lastSummary = summaryOf(env); S.envelope = { ...env, injectedRevision: env.revision }
     S.records.push({ v: 1, kind: 'envelope', at, sessionId: S.sessionId, taskId: env.taskId, reason: d.newTask ? 'new-task' : 'reset', acceptance: env.acceptance.length, reviewRequired: env.reviewRequired.value })
@@ -1604,7 +1645,7 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
     if (!w || S.mode !== 'auto') {
       // A routed subagent (general-purpose on Sonnet) gets the task's effort; every subagent request in
       // an active session goes into the ledger with the engine's final usage.
-      const routedEffort = S.mode === 'auto' && (a?.routed || a?.judged) && a.effort && takesEffort(e.model) ? a.effort : undefined
+      const routedEffort = S.mode === 'auto' && (a?.routed || a?.judged) && a.effort && takesEffort(e.model) ? pinnedEffort() ?? a.effort : undefined
       const res = yield* next(routedEffort ? { ...e, effort: routedEffort } : e)
       if (S.mode !== 'off' && (w || a || (await activeV4($)))) {
         pushRequest(e, { model: e.model, effort: routedEffort ?? e.effort }, a?.routed ? 'subagent-policy' : 'app', !!routedEffort, a ? `subagent ${a.type}` : 'subagent', res, await now($))
@@ -1616,7 +1657,7 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
     }
     // effortless helperFloor: a AutoMode worker's report goes back unchecked, so it never runs below medium.
     const judged = S.agents.get(e.agentId)
-    const effort = takesEffort(e.model) ? (judged?.judged && judged.effort ? judged.effort : helperEffort(undefined, typeof e.effort === 'string' ? e.effort : undefined)) : e.effort
+    const effort = takesEffort(e.model) ? pinnedEffort() ?? (judged?.judged && judged.effort ? judged.effort : helperEffort(undefined, typeof e.effort === 'string' ? e.effort : undefined)) : e.effort
     const res = yield* next({ ...e, ...(effort !== undefined ? { effort } : {}) })
     if (res?.usage) w.tokens = (res.usage.input_tokens ?? 0) + (res.usage.cache_read_input_tokens ?? 0) + (res.usage.cache_creation_input_tokens ?? 0)
     if (w.tokens >= HAIKU_BUDGET.stopAt) w.stop = true
@@ -1629,6 +1670,7 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
   const t = await now($)
   if (e.index === 0) await syncSignals($, { turnId: e.turnId })
   S.turnRequests.set(e.turnId, (S.turnRequests.get(e.turnId) ?? 0) + 1)
+  if (S.mode === 'auto') await noteAppChoice($, e, t)
   if (S.mode === 'shadow' || !S.pending) {
     // Shadow: no rewrite. The request is still recorded, for calibration and replay.
     const res = yield* next(e)
@@ -1649,7 +1691,6 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
     const tr = trigger(trigState(), { kind: 'step-start', idleMs: t - S.cache.lastRequestAt, ttlMs: S.ttl })
     if (tr.action === 'reoptimize') reoptimize(tr, 'cache-expired', t, e.turnId) // cold by time: nothing was reset
   }
-  noteAppChoice($, e)
   const r = pinned(S.pending!, e.model)
   S.pending = r
   const sameFamily = familyOf(e.model) === r.family
@@ -1780,6 +1821,11 @@ export async function v4TurnComplete($: EngineInterface, e: any, next: any) {
     // A AutoMode worker finished: validate its report here, where its final answer is. The Agent tool
     // does not pass through tool.call, so this is the one place the parent's copy can be annotated.
     const w = S.workers.get(e.agentId)
+    if (w?.type === 'automode:reviewer' && !w.workflow && S.mode === 'auto' && S.envelope && reviewerBlocked(String(e.answer ?? ''))) {
+      const l = S.envelope.ladder ?? EMPTY_LADDER
+      S.envelope = { ...S.envelope, ladder: { ...l, reviewerBlockers: l.reviewerBlockers + 1 } }
+      await runLadder($, await now($))
+    }
     const kind = w && w.validate !== false ? WORKERS[w.type] : undefined
     if (S.cfg.debugLog) { S.records.push({ v: 1, kind: 'debug-sub-complete', agentId: e.agentId, known: !!w, type: w?.type, answerLen: String(e.answer ?? '').length, mode: S.mode, env: !!S.envelope }); await flush($) }
     if (!kind || S.mode !== 'auto' || !S.envelope) return out
@@ -1812,6 +1858,7 @@ export async function v4TurnComplete($: EngineInterface, e: any, next: any) {
     S.records.push({ v: 1, kind: 'interrupt', at, sessionId: S.sessionId, turnId: e.turnId, model: k.slice(k.indexOf(':') + 1), undone: true })
     S.lastNoResponse = null
   }
+  S.turnOverride = null // an am: command lasts for its turn
   // A lower pick typed mid-turn applies from the next turn (effortless heldPick).
   if (S.heldRoute) { S.pending = S.heldRoute; S.heldRoute = null }
   if (S.mode === 'shadow') {
@@ -1880,9 +1927,11 @@ export async function v4AgentSpawn($: EngineInterface, e: any, next: any) {
     return res
   }
   // A worker keeps the guards below, so a route changes only its model.
-  const model = sr?.model ?? e.model
+  // A judge's word alone buys a Sonnet review (lib/risk.ts reviewerFamily). The workflow picks its own reviewers.
+  const sonnetReview = e.subagentType === 'automode:reviewer' && !e.model && !e.workflow && S.envelope?.reviewRequired.value && reviewerFamily(S.envelope.reviewRequired.because) === 'sonnet'
+  const model = sr?.model ?? (sonnetReview ? 'sonnet' : e.model)
   const hp = S.policy === 'auto' ? await helperPick($, e, model) : null
-  const res = await next(sr ? { ...e, model } : e)
+  const res = await next(sr || sonnetReview ? { ...e, model } : e)
   if (res?.agentId) S.agents.set(res.agentId, { type: e.subagentType, routed: !!sr, ...(hp ? { effort: hp.effort, judged: true } : {}) })
   noteAgent(res, e, model, !!sr, hp?.effort)
   if (hp && res?.agentId) S.records.push({ v: 1, kind: 'spawn', at: await now($), sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', type: e.subagentType, to: model ?? null, effort: hp.effort, why: hp.why, agentId: res.agentId })
@@ -1894,12 +1943,84 @@ export async function v4AgentSpawn($: EngineInterface, e: any, next: any) {
     // main session started through the Agent tool.
     const mainWorker = S.expectWorker > 0 && e.agentId === undefined
     if (mainWorker) S.expectWorker -= 1
-    S.workers.set(res.agentId, { type: e.subagentType, tokens: 0, stop: false, validate: mainWorker })
+    S.workers.set(res.agentId, { type: e.subagentType, tokens: 0, stop: false, validate: mainWorker, workflow: !!e.workflow })
   }
   return res
 }
 
 export async function v4ToolCall($: EngineInterface, e: any, next: any) {
+  const out = await guarded($, e, next)
+  if (S.mode !== 'auto') return out
+  await noteToolResult($, e, out)
+  if (e.agentId !== undefined || !S.ladderNote || out?.deny) return out
+  // A note on a tool result is new input, so a per-message effort change takes effect at the next request.
+  const note = S.ladderNote
+  S.ladderNote = null
+  S.newInput = true
+  return { ...out, context: [...(out.context ?? []), note] }
+}
+
+// noteToolResult counts tool errors in a row. A failing check is its own evidence, so a check is not counted.
+async function noteToolResult($: EngineInterface, e: any, out: any) {
+  if (!S.envelope || !out || out.deny || e.tool === 'Agent' || (e.tool === 'Bash' && isCheck(String(e.command ?? '')))) return
+  const l = S.envelope.ladder ?? EMPTY_LADDER
+  const toolErrors = out.isError === true ? l.toolErrors + 1 : 0
+  if (toolErrors === l.toolErrors) return
+  S.envelope = { ...S.envelope, ladder: { ...l, toolErrors } }
+  if (toolErrors < 3) return
+  await runLadder($, await now($))
+  S.envelope = { ...S.envelope, ladder: { ...(S.envelope.ladder ?? EMPTY_LADDER), toolErrors: 0 } }
+}
+
+// runLadder acts on the task's evidence once, policy auto. Weak evidence raises the effort. Strong evidence asks an Opus
+// architect first, and moves the model when the same cause comes back. A pin keeps its route, so the notice says that
+// instead of a move. Notes wait in S.ladderNote: the evidence can arrive in a subagent, which cannot act on them.
+async function runLadder($: EngineInterface, at: number) {
+  const env = S.envelope
+  if (!env || !S.current || S.policy !== 'auto') return
+  const l = env.ladder ?? EMPTY_LADDER
+  const running = { family: S.current.family, effort: runningEffort()! }
+  const editedSincePass = (since: number) => [...new Set(S.editLog.filter((x) => x.at > since).map((x) => x.path))]
+  const esc = escalation(env.failures, { ...l, editedSincePass, effortCapped: !nextEffort(running.family, running.effort) })
+  if (esc.level === 'none') return
+  const count = esc.fingerprint ? env.failures.filter((f) => f.fingerprint === esc.fingerprint).length : 0
+  const spent = { ...l, fired: [...l.fired, esc.key], raised: esc.fingerprint ? { ...l.raised, [esc.fingerprint]: count } : l.raised }
+  const step = ladderStep(running, esc.level as 'weak' | 'strong', allowedFamilies(at))
+  if (!step) { S.envelope = { ...env, ladder: spent }; S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because }); return }
+  const packet = () => evidencePacket(env.spec.text.slice(0, 1500), env.acceptance.map((a) => a.text), env.failures, env.editedPaths, esc.because)
+  if (step.kind === 'model' && step.family === 'opus' && !S.consulted.includes(esc.cause)) {
+    S.consulted = [...S.consulted, esc.cause].slice(-20)
+    S.envelope = { ...env, ladder: spent, escalations: env.escalations + 1 }
+    S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'consult-opus', via: 'architect', because: esc.because })
+    await flush($)
+    $.ui.toast(`AutoMode: ${esc.because}. Asking an Opus architect before moving the session.`)
+    S.ladderNote = `[AutoMode: ${esc.because}. Before changing more code, call the Agent tool with subagent_type "automode:architect" (Opus, read-only) and wait for it, with this evidence:\n${packet()}\nAsk it for the cause and a fix plan. Apply its plan, then run the check again.]`
+    return
+  }
+  const tier = tierOf(step.family, step.effort)
+  const floor = { tier, band: step.band, effort: step.effort, because: [esc.because] }
+  const target = { ...routeFor(tier, DEFAULT_LADDER, step.effort), owner: 'quality-escalation' as Owner, reason: esc.because, floor, overridden: [] }
+  const applied = pinned(target, S.appModel ?? target.model)
+  const moved = applied.family !== running.family || applied.effort !== running.effort
+  S.pending = applied
+  const raised = { ...env, escalations: env.escalations + 1, ladder: { ...spent, floor: { family: step.family, effort: step.effort, band: step.band, because: esc.because, ...(esc.fingerprint ? { command: env.failures[env.failures.length - 1].command } : {}) } } }
+  // A defect that outlived a repair (and a consult) gets the independent review once it passes.
+  S.envelope = esc.check ? withReview(raised, 'fail', false) : raised
+  S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: tier, band: step.band, route: `${step.family}/${step.effort}`, applied: `${applied.family}/${applied.effort}`, action: moved ? (step.kind === 'model' ? 'switch' : 'raise') : 'held-by-pin', via: 'switch', because: esc.because })
+  await flush($)
+  if (!moved) {
+    $.ui.toast(`AutoMode: ${esc.because}. Your choice keeps ${applied.family} ${applied.effort}.`)
+    S.ladderNote = `[AutoMode: ${esc.because}. The person chose ${applied.family} ${applied.effort}, so the route stays. Say so if the task needs more.]`
+    return
+  }
+  const moveTo = `${applied.tier} (${applied.family} ${applied.effort})`
+  $.ui.toast(`AutoMode: ${esc.because}. Moving to ${moveTo}.`)
+  const consulted = S.consulted.includes(esc.cause) ? ' An Opus consult on this already ran; the session itself now moves to the stronger model.' : ''
+  const review = esc.check ? ' When the check passes, the independent review (automode:reviewer) is required before you call it done.' : ''
+  S.ladderNote = `[AutoMode: escalated to ${moveTo} after ${esc.because}.${consulted}${review}]${step.kind === 'model' ? `\n\nEvidence for the next step:\n${packet()}` : ''}`
+}
+
+async function guarded($: EngineInterface, e: any, next: any) {
   if (S.mode !== 'auto' || !(await activeV4($))) return next(e)
   const input = e as unknown as Record<string, unknown>
   if (e.agentId !== undefined) {
@@ -1911,7 +2032,7 @@ export async function v4ToolCall($: EngineInterface, e: any, next: any) {
       const info = (await $.agent.list().catch(() => [])).find((a) => a.id === e.agentId)
       if (info && READ_ONLY_AGENTS.includes(info.type)) { w = { type: info.type, tokens: 0, stop: false }; S.workers.set(e.agentId, w) }
     }
-    if (!w) return next(e)
+    if (!w) return trackTool($, e, input, next)
     const g = guardTool(e.tool, input)
     if (!g.allow) return { deny: `AutoMode ${w.type} is read-only: ${g.why}.` }
     if (w.stop && ['Read', 'Grep', 'Glob'].includes(e.tool)) return { deny: BUDGET_STOP }
@@ -1919,7 +2040,7 @@ export async function v4ToolCall($: EngineInterface, e: any, next: any) {
       if (e.tool === 'Read') { const c = clampRead(input, HAIKU_BUDGET); if (c) return next({ ...e, ...c } as never) }
       if (e.tool === 'Grep') { const c = clampGrep(input, HAIKU_BUDGET); if (c) return next({ ...e, ...c } as never) }
     }
-    return next(e)
+    return trackTool($, e, input, next)
   }
   if (e.tool === 'Workflow' && input.name === S.cfg.workflowName) noteWorkflowCall()
   // Main session: the worker calls the router asked for.
@@ -1952,8 +2073,25 @@ export async function v4ToolCall($: EngineInterface, e: any, next: any) {
   }
 
   if (reuse.note) return next({ ...e, ...withReuse } as never)
+  return trackTool($, e, input, next)
+}
 
-  // Main session: track edits (paths and changed lines) and checks.
+// noteCommand: a command that acts on something a repair cannot get back is hard evidence (lib/operations.ts), and a
+// command that throws work away is ladder evidence.
+async function noteCommand($: EngineInterface, command: string) {
+  if (!S.envelope) return
+  const op = classifyOperation(command)
+  if (op) S.envelope = withReview(observe(S.envelope, { level: 'critical', reasons: [`operation: ${op.reason}${op.production ? ' in production' : ''}`], source: 'diff' }), 'none', false)
+  if (S.envelope.editedPaths.length && isRevert(command)) {
+    const l = S.envelope.ladder ?? EMPTY_LADDER
+    S.envelope = { ...S.envelope, ladder: { ...l, reverts: l.reverts + 1 } }
+    await runLadder($, await now($))
+  }
+}
+
+// trackTool: edits (paths and changed lines) and checks, from the main session and from subagents alike. The work of a
+// task is often a subagent's, and the task's evidence has to count it.
+async function trackTool($: EngineInterface, e: any, input: Record<string, unknown>, next: any) {
   if ((e.tool === 'Edit' || e.tool === 'Write' || e.tool === 'MultiEdit') && S.envelope) {
     const out = await next(e)
     const p = String(input.file_path ?? '')
@@ -1971,6 +2109,10 @@ export async function v4ToolCall($: EngineInterface, e: any, next: any) {
         const tr = trigger(trigState(), { kind: 'scope', outsidePaths: edited.filter((x) => !known.has(x)).length })
         if (tr.action === 'judge') await rejudge($, tr, await now($))
       }
+      if (S.envelope && !S.envelope.ladder?.scopeGrew && scopeGrew(edited, known, trigState().scopeThreshold, DEFAULT_LARGE.files)) {
+        S.envelope = { ...S.envelope, ladder: { ...(S.envelope.ladder ?? EMPTY_LADDER), scopeGrew: true } }
+        await runLadder($, await now($))
+      }
     }
     return out
   }
@@ -1981,6 +2123,7 @@ export async function v4ToolCall($: EngineInterface, e: any, next: any) {
     const out = await next(pf ? ({ ...e, command: pf } as never) : e)
     if (out.deny) return out
     const command = pf ?? String(input.command)
+    await noteCommand($, String(input.command))
     if (S.cfg.debugLog) {
       const r = out.result as Record<string, unknown> | undefined
       S.records.push({ v: 1, kind: 'debug-bash', keys: Object.keys(out), resultType: typeof out.result, resultKeys: r && typeof r === 'object' ? Object.keys(r) : null, isError: out.isError, sample: JSON.stringify(out.result ?? out.text ?? '').slice(0, 300) })
@@ -1994,6 +2137,10 @@ export async function v4ToolCall($: EngineInterface, e: any, next: any) {
     S.lastCheck = { command, passed }
     if (passed) {
       S.envelope = { ...S.envelope, failures: markFlaky(S.envelope.failures, command, true, S.editedSinceCheck), verified: true }
+      // A pass ends a floor that its own check set, and one no check set.
+      const ladder = S.envelope.ladder ?? EMPTY_LADDER
+      const ended = ladder.floor && (!ladder.floor.command || ladder.floor.command === command.slice(0, 200))
+      S.envelope = { ...S.envelope, ladder: { ...ladder, passed: { ...ladder.passed, [command.slice(0, 200)]: at }, ...(ended ? { floor: undefined } : {}) } }
       if (S.policy === 'auto') for (const f of S.envelope.failures) if (f.command === command.slice(0, 200)) S.resolvedCounts = { ...S.resolvedCounts, [f.fingerprint]: S.envelope.failures.filter((x) => x.fingerprint === f.fingerprint).length }
       S.verifiedSinceSwitch = true
       const tr = trigger(trigState(), { kind: 'check-pass', implementing: S.stage === 'implement' && S.editedSinceCheck })
@@ -2003,48 +2150,54 @@ export async function v4ToolCall($: EngineInterface, e: any, next: any) {
       const f = failureOf(command, exitCode || 1, text.slice(-8000), at, S.editedSinceCheck)
       if (f) {
         S.envelope = { ...S.envelope, failures: [...S.envelope.failures, f].slice(-20), verified: false }
-        const step = escalation(S.envelope.failures, S.current?.tier ?? 'T1')
-        // Opus reasoning, two ways: switch the main session, or keep it and consult a read-only Opus
-        // architect with the evidence. The consult wins when the warm prefix makes a switch expensive.
-        const fp = f.fingerprint
-        if (step.action === 'consult-opus' && S.current && S.current.family !== 'opus' && !S.consulted.includes(fp)) {
-          const packet = evidencePacket(S.envelope.spec.text.slice(0, 1500), S.envelope.acceptance.map((a) => a.text), S.envelope.failures, S.envelope.editedPaths)
-          const c = consultOrSwitch({ prefixTokens: cacheState().prefixTokens, remainingRequests: S.priors.remainingRequests, outPerRequest: S.priors.outputPerStep.opus, packetTokens: Math.ceil(packet.length / 3.5), planTokens: 2_000, main: S.current.family, ttlMs: S.ttl, prices: prices() })
-          if (c.choice === 'consult') {
-            S.consulted = [...S.consulted, fp].slice(-20)
-            S.consultCounts = { ...S.consultCounts, [fp]: S.envelope.failures.filter((x) => x.fingerprint === fp).length }
-            S.envelope = { ...S.envelope, escalations: S.envelope.escalations + 1 }
-            S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: S.envelope.taskId, floor: null, action: 'consult-opus', via: 'architect', because: step.because, estimate: { consultUsd: round6(c.consultUsd), switchUsd: round6(c.switchUsd), basis: S.priors.basis } })
-            await flush($)
-            $.ui.toast(`AutoMode: ${step.because}. Asking an Opus architect instead of moving the session.`)
-            return { ...out, context: [...(out.context ?? []), `[AutoMode: the same check failed twice after an edit. Before changing more code, call the Agent tool with subagent_type "automode:architect" (Opus, read-only) and wait for it, with this evidence:\n${packet}\nAsk it for the cause and a fix plan. Apply its plan, then run the check again.]`] }
-          }
-        }
-        if (step.floor && S.current && TIER_ORDER.indexOf(step.floor) > TIER_ORDER.indexOf(S.current.tier)) {
-          // Mandatory escalation: legacy moves to the escalation tier. Policy auto raises the running route one step
-          // (escalationTarget), so Opus high goes to xhigh and only a repeat on xhigh reaches max. The note returned with
-          // this tool result is new input, so a per-message effort change takes effect at the next request (newInput).
-          const step41 = S.policy === 'auto' ? escalationTarget({ family: S.current.family, effort: runningEffort()! }, step.floor, allowedFamilies(at)) : null
-          const e41 = step41 ? { tier: tierOf(step41.family, step41.effort), band: step41.band } : null
-          const target = step41 ? routeFor(e41!.tier, DEFAULT_LADDER, step41.effort) : routeFor(step.floor)
-          if (step41) S.newInput = true
-          S.pending = { ...target, owner: 'quality-escalation', reason: step.because, floor: { tier: e41?.tier ?? step.floor, ...(e41 ? { band: e41.band, effort: target.effort } : {}), because: [step.because] }, overridden: [] }
-          // A defect that outlived a repair (and a consult) gets the independent review once it passes.
-          S.envelope = withReview({ ...S.envelope, escalations: S.envelope.escalations + 1 }, 'fail', false)
-          const moveTo = e41 ? `${e41.tier} (${target.family} ${target.effort})` : step.floor
-          S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: S.envelope.taskId, floor: e41?.tier ?? step.floor, ...(e41 ? { band: e41.band, route: `${target.family}/${target.effort}` } : {}), action: step.action, via: 'switch', because: step.because })
-          await flush($)
-          $.ui.toast(`AutoMode: ${step.because}. Moving to ${moveTo}.`)
-          const packet = step.action === 'consult-opus' ? `\n\nEvidence for the next step:\n${evidencePacket(S.envelope.spec.text.slice(0, 1500), S.envelope.acceptance.map((a) => a.text), S.envelope.failures, S.envelope.editedPaths)}` : ''
-          const consulted = S.consulted.includes(f.fingerprint) ? ' An Opus consult on this defect already ran; the session itself now moves to the stronger model.' : ''
-          return { ...out, context: [...(out.context ?? []), `[AutoMode: escalated to ${moveTo} after a repeated failing check.${consulted} When the check passes, the independent review (automode:reviewer) is required before you call it done.]${packet}`] }
-        }
+        if (S.policy === 'auto') await runLadder($, at)
+        else await legacyEscalation($, f.fingerprint, at)
       }
     }
     S.editedSinceCheck = false
     return out
   }
+  if (e.tool === 'Bash' && S.envelope) {
+    const out = await next(e)
+    if (!out.deny) await noteCommand($, String(input.command ?? ''))
+    return out
+  }
   return next(e)
+}
+
+// legacyEscalation: policy legacy moves to the tier a repeated failure asks for, or consults when the warm prefix makes a
+// switch expensive. Opus reasoning, two ways: switch the main session, or keep it and consult a read-only architect.
+async function legacyEscalation($: EngineInterface, fp: string, at: number) {
+  const env = S.envelope!
+  const step = failureStep(env.failures, S.current?.tier ?? 'T1')
+  if (step.action === 'consult-opus' && S.current && S.current.family !== 'opus' && !S.consulted.includes(fp)) {
+    const packet = evidencePacket(env.spec.text.slice(0, 1500), env.acceptance.map((a) => a.text), env.failures, env.editedPaths)
+    const c = consultOrSwitch({ prefixTokens: cacheState().prefixTokens, remainingRequests: S.priors.remainingRequests, outPerRequest: S.priors.outputPerStep.opus, packetTokens: Math.ceil(packet.length / 3.5), planTokens: 2_000, main: S.current.family, ttlMs: S.ttl, prices: prices() })
+    if (c.choice === 'consult') {
+      S.consulted = [...S.consulted, fp].slice(-20)
+      S.consultCounts = { ...S.consultCounts, [fp]: env.failures.filter((x) => x.fingerprint === fp).length }
+      S.envelope = { ...env, escalations: env.escalations + 1 }
+      S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, floor: null, action: 'consult-opus', via: 'architect', because: step.because, estimate: { consultUsd: round6(c.consultUsd), switchUsd: round6(c.switchUsd), basis: S.priors.basis } })
+      await flush($)
+      $.ui.toast(`AutoMode: ${step.because}. Asking an Opus architect instead of moving the session.`)
+      S.ladderNote = `[AutoMode: the same check failed twice after an edit. Before changing more code, call the Agent tool with subagent_type "automode:architect" (Opus, read-only) and wait for it, with this evidence:\n${packet}\nAsk it for the cause and a fix plan. Apply its plan, then run the check again.]`
+      return
+    }
+  }
+  if (!step.floor || !S.current || TIER_ORDER.indexOf(step.floor) <= TIER_ORDER.indexOf(S.current.tier)) return
+  const target = routeFor(step.floor)
+  const applied = pinned(target as Route & { owner: Owner }, S.appModel ?? target.model)
+  S.pending = { ...applied, owner: 'quality-escalation', reason: step.because, floor: { tier: step.floor, because: [step.because] }, overridden: [] }
+  // A defect that outlived a repair (and a consult) gets the independent review once it passes.
+  S.envelope = withReview({ ...env, escalations: env.escalations + 1 }, 'fail', false)
+  const moved = applied.family !== S.current.family || applied.effort !== S.current.effort
+  S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, floor: step.floor, action: moved ? step.action : 'held-by-pin', via: 'switch', because: step.because })
+  await flush($)
+  if (!moved) { $.ui.toast(`AutoMode: ${step.because}. Your choice keeps ${applied.family} ${applied.effort}.`); return }
+  $.ui.toast(`AutoMode: ${step.because}. Moving to ${step.floor}.`)
+  const packet = step.action === 'consult-opus' ? `\n\nEvidence for the next step:\n${evidencePacket(env.spec.text.slice(0, 1500), env.acceptance.map((a) => a.text), S.envelope.failures, env.editedPaths)}` : ''
+  const consulted = S.consulted.includes(fp) ? ' An Opus consult on this defect already ran; the session itself now moves to the stronger model.' : ''
+  S.ladderNote = `[AutoMode: escalated to ${step.floor} after a repeated failing check.${consulted} When the check passes, the independent review (automode:reviewer) is required before you call it done.]${packet}`
 }
 
 // resultText: a tool result's raw text. Live, Bash returns an object ({ stdout, stderr, ... }); turning
@@ -2307,7 +2460,7 @@ function freshSession() {
     consulted: [], consultCounts: {}, resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
-    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, judgeRiskTask: undefined,
+    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, judgeRiskTask: undefined,
     preflight: undefined, breakers: {}, lastNoResponse: null, failures: [], pendingErrors: [], signalErrorAt: 0, signalMode: '', compactionPricedAt: 0, haikuOutUntilCompaction: false, lastWorkBand: undefined, effortUnsupported: false, thinkingRisk: false, toldErrorClass: '', toldBreaker: false, firstPrefixSaved: false, inadequate: null, toldInadequateTask: '',
   }
 }

@@ -54,7 +54,9 @@ Effort can change per prompt while the model holds, because an effort change kee
 
 **Settings precedence**, lowest first: code defaults, `config.json`, the plugin `userConfig`, then environment switches such as `AUTOMODE_ROUTER` and `AUTOMODE_POLICY`. See `lib/settings.ts`.
 
-**Failure behavior.** Hooks fail open: a routing error falls through to `next(e)`, and a failed judge never blocks a prompt. The tool guards fail closed: `tool.call` denies the call if the guard throws before the call runs.
+**Failure behavior.** Hooks fail open: a routing error falls through to `next(e)`, and a failed judge never blocks a prompt. The tool guards fail closed, Bash included: `tool.call` denies the call if the guard throws before the call runs.
+
+**Pins and the ladder.** `lib/pins.ts` reads the person's `/model` and `/effort` from `command.run` and from the app's value on main requests. In tests, `h.step` takes the app's model, not the routed one: never pass the routed model back, because the app's value never echoes a rewrite. `escalation()` in `lib/failures.ts` rates the evidence weak or strong, `ladderStep` in `lib/bands.ts` turns it into one step, and `failureStep` only reports and diagnoses, plus the legacy floor.
 
 ## Traps
 

@@ -19,7 +19,7 @@ export const says = (model: string, effort = 'medium') => (p: string) => effortV
 // A per-model effortless judge for tests: `per` maps the model asked about to its [model, effort] verdict.
 export const perModel = (per: Record<string, [string, string]>) => (p: string) => { const v = per[currentOf(p)] ?? ['sonnet', 'medium']; return effortVerdict(p, v[1], v[0]) }
 
-export type Setup = { ratios?: number[]; preflight?: { systemChars: number; tools: number }; firstPrefixes?: Record<string, number[]>; firstPrefix?: number | null; policy?: string; config?: Record<string, unknown>; bash?: (command: string) => unknown; sessionId?: string; mode?: string; model?: string; judge?: string | null | ((p: string) => string); effortJudge?: string | null | ((p: string) => string); env?: Record<string, string>; workerAnswer?: string; tools?: Record<string, () => unknown>; failWrites?: RegExp }
+export type Setup = { ratios?: number[]; preflight?: { systemChars: number; tools: number }; firstPrefixes?: Record<string, number[]>; firstPrefix?: number | null; policy?: string; config?: Record<string, unknown>; bash?: (command: string) => unknown; sessionId?: string; mode?: string; model?: string; judge?: string | null | ((p: string) => string); effortJudge?: string | null | ((p: string) => string); env?: Record<string, string>; workerAnswer?: string; tools?: Record<string, () => unknown>; failWrites?: RegExp; agentList?: () => unknown }
 
 // The policy the suite runs under when a test names none. The test runtime has no process.env, so this is a constant.
 const DEFAULT_POLICY: string | undefined = undefined
@@ -81,7 +81,7 @@ export function harness(on: any, setup: Setup) {
   on('session.messages', () => ({ value: [] }))
   on('session.start', () => ({ cwd: '/repo' }))
   on('session.compact', () => ({ messages: [{ role: 'user', text: 'engine summary', toolUses: [] }] }))
-  on('agent.list', () => ({ value: [] }))
+  on('agent.list', () => ({ value: setup.agentList ? setup.agentList() : [] }))
   // Preflight: the composed system prompt and the tool list, when a test gives them (else the calls fail, as on a host without them).
   if (setup.preflight) {
     const p = setup.preflight
@@ -134,6 +134,8 @@ export function harness(on: any, setup: Setup) {
     turnStart: async (_$: any) => {},
     setPrefix: (n: number) => { prefix = n },
     setMode: (m: string) => { mode = m },
+    // The person's /model: the session's model moves. A step with another model and no setModel is an engine fallback.
+    setModel: (m: string) => { sessionModel = m },
     // The provider refuses this model (no response): for provider-unavailability tests.
     failModel: (m: string | null) => { failModel = m },
     // A second session in the same process: new id, optional model; module state starts over.
