@@ -1,0 +1,13 @@
+{
+  "id": "feature-xmltodict-selective-cdata",
+  "cohort": "feature",
+  "repo": "https://github.com/martinblech/xmltodict",
+  "license": "MIT",
+  "base": "5b3423c3d2354e2bda05d118c157a9d60af2e3a0",
+  "reference": "a497fedb7d6103d68af155543ac3337a73778b19",
+  "task": "parse() only takes a bool for force_cdata. Make it selective, the way force_list already is. As well as True and False it should accept a tuple of element names, so only those elements get the dict form with the text under #text and the others stay plain strings: parse(\"<a><b>data1</b><c>data2</c><d>data3</d></a>\", force_cdata=(\"b\", \"d\")) gives {\"a\": {\"b\": {\"#text\": \"data1\"}, \"c\": \"data2\", \"d\": {\"#text\": \"data3\"}}}. Names match at any depth, an element with attributes keeps them as usual ({\"@attr\": \"value\", \"#text\": \"data1\"}), and an empty tuple behaves like False. It should also accept a callable, called as force_cdata(path, key, value) with the same path convention as the force_list callable, where key is the element name and value is its text, and a true result forces the dict form for that element. True and False keep working exactly as they do now.",
+  "hidden_tests": [
+    "tests/test_xmltodict.py"
+  ],
+  "accept": "python3 -m unittest tests.test_xmltodict tests.test_dicttoxml"
+}

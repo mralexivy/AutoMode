@@ -1,0 +1,13 @@
+{
+  "id": "migration-tomli-decode-error-api",
+  "cohort": "migration",
+  "repo": "https://github.com/hukkin/tomli",
+  "license": "MIT",
+  "base": "59ed9efb3d6bb7ec71454601a72088b0a6853b8c",
+  "reference": "d1d6a8571b06b18005af8bf9078c1d37de5353e1",
+  "task": "Migrate TOMLDecodeError to a structured API like json.JSONDecodeError. The new signature is TOMLDecodeError(msg, doc, pos), where msg and doc are str and pos is an int index into doc. It sets the attributes msg, doc, pos, lineno and colno, with lineno and colno both counted from 1. str(e) and e.args[0] hold the formatted message \"<msg> (at line <lineno>, column <colno>)\", or \"<msg> (at end of document)\" when pos is at or past the end of doc. For example msg \"error parsing\", doc \"v=1\\n[table]\\nv='val'\" and pos 13 give \"error parsing (at line 3, column 2)\" with lineno 3 and colno 2, and e.args is that one string. Move every raise in the parser to the new form and drop the suffixed_err helper, keeping the existing messages. The old free-form way of building the exception is deprecated, not removed: any call that is not exactly a str msg, a str doc and an int pos, so no arguments, fewer than three, a non-str msg or doc, a non-int pos, or extra positional arguments, emits a DeprecationWarning and acts like a plain ValueError, with e.args equal to exactly the arguments passed. For example TOMLDecodeError() has e.args == () and TOMLDecodeError(\"err msg\", None) has e.args == (\"err msg\", None). TOMLDecodeError(\"\", \"\", 0).__module__ stays \"tomli\".",
+  "hidden_tests": [
+    "tests/test_error.py"
+  ],
+  "accept": "PYTHONPATH=src python3 -m unittest tests.test_error tests.test_misc tests.test_data"
+}

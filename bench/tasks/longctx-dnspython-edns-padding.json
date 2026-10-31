@@ -1,0 +1,14 @@
+{
+  "id": "longctx-dnspython-edns-padding",
+  "cohort": "longctx",
+  "repo": "https://github.com/rthalley/dnspython",
+  "license": "ISC",
+  "base": "e35e00381206ffae3c241b487c6d7f9260b22a4b",
+  "reference": "f390fb666eab1a821c62d56fdf7e2247bce4bdd2",
+  "task": "Add EDNS padding (RFC 7830) to messages. Message.use_edns() and dns.message.make_query() get a new keyword pad, a non-negative int, default 0. When pad is non-zero, to_wire() must add an EDNS PADDING option of zero bytes so that the total wire length is an exact multiple of pad. The option is always added when pad is non-zero, even if it ends up empty, and pad=0 changes nothing. The length must count everything in the final message: the OPT record with its existing options, the 4 byte header of the padding option, and any TSIG record added after the OPT, including when TSIG is signed. Expected lengths for make_query(\"www.example\", \"a\", use_edns=0): 40 with no padding, then pad=1 gives 44, pad=2 gives 44, pad=3 gives 45, pad=44 gives 44, pad=67 gives 67 and pad=128 gives 128. With options=[dns.edns.ECSOption(\"1.2.3.0\", 24)] and pad=128 the length is 128, and after q.use_tsig(keyring) with a default algorithm key from dns.tsigkeyring.from_text({\"keyname.\": \"NjHwPsMKjdN++dOfE5iAiQ==\"}) it is 256. dns.message.from_wire must parse every result back to a message equal to the original, and the TSIG must verify with keyring=keyring. The MAC does not exist until signing, so its size has to be known up front: add a dict dns.tsig.mac_sizes from algorithm name to MAC size, and have use_tsig build its placeholder TSIG with a zero-filled MAC of that size. A compressed key name would throw the count off, so do not compress the TSIG owner name in a padded message. The OPT record must be rendered after the rest of the additional section, just before the TSIG. Add Renderer.reserve(size) and Renderer.release_reserved() in dns/renderer.py so room for the OPT and TSIG is held back while rendering the other sections: on a Renderer with max_size=512, reserve(100) makes max_size 412 and release_reserved() restores 512, and reserve raises ValueError for a negative size or one larger than max_size.",
+  "hidden_tests": [
+    "tests/test_message.py",
+    "tests/test_renderer.py"
+  ],
+  "accept": "python3 -m unittest tests.test_message tests.test_renderer tests.test_tsig"
+}

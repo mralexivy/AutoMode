@@ -1,4 +1,4 @@
-// A benchmark task names a public repository and two pinned commits. This helper keeps one bare-ish clone per task in
+// A benchmark task names a public repository and two pinned commits. This helper keeps one full clone per task in
 // bench/.cache/repos (gitignored), so the runner, the grader and the fixture check read the same history.
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -63,12 +63,13 @@ export function problems(t: Task, { allowLocal = false } = {}) {
 
 const git = (args: string[], cwd?: string) => execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 1e8 })
 
-// taskRepo returns the cached clone for a task, fetching it once. Blobs load on demand.
+// taskRepo returns the cached clone for a task, fetching it once. It is a full clone: `git archive` and a local clone of
+// a blobless repository fail on recent git, because they cannot fetch blobs through the cache.
 export function taskRepo(task: Task) {
   const dir = path.join(REPOS, task.id)
   if (!fs.existsSync(path.join(dir, '.git'))) {
     fs.mkdirSync(REPOS, { recursive: true })
-    git(['clone', '-q', '--no-checkout', '--filter=blob:none', task.repo, dir])
+    git(['clone', '-q', '--no-checkout', task.repo, dir])
   }
   for (const sha of [task.base, task.reference]) {
     try { git(['cat-file', '-e', `${sha}^{commit}`], dir) } catch { git(['fetch', '-q', 'origin', sha], dir) }

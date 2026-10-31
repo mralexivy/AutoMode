@@ -102,6 +102,12 @@ export function agentChange(wt: string, base: string, hiddenTests: string[]) {
   }
 }
 
+// removeTree retries, because a test's child process can still be writing. A failed cleanup must never lose a result that
+// a run already paid for, so it warns and goes on.
+export function removeTree(dir: string) {
+  try { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 8, retryDelay: 250 }) } catch (e) { console.error(`could not remove ${path.basename(dir)}: ${(e as Error).message}`) }
+}
+
 // prepareWorkspace writes the tree at `base` into a new repository with one commit. A clone would carry the reference
 // commit and the hidden tests in its object store, where `git log --all` finds them. Agents get no project history.
 export function prepareWorkspace(cache: string, base: string, wt: string) {
@@ -111,6 +117,14 @@ export function prepareWorkspace(cache: string, base: string, wt: string) {
   git(['init', '-q'], wt)
   git(['add', '-A', '-f'], wt)
   git(['-c', 'user.name=bench', '-c', 'user.email=bench@example.com', 'commit', '-q', '--allow-empty', '-m', 'base'], wt)
+  return git(['rev-parse', 'HEAD'], wt).trim()
+}
+
+// sealSetup commits what setup left behind, and returns the new base. Without this, a generated file that the project does
+// not ignore would count as the agent's change.
+export function sealSetup(wt: string) {
+  git(['add', '-A'], wt)
+  git(['-c', 'user.name=bench', '-c', 'user.email=bench@example.com', 'commit', '-q', '--allow-empty', '-m', 'setup'], wt)
   return git(['rev-parse', 'HEAD'], wt).trim()
 }
 
@@ -143,13 +157,13 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
   const started = performance.now()
   const elapsed = () => Math.round(performance.now() - started)
   const dir = path.join(ctx.scratch, runId)
-  fs.rmSync(dir, { recursive: true, force: true })
+  removeTree(dir)
   fs.mkdirSync(dir, { recursive: true })
   const wt = path.join(dir, 'wt')
   const cache = (ctx.repoFor ?? taskRepo)(task)
   // Third-party test code never runs on the host.
   if (task.requirements?.sandbox && !runner.sandbox) throw new Error(`${task.id} needs a sandboxed runner`)
-  const workspaceBase = prepareWorkspace(cache, task.base, wt)
+  let workspaceBase = prepareWorkspace(cache, task.base, wt)
   try {
     // Commands run where the runner says. In a sandbox, so do the tests: they execute code the model wrote.
     const box = runner.sandbox?.(wt)
@@ -161,6 +175,7 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
     if (task.setup) {
       const setup = await sh(task.setup, SETUP_MS, true)
       if (setup.status !== 0) return { ...rowHead, exit_reason: 'setup_error' as ExitReason, setup_exit: setup.status, at: new Date().toISOString() }
+      workspaceBase = sealSetup(wt)
     }
     const setupDone = elapsed()
     const res = await runner.run({ armId, workspace: wt, dir, prompt: prompt.text, timeoutMs: task.limits?.wall_seconds ? task.limits.wall_seconds * 1000 : ctx.timeoutMs, runCap: ctx.runCap })
@@ -215,6 +230,6 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
       stderr_tail: res.stderrTail, at: new Date().toISOString(),
     }
   } finally {
-    fs.rmSync(wt, { recursive: true, force: true })
+    removeTree(wt)
   }
 }

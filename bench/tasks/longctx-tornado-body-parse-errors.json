@@ -1,0 +1,14 @@
+{
+  "id": "longctx-tornado-body-parse-errors",
+  "cohort": "longctx",
+  "repo": "https://github.com/tornadoweb/tornado",
+  "license": "Apache-2.0",
+  "base": "ae4a4e4feafc631c3dba64c3fbe185d05c37e356",
+  "reference": "cc61050e8f26697463142d99864b562e8470b41d",
+  "task": "Malformed form bodies are only logged today. parse_body_arguments and parse_multipart_form_data in tornado/httputil.py write a warning to gen_log and carry on, so one bad request can spam the log and the handler still runs with partial arguments. Make them raise HTTPInputError instead, once per request, and make a tornado.web application answer such a request with a 400 without running the handler method. parse_multipart_form_data must raise HTTPInputError for: no final boundary, a part with no header block (\"multipart/form-data missing headers\"), a disposition other than form-data or a part that does not end in CRLF (\"Invalid multipart/form-data\"), and a part with no name (\"multipart/form-data missing name\"). parse_body_arguments must raise HTTPInputError for: a Content-Encoding header on a urlencoded or multipart body (\"Unsupported Content-Encoding: <encoding>\"), an undecodable urlencoded body (\"Invalid x-www-form-urlencoded body: <error>\"), a multipart content type with no boundary, and any other multipart failure (\"Invalid multipart/form-data: <error>\"). On the web side the error must pass through the normal RequestHandler error path, as an HTTPError with status 400, so write_error and log_exception run and the log line carries the parse message. For example a gzip-encoded form POST to a server without decompress_request must return 400 and log a gen_log warning that matches the regex .*Unsupported Content-Encoding. Work out where the body is parsed today and move it to where an exception can reach that error path. Handlers using @stream_request_body do not get their body parsed and must not change.",
+  "hidden_tests": [
+    "tornado/test/httpserver_test.py",
+    "tornado/test/httputil_test.py"
+  ],
+  "accept": "python3 -m unittest tornado.test.httputil_test tornado.test.httpserver_test tornado.test.web_test"
+}

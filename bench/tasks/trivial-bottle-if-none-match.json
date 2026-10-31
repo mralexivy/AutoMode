@@ -1,0 +1,13 @@
+{
+  "id": "trivial-bottle-if-none-match",
+  "cohort": "trivial",
+  "repo": "https://github.com/bottlepy/bottle",
+  "license": "MIT",
+  "base": "2a743a302a71460bfe4c0b8b7cb99a306b0328c6",
+  "reference": "b73bd1db5b7a915cf6a78656955c4059f58195ae",
+  "task": "static_file() gets conditional requests wrong when a client sends both If-None-Match and If-Modified-Since. RFC 7232 section 3.3 says If-Modified-Since must be ignored whenever If-None-Match is present. So if If-None-Match does not match the file's ETag (say it is \"no-match\") and If-Modified-Since would count as fresh, the response must be 200, not 304. If If-None-Match equals the current ETag, the response stays 304 even when If-Modified-Since is old. Requests with only If-Modified-Since keep working as they do now.",
+  "hidden_tests": [
+    "test/test_sendfile.py"
+  ],
+  "accept": "python3 -m unittest test.test_sendfile"
+}

@@ -12,7 +12,7 @@ import { canonical, experimentProblems, loadExperiment, specHash } from './lib/e
 import { loadTemplate, renderPrompt } from './lib/prompt.mts'
 import { estimatedUsd, rowProblems } from './lib/result.mts'
 import { RunQueue, WINDOW_MS, waitMs, windowSpend } from './lib/pacer.mts'
-import { oneRun, runIdFor } from './lib/run-one.mts'
+import { oneRun, removeTree, runIdFor } from './lib/run-one.mts'
 import { normalizeTask, problems } from './lib/task-repo.mts'
 import { brier, ece, effortDistance, nll, replicaForecast, spearman, withinOne } from './lib/calibration.mts'
 import { buildManifest, verifyManifest } from './lib/manifest.mts'
@@ -499,4 +499,20 @@ test('the offline task check runs with no network, and a manifest check fails on
   assert.equal(spawnSync(process.execPath, ['bench/verify-manifest.mts', manifest]).status, 0)
   fs.writeFileSync(file, '{"changed":true}\n')
   assert.equal(spawnSync(process.execPath, ['bench/verify-manifest.mts', manifest]).status, 1)
+})
+
+test('files that setup leaves behind are not the agent change', async () => {
+  const { row, diff } = await run('solve', { setup: 'echo generated > setup-output.txt' })
+  assert.equal(row.exit_reason, 'done')
+  assert.doesNotMatch(diff, /setup-output/)
+  assert.equal(row.files_touched, 2)
+  assert.equal(row.accepted, true)
+})
+
+test('a failed cleanup warns and does not throw', () => {
+  const saved = fs.rmSync
+  ;(fs as any).rmSync = () => { throw new Error('ENOTEMPTY') }
+  const warn = console.error
+  console.error = () => {}
+  try { assert.doesNotThrow(() => removeTree(path.join(ROOT, 'x'))) } finally { (fs as any).rmSync = saved; console.error = warn }
 })
