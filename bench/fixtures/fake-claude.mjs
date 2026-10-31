@@ -14,7 +14,15 @@ if (process.env.CLAUDE_CONFIG_DIR && mode !== 'grade') {
   fs.writeFileSync(`${dir}/fake-session.jsonl`, [
     { type: 'assistant', requestId: 'r1', timestamp: '2026-10-31T00:00:00Z', effort: 'high', message: { model: 'claude-sonnet-5-5', usage, stop_reason: 'end_turn' } },
     { type: 'system', subtype: 'compact_boundary' },
+    ...(process.env.FAKE_CLAUDE_LEAK ? [{ type: 'user', message: { content: process.env.FAKE_CLAUDE_LEAK } }] : []),
   ].map((r) => JSON.stringify(r)).join('\n') + '\n')
+}
+// What a curious agent could find through git. A test reads this to prove the answer is out of reach.
+if (process.env.FAKE_CLAUDE_PROBE) {
+  const probe = (args) => { try { return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() } catch { return null } }
+  fs.writeFileSync(process.env.FAKE_CLAUDE_PROBE, JSON.stringify({
+    reference: probe(['cat-file', '-t', process.env.FAKE_CLAUDE_REFERENCE]), remotes: probe(['remote']), log: probe(['log', '--all', '--format=%s']), files: probe(['ls-files']),
+  }))
 }
 const reply = (o) => console.log(JSON.stringify({ session_id: 'fake-session', num_turns: 1, total_cost_usd: 0.25, ...o }))
 const solve = () => fs.writeFileSync('add.js', 'export const add = (a, b) => a + b\n')
