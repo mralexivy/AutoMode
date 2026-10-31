@@ -26,12 +26,16 @@ const route = (family, effort) => ({ tier: TIER[family], family, model: MODEL[fa
 const cost = (family, effort) => { const r = ANTHROPIC.rates[family]; return (100_000 * r.input * r.cacheReadX + 600 * r.output * (1 + EFFORTS.indexOf(effort) * 0.3)) / 1e6 }
 
 // ---------------------------------------------------------------- the real policy, as pure functions
+const pickFrom = (c, verdicts, need) => {
+  const best = optimizeAuto({ allowed: ['haiku', 'sonnet', 'opus'], verdicts, need, hm: c.hm ?? null, consequence: c.consequence, floors: { because: [] }, current: c.current ?? null, cost }).best
+  return { family: best.family, effort: best.effort }
+}
 const real = {
   name: 'real',
   pick: (c) => {
     const verdicts = Object.fromEntries(Object.entries(c.verdicts).map(([f, [model, effort]]) => [f, { model, effort, why: 'case' }]))
-    const best = optimizeAuto({ allowed: ['haiku', 'sonnet', 'opus'], verdicts, hm: c.hm ?? null, consequence: c.consequence, floors: { because: [] }, current: c.current ?? null, cost }).best
-    return { family: best.family, effort: best.effort }
+    // The need is the fixed-anchor answer. A case with one verdict has only that answer.
+    return pickFrom(c, verdicts, verdicts.sonnet ?? Object.values(verdicts)[0] ?? null)
   },
   // After a stage change the route is decided again from the new verdict; otherwise the running route stays.
   next: (c) => decisionRequired({ stageChanged: c.stageChanged, planExited: c.planExited }).required ? real.pick(c) : c.running,
@@ -54,6 +58,10 @@ const MUTANTS = [
   { ...real, name: 'ignore cache rewrites', switch: (c) => switchCheck({ ...c.switchInput, cache: { ...c.switchInput.cache, prefixTokens: 0 } }).verdict },
   { ...real, name: 'ignore task-stage transitions', next: (c) => c.running },
   { ...real, name: 'disable escalation', escalate: (c) => c.running },
+  { ...real, name: 'the floor reads the running model verdict', pick: (c) => {
+    const verdicts = Object.fromEntries(Object.entries(c.verdicts).map(([f, [model, effort]]) => [f, { model, effort, why: 'case' }]))
+    return pickFrom(c, verdicts, verdicts[c.current?.family] ?? verdicts.sonnet ?? Object.values(verdicts)[0] ?? null)
+  } },
 ]
 
 // ---------------------------------------------------------------- independent cases
@@ -73,7 +81,7 @@ for (const u of UPSTREAM.filter((x) => !x.ok.includes('xhigh') && !x.ok.includes
 cases.push({ id: 'haiku-lookup', source: 'upstream (t01, trivial: low)', kind: 'pick', input: { hm: { tier: 'T0', complexity: 'trivial' }, verdicts: { sonnet: ['haiku', 'low'], haiku: ['haiku', 'low'] } },
   accept: (d) => (d.family === 'haiku' && d.effort === 'low') || `${d.family}/${d.effort} for a lookup both judges put on Haiku low` })
 // 4. A hard task that both judges put on Opus high is not served by a weaker model or a lower effort.
-cases.push({ id: 'hard-on-opus', source: 'upstream (big: high/xhigh)', kind: 'pick', input: { hm: { tier: 'T3', complexity: 'complex' }, verdicts: { sonnet: ['opus', 'high'], opus: ['opus', 'high'] } },
+cases.push({ id: 'hard-on-opus', source: 'brief (the rule table: T3 plus need=opus)', kind: 'pick', input: { hm: { tier: 'T3', complexity: 'complex' }, verdicts: { sonnet: ['opus', 'high'], opus: ['opus', 'high'] } },
   accept: (d) => (d.family === 'opus' && EFFORTS.indexOf(d.effort) >= 2) || `${d.family}/${d.effort} for a task labeled Opus high` })
 // 5. A stage change (plan approved, implementation starts) is decided again from the new verdict.
 cases.push({ id: 'plan-exit', source: 'brief', kind: 'next', input: { planExited: true, stageChanged: true, running: { family: 'sonnet', effort: 'xhigh' }, previousEffort: 'xhigh', verdicts: { sonnet: ['sonnet', 'medium'] } },
@@ -106,7 +114,20 @@ for (const type of ['Explore', 'general-purpose']) {
   cases.push({ id: `subagent-${type}`, source: 'measured', kind: 'subagent', input: { type, parent: 'opus' }, accept: (m) => m !== 'opus' || `${type} inherited Opus` })
 }
 
-const run = (p, c) => c.accept(c.kind === 'pick' ? p.pick(c.input) : c.kind === 'next' ? p.next(c.input) : c.kind === 'switch' ? p.switch(c.input) : c.kind === 'escalate' ? p.escalate(c.input) : p.subagent(c.input))
+// 11. The start model never decides. The same task reads the same on a Sonnet session and an Opus session with no cache,
+//     where the Opus session also holds the answer asked about Opus (A9).
+for (const [id, hm, sonnet, opus] of [
+  ['start-routine', { tier: 'T1', complexity: 'standard' }, ['sonnet', 'medium'], ['opus', 'medium']],
+  ['start-hard-on-sonnet', { tier: 'T3', complexity: 'complex' }, ['sonnet', 'high'], ['opus', 'high']],
+  ['start-t2-fable-only-under-opus', { tier: 'T2', complexity: 'complex' }, ['sonnet', 'high'], ['fable', 'high']],
+]) {
+  cases.push({ id, source: 'brief (start invariance)', kind: 'starts', input: {
+    fromSonnet: { hm, verdicts: { sonnet }, current: { family: 'sonnet', effort: 'high' } },
+    fromOpus: { hm, verdicts: { sonnet, opus }, current: { family: 'opus', effort: 'medium' } },
+  }, accept: ([a, b]) => (a.family === b.family && a.effort === b.effort) || `${a.family}/${a.effort} from Sonnet, ${b.family}/${b.effort} from Opus` })
+}
+
+const run = (p, c) => c.accept(c.kind === 'starts' ? [p.pick(c.input.fromSonnet), p.pick(c.input.fromOpus)] : c.kind === 'pick' ? p.pick(c.input) : c.kind === 'next' ? p.next(c.input) : c.kind === 'switch' ? p.switch(c.input) : c.kind === 'escalate' ? p.escalate(c.input) : p.subagent(c.input))
 const failures = (p) => cases.map((c) => ({ id: c.id, source: c.source, why: run(p, c) })).filter((r) => r.why !== true)
 
 test('the real policy passes every independent case', () => {
@@ -127,6 +148,7 @@ test('each mutant is caught by the case that targets it, for the stated reason',
     'always xhigh for planning': `plan:${UPSTREAM.find((x) => !x.ok.includes('xhigh') && !x.ok.includes('high')).id}`,
     'always inherit the previous effort': 'plan-exit', 'always keep a warm model': 'mandatory-up', 'always switch to the cheaper model': 'warm-400k-downgrade',
     'ignore subagent spending': 'subagent-Explore', 'ignore cache rewrites': 'warm-400k-downgrade', 'ignore task-stage transitions': 'plan-exit', 'disable escalation': 'escalate-after-failures',
+    'the floor reads the running model verdict': 'start-hard-on-sonnet',
   }
   for (const [name, id] of Object.entries(expectHit)) assert.ok(by[name].includes(id), `"${name}" should fail ${id}; failed ${by[name].join(', ') || 'nothing'}`)
 })

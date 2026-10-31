@@ -6,6 +6,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Fixed
 
+- The route now follows the task, not the model the session started on. One effortless answer with a fixed anchor (`Current: sonnet`) decides the model, and the running model is asked only for its own effort.
+- Opus now needs T4, a Fable verdict, an escalation floor, T3 with critical work, or T3 with the need naming Opus. Otherwise the route is Sonnet, or Haiku when both judges name it. Price is only a tie-break.
+- An upgrade that only the judges ask for now waits for the switch gate. Floors, escalation and provider limits still move at once.
+- Decision records now hold the need and its anchor, and outcome records hold the route and the AutoMode tier.
 - Native `/model` and `/effort` now stand for the session, until `am:reset`. Before, routing overwrote them without notice.
 - `routeModels: false` keeps the model you picked from the first prompt. A first-prompt judge failure does too.
 - A failed judge raises task risk only until a judge answers again.

@@ -8,8 +8,8 @@
 //
 // What the router does, as in v4.ts decideAuto: a short follow-up that keeps the effort (upstream keepsEffort) asks no
 // judge. Otherwise the AutoMode judge (config judgeVersion 2: JUDGE_SYSTEM, judgePrompt) and the effortless judge
-// about the anchor (the running model) run; then at most one more effortless call for the model secondCall names. A
-// plan exit is judged again with the router's PLAN_EXIT_NOTE. The anchor's Current effort follows A7: the running
+// with the fixed anchor (A9) and the running model run; then at most one more effortless call for the model secondCall
+// names. A plan exit is judged again with the router's PLAN_EXIT_NOTE. The Current effort follows A7: the running
 // effort while the cache is warm (under an hour since the last request), else Anthropic's default.
 // Every call goes through the ledger. The text of a prompt goes only to the judge, never into the cache file.
 import fs from 'node:fs'
@@ -23,7 +23,7 @@ import { add, ensure, total } from './lib/ledger.mts'
 import { JUDGE_SYSTEM as HM_SYSTEM, judgePrompt, parseJudge } from '../hooks/lib/classify.ts'
 import { JUDGE_SYSTEM as EFF_SYSTEM, keepsEffort, parseVerdict } from '../hooks/lib/effortless.ts'
 import { judgeInputFor, contextOf } from '../hooks/lib/effortless-adapt.ts'
-import { secondCall, shortcutApplies } from '../hooks/lib/auto.ts'
+import { firstCalls, secondCall, shortcutApplies } from '../hooks/lib/auto.ts'
 import { tierOf } from '../hooks/lib/optimizer.ts'
 import { DEFAULT_PARAMS } from '../hooks/lib/policy.ts'
 
@@ -116,7 +116,8 @@ async function judgeOne(pt) {
   const ctxMsgs = [...(pt.prevUser ? [{ role: 'user', text: pt.prevUser.slice(0, 2000) }] : []), ...(pt.lastReply ? [{ role: 'assistant', text: pt.lastReply.slice(0, 2000) }] : [])]
   if (!pt.exit && shortcutApplies(keepsEffort(pt.text, contextOf(ctxMsgs)), pt.text, { required: false })) return { shortcut: true }
   const allowed = ['sonnet', 'opus', ...(pt.prefix && pt.prefix <= DEFAULT_PARAMS.haikuMaxContext ? ['haiku'] : [])]
-  const anchor = allowed.includes(pt.running.family) ? pt.running.family : 'sonnet'
+  const families = firstCalls(undefined, allowed.includes(pt.running.family) ? pt.running.family : undefined)
+  const anchor = families[0]
   const effortFor = (f) => (f === pt.running.family && pt.warm ? pt.running.effort : DEFAULT_EFFORT[f])
   const askEff = async (f) => {
     const r = await call(EFF_SYSTEM, judgeInputFor(pt.text, { family: f, effort: effortFor(f), messages: ctxMsgs, planMode: pt.plan }), 'retro-judge effortless')
@@ -125,14 +126,15 @@ async function judgeOne(pt) {
     return v
   }
   const hmCall = pt.exit ? Promise.resolve(null) : call(HM_SYSTEM, judgePrompt(pt.text, { lastReply: pt.lastReply, current: `${tierOf(pt.running.family, pt.running.effort)} ${pt.running.family} ${pt.running.effort}` }), 'retro-judge automode')
-  const [hmR, a] = await Promise.all([hmCall, askEff(anchor)])
+  const [hmR, ...asked] = await Promise.all([hmCall, ...families.map(askEff)])
+  const a = asked[0]
   const hmA = hmR?.ok ? parseJudge(hmR.text) : null
   const hm = hmA ? { tier: hmA.tier, complexity: hmA.complexity, effort: hmA.effort, confidence: hmA.confidence } : null
-  const verdicts = { [anchor]: a }
-  const second = a ? secondCall({ allowed, verdicts: Object.fromEntries(Object.entries(verdicts).filter(([, v]) => v)), hm, floors: { because: [] }, current: null, cost: () => 0 }, anchor) : null
+  const verdicts = Object.fromEntries(families.map((f, i) => [f, asked[i]]))
+  const second = a ? secondCall({ allowed, verdicts: Object.fromEntries(Object.entries(verdicts).filter(([, v]) => v)), need: a, hm, floors: { because: [] }, current: null, cost: () => 0 }, anchor) : null
   if (second) verdicts[second] = await askEff(second)
   const clean = (v) => (v ? { model: v.model, effort: v.effort } : null)
-  return { anchor, allowed, hm, verdicts: Object.fromEntries(Object.entries(verdicts).map(([k, v]) => [k, clean(v)])), calls: (pt.exit ? 0 : 1) + 1 + (second ? 1 : 0) }
+  return { anchor, allowed, hm, verdicts: Object.fromEntries(Object.entries(verdicts).map(([k, v]) => [k, clean(v)])), calls: (pt.exit ? 0 : 1) + families.length + (second ? 1 : 0) }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

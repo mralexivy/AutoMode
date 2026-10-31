@@ -31,7 +31,7 @@ import { DEFAULT_LADDER, resolve } from '../hooks/lib/authority.ts'
 import { DEFAULT_PARAMS } from '../hooks/lib/policy.ts'
 import { JUDGE_SYSTEM, keepsEffort, parseVerdict } from '../hooks/lib/effortless.ts'
 import { judgeInputFor } from '../hooks/lib/effortless-adapt.ts'
-import { fallbackModel, optimizeAuto, secondCall, shortcutApplies } from '../hooks/lib/auto.ts'
+import { fallbackModel, firstCalls, optimizeAuto, runningRuledOut, secondCall, shortcutApplies } from '../hooks/lib/auto.ts'
 import { stageOfText } from './calibrate.mts'
 import { haikuCall } from './lib/haiku-call.mts'
 import { total } from './lib/ledger.mts'
@@ -140,9 +140,10 @@ for (const [id, rs] of bySession) {
       const prefix = d.cache?.prefixTokens || estimateFor(id) || 0
       const allowed = ['haiku', 'sonnet', 'opus'].filter((f) => !(f === 'haiku' && (!prefix || prefix > DEFAULT_PARAMS.haikuMaxContext)))
       const fixedFamily = ov?.tier ? DEFAULT_LADDER.tiers[ov.tier].family : ov?.effort && current ? current.family : undefined
-      // The router's protocol: call 1 about the anchor (the running model, else Sonnet), then at most one second call
+      // The router's protocol: call 1 with the fixed anchor (A9) and the running model, then at most one second call
       // about the model secondCall names. Verdicts come from the cache; a missing one is asked only with --rejudge.
-      const anchor = fixedFamily ?? (current && allowed.includes(current.family) ? current.family : 'sonnet')
+      const families = firstCalls(fixedFamily, current && allowed.includes(current.family) ? current.family : undefined)
+      const anchor = families[0]
       const verdicts = {}
       const askFor = (f) => {
         const key = `${id}|${d.at}|${f}`
@@ -162,7 +163,7 @@ for (const [id, rs] of bySession) {
       }
       let fixedFallback = null
       legacyNow = null
-      askFor(anchor)
+      for (const f of families) askFor(f)
       if (verdicts[anchor] === undefined) { missing += 1; after = { ...actual, why: 'unknown: the cached verdict was asked with a different Current line (A7); needs --rejudge' } }
       // As the router: a failed anchor call is a fallback (the anchor model at the previous or app effort), with no second call.
       const anchorFailed = !verdicts[anchor]
@@ -174,18 +175,19 @@ for (const [id, rs] of bySession) {
         fixedFallback = fm.family
       }
       const floorsPre = { because: [], ...(d.risk?.effective === 'critical' && hm?.complexity !== 'trivial' ? { exclude: { haiku: 'critical' }, effortMin: { sonnet: 'high' } } : {}) }
-      const second = fixedFamily || anchorFailed ? null : secondCall({ allowed, verdicts, hm, consequence: d.risk?.effective, floors: floorsPre, current: null, cost: () => 0 }, anchor)
+      const need = verdicts[anchor] ?? null
+      const second = fixedFamily || anchorFailed ? null : secondCall({ allowed, verdicts, need, hm, consequence: d.risk?.effective, floors: floorsPre, current: null, cost: () => 0 }, anchor)
       if (second) askFor(second)
-      calls += 1 + (second ? 1 : 0)
+      calls += families.length + (second ? 1 : 0)
       if (after) { /* unknown, set above */ }
       else if (!Object.values(verdicts).some(Boolean)) { missing += 1; after = { ...actual, owner: actual.owner, why: 'needs a verdict (run with --rejudge)' } }
       else {
         const x = { cache: { model: null, effort: null, prefixTokens: prefix, lastRequestAt: null, ttlMs: HOUR, effortSharesCache: true }, warm: {}, now: 0, prices: ANTHROPIC, priors: DEFAULT_PRIORS, neutral: true }
         const cost = (family, effort) => attemptCost({ family, effort, cap: { lo: 0, hi: 0 } }, { steps: TASK_STEPS[hm?.complexity ?? 'standard'] }, x).usd
         const floors = { because: [], ...(fixedFallback ? { fixedFamily: fixedFallback } : {}), ...(d.risk?.effective === 'critical' && hm?.complexity !== 'trivial' ? { exclude: { haiku: 'critical' }, effortMin: { sonnet: 'high' } } : {}), ...(fixedFamily ? { fixedFamily } : {}), ...(ov?.effort ? { fixedEffort: ov.effort } : {}) }
-        const choice = optimizeAuto({ allowed, verdicts, hm, consequence: d.risk?.effective, floors, current, cost })
+        const choice = optimizeAuto({ allowed, verdicts, need: need ?? (fixedFallback ? verdicts[fixedFallback] : null), hm, consequence: d.risk?.effective, floors, current, cost })
         const own = current ? choice.candidates.find((c) => c.family === current.family) : null
-        const currentInadequate = !!own && (own.eligibility === 'ineligible' || own.eligibility === 'unavailable')
+        const currentInadequate = runningRuledOut(current?.family, choice, floors)
         const warm = !!d.cache?.warm
         const route = current ? resolve({
           ...(ov?.tier || ov?.effort ? { override: { tier: tierOf(choice.best.family, choice.best.effort), effort: choice.best.effort, reason: 'user command' } } : {}),

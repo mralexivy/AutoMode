@@ -50,7 +50,8 @@ function* cases(): Generator<Case> {
       if (haiku) verdicts.haiku = verdict(model, haiku)
       if (sonnet) verdicts.sonnet = verdict(model, sonnet)
       if (opus) verdicts.opus = verdict(model, opus)
-      yield { tier, complexity, consequence, model, input: { allowed, verdicts, hm: tier ? { tier, complexity } : null, consequence, floors: floorsFor(consequence, complexity), current: null, cost: costFor(complexity) } }
+      const need = Object.values(verdicts)[0] ?? null
+      yield { tier, complexity, consequence, model, input: { allowed, verdicts, need, hm: tier ? { tier, complexity } : null, consequence, floors: floorsFor(consequence, complexity), current: null, cost: costFor(complexity) } }
     }
 }
 
@@ -81,7 +82,7 @@ test('every route keeps the quality rules', () => {
 
 test('an explicit user effort beats every floor', () => {
   for (const tier of ['T3', 'T4'] as Tier[]) for (const model of MODELS) for (const effort of EFFORTS) {
-    const { best } = optimizeAuto({ allowed: ['sonnet', 'opus'], verdicts: { opus: verdict(model, 'high') }, hm: { tier, complexity: 'complex' }, floors: { fixedEffort: effort, fixedFamily: 'opus', because: [] }, current: null, cost: costFor('complex') })
+    const { best } = optimizeAuto({ allowed: ['sonnet', 'opus'], verdicts: { opus: verdict(model, 'high') }, need: verdict(model, 'high'), hm: { tier, complexity: 'complex' }, floors: { fixedEffort: effort, fixedFamily: 'opus', because: [] }, current: null, cost: costFor('complex') })
     assert.equal(best.effort, effort, `${tier} ${model} ${effort}`)
   }
 })
@@ -90,7 +91,7 @@ test('raising the running verdict never lowers the band of a fixed model', () =>
   for (const tier of TIER_OPTIONS) for (const family of ['sonnet', 'opus'] as Family[]) {
     let last = -Infinity
     for (const effort of EFFORTS) {
-      const { best } = optimizeAuto({ allowed: [family], verdicts: { [family]: verdict(family, effort) }, hm: tier ? { tier, complexity: 'standard' } : null, floors: { because: [] }, current: null, cost: costFor('standard') })
+      const { best } = optimizeAuto({ allowed: [family], verdicts: { [family]: verdict(family, effort) }, need: verdict(family, effort), hm: tier ? { tier, complexity: 'standard' } : null, floors: { because: [] }, current: null, cost: costFor('standard') })
       const band = BAND_OF[best.family][best.effort]
       assert.ok(band >= last, `${tier} ${family} ${effort}: band ${band} after ${last}`)
       last = band

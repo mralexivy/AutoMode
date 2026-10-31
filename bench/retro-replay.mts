@@ -3,7 +3,7 @@
 // Retrospective replay: what today's AutoMode Auto would have done on every recorded turn of the last N days,
 // including plain Opus and Vertex-era sessions. $0: no model call; the real policy code decides.
 //
-// What runs as shipped: optimizeAuto (eligibility, cheapest eligible pair), switchCheck (cache economics,
+// What runs as shipped: optimizeAuto (eligibility on the need, the weakest eligible model), switchCheck (cache economics,
 // dwell, payback; remaining work from the REMAINING table, never from the future of the session), subagentRoute,
 // the Haiku context guard, and escalation after repeated test failures.
 // What cannot run: the two judges (paid Haiku calls). Their verdicts are supplied by a named regime:
@@ -143,7 +143,8 @@ function decideMeasured(key, running, prefix) {
     return { family: fm.family, effort: fm.effort ?? running.effort, why: `effortless failed: ${fm.why}`, calls: v.calls }
   }
   const verdicts = Object.fromEntries(Object.entries(v.verdicts).filter(([, x]) => x).map(([f, x]) => [f, { ...x, why: 'judge' }]))
-  const best = optimizeAuto({ allowed, verdicts, hm, floors: { because: [] }, current: running, cost: (f, e) => { const r = ANTHROPIC.rates[f]; return (prefix * r.input * r.cacheReadX + 600 * r.output) / 1e6 } }).best
+  // A record cached before A9 has the running model as its anchor: it stands in as the need until it is asked again.
+  const best = optimizeAuto({ allowed, verdicts, need: verdicts[v.anchor], hm, floors: { because: [] }, current: running, cost: (f, e) => { const r = ANTHROPIC.rates[f]; return (prefix * r.input * r.cacheReadX + 600 * r.output) / 1e6 } }).best
   return { family: best.family, effort: best.effort, why: `judges: ${Object.entries(v.verdicts).map(([f, x]) => `${f}:${x ? `${x.model}/${x.effort}` : '-'}`).join(' ')} hm:${v.hm?.tier ?? '-'}`, calls: v.calls }
 }
 
@@ -154,7 +155,7 @@ export function decide(regime, cls, running, prefix) {
   const allowed = ['sonnet', 'opus', ...(prefix <= HAIKU_LIMIT ? ['haiku'] : [])]
   // The effortless judge is asked about the running model and, when it could win, one more; a correct judge
   // gives the same answer about each, so every family gets the class verdict.
-  const best = optimizeAuto({ allowed, verdicts: { haiku: v, sonnet: v, opus: v }, hm: { tier, complexity: CX[tier] }, floors: { because: [] }, current: running, cost: (f, e) => { const r = ANTHROPIC.rates[f]; return (prefix * r.input * r.cacheReadX + 600 * r.output) / 1e6 } }).best
+  const best = optimizeAuto({ allowed, verdicts: { haiku: v, sonnet: v, opus: v }, need: v, hm: { tier, complexity: CX[tier] }, floors: { because: [] }, current: running, cost: (f, e) => { const r = ANTHROPIC.rates[f]; return (prefix * r.input * r.cacheReadX + 600 * r.output) / 1e6 } }).best
   return { family: best.family, effort: best.effort, why: `${cls}: ${best.why.at(-1) ?? ''}` }
 }
 
