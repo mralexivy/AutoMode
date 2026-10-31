@@ -75,6 +75,14 @@ export const ARMS = {
   ...EFFORT_ARMS,
 }
 
+// billingEnv is the environment for a model call. Runs use the signed-in plan, so an API key in the shell must not
+// reach them and bill the API. BENCH_AUTH=api keeps the key, for someone with no plan.
+export function billingEnv(): NodeJS.ProcessEnv {
+  if (process.env.BENCH_AUTH === 'api') return { ...process.env }
+  const { ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ...env } = process.env
+  return env
+}
+
 // armInvocation returns { args, env } for one run. `dir` is the run's private folder.
 export function armInvocation(armId, dir, prompt) {
   const arm = ARMS[armId]
@@ -85,5 +93,5 @@ export function armInvocation(armId, dir, prompt) {
     '--settings', settingsFile, '--strict-mcp-config', '--permission-mode', 'bypassPermissions']
   if (arm.effort) args.push('--effort', arm.effort)
   if (arm.plugin) args.push('--plugin-dir', arm.plugin(dir))
-  return { args, env: { ...process.env, CLAUDE_CODE_USE_VERTEX: '0', ...(arm.env || {}) } }
+  return { args, env: { ...billingEnv(), CLAUDE_CODE_USE_VERTEX: '0', ...(arm.env || {}) } }
 }

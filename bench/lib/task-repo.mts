@@ -1,4 +1,3 @@
-// @ts-nocheck TODO(types): 1 errors with strict off. Fix them and delete this line to turn checking on for this file.
 // A benchmark task names a public repository and two pinned commits. This helper keeps one bare-ish clone per task in
 // bench/.cache/repos (gitignored), so the runner, the grader and the fixture check read the same history.
 import { execFileSync } from 'node:child_process'
@@ -10,13 +9,27 @@ export const REPOS = path.join(REPO, 'bench', '.cache', 'repos')
 
 export const TASKS_DIR = path.join(REPO, 'bench', 'tasks')
 
-export function loadTasks(dir = TASKS_DIR) {
+export interface Task {
+  id: string
+  cohort: string
+  repo: string
+  license: string
+  base: string
+  reference: string
+  task: string
+  hidden_tests: string[]
+  accept: string
+  setup?: string
+  lint?: string
+}
+
+export function loadTasks(dir = TASKS_DIR): Task[] {
   if (!fs.existsSync(dir)) return []
   return fs.readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
 }
 
 // problems: what a task file must have. A task without these cannot run, and a task without a license is not published.
-export function problems(t) {
+export function problems(t: Task) {
   const out = []
   for (const k of ['id', 'cohort', 'repo', 'license', 'base', 'reference', 'task', 'accept']) if (!t[k]) out.push(`missing "${k}"`)
   if (!Array.isArray(t.hidden_tests) || !t.hidden_tests.length) out.push('"hidden_tests" must list at least one test file')
@@ -26,10 +39,10 @@ export function problems(t) {
   return out
 }
 
-const git = (args, cwd) => execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 1e8 })
+const git = (args: string[], cwd?: string) => execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 1e8 })
 
 // taskRepo returns the cached clone for a task, fetching it once. Blobs load on demand.
-export function taskRepo(task) {
+export function taskRepo(task: Task) {
   const dir = path.join(REPOS, task.id)
   if (!fs.existsSync(path.join(dir, '.git'))) {
     fs.mkdirSync(REPOS, { recursive: true })
