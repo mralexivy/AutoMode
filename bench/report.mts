@@ -14,8 +14,8 @@ const mi = argv.indexOf('--manifest')
 const manifestFile = mi >= 0 ? argv[mi + 1] : null
 const named = argv.filter((_, i) => mi < 0 || (i !== mi && i !== mi + 1))
 const files = named.length ? named
-  // ledger.jsonl is the spend ledger, not run results. Judge and grade files have no run_id and are skipped below.
-  : fs.readdirSync(path.join(REPO, 'bench', 'results')).filter((f) => f.endsWith('.jsonl') && f !== 'ledger.jsonl').map((f) => path.join(REPO, 'bench', 'results', f))
+  // ledger.jsonl is the spend ledger, not run results. Grade files sit beside their results and are read below.
+  : fs.readdirSync(path.join(REPO, 'bench', 'results')).filter((f) => f.endsWith('.jsonl') && f !== 'ledger.jsonl' && !/\.(grades|disputes)\.jsonl$/.test(f)).map((f) => path.join(REPO, 'bench', 'results', f))
 const rows: any[] = files.flatMap((f) => fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l))).filter((r) => r.run_id)
 // A run that saw the user's auto-memory is contaminated and excluded from every number.
 const contaminated = rows.filter((r) => isResult(r) && r.memory_refs > 0)
@@ -121,6 +121,21 @@ for (const a of armIds.filter((x) => ARMS[x].v4)) {
   const regret = (lc: number, lw: number) => mean(taskOutcomes.map((t) => routingRegret(t, a, lc, lw)).filter((x) => x !== null))
   const n = (x: number | null) => (x === null ? 'n/a' : x.toFixed(3))
   out.push(`| ${ARMS[a].label} | ${s.tasks} | ${pct(s.pareto_share)} | ${usd(s.median_excess_usd)} | ${s.failures_another_arm_solved}/${s.failures} | ${s.solved_where_cheaper_arm_also_solved}/${s.solved} | ${n(regret(0.1, 0))} | ${n(regret(0.5, 0))} | ${n(regret(0.1, 0.001))} |`)
+}
+
+const gradeFiles = files.map((f) => f.replace(/\.jsonl$/, '.grades.jsonl')).filter((f) => fs.existsSync(f))
+const gradeRows: any[] = gradeFiles.flatMap((f) => fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)))
+if (gradeRows.length) {
+  const byRun = new Map(gradeRows.filter((g) => g.grade).map((g) => [g.run_id, g]))
+  const score = (r: any) => { const g = byRun.get(r.run_id)?.grade; return g ? (g.correctness + g.completeness + g.scope + g.tests + g.maintainability) / 5 : null }
+  out.push('\n### Blind quality scores (secondary)\n')
+  out.push('Hidden tests are the primary result. Scores are the mean of five rubric items from 1 to 5, and only runs the judges agree on count.\n')
+  out.push('| Arm | Graded | Disputed | Median score |\n|---|---:|---:|---:|')
+  for (const a of armIds) {
+    const rs = valid.filter((r) => r.arm === a && byRun.has(r.run_id))
+    const ok = rs.filter((r) => !byRun.get(r.run_id).disputed)
+    out.push(`| ${ARMS[a].label} | ${rs.length} | ${rs.length - ok.length} | ${median(ok.map(score))?.toFixed(2) ?? 'n/a'} |`)
+  }
 }
 
 out.push('\n### Stage cost for AutoMode arms (from the per-stage trace)\n')

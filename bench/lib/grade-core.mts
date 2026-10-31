@@ -6,6 +6,7 @@ import type { Task } from './task-repo.mts'
 // A full id, because an alias can move to a newer model between two grading passes.
 export const GRADER_MODEL = 'claude-sonnet-5-5'
 const CAP = 40000
+export const DIMENSIONS = ['correctness', 'completeness', 'scope', 'tests', 'maintainability']
 
 export const RUBRIC = `You grade one code change made by an AI coding agent for a task in a software repository.
 You get the task, the reference change (what a senior engineer actually merged; its test files are left out), and the agent's change.
@@ -29,9 +30,9 @@ export function referenceDiff(task: Task, repoDir: string) {
 export const gradePrompt = (taskText: string, reference: string, agent: string) =>
   `Task:\n${taskText}\n\nReference change:\n${clip(reference)}\n\nAgent's change:\n${agent.trim() ? clip(agent) : '(no change)'}`
 
-export function grade(prompt: string, cwd: string) {
+export function grade(prompt: string, cwd: string, model = GRADER_MODEL) {
   return new Promise<{ reply: unknown; cost: number | null }>((resolve) => {
-    const args = ['-p', prompt, '--model', GRADER_MODEL, '--system-prompt', RUBRIC, '--tools', '', '--output-format', 'json',
+    const args = ['-p', prompt, '--model', model, '--system-prompt', RUBRIC, '--tools', '', '--output-format', 'json',
       '--setting-sources', 'project', '--strict-mcp-config', '--no-session-persistence']
     const child = spawn('claude', args, { cwd, env: { ...billingEnv(), CLAUDE_CODE_USE_VERTEX: '0' }, stdio: ['ignore', 'pipe', 'pipe'] })
     let s = ''
@@ -43,8 +44,7 @@ export function grade(prompt: string, cwd: string) {
 export function parseGrade(reply: unknown): Record<string, any> | null {
   try {
     const j = JSON.parse(String(reply).match(/\{[\s\S]*\}/)[0])
-    const keys = ['correctness', 'completeness', 'scope', 'tests', 'maintainability']
-    if (!keys.every((k) => Number.isInteger(j[k]) && j[k] >= 1 && j[k] <= 5)) return null
-    return { ...Object.fromEntries(keys.map((k) => [k, j[k]])), defects: (j.defects || []).slice(0, 5), vs_reference: j.vs_reference }
+    if (!DIMENSIONS.every((k) => Number.isInteger(j[k]) && j[k] >= 1 && j[k] <= 5)) return null
+    return { ...Object.fromEntries(DIMENSIONS.map((k) => [k, j[k]])), defects: (j.defects || []).slice(0, 5), vs_reference: j.vs_reference }
   } catch { return null }
 }
