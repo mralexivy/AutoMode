@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "id": "gate-canary",
+  "track": "automode-system",
+  "description": "Does the completion gate change a false done? Counts toward no claim. See CANARIES.md.",
+  "arms": [
+    "gate-block"
+  ],
+  "tasks": [
+    "longctx-sqlglot-intersect-precedence-across-dialects"
+  ],
+  "repeats": 3,
+  "parallel": 1,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 5,
+  "budget_usd": 12,
+  "window_usd": 100
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "executor-canary",
+  "track": "automode-system",
+  "description": "Does the Sonnet executor regress tasks Sonnet high solves? Counts toward no claim. See CANARIES.md.",
+  "arms": [
+    "executor-sonnet"
+  ],
+  "tasks": [
+    "security-toughcookie-secure-cookie-origin",
+    "feature-marked-emstrongmask-hook",
+    "migration-tomli-decode-error-api",
+    "longctx-dnspython-edns-padding",
+    "security-ejs-prototype-gadgets"
+  ],
+  "repeats": 3,
+  "parallel": 1,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 3,
+  "budget_usd": 10,
+  "window_usd": 100
+}

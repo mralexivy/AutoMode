@@ -33,6 +33,7 @@ import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, summaryOf, withReview } from './lib/envelope.ts'
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
+import { executorEffort } from './lib/executor.ts'
 import { checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, reviewerBlocked, scopeGrew, withPipefail } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
 import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
@@ -73,6 +74,8 @@ const V4_DEFAULTS = {
   routeModels: true,
   // Completion evidence (lib/completion.ts). `report` records the state. `block` also sends the model back, once per task.
   completionGate: 'report' as CompletionGate,
+  // Policy auto: `sonnet` makes Sonnet the task's model and keeps the judge's pick as a shadow route (lib/executor.ts).
+  executor: 'judge' as 'judge' | 'sonnet',
   effortJudgeTimeoutMs: JUDGE_CALL.timeoutMs,
 }
 type V4Config = typeof V4_DEFAULTS
@@ -512,6 +515,7 @@ interface Decision {
   firstRequest?: { tokens: number; source: string } // the prompt size the first route was priced on, and where it came from
   workflow?: WorkflowValue // the automatic entry check, kept when a signal fired
   compare?: { policy: 'legacy' | 'auto'; route: string; inadequate?: boolean; band?: number }
+  shadowRoute?: string // under the Sonnet executor: what the judges would have run. It changes nothing.
   inadequate?: { need: number; shortfall: number; route: string }
   auto?: AutoRecord
   routing?: { cheapestAdequate: string; chosen: string; overRouted: string | null; underRouted: string | null } // policy auto
@@ -789,6 +793,18 @@ function autoFloors(env: TaskEnvelope, complexity: Complexity, allowed: Family[]
   return { floors: { effortMin, exclude, because }, tier, escalated: step ? { family: step.family, effort: step.effort } : null }
 }
 
+const executorOn = () => S.cfg.executor === 'sonnet' && (S.cfg as any).routeModels !== false
+const cacheFresh = (at: number) => !!S.cache?.lastRequestAt && at - S.cache.lastRequestAt <= S.ttl
+
+// executorInput: the optimizer's input under the Sonnet executor, or null where it does not apply. A fixed model (a pin,
+// routeModels false, a failed judge) stays fixed. A floor that rules Sonnet out, such as an escalation, reaches Opus the
+// usual way. taskRoute is the task's last route while its cache is warm.
+function executorInput(verdicts: Partial<Record<Family, FamilyVerdict | null>>, floors: AutoFloors, taskRoute: { family: Family; effort: Effort } | null) {
+  if (!executorOn() || floors.fixedFamily || floors.exclude?.sonnet) return null
+  const effort = executorEffort(verdicts.sonnet?.effort, taskRoute?.family === 'sonnet' ? taskRoute.effort : undefined)
+  return { verdicts: { ...verdicts, sonnet: { model: 'sonnet' as const, effort, why: 'executor' } }, floors: { ...floors, fixedFamily: 'sonnet' as const } }
+}
+
 // autoCost: one attempt of this task on a configuration, cache-neutral, from the token priors (labeled estimates).
 function autoCost(complexity: Complexity, at: number) {
   const x = { cache: routingCache(), warm: S.warm, now: at, prices: prices(), priors: S.priors, neutral: true }
@@ -993,7 +1009,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
     if ((!answer || fallback) && S.current && !fixedFamily && allowed.includes(S.current.family)) { floors.fixedFamily = S.current.family; fallback = fallback ?? 'automode judge failed: no model switch' }
     if (!answer && !S.current && !fixedFamily && !floors.fixedFamily) { floors.fixedFamily = allowed.includes(appFamily()) ? appFamily() : allowed[allowed.length - 1]; fallback = fallback ?? 'automode judge failed on the first prompt: the app model' }
     // The effortless judge failed and the AutoMode judge answered: its model name is a minimum (fallbackModel).
-    if (fallback && answer && floors.fixedFamily && !fixedFamily) {
+    if (fallback && answer && floors.fixedFamily && !fixedFamily && !executorOn()) {
       const fm = fallbackModel(floors.fixedFamily, { tier: answer.tier, effort: answer.effort, confidence: answer.confidence }, allowed, env.risk.effective, LOW_CONFIDENCE)
       if (fm.family !== floors.fixedFamily) {
         floors.fixedFamily = fm.family
@@ -1017,7 +1033,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   // Call 2, only when needed: one effortless call about the model that could win (cheaper than the anchor and
   // eligible, or the anchor is out). Its effort is valid for that model only.
   const consequence = env.risk.effective
-  if (!shortcut && !fallback && !hmCached) {
+  if (!shortcut && !fallback && !hmCached && !executorOn()) {
     const second = secondCall({ allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence, floors, current: null, cost: () => 0 }, anchor)
     if (second) {
       const j2 = await effortlessJudge($, second, text, { messages, midTurnEffort: midTurn && S.current ? runningEffort() : undefined, attachments: attachList, purpose: 'effortless-judge:second' })
@@ -1035,9 +1051,13 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   // After a failed judge the model is fixed, and its fallback verdict stands in for later triggers.
   const need = askedNeed ?? (floors.fixedFamily ? verdicts[floors.fixedFamily] ?? null : null)
   const kept: FamilyVerdict | null = shortcut ? { model: td!.family, effort: td!.effort, why: 'kept' } : null
+  // Under the executor, the judges' verdicts stay as the shadow route. Only the effort reaches the choice.
+  const executed = kept ? null : executorInput(verdicts, floors, td && !boundary && !S.compactedPending && cacheFresh(at) ? td : null)
+  if (executed) steps.push(`executor: sonnet ${executed.verdicts.sonnet!.effort}`)
   const choice: AutoChoice = kept
     ? optimizeAuto({ allowed, verdicts: { [kept.model]: kept }, need: kept, hm: null, floors: { ...floors, fixedFamily: allowed.includes(td!.family) ? td!.family : undefined }, current, cost })
-    : optimizeAuto({ allowed, verdicts, need, hm, consequence, floors, current, cost })
+    : optimizeAuto({ allowed, ...(executed ?? { verdicts, floors }), need, hm, consequence, current, cost })
+  const shadow = executed ? optimizeAuto({ allowed, verdicts, need, hm, consequence, floors, current, cost }).best : null
   steps.push(`optimizer: ${choice.rule} -> ${choice.best.family}/${choice.best.effort}`)
   const own = S.current ? choice.candidates.find((c) => c.family === S.current!.family) : undefined
   // A hold keeps the model, never its old effort: the held model runs at its own verdict for this prompt (or its
@@ -1115,6 +1135,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
     stage,
     ...(!S.cache && S.prefixEstimate ? { firstRequest: { tokens: S.prefixEstimate, source: S.prefixSource ?? 'unknown' } } : {}),
     ...(legacy ? { compare: { policy: 'legacy' as const, route: `${legacy.best.family}/${legacy.best.effort}` } } : {}),
+    ...(shadow ? { shadowRoute: `${shadow.family}/${shadow.effort}` } : {}),
     ...(S.inadequate ? { inadequate: S.inadequate } : {}),
     routing: { cheapestAdequate: `${choice.best.family}/${choice.best.effort}`, chosen: `${routed.family}/${routed.effort}`, overRouted: routed.family !== choice.best.family || routed.effort !== choice.best.effort ? ((choice.candidates.find((c) => c.family === routed.family)?.attemptUsd ?? 0) > choice.best.attemptUsd || EFFORTS.indexOf(routed.effort) > EFFORTS.indexOf(choice.best.effort) ? routed.owner : null) : null, underRouted: own && S.current && routed.family === S.current.family && own.eligibility !== 'eligible' && own.eligibility !== 'needs-verdict' ? routed.owner : null },
     auto: autoRecord(choice, verdictRec, hm ? { ...hm, ok: true, cached: hmCached } : shortcut ? null : { tier: '-', complexity: '-', ok: false, cached: false }, steps, required.why, fallback ?? ownFallback, needRecord(anchor, shortcut ? kept : askedNeed)),
@@ -1131,12 +1152,15 @@ function reoptimizeAuto(t: Trigger, event: string, at: number, turnId: string | 
   const mq = autoFloors(env, complexity, allowed, S.workStage)
   const routeModels = (S.cfg as any).routeModels !== false
   const current = S.current ? { family: S.current.family, effort: runningEffort()! } : null
-  const floors = { ...mq.floors, ...(!routeModels ? { fixedFamily: appFamily() } : {}) }
-  const choice = optimizeAuto({ allowed, verdicts: S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, floors, current, cost: autoCost(complexity, at) })
+  const baseFloors = { ...mq.floors, ...(!routeModels ? { fixedFamily: appFamily() } : {}) }
+  const td = S.taskDecision && S.taskDecision.taskId === env.taskId ? S.taskDecision : null
+  const executed = executorInput(S.lastAuto.verdicts, baseFloors, !reset && td && cacheFresh(at) ? td : null)
+  const floors = executed?.floors ?? baseFloors
+  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, floors, current, cost: autoCost(complexity, at) })
   let floor = mq.tier
   if (t.mandatory) { const lift = tierOf(choice.best.family, choice.best.effort); if (tierRank(lift) > tierRank(floor.tier)) floor = { tier: lift, effort: choice.best.effort, because: [t.reason] } }
   const own = S.current ? choice.candidates.find((c) => c.family === S.current!.family) : undefined
-  const heldEffort = ownEffort(own)
+  const heldEffort = ownEffort(own) ?? (executed && S.current ? runningEffort() : undefined)
   const currentInadequate = runningRuledOut(S.current?.family, choice, floors, S.lastAuto.hm)
   const candidate = { tier: tierOf(choice.best.family, choice.best.effort), source: 'rules' as const, confidence: 0.9, reason: `${t.reason}; ${choice.best.family} ${choice.best.effort} ${choice.best.eligibility}` }
   const route = resolve({
@@ -1484,6 +1508,7 @@ function pushDecision(point: 'prompt' | 'compact' | 'escalation' | 'spawn' | 'tr
     ...(d?.firstRequest ? { firstRequest: d.firstRequest } : {}),
     ...(d?.costTotal ? { costTotal: d.costTotal } : {}),
     ...(d?.compare ? { compare: d.compare } : {}),
+    ...(d?.shadowRoute ? { shadowRoute: d.shadowRoute } : {}),
     ...(d?.inadequate ? { inadequate: d.inadequate } : {}),
     ...(d?.auto ? { auto: d.auto } : {}),
     policy: S.policy,
