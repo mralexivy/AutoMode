@@ -16,6 +16,7 @@
 // The model never changes mid-chat: each model keeps its own prompt cache, so a switch rewrites the
 // whole chat into a new cache (effortless measured 5-10x the cost). Inactive sessions (any other
 // model) pass every event straight through: no judge, no context, no state, no files.
+import { fsRead, fsWrite, sessionUsage } from './lib/io.ts'
 import type { EngineInterface, Register } from 'claude-code'
 import { COMPACT_SYSTEM, transcriptOf } from './lib/compact.ts'
 import { guardianPromptSubmit, guardianSessionEnd, guardianSessionStart, guardianSnapshot, guardianStep, guardianToolCall, guardianTurnComplete, guardianTurnStart } from './guardian.ts'
@@ -187,8 +188,8 @@ let coldHintAt = 0
 // session.start, on first use: a module on built-in defaults must never route beside the classic hook.
 async function load($: EngineInterface) {
   loaded = true
-  try { cfg = { ...DEFAULTS, ...JSON.parse(await $.fs.read(`${$.plugin.root}/config.json`)) } } catch { cfg = DEFAULTS }
-  try { sourceVersion = JSON.parse(await $.fs.read(`${$.plugin.root}/.claude-plugin/plugin.json`)).version || 'unknown' } catch {}
+  try { cfg = { ...DEFAULTS, ...JSON.parse(await fsRead($, `${$.plugin.root}/config.json`)) } } catch { cfg = DEFAULTS }
+  try { sourceVersion = JSON.parse(await fsRead($, `${$.plugin.root}/.claude-plugin/plugin.json`)).version || 'unknown' } catch {}
 }
 
 async function active($: EngineInterface) {
@@ -203,15 +204,15 @@ async function debug($: EngineInterface, entry: Record<string, unknown>) {
   const file = `${$.plugin.root}/judge-log.jsonl`
   try {
     let before = ''
-    try { before = await $.fs.read(file) } catch {}
-    await $.fs.write(file, before + JSON.stringify({ at: await $.clock.now(), ...entry }) + '\n')
+    try { before = await fsRead($, file) } catch {}
+    await fsWrite($, file, before + JSON.stringify({ at: await $.clock.now(), ...entry }) + '\n')
   } catch {}
 }
 
 // limitShare is the highest 5-hour or weekly limit share the last response reported, or null.
 async function limitShare($: EngineInterface): Promise<number | null> {
   try {
-    const shares = (await $.session.usage()).rateLimits.map((r) => r.percentUsed).filter((n) => Number.isFinite(n))
+    const shares = (await sessionUsage($)).rateLimits.map((r) => r.percentUsed).filter((n) => Number.isFinite(n))
     return shares.length ? Math.max(...shares) : null
   } catch { return null }
 }
@@ -224,7 +225,7 @@ async function coldHint($: EngineInterface): Promise<string | null> {
     const now = await $.clock.now()
     const idleMin = (now - lastAnswerAt) / 60000
     if (idleMin < cfg.cacheTtlMinutes || coldHintAt > lastAnswerAt) return null
-    const usage = await $.session.usage()
+    const usage = await sessionUsage($)
     const tokens = usage.context.tokens ?? 0
     if (tokens < cfg.heavyChatTokens) return null
     const live = (await $.agent.list()).filter((a) => a.status === 'pending' || a.status === 'running' || a.status === 'waiting')

@@ -54,7 +54,7 @@ import { routerOverrides } from './lib/settings.ts'
 import { currentOptions, storedOptions } from './options.ts'
 import { publish } from './ui/publish.ts'
 import type { AgentSnap, Ledger, RouterSnap } from './ui/view.ts'
-import { sid, fsRead, sessionModel, fsWrite } from './lib/io.ts'
+import { sid, fsRead, sessionModel, fsWrite, fsExists } from './lib/io.ts'
 import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence, type DelegationMode } from './lib/delegation.ts'
 
 const V4_DEFAULTS = {
@@ -258,7 +258,7 @@ const nums = (v: unknown) => (Array.isArray(v) ? v : []).filter((x): x is number
 async function firstFile($: EngineInterface): Promise<{ byProject: Record<string, number[]>; ratios: number[] }> {
   try {
     const file = `${await dataDir($)}/first-prefix.json`
-    if (!(await $.fs.exists(file))) return { byProject: {}, ratios: [] }
+    if (!(await fsExists($, file))) return { byProject: {}, ratios: [] }
     const j = JSON.parse(await fsRead($, file)) as { byProject?: Record<string, unknown>; ratios?: unknown }
     return { byProject: Object.fromEntries(Object.entries(j.byProject ?? {}).map(([k, v]) => [k, nums(v)])), ratios: nums(j.ratios) }
   } catch { return { byProject: {}, ratios: [] } }
@@ -323,7 +323,7 @@ function routingCache(): CacheState {
 async function loadPriors($: EngineInterface): Promise<Priors> {
   try {
     const file = `${await dataDir($)}/calibration.json`
-    if (!(await $.fs.exists(file))) return DEFAULT_PRIORS
+    if (!(await fsExists($, file))) return DEFAULT_PRIORS
     const c = JSON.parse(await fsRead($, file)) as Partial<Priors> & { priors?: Partial<Priors> }
     const p = c.priors ?? c
     const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : d)
@@ -436,7 +436,7 @@ async function flushNow($: EngineInterface) {
   try {
     const file = await recordsFile($)
     let before = ''
-    if (await $.fs.exists(file)) {
+    if (await fsExists($, file)) {
       before = await fsRead($, file)
       if (shouldRotate(before.length + lines.length)) { await fsWrite($, `${file}.1`, before); before = '' }
     }
@@ -2454,7 +2454,7 @@ async function syncSignals($: EngineInterface, late?: { turnId: string | undefin
   if (S.mode !== 'auto' || !S.signalsOn || S.sessionId === 'unknown') return
   try {
     const file = await signalsFile($)
-    if (!(await $.fs.exists(file))) return
+    if (!(await fsExists($, file))) return
     const sig = JSON.parse(await fsRead($, file))
     // A different seq, not a higher one: a pruned or deleted file starts over at 1. A replay has the same seq.
     if (!sig || typeof sig.seq !== 'number' || sig.seq === S.signalSeq) return

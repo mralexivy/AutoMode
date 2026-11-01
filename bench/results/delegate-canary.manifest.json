@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-01T19:48:31.769Z",
+  "files": [
+    {
+      "name": "delegate-canary.jsonl",
+      "sha256": "7eccc66a2a6aee793b9d89d4da20dd2740e3a9a7f9a66660e8b2a64f5407533d",
+      "rows": 8
+    }
+  ],
+  "experiments": [
+    "delegate-canary"
+  ],
+  "harness_revisions": [
+    "695791a504d5dab9509f44f9f75d599b89a89cf3"
+  ],
+  "spec_hashes": 4,
+  "pricing_snapshots": [
+    "2026-10-17"
+  ],
+  "cost_basis": [
+    "api-list-equivalent"
+  ]
+}

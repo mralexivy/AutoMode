@@ -225,6 +225,7 @@ Defaults live in [`config.json`](config.json). To override them, put a `config.j
 | `reviewPolicy` | `risk` | `always` adds an Opus review to every change |
 | `maxConcurrency` | `1` | Workstreams built at once (maximum 2) |
 | `blockGitWritesWhenActive` | `true` | Deny git writes from subagents |
+| `delegation` | `off` | `on`: a full read of a large file stops once, with an outline and a cheap `extract` tool. `shadow`: records what the gate would do |
 | `debugLog` | `false` | Write decisions to the data directory |
 
 Environment switches: `AUTOMODE_ROUTER=off`, `AUTOMODE_UI=off`, `AUTOMODE_GUARDIAN=off`, `AUTOMODE_SIGNALS=off`.

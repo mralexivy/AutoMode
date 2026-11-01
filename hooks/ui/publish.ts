@@ -6,7 +6,7 @@
 import { atom, update } from 'claude-code'
 import type { EngineInterface } from 'claude-code'
 import { buildView, type Facts, type GuardSnap, type RouterSnap, type UsageSnap, type View } from './view.ts'
-import { sid, fsRead, sessionModel } from '../lib/io.ts'
+import { sid, fsRead, sessionModel, sessionUsage } from '../lib/io.ts'
 
 export const viewAtom = atom({ plugin: 'automode', key: 'view' } as const, null as View | null)
 
@@ -59,7 +59,7 @@ async function gateTip($: EngineInterface, v: View, now: number): Promise<View> 
 
 export async function usageSnap($: EngineInterface): Promise<UsageSnap> {
   try {
-    const u: any = await $.session.usage()
+    const u: any = await sessionUsage($)
     const limits = Array.isArray(u?.rateLimits) ? u.rateLimits.filter((r: any) => Number.isFinite(r?.percentUsed)).map((r: any) => ({ name: String(r.window ?? r.name ?? 'usage'), percent: Number(r.percentUsed) })) : []
     return {
       costUsd: typeof u?.cost?.usd === 'number' ? u.cost.usd : null,
