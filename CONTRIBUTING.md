@@ -57,7 +57,7 @@ Bench scripts are `.mts`. Write erasable TypeScript only: no `enum`, no `namespa
 - Do not commit real session transcripts, or results that come from them.
 - **Do not save the text of model replies** in `bench/results/`. A reply can echo the name of the account that ran the check.
 - Add or update a test with every behavior change.
-- Keep a change small and focused. One topic per pull request.
+- Keep a change small and focused. One task per branch and per pull request. The branch holds the task's code, tests and benchmark.
 - Write comments and docs in short sentences. Active voice. One idea per sentence.
 - Do not claim a cost saving without a benchmark run that others can repeat.
 
@@ -69,7 +69,8 @@ Nothing is pushed to `main` directly. Every change goes through this path, and t
 2. Branch from an up-to-date `main`. Name the branch `<type>/<short-name>`, such as `fix/bar-width`. The types are `feature`, `fix`, `docs`, `chore`, `refactor`, `test` and `bench`. Forks may use any name.
 3. Make the change. If it touches a shipped path, add a line under `[Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md). Use the `no-changelog` label if no line is needed.
 4. Run the checks above and fix any failure.
-5. Open the pull request. Describe what changed and why. The body must contain `Closes #N`.
+5. If the change alters what a session does, run its benchmark on the branch and commit the results. Fix the pass rule before the first result exists.
+6. Open the pull request. Describe what changed and why. Link the benchmark report, or say why the task needs none. The body must contain `Closes #N`.
 
 We squash merge, so the pull request title becomes the commit subject on `main`. Write it as a plain sentence.
 
