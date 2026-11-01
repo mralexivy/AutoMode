@@ -1,4 +1,4 @@
-// Generated from hooks/ at commit 1d36f88ae531fba9d7ff302f538199e16f397a83 by tools/release.mts. The readable source is hooks/ on the main branch.
+// Generated from hooks/ at commit 6db05c18b6ac48cc441a7c3ab711b14fb2ea13bb by tools/release.mts. The readable source is hooks/ on the main branch.
 // hooks/register.ts
 import { COMPACT_SYSTEM as COMPACT_SYSTEM2, transcriptOf as transcriptOf2 } from "./lib/compact.ts";
 
@@ -325,6 +325,8 @@ var FIELDS = {
   mode: { title: "Router mode", options: ["default", "auto", "shadow", "off"], default: "default", applies: "next prompt", section: "router" },
   policy: { title: "Routing policy", options: ["default", "auto", "legacy"], default: "default", applies: "next prompt", section: "router" },
   routeModels: { title: "Route models", options: ONOFF, default: "default", applies: "next prompt", section: "router" },
+  completionGate: { title: "Completion gate", options: ["default", "off", "report", "block"], default: "default", applies: "next prompt", section: "router" },
+  executor: { title: "Executor", options: ["default", "judge", "sonnet"], default: "default", applies: "next prompt", section: "router" },
   subagentsEverySession: { title: "Subagents in every session", options: ONOFF, default: "default", applies: "next prompt", section: "subagents" },
   guardianMode: { title: "Guardian", options: ["default", "off", "observe", "recommend", "assist", "auto"], default: "default", applies: "next prompt", section: "guardian" },
   guardianEverySession: { title: "Guardian in every session", options: ONOFF, default: "default", applies: "next prompt", section: "guardian" },
@@ -354,6 +356,10 @@ function routerOverrides(options2, stored2 = {}) {
   if (policy !== "default") out.policy = policy;
   const rm = bool(valueOf("routeModels", options2, stored2));
   if (rm !== void 0) out.routeModels = rm;
+  const gate = valueOf("completionGate", options2, stored2);
+  if (gate !== "default") out.completionGate = gate;
+  const executor = valueOf("executor", options2, stored2);
+  if (executor !== "default") out.executor = executor;
   const sub = bool(valueOf("subagentsEverySession", options2, stored2));
   if (sub !== void 0) out.subagentsEverySession = sub;
   return out;
@@ -1423,6 +1429,8 @@ import { accrueRent } from "./lib/rent.ts";
 import { DEFAULT_LADDER, resolve, routeFor } from "./lib/authority.ts";
 import { choose, consultOrSwitch, workFromFiles, workflowValue } from "./lib/strategy.ts";
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, summaryOf, withReview } from "./lib/envelope.ts";
+import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen } from "./lib/completion.ts";
+import { executorEffort } from "./lib/executor.ts";
 import { checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, reviewerBlocked, scopeGrew, withPipefail } from "./lib/failures.ts";
 import { classifyOperation } from "./lib/operations.ts";
 import { applyPins, commandChoice, readAppChoice, turnAxes } from "./lib/pins.ts";
@@ -1668,6 +1676,10 @@ var V4_DEFAULTS = {
   policy: "legacy",
   // Policy auto: false keeps the app's model and routes the effort only (benchmark arm 4, a safe first rollout).
   routeModels: true,
+  // Completion evidence (lib/completion.ts). `report` records the state. `block` also sends the model back, once per task.
+  completionGate: "report",
+  // Policy auto: `sonnet` makes Sonnet the task's model and keeps the judge's pick as a shadow route (lib/executor.ts).
+  executor: "judge",
   effortJudgeTimeoutMs: JUDGE_CALL.timeoutMs
 };
 var BREAKER_FAILURES = UNCLASSIFIED.kind === "breaker" ? UNCLASSIFIED.threshold : 3;
@@ -1699,6 +1711,12 @@ var S = {
   records: [],
   toldJudgeDown: false,
   taskSeq: 0,
+  // Completion evidence for the task in obligationsTask (lib/completion.ts).
+  obligations: [],
+  obligationsTask: null,
+  obligationEdited: false,
+  completionBlocks: 0,
+  completionState: "none",
   lastOutcome: null,
   sessionId: "unknown",
   restored: false,
@@ -2043,7 +2061,7 @@ async function spawnOutsideAutoMode($, e, next) {
   noteAgent(res, e, sr?.model, !!sr);
   return res;
 }
-var SNAPSHOT_KEYS = ["sessionMode", "ledger", "lastAuto", "taskDecision", "decidedPlanMode", "lastRisk", "lastEffective", "appEffort", "appModel", "sessionModel", "pinFamily", "pinEffort", "judgeRiskTask", "inadequate", "haikuOutUntilCompaction", "planExited", "signalMode", "lastWorkBand", "workStage", "breakers", "failures", "signalErrorAt", "effortUnsupported", "current", "cache", "envelope", "votes", "requestsSinceSwitch", "verifiedSinceSwitch", "lastSummary", "taskSeq", "warm", "stayUp", "redoFloor", "planMode", "switchesThisTask", "dropped", "rent", "lastDemand", "stage", "consulted", "pending", "compactedPending", "basePrefix", "compactedAt", "lastMessageCount", "consultCounts", "resolvedCounts", "signalSeq", "signalCompactAt", "compactHookSeen", "toldUserTier"];
+var SNAPSHOT_KEYS = ["sessionMode", "ledger", "lastAuto", "taskDecision", "decidedPlanMode", "lastRisk", "lastEffective", "appEffort", "appModel", "sessionModel", "pinFamily", "pinEffort", "judgeRiskTask", "inadequate", "haikuOutUntilCompaction", "planExited", "signalMode", "lastWorkBand", "workStage", "breakers", "failures", "signalErrorAt", "effortUnsupported", "current", "cache", "envelope", "votes", "requestsSinceSwitch", "verifiedSinceSwitch", "lastSummary", "taskSeq", "warm", "stayUp", "redoFloor", "planMode", "switchesThisTask", "dropped", "rent", "lastDemand", "stage", "consulted", "pending", "compactedPending", "basePrefix", "compactedAt", "lastMessageCount", "consultCounts", "resolvedCounts", "signalSeq", "signalCompactAt", "compactHookSeen", "toldUserTier", "editedSinceCheck", "lastCheck", "obligations", "obligationsTask", "completionBlocks", "completionState"];
 async function restore2($) {
   S.restored = true;
   try {
@@ -2450,6 +2468,13 @@ function autoFloors(env, complexity, allowed, stage) {
   if (S.stayUp > 0 && S.current) for (const f of CHEAPER[S.current.family]) exclude[f] ??= `a redo keeps the model for ${S.stayUp} more prompts`;
   return { floors: { effortMin, exclude, because }, tier, escalated: step ? { family: step.family, effort: step.effort } : null };
 }
+var executorOn = () => S.cfg.executor === "sonnet" && S.cfg.routeModels !== false;
+var cacheFresh = (at2) => !!S.cache?.lastRequestAt && at2 - S.cache.lastRequestAt <= S.ttl;
+function executorInput(verdicts, floors, taskRoute) {
+  if (!executorOn() || floors.fixedFamily || floors.exclude?.sonnet) return null;
+  const effort = executorEffort(verdicts.sonnet?.effort, taskRoute?.family === "sonnet" ? taskRoute.effort : void 0);
+  return { verdicts: { ...verdicts, sonnet: { model: "sonnet", effort, why: "executor" } }, floors: { ...floors, fixedFamily: "sonnet" } };
+}
 function autoCost(complexity, at2) {
   const x = { cache: routingCache(), warm: S.warm, now: at2, prices: prices(), priors: S.priors, neutral: true };
   return (family, effort) => attemptCost({ family, effort, cap: { lo: 0, hi: 0 } }, { steps: TASK_STEPS[complexity] }, x).usd;
@@ -2657,7 +2682,7 @@ ${midTurnNote(runningEffort())}` : text, midTurn, attachList.length),
       floors.fixedFamily = allowed.includes(appFamily()) ? appFamily() : allowed[allowed.length - 1];
       fallback = fallback ?? "automode judge failed on the first prompt: the app model";
     }
-    if (fallback && answer && floors.fixedFamily && !fixedFamily) {
+    if (fallback && answer && floors.fixedFamily && !fixedFamily && !executorOn()) {
       const fm = fallbackModel(floors.fixedFamily, { tier: answer.tier, effort: answer.effort, confidence: answer.confidence }, allowed, env.risk.effective, LOW_CONFIDENCE);
       if (fm.family !== floors.fixedFamily) {
         floors.fixedFamily = fm.family;
@@ -2681,7 +2706,7 @@ ${midTurnNote(runningEffort())}` : text, midTurn, attachList.length),
     steps.push("low confidence: no downgrade (jev-router)");
   }
   const consequence = env.risk.effective;
-  if (!shortcut && !fallback && !hmCached) {
+  if (!shortcut && !fallback && !hmCached && !executorOn()) {
     const second = secondCall({ allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence, floors, current: null, cost: () => 0 }, anchor);
     if (second) {
       const j2 = await effortlessJudge($, second, text, { messages, midTurnEffort: midTurn && S.current ? runningEffort() : void 0, attachments: attachList, purpose: "effortless-judge:second" });
@@ -2696,7 +2721,10 @@ ${midTurnNote(runningEffort())}` : text, midTurn, attachList.length),
   const current2 = S.current ? { family: S.current.family, effort: runningEffort() } : null;
   const need = askedNeed ?? (floors.fixedFamily ? verdicts[floors.fixedFamily] ?? null : null);
   const kept = shortcut ? { model: td.family, effort: td.effort, why: "kept" } : null;
-  const choice = kept ? optimizeAuto({ allowed, verdicts: { [kept.model]: kept }, need: kept, hm: null, floors: { ...floors, fixedFamily: allowed.includes(td.family) ? td.family : void 0 }, current: current2, cost }) : optimizeAuto({ allowed, verdicts, need, hm, consequence, floors, current: current2, cost });
+  const executed = kept ? null : executorInput(verdicts, floors, td && !boundary && !S.compactedPending && cacheFresh(at2) ? td : null);
+  if (executed) steps.push(`executor: sonnet ${executed.verdicts.sonnet.effort}`);
+  const choice = kept ? optimizeAuto({ allowed, verdicts: { [kept.model]: kept }, need: kept, hm: null, floors: { ...floors, fixedFamily: allowed.includes(td.family) ? td.family : void 0 }, current: current2, cost }) : optimizeAuto({ allowed, ...executed ?? { verdicts, floors }, need, hm, consequence, current: current2, cost });
+  const shadow = executed ? optimizeAuto({ allowed, verdicts, need, hm, consequence, floors, current: current2, cost }).best : null;
   steps.push(`optimizer: ${choice.rule} -> ${choice.best.family}/${choice.best.effort}`);
   const own = S.current ? choice.candidates.find((c) => c.family === S.current.family) : void 0;
   const ownVerdict = S.current ? verdicts[S.current.family] : null;
@@ -2797,6 +2825,7 @@ Files edited so far: ${env.editedPaths.slice(0, 30).join(", ") || "none"}`;
     stage,
     ...!S.cache && S.prefixEstimate ? { firstRequest: { tokens: S.prefixEstimate, source: S.prefixSource ?? "unknown" } } : {},
     ...legacy ? { compare: { policy: "legacy", route: `${legacy.best.family}/${legacy.best.effort}` } } : {},
+    ...shadow ? { shadowRoute: `${shadow.family}/${shadow.effort}` } : {},
     ...S.inadequate ? { inadequate: S.inadequate } : {},
     routing: { cheapestAdequate: `${choice.best.family}/${choice.best.effort}`, chosen: `${routed.family}/${routed.effort}`, overRouted: routed.family !== choice.best.family || routed.effort !== choice.best.effort ? (choice.candidates.find((c) => c.family === routed.family)?.attemptUsd ?? 0) > choice.best.attemptUsd || EFFORTS3.indexOf(routed.effort) > EFFORTS3.indexOf(choice.best.effort) ? routed.owner : null : null, underRouted: own && S.current && routed.family === S.current.family && own.eligibility !== "eligible" && own.eligibility !== "needs-verdict" ? routed.owner : null },
     auto: autoRecord(choice, verdictRec, hm ? { ...hm, ok: true, cached: hmCached } : shortcut ? null : { tier: "-", complexity: "-", ok: false, cached: false }, steps, required.why, fallback ?? ownFallback, needRecord(anchor, shortcut ? kept : askedNeed))
@@ -2810,15 +2839,18 @@ function reoptimizeAuto(t, event, at2, turnId, reset = false) {
   const mq = autoFloors(env, complexity, allowed, S.workStage);
   const routeModels = S.cfg.routeModels !== false;
   const current2 = S.current ? { family: S.current.family, effort: runningEffort() } : null;
-  const floors = { ...mq.floors, ...!routeModels ? { fixedFamily: appFamily() } : {} };
-  const choice = optimizeAuto({ allowed, verdicts: S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, floors, current: current2, cost: autoCost(complexity, at2) });
+  const baseFloors = { ...mq.floors, ...!routeModels ? { fixedFamily: appFamily() } : {} };
+  const td = S.taskDecision && S.taskDecision.taskId === env.taskId ? S.taskDecision : null;
+  const executed = executorInput(S.lastAuto.verdicts, baseFloors, !reset && td && cacheFresh(at2) ? td : null);
+  const floors = executed?.floors ?? baseFloors;
+  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, floors, current: current2, cost: autoCost(complexity, at2) });
   let floor = mq.tier;
   if (t.mandatory) {
     const lift = tierOf(choice.best.family, choice.best.effort);
     if (tierRank2(lift) > tierRank2(floor.tier)) floor = { tier: lift, effort: choice.best.effort, because: [t.reason] };
   }
   const own = S.current ? choice.candidates.find((c) => c.family === S.current.family) : void 0;
-  const heldEffort = ownEffort(own);
+  const heldEffort = ownEffort(own) ?? (executed && S.current ? runningEffort() : void 0);
   const currentInadequate = runningRuledOut(S.current?.family, choice, floors, S.lastAuto.hm);
   const candidate = { tier: tierOf(choice.best.family, choice.best.effort), source: "rules", confidence: 0.9, reason: `${t.reason}; ${choice.best.family} ${choice.best.effort} ${choice.best.eligibility}` };
   const route = resolve({
@@ -3168,6 +3200,7 @@ function pushDecision(point, d, applied, at2, turnId, actual, trig) {
     ...d?.firstRequest ? { firstRequest: d.firstRequest } : {},
     ...d?.costTotal ? { costTotal: d.costTotal } : {},
     ...d?.compare ? { compare: d.compare } : {},
+    ...d?.shadowRoute ? { shadowRoute: d.shadowRoute } : {},
     ...d?.inadequate ? { inadequate: d.inadequate } : {},
     ...d?.auto ? { auto: d.auto } : {},
     policy: S.policy,
@@ -3275,7 +3308,7 @@ async function v4PromptSubmit($, e, next) {
 }
 var INADEQUATE_REVIEW = "no available model met the need for this task";
 function statusLine($, r) {
-  $.ui.status(`AutoMode · ${r.family} ${r.effort}${S.planMode ? " · plan" : S.policy === "auto" && S.workStage !== "implement" ? ` · ${S.workStage === "plan-approved" ? "approved" : S.workStage}` : ""}${S.envelope?.reviewRequired.value ? " · review pending" : ""}`);
+  $.ui.status(`AutoMode · ${r.family} ${r.effort}${S.planMode ? " · plan" : S.policy === "auto" && S.workStage !== "implement" ? ` · ${S.workStage === "plan-approved" ? "approved" : S.workStage}` : ""}${S.envelope?.reviewRequired.value ? " · review pending" : ""}${S.completionState === "none" ? "" : ` · ${S.completionState.replace("_", " ")}`}`);
 }
 var capOf = (r) => S.policy === "auto" ? bandOf(r.family, r.effort) + EFFORT_ORDER.indexOf(r.effort) / 10 : mid(CAPABILITY[r.family][r.effort]);
 var EFFORT_ORDER = ["low", "medium", "high", "xhigh", "max"];
@@ -3745,6 +3778,49 @@ ${reuse.note}` } : {};
   if (reuse.note) return next({ ...e, ...withReuse });
   return trackTool($, e, input, next);
 }
+var EVIDENCE_CHARS = 2e4;
+var gateOn = () => S.cfg.completionGate === "report" || S.cfg.completionGate === "block";
+function syncObligations() {
+  const env = S.envelope;
+  if (!env || S.obligationsTask === env.taskId) return;
+  S.obligationsTask = env.taskId;
+  S.obligations = extractObligations(env.spec.text);
+  S.obligationEdited = false;
+  S.completionBlocks = 0;
+  S.completionState = "none";
+}
+async function v4Stop($, e, next) {
+  const out = await next(e);
+  if (!gateOn() || S.mode === "off" || !S.envelope || !await activeV4($)) return out;
+  syncObligations();
+  const state = assessCompletion({ edited: S.envelope.editedPaths.length > 0, editedSinceCheck: S.editedSinceCheck, lastCheckPassed: S.lastCheck ? S.lastCheck.passed : null, obligations: S.obligations });
+  S.completionState = state;
+  if (state === "none") return out;
+  const gate = S.mode === "auto" && !out?.block ? S.cfg.completionGate : "report";
+  const reason = blockReason(state, S.obligations, { gate, stopHookActive: e.stop_hook_active === true, blocks: S.completionBlocks, backgroundWork: Array.isArray(e.background_tasks) ? e.background_tasks.length : 0 });
+  if (reason) S.completionBlocks += 1;
+  S.records.push({ v: 1, kind: "completion", at: await now2($), sessionId: S.sessionId, taskId: S.envelope.taskId, state, blocked: !!reason, obligations: publicObligations(S.obligations) });
+  await flush($);
+  if (S.current) statusLine($, S.current);
+  return reason ? { ...out, block: reason } : out;
+}
+async function noteRun($, run, failureKnown) {
+  if (!S.envelope || !gateOn()) return;
+  syncObligations();
+  const before = new Set(S.obligations.filter((o) => o.status === "contradicted").map((o) => o.id));
+  S.obligations = observeRun(S.obligations, { ...run, output: run.output.slice(-EVIDENCE_CHARS) });
+  if (failureKnown) return;
+  const fresh2 = S.obligations.filter((o) => o.status === "contradicted" && !before.has(o.id));
+  if (!fresh2.length) return;
+  const at2 = await now2($);
+  const failures = fresh2.flatMap((o) => {
+    const f = failureOf(run.command, run.exit || 1, run.output.slice(-8e3), at2, S.obligationEdited);
+    return f ? [{ ...f, fingerprint: o.id, class: "defect" }] : [];
+  });
+  S.obligationEdited = false;
+  S.envelope = { ...S.envelope, failures: [...S.envelope.failures, ...failures].slice(-20), verified: false };
+  if (S.policy === "auto") await runLadder($, at2);
+}
 async function noteCommand($, command) {
   if (!S.envelope) return;
   const op = classifyOperation(command);
@@ -3761,6 +3837,11 @@ async function trackTool($, e, input, next) {
     const p = String(input.file_path ?? "");
     if (p && !out.deny) {
       S.editedSinceCheck = true;
+      if (gateOn()) {
+        syncObligations();
+        S.obligations = reopen(S.obligations);
+        S.obligationEdited = true;
+      }
       S.editLog = [...S.editLog, { path: p, at: await now2($) }].slice(-200);
       const edited = [.../* @__PURE__ */ new Set([...S.envelope.editedPaths, p])];
       const lines = (S.envelope.changedLines ?? 0) + changedLines(e.tool, input);
@@ -3815,12 +3896,18 @@ async function trackTool($, e, input, next) {
         else await legacyEscalation($, f.fingerprint, at2);
       }
     }
+    await noteRun($, { command: String(input.command), output: text, exit: exitCode }, !passed);
     S.editedSinceCheck = false;
     return out;
   }
   if (e.tool === "Bash" && S.envelope) {
     const out = await next(e);
-    if (!out.deny) await noteCommand($, String(input.command ?? ""));
+    if (!out.deny) {
+      await noteCommand($, String(input.command ?? ""));
+      const text = resultText(out);
+      const exit = text.match(/Exit code (\d+)/);
+      await noteRun($, { command: String(input.command ?? ""), output: text, exit: exit ? Number(exit[1]) : out.isError === true ? 1 : 0 }, false);
+    }
     return out;
   }
   return next(e);
@@ -4119,6 +4206,11 @@ function freshSession() {
     agents: /* @__PURE__ */ new Map(),
     lastCheck: null,
     editedSinceCheck: false,
+    obligations: [],
+    obligationsTask: null,
+    obligationEdited: false,
+    completionBlocks: 0,
+    completionState: "none",
     toldJudgeDown: false,
     taskSeq: 0,
     lastOutcome: null,
@@ -4946,6 +5038,7 @@ Continue from where it left off without asking the user further questions.`,
   for (const tool of ["Agent", "Workflow", "Read", "Grep", "Glob", "Edit", "Write", "MultiEdit", "NotebookEdit", "WebFetch", "WebSearch"]) {
     on("tool.call", { tool }, async ($, e, next) => await useV4($) ? v4ToolCall($, e, next) : next(e)).catch(($, e, next) => next.called ? next(e) : { deny: "AutoMode guard failed; the call was not run." });
   }
+  on("classic.Stop", async ($, e, next) => await useV4($) ? v4Stop($, e, next) : next(e)).catch(($, e, next) => next(e));
   on("session.end", ($, e, next) => guardianSessionEnd($, e, next)).catch(($, e, next) => next(e));
   registerUi(on);
   on("turn.start", ($, e, next) => guardianTurnStart($, e, next)).catch(($, e, next) => next(e));

@@ -8,7 +8,7 @@
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-22d3ee"></a>
   <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-34d399"></a>
   <a href="https://github.com/mralexivy/AutoMode/issues?q=is%3Aopen+label%3A%22good+first+issue%22"><img alt="Good first issues" src="https://img.shields.io/badge/good%20first-issues-8b5cf6"></a>
-  <img alt="Version 0.3.0" src="https://img.shields.io/badge/version-0.3.0-fbbf24">
+  <img alt="Version 0.4.0" src="https://img.shields.io/badge/version-0.4.0-fbbf24">
   <img alt="Claude Code 2.1.287 or later" src="https://img.shields.io/badge/Claude%20Code-2.1.287%2B-38bdf8">
 </p>
 
@@ -275,7 +275,7 @@ What it does not show:
 
 The harness is in [`bench/`](bench/), with [its guide](bench/README.md). A task names a public repository, a pinned base commit and a pinned reference commit, plus hidden tests and a test command. The runner lets an agent try the task, then runs the hidden tests and reports cost, tokens, turns and time. A blind panel scores the change against the reference.
 
-**Honest status: AutoMode has no published end-to-end result yet.** We will not quote a saving until a public run, with at least three repeats per arm, produces one. What works today:
+**Honest status: AutoMode has pilot results and no general saving claim.** Sonnet high solved all but 1 of the 65 real tasks we screened, so the pre-registered comparison with fixed models did not run. A session that starts on Opus now moves to Sonnet when the task allows. See [the final results](bench/results/final-proof-2026-11-01.md). We will not quote a saving until a public run of at least 30 tasks, with at least three repeats per arm, produces one. What works today:
 
 - `node bench/style-check.mts`: the output style check, with [its results](#the-concise-output-style).
 - `node bench/judge-bench-effortless.mts`: how often the judge picks a sensible effort, on [labeled cases](bench/judge-cases.json). With no flags it is a dry run and spends nothing. [One run](bench/results/judge-bench-effortless-2026-10-30.json) got 74 of 75 cases right, and 20 of 20 held-out cases. Always medium got 34 of 75. This measures the effort label only, not cost or task quality. The cases are the effortless author's, and many accept two efforts, which raises every score.
