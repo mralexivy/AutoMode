@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-01
+
 ### Added
 
 - Route learning. AutoMode remembers, per project, which kinds of task needed rescue. After two rescues or corrections in a kind of task, with at least 40% of its recent tasks going wrong, that kind starts on Opus. Learning only raises a route, never overrides a pin, and evidence ages out after 30 days. `learning: false` turns it off.
