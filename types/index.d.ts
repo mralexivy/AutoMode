@@ -50,6 +50,7 @@ export interface RouterSnap {
   providerGuard: boolean
   provider: string
   routeModels: boolean
+  learned?: { tasks: number; opusFirst: string[] } // this project's route memory: tasks seen, and kinds of task that start on Opus
   subagentsEverySession: boolean
   sessionModel: string | null   // the app's model for this session
   requested: { family: Family; model: string; effort: Effort; owner: string; reason: string; floor: string } | null

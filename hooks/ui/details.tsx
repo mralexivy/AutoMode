@@ -14,6 +14,7 @@ export function detailsText(v: View, now: number): string {
     `  running ${v.model.name} · ${v.effort.name}${v.pending ? ` · ${v.pending}` : ''}${v.hold ? ` · ${v.hold}` : ''}${v.escalation ? ` · ${v.escalation}` : ''}`,
     r.requested && r.active ? `  why: ${v.judge.state === 'down' ? `${v.judge.line}; no verdict` : v.judge.line ?? r.requested.reason}` : null,
     `  context ${v.context.percent === null ? '—' : `${Math.round(v.context.percent)}% (${tokensText(v.context.tokens)})`} · cache ${v.cache.state === 'unknown' ? '—' : cacheText(v.cache.until, now)}`,
+    r.learned?.tasks ? `Learned: ${r.learned.tasks} tasks in this project${r.learned.opusFirst.length ? ` · starts on Opus: ${r.learned.opusFirst.join(', ')}` : ''}` : null,
     v.workflow.length ? `Workflow: ${v.workflow.map((s) => `${STAGE_GLYPH[s.state]} ${s.name}`).join(' ─ ')}` : null,
     `Guardian: ${g.enabled ? `${v.guardian.glyph} ${v.guardian.state} (mode ${g.mode})` : 'off'}${g.checkpoint ? ` · checkpoint ${g.checkpoint.sum}` : ''}`,
     `Usage: ${usdText(v.cost.session)} this session${r.ledger.requests ? ` · judges ${usdText(r.ledger.judgeUsd)} · subagents ${usdText(r.ledger.subagentUsd)} (measured)` : ''}`,

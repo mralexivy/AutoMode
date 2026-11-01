@@ -55,6 +55,7 @@ import { currentOptions, storedOptions } from './options.ts'
 import { publish } from './ui/publish.ts'
 import type { AgentSnap, Ledger, RouterSnap } from './ui/view.ts'
 import { sid, fsRead, sessionModel, fsWrite, fsExists } from './lib/io.ts'
+import { EMPTY_LEARNED, bucketOf, noteTask, opusBuckets, opusFirst, parseLearned, type Learned } from './lib/learn.ts'
 import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence, type DelegationMode } from './lib/delegation.ts'
 
 const V4_DEFAULTS = {
@@ -77,6 +78,8 @@ const V4_DEFAULTS = {
   completionGate: 'report' as CompletionGate,
   // T3 with need=opus starts on Sonnet at high (lib/auto.ts). config.json turns it on; false restores the old rule.
   sonnetFirst: false,
+  // Route learning (lib/learn.ts): repeated rescues in a kind of task start that kind on Opus, per project.
+  learning: false,
   // Delegated reads (lib/delegation.ts). `shadow` records what the gate would do and changes nothing.
   delegation: 'off' as DelegationMode, delegationGateTokens: GATE_TOKENS,
   // Policy auto: `sonnet` makes Sonnet the task's model and keeps the judge's pick as a shadow route (lib/executor.ts).
@@ -165,6 +168,8 @@ const S = {
   firstPrefixSaved: false,
   workflowPending: null as null | { taskId: string; source: 'user' | 'auto'; called: boolean }, // this turn's prompt chose the workflow
   workflowRanTask: undefined as string | undefined, // the task the workflow last ran on
+  learned: EMPTY_LEARNED as Learned,
+  learnedTold: undefined as string | undefined, // the task the learned route was last announced for
   gatedReads: [] as string[], // task:path of each large read the gate has seen: the next one runs
   consulted: [] as string[], // failure fingerprints an Opus consult already answered: the next repeat switches
   consultCounts: {} as Record<string, number>, // failures of that fingerprint when the consult ran
@@ -230,6 +235,7 @@ async function loadV4($: EngineInterface) {
   const onPlan = !(await safe($.env.get('ANTHROPIC_API_KEY')))
   S.ttl = ttlMs({ CLAUDE_CODE_PROMPT_CACHE_TTL: await safe($.env.get('CLAUDE_CODE_PROMPT_CACHE_TTL')), FORCE_PROMPT_CACHING_5M: await safe($.env.get('FORCE_PROMPT_CACHING_5M')), ENABLE_PROMPT_CACHING_1H: await safe($.env.get('ENABLE_PROMPT_CACHING_1H')) }, S.provider, onPlan)
   S.priors = await loadPriors($)
+  if (S.cfg.learning) S.learned = await loadLearned($)
   const policyEnv = String((await safe($.env.get('AUTOMODE_POLICY'))) ?? '').trim().toLowerCase()
   const wanted = policyEnv || String((S.cfg as { policy?: string }).policy ?? 'legacy').trim().toLowerCase()
   S.policy = wanted === 'auto' ? 'auto' : 'legacy'
@@ -406,6 +412,23 @@ function cacheState(): CacheState {
 function prices() { return rowFor(S.provider) }
 
 // recordsFile is the plugin data folder the engine gives command hooks, else the default location.
+async function learnedFile($: EngineInterface) { return `${await dataDir($)}/learned-${projectKey(S.cwd)}.json` }
+async function loadLearned($: EngineInterface): Promise<Learned> {
+  try { return parseLearned(await fsRead($, await learnedFile($))) } catch { return EMPTY_LEARNED }
+}
+
+// noteLearned files this task's evidence after each turn, and after a correction. A failed write loses a note, not a turn.
+async function noteLearned($: EngineInterface, corrected: boolean) {
+  const env = S.envelope, a = S.lastAuto
+  if (!S.cfg.learning || S.mode !== 'auto' || !env || !S.current || !a?.hm || a.taskId !== env.taskId) return
+  const seen = S.learned.tasks.find((t) => t.id === env.taskId)
+  const start = seen?.family ?? S.current.family
+  const rescued = start !== 'opus' && S.current.family === 'opus' && env.escalations > 0
+  const outcome = corrected || rescued ? 'bad' : env.verified ? 'ok' : 'open'
+  S.learned = noteTask(S.learned, { id: env.taskId, bucket: bucketOf(a.hm.tier, a.need?.model), family: start, outcome, at: await now($) })
+  await fsWrite($, await learnedFile($), JSON.stringify(S.learned)).catch(() => {})
+}
+
 async function dataDir($: EngineInterface): Promise<string> {
   let dir: string | undefined
   try { dir = await $.env.get('CLAUDE_PLUGIN_DATA') } catch {}
@@ -1036,6 +1059,14 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
     steps.push('low confidence: no downgrade (jev-router)')
   }
 
+  // What this project taught: this kind of task kept needing rescue, so it starts on Opus. Learning only raises a route.
+  const taught = S.cfg.learning && answer && askedNeed && !floors.fixedFamily && allowed.includes('opus') ? bucketOf(answer.tier, askedNeed.model) : null
+  if (taught && opusFirst(S.learned, taught, at)) {
+    floors.exclude = { ...(floors.exclude ?? {}), haiku: `learned: ${taught} needed rescue in this project`, sonnet: `learned: ${taught} needed rescue in this project` }
+    steps.push(`learned: ${taught} starts on opus`)
+    if (S.learnedTold !== env.taskId) { S.learnedTold = env.taskId; S.records.push({ v: 1, kind: 'learned', at, sessionId: S.sessionId, taskId: env.taskId, bucket: taught }); $.ui.toast(`AutoMode: tasks like this needed Opus here before, so this one starts on Opus.`) }
+  }
+
   // Call 2, only when needed: one effortless call about the model that could win (cheaper than the anchor and
   // eligible, or the anchor is out). Its effort is valid for that model only.
   const consequence = env.risk.effective
@@ -1577,6 +1608,7 @@ export async function v4PromptSubmit($: EngineInterface, e: any, next: any) {
   // Under-routing signal: the person corrects or retries the previous answer. Kept with the route it ran on.
   if (S.lastOutcome) {
     const signal = nextSignal(text)
+    if (signal !== 'moved-on' && S.envelope?.taskId === S.lastOutcome.taskId) await noteLearned($, true)
     S.records.push({ v: 1, kind: 'signal', at, sessionId: S.sessionId, turnId: S.lastOutcome.turnId, taskId: S.lastOutcome.taskId, next: signal, route: S.current ? `${S.current.family}/${S.current.effort}` : null, underRouting: signal !== 'moved-on' })
     S.lastOutcome = null
   }
@@ -1928,6 +1960,7 @@ export async function v4TurnComplete($: EngineInterface, e: any, next: any) {
       ...(S.lastAuto?.hm ? { tier: S.lastAuto.hm.tier } : {}),
     }))
     S.lastOutcome = { turnId: e.turnId, taskId: S.envelope?.taskId ?? 'none' }
+    await noteLearned($, false)
   }
   await flush($)
   await persist($)
@@ -2578,6 +2611,7 @@ export function v4Snapshot(sessionModel: string | null, now: number): RouterSnap
     enabled: S.cfg.router === 'v4', killed: U.killed, activation: S.cfg.activation === 'picker' ? 'picker' : 'always',
     active: S.cfg.activation !== 'picker' || (!!sessionModel && sessionModel.trim() === S.cfg.pickerModel),
     mode: S.mode, configMode: U.configMode, sessionMode: S.sessionMode, policy: S.policy, providerGuard: S.providerGuard, provider: S.provider,
+    learned: { tasks: S.learned.tasks.length, opusFirst: opusBuckets(S.learned, now) },
     routeModels: (S.cfg as { routeModels?: boolean }).routeModels !== false, subagentsEverySession: !!(S.cfg as { subagentsEverySession?: boolean }).subagentsEverySession, sessionModel,
     requested: r ? { family: r.family, model: r.model, effort: r.effort, owner: r.owner, reason: r.reason, floor: r.floor?.tier ?? '—' } : null,
     held: S.heldRoute ? { family: S.heldRoute.family, effort: S.heldRoute.effort } : null,
@@ -2614,7 +2648,7 @@ function freshSession() {
     obligations: [], obligationsTask: null, obligationEdited: false, completionBlocks: 0, completionState: 'none' as CompletionState,
     toldJudgeDown: false, taskSeq: 0, lastOutcome: null, sessionId: 'unknown', restored: false, expectWorker: 0,
     warm: {}, turnRequests: new Map(), stayUp: 0, redoFloor: null, heldRoute: null, planMode: false, planExited: false, editLog: [],
-    gatedReads: [], consulted: [], consultCounts: {}, resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
+    learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
     judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, judgeRiskTask: undefined,

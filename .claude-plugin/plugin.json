@@ -64,6 +64,17 @@
         "block"
       ]
     },
+    "learning": {
+      "type": "string",
+      "title": "AutoMode: Route learning",
+      "description": "default: follow config.json. on: a kind of task that needed rescue here starts on Opus next time. off: nothing is learned. Local to this machine and project, with no prompt text.",
+      "default": "default",
+      "options": [
+        "default",
+        "on",
+        "off"
+      ]
+    },
     "delegation": {
       "type": "string",
       "title": "AutoMode: Delegated reads",

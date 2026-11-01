@@ -17,6 +17,7 @@ export const FIELDS = {
   policy: { title: 'Routing policy', options: ['default', 'auto', 'legacy'], default: 'default', applies: 'next prompt', section: 'router' },
   routeModels: { title: 'Route models', options: ONOFF, default: 'default', applies: 'next prompt', section: 'router' },
   completionGate: { title: 'Completion gate', options: ['default', 'off', 'report', 'block'], default: 'default', applies: 'next prompt', section: 'router' },
+  learning: { title: 'Route learning', options: ONOFF, default: 'default', applies: 'next prompt', section: 'router' },
   delegation: { title: 'Delegated reads', options: ['default', 'off', 'shadow', 'on'], default: 'default', applies: 'next prompt', section: 'router' },
   executor: { title: 'Executor', options: ['default', 'judge', 'sonnet'], default: 'default', applies: 'next prompt', section: 'router' },
   subagentsEverySession: { title: 'Subagents in every session', options: ONOFF, default: 'default', applies: 'next prompt', section: 'subagents' },
@@ -59,6 +60,8 @@ export function routerOverrides(options: Options, stored: Options = {}): Record<
   if (rm !== undefined) out.routeModels = rm
   const gate = valueOf('completionGate', options, stored)
   if (gate !== 'default') out.completionGate = gate
+  const learning = bool(valueOf('learning', options, stored))
+  if (learning !== undefined) out.learning = learning
   const delegation = valueOf('delegation', options, stored)
   if (delegation !== 'default') out.delegation = delegation
   const executor = valueOf('executor', options, stored)

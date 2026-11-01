@@ -61,6 +61,8 @@ Effort can change per prompt while the model holds, because an effort change kee
 
 Hooks record each step as `kind: 'delegation'`, with the action `gate`, `read-again` or `extract`. The gate only saves money, so it fails open. Shadow registers no tool, because a tool definition changes the request.
 
+**How routes learn.** `lib/learn.ts` keeps a per-project memory in `learned-<hash>.json`. `noteLearned` in `v4.ts` files each task after every turn and after a correction. A task is bad when it moved up to Opus after an escalation, or when the person corrected or retried it. It is ok when a check passed. Once a bucket (tier and need) has 2 bad tasks and a 40% bad share in 30 days, `decideAuto` excludes the cheaper models for that bucket. Learning only raises a route, and a pin keeps its model. `sonnetFirst` lowers the T3 rule. Learning is what raises it again where that was wrong.
+
 **Settings precedence**, lowest first: code defaults, `config.json`, the plugin `userConfig`, then environment switches such as `AUTOMODE_ROUTER` and `AUTOMODE_POLICY`. See `lib/settings.ts`.
 
 **Failure behavior.** Hooks fail open: a routing error falls through to `next(e)`, and a failed judge never blocks a prompt. The tool guards fail closed, Bash included: `tool.call` denies the call if the guard throws before the call runs.
