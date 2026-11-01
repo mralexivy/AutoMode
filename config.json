@@ -25,6 +25,7 @@
   "recordDecisions": true,
   "policy": "auto",
   "completionGate": "report",
+  "executor": "judge",
   "subagentsEverySession": true,
   "guardian": {
     "mode": "auto",

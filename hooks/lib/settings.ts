@@ -17,6 +17,7 @@ export const FIELDS = {
   policy: { title: 'Routing policy', options: ['default', 'auto', 'legacy'], default: 'default', applies: 'next prompt', section: 'router' },
   routeModels: { title: 'Route models', options: ONOFF, default: 'default', applies: 'next prompt', section: 'router' },
   completionGate: { title: 'Completion gate', options: ['default', 'off', 'report', 'block'], default: 'default', applies: 'next prompt', section: 'router' },
+  executor: { title: 'Executor', options: ['default', 'judge', 'sonnet'], default: 'default', applies: 'next prompt', section: 'router' },
   subagentsEverySession: { title: 'Subagents in every session', options: ONOFF, default: 'default', applies: 'next prompt', section: 'subagents' },
   guardianMode: { title: 'Guardian', options: ['default', 'off', 'observe', 'recommend', 'assist', 'auto'], default: 'default', applies: 'next prompt', section: 'guardian' },
   guardianEverySession: { title: 'Guardian in every session', options: ONOFF, default: 'default', applies: 'next prompt', section: 'guardian' },
@@ -57,6 +58,8 @@ export function routerOverrides(options: Options, stored: Options = {}): Record<
   if (rm !== undefined) out.routeModels = rm
   const gate = valueOf('completionGate', options, stored)
   if (gate !== 'default') out.completionGate = gate
+  const executor = valueOf('executor', options, stored)
+  if (executor !== 'default') out.executor = executor
   const sub = bool(valueOf('subagentsEverySession', options, stored))
   if (sub !== undefined) out.subagentsEverySession = sub
   return out

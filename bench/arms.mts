@@ -116,6 +116,9 @@ export const EFFORT_ARMS: Record<string, Arm> = {
   'auto': { label: 'AutoMode Auto: model and effort routing', model: HM_MODEL, v4: true, plugin: automode({}) },
   // The same router, for a person whose session starts on Opus. Does it move them down when Sonnet is enough?
   'auto-from-opus': { label: 'AutoMode Auto, session started on Opus', model: 'claude-opus-5-5', v4: true, plugin: automode({}) },
+  // Canaries (bench/experiments/CANARIES.md). Each changes one thing, so a result names its cause.
+  'gate-block': { label: 'AutoMode Auto, completion gate blocking', model: HM_MODEL, v4: true, plugin: automode({ completionGate: 'block' }) },
+  'executor-sonnet': { label: 'AutoMode Auto, Sonnet executor', model: HM_MODEL, v4: true, plugin: automode({ executor: 'sonnet' }) },
   // The specialized agents, asked for with the command a person uses: Haiku explorers, Opus plan and review, Sonnet build and verify.
   // `claude -p` stops background work 10 minutes after the last turn, so a workflow needs the ceiling off.
   'auto-workflow': { label: 'AutoMode workflow: six specialized agents', model: 'claude-opus-5-5', v4: true, plugin: automode({}), promptPrefix: 'am:run ', env: { CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: '0' } },

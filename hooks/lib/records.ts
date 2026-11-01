@@ -26,6 +26,7 @@ export interface DecisionRecord {
   // person's command set, the transition a short message was read as, and the limit when nothing available fits.
   policy?: string
   compare?: { policy: string; route: string; inadequate?: boolean; band?: number }
+  shadowRoute?: string
   override?: { source: string; scope: string }
   transition?: string
   stage?: string

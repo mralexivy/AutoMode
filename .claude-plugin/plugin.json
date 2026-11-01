@@ -64,6 +64,17 @@
         "block"
       ]
     },
+    "executor": {
+      "type": "string",
+      "title": "AutoMode: Executor",
+      "description": "default: follow config.json. judge: the judges pick the model. sonnet: Sonnet runs the task, and a pin, a floor or a repeated failure can still move it. The judges' pick is logged and changes nothing.",
+      "default": "default",
+      "options": [
+        "default",
+        "judge",
+        "sonnet"
+      ]
+    },
     "routeModels": {
       "type": "string",
       "title": "AutoMode: Route models",
