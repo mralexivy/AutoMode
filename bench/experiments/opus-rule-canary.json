@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "opus-rule-canary",
+  "track": "automode-system",
+  "description": "Does a T3 task with need=opus stay safe on Sonnet first? Counts toward no claim. See CANARIES.md.",
+  "arms": [
+    "auto"
+  ],
+  "tasks": [
+    "feature-marked-emstrongmask-hook",
+    "migration-tomli-decode-error-api",
+    "longctx-dnspython-edns-padding",
+    "longctx-sqlglot-intersect-precedence-across-dialects"
+  ],
+  "repeats": 2,
+  "parallel": 1,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 3,
+  "budget_usd": 6,
+  "window_usd": 12
+}

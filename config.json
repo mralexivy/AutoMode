@@ -25,6 +25,7 @@
   "recordDecisions": true,
   "policy": "auto",
   "completionGate": "report",
+  "sonnetFirst": true,
   "delegation": "off",
   "executor": "judge",
   "subagentsEverySession": true,
