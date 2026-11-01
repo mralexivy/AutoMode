@@ -52,6 +52,15 @@ Run all four checks before you call a change to `hooks/` done: `npm run typechec
 
 Effort can change per prompt while the model holds, because an effort change keeps the cache where the provider shares it. `v4TurnStep` applies the route to each request.
 
+**How a read is delegated.** `delegation` is `off`, `shadow` or `on`, and `config.json` ships `off`. `readGate` in `v4.ts` runs from the main-session branch of `guarded`, and `gateRead` in `lib/delegation.ts` decides.
+
+1. A full read of a text file at or above `delegationGateTokens` stops once per file and task. It returns a free outline from `outlineOf`. The size comes from bytes, not lines, so a minified file counts.
+2. A second read of that file runs, so the model can always get the exact text. The gate also passes a file edited in the task, the `debug`, `reconsider` and `review` stages, and any task with a risk rating.
+3. `v4Extract` serves `mcp__automode__extract`. It asks `$.tool.check` about each path, so Read deny rules hold. It makes one Haiku call with no tools.
+4. `verifyEvidence` keeps a finding only if its quote is in the file at or near the cited lines. A kept claim is still Haiku's reading, so the model must read the lines before it relies on them.
+
+Hooks record each step as `kind: 'delegation'`, with the action `gate`, `read-again` or `extract`. The gate only saves money, so it fails open. Shadow registers no tool, because a tool definition changes the request.
+
 **Settings precedence**, lowest first: code defaults, `config.json`, the plugin `userConfig`, then environment switches such as `AUTOMODE_ROUTER` and `AUTOMODE_POLICY`. See `lib/settings.ts`.
 
 **Failure behavior.** Hooks fail open: a routing error falls through to `next(e)`, and a failed judge never blocks a prompt. The tool guards fail closed, Bash included: `tool.call` denies the call if the guard throws before the call runs.
@@ -68,6 +77,7 @@ Effort can change per prompt while the model holds, because an effort change kee
 - **The `calls:` line.** The validator cuts this line at 1,000 characters, and the mods catalogue refuses a cut line. CI fails on it too. Busy host calls therefore go through the function declarations in `lib/io.ts`. Keep them as declarations that pass `$` through.
 - **The `directory` branch.** The Anthropic directory reads `$` only within one file, so `tools/release.mts directory` publishes the shipped files with `hooks/` bundled into one module. Pure `lib/` files stay separate. Never name a local variable `on` or `next` in `hooks/`. The portal's Validate button accepts `owner/repo@branch`, so try a change there first.
 - **`lib/effortless.ts` is a verbatim port.** `tests/effortless-fidelity.test.mts` fails if its code differs from the vendored source. Put changes in `lib/effortless-adapt.ts`, each with its reason and a test.
+- **The delegated reads estimate runs low.** `tokensOf` uses 3.5 chars per token, and code runs denser. `EXTRACT_MAX_TOKENS` leaves a wide margin, because Haiku's price rises fivefold above 100k prompt tokens.
 - **`tests/golden/decisions.json`** pins optimizer and switch-check behavior. When a change to the assumptions moves a case, update that case on purpose.
 - **Benchmark tracks stay apart.** The AutoMode study uses `claude -p`, the neutral track uses `bench/runners/neutral-agent.mts`, and a report never compares across them. Never weaken a rule in `bench/README.md` under "What keeps a run honest". Safety tasks run only on a sandboxed runner.
 - **`npm test` globs one level.** It runs `bench/*.test.mts`, so a test in a `bench/` subfolder does not run.

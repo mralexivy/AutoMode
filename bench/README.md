@@ -94,6 +94,19 @@ Safety tasks plant traps, and they run only on the sandboxed runner. Never weake
 
 `safety-model.mts` counts refusals on red-team sets. It needs `--approve-harmful-prompts` and a provider key, and it never uses `claude -p`. Read the vendor's terms first. Toxicity is not scored, because that needs a classifier this repository does not have.
 
+## Delegated reads
+
+A read gate acts only on runs that hit it, so a normal arm mostly measures nothing. At the shipped 5k tokens, only 3 of 76 tasks ever hit a full read that large. Test it in three cheap layers:
+
+```bash
+node bench/delegate-eval.mts                                  # one tool-free Haiku call per case
+node bench/run.mts --experiment delegate-canary --out bench/results/delegate-canary.jsonl
+```
+
+`delegate-eval.mts` asks about this repository's own files and scores only findings that pass the evidence check. `delegate-canary` runs the `delegate-stress` arm at a 1.5k-token gate, on 4 cheap tasks, with a $3 cap. It reuses `auto` in `final-check.jsonl` as its baseline. The veto rules are in [`experiments/CANARIES.md`](experiments/CANARIES.md).
+
+These runs test safety. They measure no saving and no gain in context size. `bench/waste-audit.mts` prices the upper limit: full reads in the audit's bloat list were about 1.6% of 30 days of spend.
+
 ## Quality checks
 
 - `node bench/grade.mts results.jsonl --judges claude-sonnet-5-5,claude-opus-5-5` runs a panel. Disagreements go to `<results>.disputes.jsonl`. For a release, add a non-Claude judge.

@@ -1,6 +1,6 @@
 // Session and cost guardian: the wiring. The policy is in lib/guardian.ts; this module feeds it from engine events and
 // acts only through supported calls (Claude Code 2.1.300, plugin API types):
-//   cost and context    $.session.usage(): cost.usd (every priced response, subagents included), context.tokens   used
+//   cost and context    sessionUsage($): cost.usd (every priced response, subagents included), context.tokens   used
 //   mid-turn note       tool.call result `context` (the model reads it after the result; the person does not)     recommend+
 //   end a turn          $.turn.abort({ turnId }), only between requests and never right after a write             auto + hardPause
 //   compact             $.session.compact({ instructions }) from turn.complete, after the turn has finished (the
@@ -26,7 +26,7 @@ import { guardianOverrides } from './lib/settings.ts'
 import { currentOptions, storedOptions } from './options.ts'
 import { publish } from './ui/publish.ts'
 import type { GuardSnap } from './ui/view.ts'
-import { sid, fsRead, sessionModel, fsWrite } from './lib/io.ts'
+import { sid, fsRead, sessionModel, fsWrite, sessionUsage } from './lib/io.ts'
 
 const MAX_FILES_READ = 200
 const RECORDS_ROTATE_BYTES = 1_000_000
@@ -258,7 +258,7 @@ async function cleanup($: EngineInterface) {
 }
 
 async function readUsage($: EngineInterface): Promise<{ usd: number | null; tokens: number }> {
-  try { const u = await $.session.usage(); return { usd: u.cost?.usd ?? null, tokens: u.context?.tokens ?? 0 } } catch { return { usd: null, tokens: 0 } }
+  try { const u = await sessionUsage($); return { usd: u.cost?.usd ?? null, tokens: u.context?.tokens ?? 0 } } catch { return { usd: null, tokens: 0 } }
 }
 
 // ---------------------------------------------------------------- session boundaries

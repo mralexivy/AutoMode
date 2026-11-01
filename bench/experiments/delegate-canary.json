@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "delegate-canary",
+  "track": "automode-system",
+  "description": "Does a harsh read gate break tasks that pass today? Counts toward no claim. See CANARIES.md.",
+  "arms": [
+    "delegate-stress"
+  ],
+  "tasks": [
+    "feature-xmltodict-selective-cdata",
+    "migration-jsyaml-max-total-merge-keys",
+    "migration-tomli-decode-error-api",
+    "refactor-jsyaml-tagname-module"
+  ],
+  "repeats": 2,
+  "parallel": 1,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 1,
+  "budget_usd": 3,
+  "window_usd": 10
+}

@@ -54,7 +54,8 @@ import { routerOverrides } from './lib/settings.ts'
 import { currentOptions, storedOptions } from './options.ts'
 import { publish } from './ui/publish.ts'
 import type { AgentSnap, Ledger, RouterSnap } from './ui/view.ts'
-import { sid, fsRead, sessionModel, fsWrite } from './lib/io.ts'
+import { sid, fsRead, sessionModel, fsWrite, fsExists } from './lib/io.ts'
+import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence, type DelegationMode } from './lib/delegation.ts'
 
 const V4_DEFAULTS = {
   router: 'classic', mode: 'shadow' as Mode, activation: 'always' as 'always' | 'picker', pickerModel: 'claude-sonnet-5-5[1m]', workflowName: 'automode:run',
@@ -74,6 +75,8 @@ const V4_DEFAULTS = {
   routeModels: true,
   // Completion evidence (lib/completion.ts). `report` records the state. `block` also sends the model back, once per task.
   completionGate: 'report' as CompletionGate,
+  // Delegated reads (lib/delegation.ts). `shadow` records what the gate would do and changes nothing.
+  delegation: 'off' as DelegationMode, delegationGateTokens: GATE_TOKENS,
   // Policy auto: `sonnet` makes Sonnet the task's model and keeps the judge's pick as a shadow route (lib/executor.ts).
   executor: 'judge' as 'judge' | 'sonnet',
   effortJudgeTimeoutMs: JUDGE_CALL.timeoutMs,
@@ -160,6 +163,7 @@ const S = {
   firstPrefixSaved: false,
   workflowPending: null as null | { taskId: string; source: 'user' | 'auto'; called: boolean }, // this turn's prompt chose the workflow
   workflowRanTask: undefined as string | undefined, // the task the workflow last ran on
+  gatedReads: [] as string[], // task:path of each large read the gate has seen: the next one runs
   consulted: [] as string[], // failure fingerprints an Opus consult already answered: the next repeat switches
   consultCounts: {} as Record<string, number>, // failures of that fingerprint when the consult ran
   resolvedCounts: {} as Record<string, number>, // policy auto: failures of that fingerprint when its command passed again
@@ -254,7 +258,7 @@ const nums = (v: unknown) => (Array.isArray(v) ? v : []).filter((x): x is number
 async function firstFile($: EngineInterface): Promise<{ byProject: Record<string, number[]>; ratios: number[] }> {
   try {
     const file = `${await dataDir($)}/first-prefix.json`
-    if (!(await $.fs.exists(file))) return { byProject: {}, ratios: [] }
+    if (!(await fsExists($, file))) return { byProject: {}, ratios: [] }
     const j = JSON.parse(await fsRead($, file)) as { byProject?: Record<string, unknown>; ratios?: unknown }
     return { byProject: Object.fromEntries(Object.entries(j.byProject ?? {}).map(([k, v]) => [k, nums(v)])), ratios: nums(j.ratios) }
   } catch { return { byProject: {}, ratios: [] } }
@@ -319,7 +323,7 @@ function routingCache(): CacheState {
 async function loadPriors($: EngineInterface): Promise<Priors> {
   try {
     const file = `${await dataDir($)}/calibration.json`
-    if (!(await $.fs.exists(file))) return DEFAULT_PRIORS
+    if (!(await fsExists($, file))) return DEFAULT_PRIORS
     const c = JSON.parse(await fsRead($, file)) as Partial<Priors> & { priors?: Partial<Priors> }
     const p = c.priors ?? c
     const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : d)
@@ -432,7 +436,7 @@ async function flushNow($: EngineInterface) {
   try {
     const file = await recordsFile($)
     let before = ''
-    if (await $.fs.exists(file)) {
+    if (await fsExists($, file)) {
       before = await fsRead($, file)
       if (shouldRotate(before.length + lines.length)) { await fsWrite($, `${file}.1`, before); before = '' }
     }
@@ -1547,6 +1551,14 @@ export async function v4SessionStart($: EngineInterface, e: any, next: any) {
   if (typeof e?.cwd === 'string') S.cwd = e.cwd
   await loadV4($)
   S.resetPending = true
+  if (S.cfg.delegation === 'on') {
+    await $.tool.register({
+      name: 'extract',
+      description: 'Ask a cheap model one question about whole files, without loading them into this conversation. Returns findings with line numbers and quotes that were checked against the files. Use it for facts and locations in large files. Read the cited lines yourself before an edit or a decision that depends on exact behavior.',
+      inputSchema: { type: 'object', properties: { paths: { type: 'array', items: { type: 'string' }, description: 'Absolute file paths' }, question: { type: 'string', description: 'One specific question' } }, required: ['paths', 'question'] },
+      isDeferred: false,
+    }).catch(() => {})
+  }
   return next(e)
 }
 
@@ -2103,7 +2115,60 @@ async function guarded($: EngineInterface, e: any, next: any) {
   }
 
   if (reuse.note) return next({ ...e, ...withReuse } as never)
+  if (e.tool === 'Read') { const stop = await readGate($, input); if (stop) return stop }
   return trackTool($, e, input, next)
+}
+
+// readGate stops a large full read once. It only saves money, so any failure lets the read run.
+async function readGate($: EngineInterface, input: Record<string, unknown>) {
+  const path = String(input.file_path ?? '')
+  if (S.cfg.delegation === 'off' || !S.envelope || !gateable(path, input)) return null
+  try {
+    const chars = (await $.fs.stat(path)).size
+    const key = `${S.envelope.taskId}:${path}`
+    const tried = S.gatedReads.includes(key)
+    const v = gateRead({ chars, tried, edited: S.envelope.editedPaths.includes(path), stage: S.stage, risk: S.envelope.risk.effective, gateTokens: S.cfg.delegationGateTokens })
+    if (!v.gate && !tried) return null
+    const base = { v: 1, kind: 'delegation', at: await now($), sessionId: S.sessionId, taskId: S.envelope.taskId, mode: S.cfg.delegation, tokens: tokensOf(chars) }
+    if (tried) { S.records.push({ ...base, action: 'read-again' }); return null }
+    S.gatedReads = [...S.gatedReads, key].slice(-200)
+    S.records.push({ ...base, action: 'gate', why: v.why })
+    if (S.cfg.delegation !== 'on') return null
+    const outline = chars <= 2_000_000 ? outlineOf(await fsRead($, path)) : 'Too large for an outline.'
+    return { deny: gateNote(path, chars, outline, EXTRACT_TOOL) }
+  } catch {
+    return null
+  }
+}
+
+const extractFailed = (why: string) => ({ result: why, isError: true as const, text: why })
+
+// v4Extract serves the extract tool. A file the person's rules would not let Read run stays unread, and a failure says
+// to read the lines instead, so it never leaves the model without a way forward.
+export async function v4Extract($: EngineInterface, e: any) {
+  if (S.cfg.delegation !== 'on') return extractFailed('extract is off. Use Read.')
+  const paths = Array.isArray(e.paths) ? [...new Set(e.paths.map(String))] as string[] : []
+  const question = String(e.question ?? '').trim()
+  if (!paths.length || !question) return extractFailed('extract needs paths and a question.')
+  const files: Record<string, string> = {}
+  for (const path of paths) {
+    const check = await $.tool.check({ tool: 'Read', input: { file_path: path } }).catch(() => null)
+    if (check?.decision !== 'allow') return extractFailed(`extract may not read ${path}. Use Read, so the normal permission check runs.`)
+    try { files[path] = await fsRead($, path) } catch { return extractFailed(`extract could not read ${path}.`) }
+  }
+  const tokens = tokensOf(Object.values(files).reduce((a, t) => a + t.length, 0))
+  if (tokens > EXTRACT_MAX_TOKENS) return extractFailed(`These files are about ${tokens} tokens, over the ${EXTRACT_MAX_TOKENS} limit. Ask about fewer files.`)
+  const t0 = await now($)
+  const r = await $.model.complete({ model: S.cfg.compactModel, system: EXTRACT_SYSTEM, prompt: extractPrompt(files, question), maxTokens: EXTRACT_REPLY_TOKENS, effort: 'low', timeoutMs: 60_000 })
+  const base = { v: 1, kind: 'delegation', action: 'extract', at: t0, sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', mode: S.cfg.delegation, tokens, files: paths.length }
+  if (!r?.isAnswered) { S.records.push({ ...base, ok: false }); return extractFailed('extract got no answer. Read the lines you need with offset and limit.') }
+  const usd = usageUsd(usageOf(r.usage), ANTHROPIC.rates.haiku)
+  noteJudge(usd)
+  const evidence = parseEvidence(r.text)
+  if (!evidence) { S.records.push({ ...base, ok: false, usd }); return extractFailed('extract got an unreadable answer. Read the lines you need with offset and limit.') }
+  const { kept, dropped } = verifyEvidence(evidence, files)
+  S.records.push({ ...base, ok: true, usd, kept: kept.length, dropped })
+  return { result: renderEvidence(kept, dropped, evidence.omitted) }
 }
 
 // noteCommand: a command that acts on something a repair cannot get back is hard evidence (lib/operations.ts), and a
@@ -2389,7 +2454,7 @@ async function syncSignals($: EngineInterface, late?: { turnId: string | undefin
   if (S.mode !== 'auto' || !S.signalsOn || S.sessionId === 'unknown') return
   try {
     const file = await signalsFile($)
-    if (!(await $.fs.exists(file))) return
+    if (!(await fsExists($, file))) return
     const sig = JSON.parse(await fsRead($, file))
     // A different seq, not a higher one: a pruned or deleted file starts over at 1. A replay has the same seq.
     if (!sig || typeof sig.seq !== 'number' || sig.seq === S.signalSeq) return
@@ -2547,7 +2612,7 @@ function freshSession() {
     obligations: [], obligationsTask: null, obligationEdited: false, completionBlocks: 0, completionState: 'none' as CompletionState,
     toldJudgeDown: false, taskSeq: 0, lastOutcome: null, sessionId: 'unknown', restored: false, expectWorker: 0,
     warm: {}, turnRequests: new Map(), stayUp: 0, redoFloor: null, heldRoute: null, planMode: false, planExited: false, editLog: [],
-    consulted: [], consultCounts: {}, resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
+    gatedReads: [], consulted: [], consultCounts: {}, resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
     judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, judgeRiskTask: undefined,

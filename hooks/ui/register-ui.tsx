@@ -2,6 +2,7 @@
 // is the per-session routing switch, from the bar's toggle or /automode on|off. Every drawing reads the view atom (publish.ts), never a file or a model, and falls back to the
 // engine's own on any error, so a surface that cannot draw, or a drawing that fails, never touches routing or the
 // guardian. AUTOMODE_UI=off turns the layer off alone.
+import { fsRead } from '../lib/io.ts'
 import { atom, read } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 import { uiOptions } from '../lib/settings.ts'
@@ -43,7 +44,7 @@ export async function uiSessionStart($: EngineInterface) {
 // The engine facts the report subcommands print. Each read is best effort: a missing file is a blank, never an error.
 async function cmdFacts($: EngineInterface): Promise<cmd.Facts> {
   const safe = async <T,>(p: Promise<T> | T, fallback: T): Promise<T> => { try { return await p } catch { return fallback } }
-  const json = async (file: string) => { try { return JSON.parse(await $.fs.read(file)) } catch { return {} } }
+  const json = async (file: string) => { try { return JSON.parse(await fsRead($, file)) } catch { return {} } }
   const str = (v: unknown) => (v ? String(v) : null)
   const root = String($.plugin.root)
   const manifest = await json(`${root}/.claude-plugin/plugin.json`)

@@ -64,6 +64,18 @@
         "block"
       ]
     },
+    "delegation": {
+      "type": "string",
+      "title": "AutoMode: Delegated reads",
+      "description": "default: follow config.json. off: reads run as usual. shadow: records what the gate would stop. on: a full read of a large file stops once, with an outline and a cheap extract tool. Takes effect in the next session.",
+      "default": "default",
+      "options": [
+        "default",
+        "off",
+        "shadow",
+        "on"
+      ]
+    },
     "executor": {
       "type": "string",
       "title": "AutoMode: Executor",

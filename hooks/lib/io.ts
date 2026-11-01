@@ -9,3 +9,5 @@ export function sid($: EngineInterface) { return $.session.id() }
 export function sessionModel($: EngineInterface) { return $.session.model() }
 export function fsRead($: EngineInterface, ...args: Parameters<EngineInterface['fs']['read']>) { return $.fs.read(...args) }
 export function fsWrite($: EngineInterface, ...args: Parameters<EngineInterface['fs']['write']>) { return $.fs.write(...args) }
+export function sessionUsage($: EngineInterface) { return $.session.usage() }
+export function fsExists($: EngineInterface, ...args: Parameters<EngineInterface['fs']['exists']>) { return $.fs.exists(...args) }

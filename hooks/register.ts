@@ -16,10 +16,11 @@
 // The model never changes mid-chat: each model keeps its own prompt cache, so a switch rewrites the
 // whole chat into a new cache (effortless measured 5-10x the cost). Inactive sessions (any other
 // model) pass every event straight through: no judge, no context, no state, no files.
+import { fsRead, fsWrite, sessionUsage } from './lib/io.ts'
 import type { EngineInterface, Register } from 'claude-code'
 import { COMPACT_SYSTEM, transcriptOf } from './lib/compact.ts'
 import { guardianPromptSubmit, guardianSessionEnd, guardianSessionStart, guardianSnapshot, guardianStep, guardianToolCall, guardianTurnComplete, guardianTurnStart } from './guardian.ts'
-import { useV4, v4AgentSpawn, v4Append, v4Attachment, v4CommandRun, v4Compact, v4PromptSubmit, v4SessionStart, v4Snapshot, v4Stop, v4ToolCall, v4TurnComplete, v4TurnStep } from './v4.ts'
+import { useV4, v4AgentSpawn, v4Append, v4Attachment, v4CommandRun, v4Compact, v4Extract, v4PromptSubmit, v4SessionStart, v4Snapshot, v4Stop, v4ToolCall, v4TurnComplete, v4TurnStep } from './v4.ts'
 import { setOptions } from './options.ts'
 import { setSources } from './ui/publish.ts'
 import { registerUi, uiSessionStart } from './ui/register-ui.tsx'
@@ -187,8 +188,8 @@ let coldHintAt = 0
 // session.start, on first use: a module on built-in defaults must never route beside the classic hook.
 async function load($: EngineInterface) {
   loaded = true
-  try { cfg = { ...DEFAULTS, ...JSON.parse(await $.fs.read(`${$.plugin.root}/config.json`)) } } catch { cfg = DEFAULTS }
-  try { sourceVersion = JSON.parse(await $.fs.read(`${$.plugin.root}/.claude-plugin/plugin.json`)).version || 'unknown' } catch {}
+  try { cfg = { ...DEFAULTS, ...JSON.parse(await fsRead($, `${$.plugin.root}/config.json`)) } } catch { cfg = DEFAULTS }
+  try { sourceVersion = JSON.parse(await fsRead($, `${$.plugin.root}/.claude-plugin/plugin.json`)).version || 'unknown' } catch {}
 }
 
 async function active($: EngineInterface) {
@@ -203,15 +204,15 @@ async function debug($: EngineInterface, entry: Record<string, unknown>) {
   const file = `${$.plugin.root}/judge-log.jsonl`
   try {
     let before = ''
-    try { before = await $.fs.read(file) } catch {}
-    await $.fs.write(file, before + JSON.stringify({ at: await $.clock.now(), ...entry }) + '\n')
+    try { before = await fsRead($, file) } catch {}
+    await fsWrite($, file, before + JSON.stringify({ at: await $.clock.now(), ...entry }) + '\n')
   } catch {}
 }
 
 // limitShare is the highest 5-hour or weekly limit share the last response reported, or null.
 async function limitShare($: EngineInterface): Promise<number | null> {
   try {
-    const shares = (await $.session.usage()).rateLimits.map((r) => r.percentUsed).filter((n) => Number.isFinite(n))
+    const shares = (await sessionUsage($)).rateLimits.map((r) => r.percentUsed).filter((n) => Number.isFinite(n))
     return shares.length ? Math.max(...shares) : null
   } catch { return null }
 }
@@ -224,7 +225,7 @@ async function coldHint($: EngineInterface): Promise<string | null> {
     const now = await $.clock.now()
     const idleMin = (now - lastAnswerAt) / 60000
     if (idleMin < cfg.cacheTtlMinutes || coldHintAt > lastAnswerAt) return null
-    const usage = await $.session.usage()
+    const usage = await sessionUsage($)
     const tokens = usage.context.tokens ?? 0
     if (tokens < cfg.heavyChatTokens) return null
     const live = (await $.agent.list()).filter((a) => a.status === 'pending' || a.status === 'running' || a.status === 'waiting')
@@ -361,6 +362,9 @@ export const register: Register = (on, options) => {
     on('tool.call', { tool }, async ($, e, next) => ((await useV4($)) ? v4ToolCall($, e, next) : next(e)))
       .catch(($, e, next) => (next.called ? next(e) : { deny: 'AutoMode guard failed; the call was not run.' }))
   }
+
+  on('tool.call', { tool: 'mcp__automode__extract' }, ($, e) => v4Extract($, e))
+    .catch(() => ({ deny: 'AutoMode extract failed. Read the lines you need with offset and limit.' }))
 
   // Session and cost guardian (hooks/guardian.ts): its own hooks, each falling through to the engine on any error.
   // Off with AUTOMODE_GUARDIAN=off or config.json "guardian": { "mode": "off" }; the router above is unaffected.
