@@ -64,7 +64,8 @@ AutoMode left Opus at the first prompt. The naive switch costs more than staying
 
 ## Other results
 
-- The workflow cost about 2.1 to 2.7 times Opus and showed no measured gain. Automatic entry is off.
+- The workflow cost about 2.1 to 2.7 times Opus on the two tasks whose runs finished, and showed no measured gain. Automatic entry is off. On `dnspython` and `ejs`, `claude -p` stopped the workflow 10 minutes after the last turn, in all six runs. Their 1.0x and 1.4x undercount it, so this range leaves them out. The one rejected run, `dnspython` repeat 2, is one of the six, so it says nothing about workflow quality.
+- Seven rows carry that stop: the six above and `dnspython` repeat 1 in `stage-c-post49.jsonl`. They say `exit_reason: done` because they predate the fix in `classifyRun`. It reads all seven as `timeout`. The rows stay as they ran.
 - Three benchmark processes were stopped by an outside SIGTERM. The source is unknown. Two stops lost no rows, and one lost the sixth probe run.
 
 ## What this does and does not show
