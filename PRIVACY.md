@@ -8,6 +8,7 @@ AutoMode has no network code of its own. Its model calls go through Claude Code,
 
 - **The judges.** For each prompt, AutoMode calls Haiku to pick a route. The call holds your prompt text, a short part of the last reply, and state lines about the session.
 - **Compaction.** When AutoMode compacts a chat on Haiku, the chat text goes to that model.
+- **Delegated reads.** With `delegation: on`, each `extract` call sends the named files and one question to Haiku. It is off by default, and it reads only files your Read permissions allow.
 - **The workflow agents.** They run as ordinary Claude Code subagents.
 
 ## What AutoMode stores
@@ -16,6 +17,7 @@ Everything is in `~/.claude/plugins/data/automode/`, on your machine.
 
 | Data | Holds | Kept for |
 |---|---|---|
+| `learned-<project hash>.json` | Route learning: task ids, tier and model labels, outcomes, times. No prompt text. | Until you delete it. It keeps the last 200 tasks. |
 | `records/` | Routing decisions and outcomes: ids, labels, tokens, costs. No prompt text. | Until you delete it. A file rotates at 10 MB. |
 | `guardian/` | Guardian events: ids, labels, numbers and the paths of saved outputs. | 30 days |
 | `checkpoints/` | The task state for a handoff after `/clear`: the first 500 characters of your request, file paths, check commands, the git branch and the changed files. | 7 days |

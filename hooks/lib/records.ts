@@ -89,7 +89,7 @@ export function outcomeRecord(r: Omit<OutcomeRecord, 'v' | 'kind'>): OutcomeReco
 export function nextSignal(text: string): 'moved-on' | 'corrected' | 'retried' {
   const t = text.trim().toLowerCase()
   if (/^(try again|again|retry|redo|do it again)\b/.test(t)) return 'retried'
-  if (/^(no\b|nope|wrong|that'?s (wrong|not)|it (still )?(doesn'?t|does not|fails?|broke)|still (fail|broken|not)|you (broke|missed|forgot)|revert|undo|that didn'?t work|this is wrong)/.test(t)) return 'corrected'
+  if (/^(no\b|nope|wrong|that(?:'?s| is) (wrong|not)|it (still )?(doesn'?t|does not|fails?|broke)|still (fail|broken|not)|you (broke|missed|forgot)|revert|undo|that didn'?t work|this is wrong)/.test(t)) return 'corrected'
   return 'moved-on'
 }
 

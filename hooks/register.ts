@@ -1,4 +1,24 @@
-// Generated from hooks/ at commit 6db05c18b6ac48cc441a7c3ab711b14fb2ea13bb by tools/release.mts. The readable source is hooks/ on the main branch.
+// Generated from hooks/ at commit d70aaaf14ce1bf5d9c6ddd0ea7442ab325c00752 by tools/release.mts. The readable source is hooks/ on the main branch.
+// hooks/lib/io.ts
+function sid($) {
+  return $.session.id();
+}
+function sessionModel($) {
+  return $.session.model();
+}
+function fsRead($, ...args) {
+  return $.fs.read(...args);
+}
+function fsWrite($, ...args) {
+  return $.fs.write(...args);
+}
+function sessionUsage($) {
+  return $.session.usage();
+}
+function fsExists($, ...args) {
+  return $.fs.exists(...args);
+}
+
 // hooks/register.ts
 import { COMPACT_SYSTEM as COMPACT_SYSTEM2, transcriptOf as transcriptOf2 } from "./lib/compact.ts";
 
@@ -326,6 +346,8 @@ var FIELDS = {
   policy: { title: "Routing policy", options: ["default", "auto", "legacy"], default: "default", applies: "next prompt", section: "router" },
   routeModels: { title: "Route models", options: ONOFF, default: "default", applies: "next prompt", section: "router" },
   completionGate: { title: "Completion gate", options: ["default", "off", "report", "block"], default: "default", applies: "next prompt", section: "router" },
+  learning: { title: "Route learning", options: ONOFF, default: "default", applies: "next prompt", section: "router" },
+  delegation: { title: "Delegated reads", options: ["default", "off", "shadow", "on"], default: "default", applies: "next prompt", section: "router" },
   executor: { title: "Executor", options: ["default", "judge", "sonnet"], default: "default", applies: "next prompt", section: "router" },
   subagentsEverySession: { title: "Subagents in every session", options: ONOFF, default: "default", applies: "next prompt", section: "subagents" },
   guardianMode: { title: "Guardian", options: ["default", "off", "observe", "recommend", "assist", "auto"], default: "default", applies: "next prompt", section: "guardian" },
@@ -358,6 +380,10 @@ function routerOverrides(options2, stored2 = {}) {
   if (rm !== void 0) out.routeModels = rm;
   const gate = valueOf("completionGate", options2, stored2);
   if (gate !== "default") out.completionGate = gate;
+  const learning = bool(valueOf("learning", options2, stored2));
+  if (learning !== void 0) out.learning = learning;
+  const delegation2 = valueOf("delegation", options2, stored2);
+  if (delegation2 !== "default") out.delegation = delegation2;
   const executor = valueOf("executor", options2, stored2);
   if (executor !== "default") out.executor = executor;
   const sub = bool(valueOf("subagentsEverySession", options2, stored2));
@@ -641,20 +667,6 @@ function barSegments(v, columns, now3, shown = METRICS) {
 }
 var barText = (segs) => segs.map((s, i) => (i ? s.sep ?? " · " : "") + s.text).join("");
 
-// hooks/lib/io.ts
-function sid($) {
-  return $.session.id();
-}
-function sessionModel($) {
-  return $.session.model();
-}
-function fsRead($, ...args) {
-  return $.fs.read(...args);
-}
-function fsWrite($, ...args) {
-  return $.fs.write(...args);
-}
-
 // hooks/ui/publish.ts
 var viewAtom = atom({ plugin: "automode", key: "view" }, null);
 var sources = null;
@@ -716,7 +728,7 @@ async function gateTip($, v, now3) {
 }
 async function usageSnap($) {
   try {
-    const u = await $.session.usage();
+    const u = await sessionUsage($);
     const limits = Array.isArray(u?.rateLimits) ? u.rateLimits.filter((r) => Number.isFinite(r?.percentUsed)).map((r) => ({ name: String(r.window ?? r.name ?? "usage"), percent: Number(r.percentUsed) })) : [];
     return {
       costUsd: typeof u?.cost?.usd === "number" ? u.cost.usd : null,
@@ -1011,7 +1023,7 @@ async function cleanup($) {
 }
 async function readUsage($) {
   try {
-    const u = await $.session.usage();
+    const u = await sessionUsage($);
     return { usd: u.cost?.usd ?? null, tokens: u.context?.tokens ?? 0 };
   } catch {
     return { usd: null, tokens: 0 };
@@ -1518,14 +1530,16 @@ var effortlessFloor = (need) => need ? RANK2[need.model] : null;
 function effortMinFor(family, i) {
   const floor = i.floors.effortMin?.[family];
   const hard = i.hm?.tier === "T4" || effortlessFloor(i.need) === RANK2.fable;
-  return family === "opus" && hard ? maxEffort(floor ?? "low", "high") : floor;
+  if (family === "opus" && hard) return maxEffort(floor ?? "low", "high");
+  if (i.sonnetFirst && family === "sonnet" && i.hm?.tier === "T3" && i.need?.model === "opus") return maxEffort(floor ?? "low", "high");
+  return floor;
 }
 function opusRequired(i) {
   const tier = i.hm?.tier;
   if (tier === "T4") return "T4: a focused attempt already failed";
   if (i.need?.model === "fable") return "a fable verdict: opus carries it";
   if (tier === "T3" && i.consequence === "critical") return "T3 on critical work";
-  if (tier === "T3" && i.need?.model === "opus") return "T3 and the need names opus";
+  if (tier === "T3" && i.need?.model === "opus" && !i.sonnetFirst) return "T3 and the need names opus";
   if (!i.hm && i.need?.model === "opus") return "the need names opus and the automode judge did not answer";
   return null;
 }
@@ -1645,6 +1659,8 @@ function legalEffort(i) {
 
 // hooks/v4.ts
 import { COMPACT_SYSTEM, transcriptOf } from "./lib/compact.ts";
+import { EMPTY_LEARNED, bucketOf, noteTask, opusBuckets, opusFirst, parseLearned } from "./lib/learn.ts";
+import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence } from "./lib/delegation.ts";
 var V4_DEFAULTS = {
   router: "classic",
   mode: "shadow",
@@ -1678,6 +1694,13 @@ var V4_DEFAULTS = {
   routeModels: true,
   // Completion evidence (lib/completion.ts). `report` records the state. `block` also sends the model back, once per task.
   completionGate: "report",
+  // T3 with need=opus starts on Sonnet at high (lib/auto.ts). config.json turns it on; false restores the old rule.
+  sonnetFirst: false,
+  // Route learning (lib/learn.ts): repeated rescues in a kind of task start that kind on Opus, per project.
+  learning: false,
+  // Delegated reads (lib/delegation.ts). `shadow` records what the gate would do and changes nothing.
+  delegation: "off",
+  delegationGateTokens: GATE_TOKENS,
   // Policy auto: `sonnet` makes Sonnet the task's model and keeps the judge's pick as a shadow route (lib/executor.ts).
   executor: "judge",
   effortJudgeTimeoutMs: JUDGE_CALL.timeoutMs
@@ -1808,6 +1831,11 @@ var S = {
   // this turn's prompt chose the workflow
   workflowRanTask: void 0,
   // the task the workflow last ran on
+  learned: EMPTY_LEARNED,
+  learnedTold: void 0,
+  // the task the learned route was last announced for
+  gatedReads: [],
+  // task:path of each large read the gate has seen: the next one runs
   consulted: [],
   // failure fingerprints an Opus consult already answered: the next repeat switches
   consultCounts: {},
@@ -1907,6 +1935,7 @@ async function loadV4($) {
   const onPlan = !await safe($.env.get("ANTHROPIC_API_KEY"));
   S.ttl = ttlMs({ CLAUDE_CODE_PROMPT_CACHE_TTL: await safe($.env.get("CLAUDE_CODE_PROMPT_CACHE_TTL")), FORCE_PROMPT_CACHING_5M: await safe($.env.get("FORCE_PROMPT_CACHING_5M")), ENABLE_PROMPT_CACHING_1H: await safe($.env.get("ENABLE_PROMPT_CACHING_1H")) }, S.provider, onPlan);
   S.priors = await loadPriors($);
+  if (S.cfg.learning) S.learned = await loadLearned($);
   const policyEnv = String(await safe($.env.get("AUTOMODE_POLICY")) ?? "").trim().toLowerCase();
   const wanted = policyEnv || String(S.cfg.policy ?? "legacy").trim().toLowerCase();
   S.policy = wanted === "auto" ? "auto" : "legacy";
@@ -1933,7 +1962,7 @@ var nums = (v) => (Array.isArray(v) ? v : []).filter((x) => typeof x === "number
 async function firstFile($) {
   try {
     const file = `${await dataDir2($)}/first-prefix.json`;
-    if (!await $.fs.exists(file)) return { byProject: {}, ratios: [] };
+    if (!await fsExists($, file)) return { byProject: {}, ratios: [] };
     const j = JSON.parse(await fsRead($, file));
     return { byProject: Object.fromEntries(Object.entries(j.byProject ?? {}).map(([k, v]) => [k, nums(v)])), ratios: nums(j.ratios) };
   } catch {
@@ -1998,7 +2027,7 @@ function routingCache() {
 async function loadPriors($) {
   try {
     const file = `${await dataDir2($)}/calibration.json`;
-    if (!await $.fs.exists(file)) return DEFAULT_PRIORS;
+    if (!await fsExists($, file)) return DEFAULT_PRIORS;
     const c = JSON.parse(await fsRead($, file));
     const p = c.priors ?? c;
     const num = (v, d) => typeof v === "number" && Number.isFinite(v) && v > 0 ? v : d;
@@ -2099,6 +2128,27 @@ function cacheState() {
 function prices() {
   return rowFor(S.provider);
 }
+async function learnedFile($) {
+  return `${await dataDir2($)}/learned-${projectKey(S.cwd)}.json`;
+}
+async function loadLearned($) {
+  try {
+    return parseLearned(await fsRead($, await learnedFile($)));
+  } catch {
+    return EMPTY_LEARNED;
+  }
+}
+async function noteLearned($, corrected) {
+  const env = S.envelope, a = S.lastAuto;
+  if (!S.cfg.learning || S.mode !== "auto" || !env || !S.current || !a?.hm || a.taskId !== env.taskId) return;
+  const seen = S.learned.tasks.find((t) => t.id === env.taskId);
+  const start = seen?.family ?? S.current.family;
+  const rescued = start !== "opus" && S.current.family === "opus" && env.escalations > 0;
+  const outcome = corrected || rescued ? "bad" : env.verified ? "ok" : "open";
+  S.learned = noteTask(S.learned, { id: env.taskId, bucket: bucketOf(a.hm.tier, a.need?.model), family: start, outcome, at: await now2($) });
+  await fsWrite($, await learnedFile($), JSON.stringify(S.learned)).catch(() => {
+  });
+}
 async function dataDir2($) {
   let dir;
   try {
@@ -2132,7 +2182,7 @@ async function flushNow($) {
   try {
     const file = await recordsFile($);
     let before = "";
-    if (await $.fs.exists(file)) {
+    if (await fsExists($, file)) {
       before = await fsRead($, file);
       if (shouldRotate(before.length + lines.length)) {
         await fsWrite($, `${file}.1`, before);
@@ -2705,9 +2755,19 @@ ${midTurnNote(runningEffort())}` : text, midTurn, attachList.length),
     for (const f of ["haiku", "sonnet", "opus"]) if (rankF[f] < rankF[S.current.family]) floors.exclude = { ...floors.exclude ?? {}, [f]: `low judge confidence (${answer.confidence}): no downgrade` };
     steps.push("low confidence: no downgrade (jev-router)");
   }
+  const taught = S.cfg.learning && answer && askedNeed && !floors.fixedFamily && allowed.includes("opus") ? bucketOf(answer.tier, askedNeed.model) : null;
+  if (taught && opusFirst(S.learned, taught, at2)) {
+    floors.exclude = { ...floors.exclude ?? {}, haiku: `learned: ${taught} needed rescue in this project`, sonnet: `learned: ${taught} needed rescue in this project` };
+    steps.push(`learned: ${taught} starts on opus`);
+    if (S.learnedTold !== env.taskId) {
+      S.learnedTold = env.taskId;
+      S.records.push({ v: 1, kind: "learned", at: at2, sessionId: S.sessionId, taskId: env.taskId, bucket: taught });
+      $.ui.toast(`AutoMode: tasks like this needed Opus here before, so this one starts on Opus.`);
+    }
+  }
   const consequence = env.risk.effective;
   if (!shortcut && !fallback && !hmCached && !executorOn()) {
-    const second = secondCall({ allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence, floors, current: null, cost: () => 0 }, anchor);
+    const second = secondCall({ allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence, sonnetFirst: S.cfg.sonnetFirst, floors, current: null, cost: () => 0 }, anchor);
     if (second) {
       const j2 = await effortlessJudge($, second, text, { messages, midTurnEffort: midTurn && S.current ? runningEffort() : void 0, attachments: attachList, purpose: "effortless-judge:second" });
       verdicts = { ...verdicts, [second]: j2.verdict };
@@ -2723,8 +2783,8 @@ ${midTurnNote(runningEffort())}` : text, midTurn, attachList.length),
   const kept = shortcut ? { model: td.family, effort: td.effort, why: "kept" } : null;
   const executed = kept ? null : executorInput(verdicts, floors, td && !boundary && !S.compactedPending && cacheFresh(at2) ? td : null);
   if (executed) steps.push(`executor: sonnet ${executed.verdicts.sonnet.effort}`);
-  const choice = kept ? optimizeAuto({ allowed, verdicts: { [kept.model]: kept }, need: kept, hm: null, floors: { ...floors, fixedFamily: allowed.includes(td.family) ? td.family : void 0 }, current: current2, cost }) : optimizeAuto({ allowed, ...executed ?? { verdicts, floors }, need, hm, consequence, current: current2, cost });
-  const shadow = executed ? optimizeAuto({ allowed, verdicts, need, hm, consequence, floors, current: current2, cost }).best : null;
+  const choice = kept ? optimizeAuto({ allowed, verdicts: { [kept.model]: kept }, need: kept, hm: null, floors: { ...floors, fixedFamily: allowed.includes(td.family) ? td.family : void 0 }, current: current2, cost }) : optimizeAuto({ allowed, ...executed ?? { verdicts, floors }, need, hm, consequence, sonnetFirst: S.cfg.sonnetFirst, current: current2, cost });
+  const shadow = executed ? optimizeAuto({ allowed, verdicts, need, hm, consequence, sonnetFirst: S.cfg.sonnetFirst, floors, current: current2, cost }).best : null;
   steps.push(`optimizer: ${choice.rule} -> ${choice.best.family}/${choice.best.effort}`);
   const own = S.current ? choice.candidates.find((c) => c.family === S.current.family) : void 0;
   const ownVerdict = S.current ? verdicts[S.current.family] : null;
@@ -2843,7 +2903,7 @@ function reoptimizeAuto(t, event, at2, turnId, reset = false) {
   const td = S.taskDecision && S.taskDecision.taskId === env.taskId ? S.taskDecision : null;
   const executed = executorInput(S.lastAuto.verdicts, baseFloors, !reset && td && cacheFresh(at2) ? td : null);
   const floors = executed?.floors ?? baseFloors;
-  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, floors, current: current2, cost: autoCost(complexity, at2) });
+  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, sonnetFirst: S.cfg.sonnetFirst, floors, current: current2, cost: autoCost(complexity, at2) });
   let floor = mq.tier;
   if (t.mandatory) {
     const lift = tierOf(choice.best.family, choice.best.effort);
@@ -2900,7 +2960,7 @@ ${note}`;
   const verdicts = Object.fromEntries(families.map((f, i) => [f, first[i].verdict]));
   const need = verdicts[anchor] ?? S.lastAuto.need;
   const hmNow = hmj.answer ? { tier: hmj.answer.tier, complexity: hmj.answer.complexity } : S.lastAuto.hm;
-  const second = routeModels ? secondCall({ allowed, verdicts, need, hm: hmNow, consequence: env.risk.effective, floors: { because: [] }, current: null, cost: () => 0 }, anchor) : null;
+  const second = routeModels ? secondCall({ allowed, verdicts, need, hm: hmNow, consequence: env.risk.effective, sonnetFirst: S.cfg.sonnetFirst, floors: { because: [] }, current: null, cost: () => 0 }, anchor) : null;
   if (second) verdicts[second] = (await effortlessJudge($, second, prompt, { messages, purpose: `effortless-judge:${event}:second` })).verdict;
   for (const f of [...families, second].filter(Boolean)) if (!verdicts[f] && S.lastAuto.verdicts[f]) verdicts[f] = S.lastAuto.verdicts[f];
   S.lastAuto = { verdicts, need, hm: hmNow, taskId: env.taskId };
@@ -3232,6 +3292,15 @@ async function v4SessionStart($, e, next) {
   if (typeof e?.cwd === "string") S.cwd = e.cwd;
   await loadV4($);
   S.resetPending = true;
+  if (S.cfg.delegation === "on") {
+    await $.tool.register({
+      name: "extract",
+      description: "Ask a cheap model one question about whole files, without loading them into this conversation. Returns findings with line numbers and quotes that were checked against the files. Use it for facts and locations in large files. Read the cited lines yourself before an edit or a decision that depends on exact behavior.",
+      inputSchema: { type: "object", properties: { paths: { type: "array", items: { type: "string" }, description: "Absolute file paths" }, question: { type: "string", description: "One specific question" } }, required: ["paths", "question"] },
+      isDeferred: false
+    }).catch(() => {
+    });
+  }
   return next(e);
 }
 async function v4PromptSubmit($, e, next) {
@@ -3246,6 +3315,7 @@ async function v4PromptSubmit($, e, next) {
   const text = e.text.trim();
   if (S.lastOutcome) {
     const signal = nextSignal(text);
+    if (signal !== "moved-on" && S.envelope?.taskId === S.lastOutcome.taskId) await noteLearned($, true);
     S.records.push({ v: 1, kind: "signal", at: at2, sessionId: S.sessionId, turnId: S.lastOutcome.turnId, taskId: S.lastOutcome.taskId, next: signal, route: S.current ? `${S.current.family}/${S.current.effort}` : null, underRouting: signal !== "moved-on" });
     S.lastOutcome = null;
   }
@@ -3592,6 +3662,7 @@ async function v4TurnComplete($, e, next) {
       ...S.lastAuto?.hm ? { tier: S.lastAuto.hm.tier } : {}
     }));
     S.lastOutcome = { turnId: e.turnId, taskId: S.envelope?.taskId ?? "none" };
+    await noteLearned($, false);
   }
   await flush($);
   await persist2($);
@@ -3776,7 +3847,70 @@ ${reuse.note}` } : {};
     return note ? { ...out, context: [...out.context ?? [], note] } : out;
   }
   if (reuse.note) return next({ ...e, ...withReuse });
+  if (e.tool === "Read") {
+    const stop = await readGate($, input);
+    if (stop) return stop;
+  }
   return trackTool($, e, input, next);
+}
+async function readGate($, input) {
+  const path = String(input.file_path ?? "");
+  if (S.cfg.delegation === "off" || !S.envelope || !gateable(path, input)) return null;
+  try {
+    const chars = (await $.fs.stat(path)).size;
+    const key = `${S.envelope.taskId}:${path}`;
+    const tried = S.gatedReads.includes(key);
+    const v = gateRead({ chars, tried, edited: S.envelope.editedPaths.includes(path), stage: S.stage, risk: S.envelope.risk.effective, gateTokens: S.cfg.delegationGateTokens });
+    if (!v.gate && !tried) return null;
+    const base = { v: 1, kind: "delegation", at: await now2($), sessionId: S.sessionId, taskId: S.envelope.taskId, mode: S.cfg.delegation, tokens: tokensOf(chars) };
+    if (tried) {
+      S.records.push({ ...base, action: "read-again" });
+      return null;
+    }
+    S.gatedReads = [...S.gatedReads, key].slice(-200);
+    S.records.push({ ...base, action: "gate", why: v.why });
+    if (S.cfg.delegation !== "on") return null;
+    const outline = chars <= 2e6 ? outlineOf(await fsRead($, path)) : "Too large for an outline.";
+    return { deny: gateNote(path, chars, outline, EXTRACT_TOOL) };
+  } catch {
+    return null;
+  }
+}
+var extractFailed = (why) => ({ result: why, isError: true, text: why });
+async function v4Extract($, e) {
+  if (S.cfg.delegation !== "on") return extractFailed("extract is off. Use Read.");
+  const paths = Array.isArray(e.paths) ? [...new Set(e.paths.map(String))] : [];
+  const question = String(e.question ?? "").trim();
+  if (!paths.length || !question) return extractFailed("extract needs paths and a question.");
+  const files = {};
+  for (const path of paths) {
+    const check = await $.tool.check({ tool: "Read", input: { file_path: path } }).catch(() => null);
+    if (check?.decision !== "allow") return extractFailed(`extract may not read ${path}. Use Read, so the normal permission check runs.`);
+    try {
+      files[path] = await fsRead($, path);
+    } catch {
+      return extractFailed(`extract could not read ${path}.`);
+    }
+  }
+  const tokens = tokensOf(Object.values(files).reduce((a, t) => a + t.length, 0));
+  if (tokens > EXTRACT_MAX_TOKENS) return extractFailed(`These files are about ${tokens} tokens, over the ${EXTRACT_MAX_TOKENS} limit. Ask about fewer files.`);
+  const t0 = await now2($);
+  const r = await $.model.complete({ model: S.cfg.compactModel, system: EXTRACT_SYSTEM, prompt: extractPrompt(files, question), maxTokens: EXTRACT_REPLY_TOKENS, effort: "low", timeoutMs: 6e4 });
+  const base = { v: 1, kind: "delegation", action: "extract", at: t0, sessionId: S.sessionId, taskId: S.envelope?.taskId ?? "none", mode: S.cfg.delegation, tokens, files: paths.length };
+  if (!r?.isAnswered) {
+    S.records.push({ ...base, ok: false });
+    return extractFailed("extract got no answer. Read the lines you need with offset and limit.");
+  }
+  const usd = usageUsd(usageOf(r.usage), ANTHROPIC2.rates.haiku);
+  noteJudge(usd);
+  const evidence = parseEvidence(r.text);
+  if (!evidence) {
+    S.records.push({ ...base, ok: false, usd });
+    return extractFailed("extract got an unreadable answer. Read the lines you need with offset and limit.");
+  }
+  const { kept, dropped } = verifyEvidence(evidence, files);
+  S.records.push({ ...base, ok: true, usd, kept: kept.length, dropped });
+  return { result: renderEvidence(kept, dropped, evidence.omitted) };
 }
 var EVIDENCE_CHARS = 2e4;
 var gateOn = () => S.cfg.completionGate === "report" || S.cfg.completionGate === "block";
@@ -4016,7 +4150,7 @@ async function syncSignals($, late) {
   if (S.mode !== "auto" || !S.signalsOn || S.sessionId === "unknown") return;
   try {
     const file = await signalsFile($);
-    if (!await $.fs.exists(file)) return;
+    if (!await fsExists($, file)) return;
     const sig = JSON.parse(await fsRead($, file));
     if (!sig || typeof sig.seq !== "number" || sig.seq === S.signalSeq) return;
     S.signalSeq = sig.seq;
@@ -4151,6 +4285,7 @@ function v4Snapshot(sessionModel2, now3) {
     policy: S.policy,
     providerGuard: S.providerGuard,
     provider: S.provider,
+    learned: { tasks: S.learned.tasks.length, opusFirst: opusBuckets(S.learned, now3) },
     routeModels: S.cfg.routeModels !== false,
     subagentsEverySession: !!S.cfg.subagentsEverySession,
     sessionModel: sessionModel2,
@@ -4225,6 +4360,9 @@ function freshSession() {
     planMode: false,
     planExited: false,
     editLog: [],
+    learned: EMPTY_LEARNED,
+    learnedTold: void 0,
+    gatedReads: [],
     consulted: [],
     consultCounts: {},
     resolvedCounts: {},
@@ -4424,6 +4562,7 @@ function detailsText(v, now3) {
     `  running ${v.model.name} · ${v.effort.name}${v.pending ? ` · ${v.pending}` : ""}${v.hold ? ` · ${v.hold}` : ""}${v.escalation ? ` · ${v.escalation}` : ""}`,
     r.requested && r.active ? `  why: ${v.judge.state === "down" ? `${v.judge.line}; no verdict` : v.judge.line ?? r.requested.reason}` : null,
     `  context ${v.context.percent === null ? "—" : `${Math.round(v.context.percent)}% (${tokensText(v.context.tokens)})`} · cache ${v.cache.state === "unknown" ? "—" : cacheText(v.cache.until, now3)}`,
+    r.learned?.tasks ? `Learned: ${r.learned.tasks} tasks in this project${r.learned.opusFirst.length ? ` · starts on Opus: ${r.learned.opusFirst.join(", ")}` : ""}` : null,
     v.workflow.length ? `Workflow: ${v.workflow.map((s) => `${STAGE_GLYPH[s.state]} ${s.name}`).join(" ─ ")}` : null,
     `Guardian: ${g.enabled ? `${v.guardian.glyph} ${v.guardian.state} (mode ${g.mode})` : "off"}${g.checkpoint ? ` · checkpoint ${g.checkpoint.sum}` : ""}`,
     `Usage: ${usdText(v.cost.session)} this session${r.ledger.requests ? ` · judges ${usdText(r.ledger.judgeUsd)} · subagents ${usdText(r.ledger.subagentUsd)} (measured)` : ""}`
@@ -4593,7 +4732,7 @@ async function cmdFacts($) {
   };
   const json = async (file) => {
     try {
-      return JSON.parse(await $.fs.read(file));
+      return JSON.parse(await fsRead($, file));
     } catch {
       return {};
     }
@@ -4845,12 +4984,12 @@ var coldHintAt = 0;
 async function load2($) {
   loaded = true;
   try {
-    cfg = { ...DEFAULTS, ...JSON.parse(await $.fs.read(`${$.plugin.root}/config.json`)) };
+    cfg = { ...DEFAULTS, ...JSON.parse(await fsRead($, `${$.plugin.root}/config.json`)) };
   } catch {
     cfg = DEFAULTS;
   }
   try {
-    sourceVersion = JSON.parse(await $.fs.read(`${$.plugin.root}/.claude-plugin/plugin.json`)).version || "unknown";
+    sourceVersion = JSON.parse(await fsRead($, `${$.plugin.root}/.claude-plugin/plugin.json`)).version || "unknown";
   } catch {
   }
 }
@@ -4869,16 +5008,16 @@ async function debug($, entry) {
   try {
     let before = "";
     try {
-      before = await $.fs.read(file);
+      before = await fsRead($, file);
     } catch {
     }
-    await $.fs.write(file, before + JSON.stringify({ at: await $.clock.now(), ...entry }) + "\n");
+    await fsWrite($, file, before + JSON.stringify({ at: await $.clock.now(), ...entry }) + "\n");
   } catch {
   }
 }
 async function limitShare($) {
   try {
-    const shares = (await $.session.usage()).rateLimits.map((r) => r.percentUsed).filter((n) => Number.isFinite(n));
+    const shares = (await sessionUsage($)).rateLimits.map((r) => r.percentUsed).filter((n) => Number.isFinite(n));
     return shares.length ? Math.max(...shares) : null;
   } catch {
     return null;
@@ -4890,7 +5029,7 @@ async function coldHint($) {
     const now3 = await $.clock.now();
     const idleMin = (now3 - lastAnswerAt) / 6e4;
     if (idleMin < cfg.cacheTtlMinutes || coldHintAt > lastAnswerAt) return null;
-    const usage = await $.session.usage();
+    const usage = await sessionUsage($);
     const tokens = usage.context.tokens ?? 0;
     if (tokens < cfg.heavyChatTokens) return null;
     const live = (await $.agent.list()).filter((a) => a.status === "pending" || a.status === "running" || a.status === "waiting");
@@ -5038,6 +5177,7 @@ Continue from where it left off without asking the user further questions.`,
   for (const tool of ["Agent", "Workflow", "Read", "Grep", "Glob", "Edit", "Write", "MultiEdit", "NotebookEdit", "WebFetch", "WebSearch"]) {
     on("tool.call", { tool }, async ($, e, next) => await useV4($) ? v4ToolCall($, e, next) : next(e)).catch(($, e, next) => next.called ? next(e) : { deny: "AutoMode guard failed; the call was not run." });
   }
+  on("tool.call", { tool: "mcp__automode__extract" }, ($, e) => v4Extract($, e)).catch(() => ({ deny: "AutoMode extract failed. Read the lines you need with offset and limit." }));
   on("classic.Stop", async ($, e, next) => await useV4($) ? v4Stop($, e, next) : next(e)).catch(($, e, next) => next(e));
   on("session.end", ($, e, next) => guardianSessionEnd($, e, next)).catch(($, e, next) => next(e));
   registerUi(on);
