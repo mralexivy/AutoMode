@@ -32,6 +32,7 @@ import { accrueRent, type Rent } from './lib/rent.ts'
 import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, summaryOf, withReview } from './lib/envelope.ts'
+import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
 import { checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, reviewerBlocked, scopeGrew, withPipefail } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
 import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
@@ -70,6 +71,8 @@ const V4_DEFAULTS = {
   policy: 'legacy',
   // Policy auto: false keeps the app's model and routes the effort only (benchmark arm 4, a safe first rollout).
   routeModels: true,
+  // Completion evidence (lib/completion.ts). `report` records the state. `block` also sends the model back, once per task.
+  completionGate: 'report' as CompletionGate,
   effortJudgeTimeoutMs: JUDGE_CALL.timeoutMs,
 }
 type V4Config = typeof V4_DEFAULTS
@@ -97,6 +100,8 @@ const S = {
   workers: new Map<string, { type: string; tokens: number; stop: boolean; validate?: boolean; workflow?: boolean }>(),
   lastCheck: null as null | { command: string; passed: boolean },
   editedSinceCheck: false, records: [] as unknown[], toldJudgeDown: false, taskSeq: 0,
+  // Completion evidence for the task in obligationsTask (lib/completion.ts).
+  obligations: [] as Obligation[], obligationsTask: null as string | null, obligationEdited: false, completionBlocks: 0, completionState: 'none' as CompletionState,
   lastOutcome: null as null | { turnId: string; taskId: string },
   sessionId: 'unknown', restored: false, expectWorker: 0,
   // Per-model warm cache (effortless markWarm): until when each model's prefix stays cached, and at which effort.
@@ -362,7 +367,7 @@ async function spawnOutsideAutoMode($: EngineInterface, e: any, next: any) {
 
 // Persistence: a headless --resume or a plugin reload starts a new module, but the session's cache
 // and task do not reset. The routing state is saved per session after each turn and read back once.
-const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'appModel', 'sessionModel', 'pinFamily', 'pinEffort', 'judgeRiskTask', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'dropped', 'rent', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier'] as const
+const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'appModel', 'sessionModel', 'pinFamily', 'pinEffort', 'judgeRiskTask', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'dropped', 'rent', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier', 'editedSinceCheck', 'lastCheck', 'obligations', 'obligationsTask', 'completionBlocks', 'completionState'] as const
 async function restore($: EngineInterface) {
   S.restored = true
   try { S.sessionId = await sid($) } catch {}
@@ -1594,7 +1599,7 @@ const INADEQUATE_REVIEW = 'no available model met the need for this task'
 
 // statusLine: the route in the status row, with plan mode and a pending review.
 function statusLine($: EngineInterface, r: Route) {
-  $.ui.status(`AutoMode · ${r.family} ${r.effort}${S.planMode ? ' · plan' : S.policy === 'auto' && S.workStage !== 'implement' ? ` · ${S.workStage === 'plan-approved' ? 'approved' : S.workStage}` : ''}${S.envelope?.reviewRequired.value ? ' · review pending' : ''}`)
+  $.ui.status(`AutoMode · ${r.family} ${r.effort}${S.planMode ? ' · plan' : S.policy === 'auto' && S.workStage !== 'implement' ? ` · ${S.workStage === 'plan-approved' ? 'approved' : S.workStage}` : ''}${S.envelope?.reviewRequired.value ? ' · review pending' : ''}${S.completionState === 'none' ? '' : ` · ${S.completionState.replace('_', ' ')}`}`)
 }
 
 // capOf places a route on the optimizer's capability scale, for mid-turn comparisons.
@@ -2078,6 +2083,58 @@ async function guarded($: EngineInterface, e: any, next: any) {
 
 // noteCommand: a command that acts on something a repair cannot get back is hard evidence (lib/operations.ts), and a
 // command that throws work away is ladder evidence.
+const EVIDENCE_CHARS = 20_000
+const gateOn = () => S.cfg.completionGate === 'report' || S.cfg.completionGate === 'block'
+
+// syncObligations: a new task starts with its own stated results and its own block.
+function syncObligations() {
+  const env = S.envelope
+  if (!env || S.obligationsTask === env.taskId) return
+  S.obligationsTask = env.taskId
+  S.obligations = extractObligations(env.spec.text)
+  S.obligationEdited = false
+  S.completionBlocks = 0
+  S.completionState = 'none'
+}
+
+// v4Stop: the model is about to finish. Hooks beneath decide first, and a block of theirs stands. Only the mode `auto`
+// sends the model back, so shadow mode never changes a session.
+export async function v4Stop($: EngineInterface, e: any, next: any) {
+  const out = await next(e)
+  if (!gateOn() || S.mode === 'off' || !S.envelope || !(await activeV4($))) return out
+  syncObligations()
+  const state = assessCompletion({ edited: S.envelope.editedPaths.length > 0, editedSinceCheck: S.editedSinceCheck, lastCheckPassed: S.lastCheck ? S.lastCheck.passed : null, obligations: S.obligations })
+  S.completionState = state
+  if (state === 'none') return out
+  const gate = S.mode === 'auto' && !out?.block ? S.cfg.completionGate : 'report'
+  const reason = blockReason(state, S.obligations, { gate, stopHookActive: e.stop_hook_active === true, blocks: S.completionBlocks, backgroundWork: Array.isArray(e.background_tasks) ? e.background_tasks.length : 0 })
+  if (reason) S.completionBlocks += 1
+  S.records.push({ v: 1, kind: 'completion', at: await now($), sessionId: S.sessionId, taskId: S.envelope.taskId, state, blocked: !!reason, obligations: publicObligations(S.obligations) })
+  await flush($)
+  if (S.current) statusLine($, S.current)
+  return reason ? { ...out, block: reason } : out
+}
+
+// noteRun: what a command's real output says about the task's stated results. `failureKnown` means the check path has
+// already recorded this exit as a failure. A contradiction keys on the obligation, so its repeats reach the ladder.
+async function noteRun($: EngineInterface, run: CommandRun, failureKnown: boolean) {
+  if (!S.envelope || !gateOn()) return
+  syncObligations()
+  const before = new Set(S.obligations.filter((o) => o.status === 'contradicted').map((o) => o.id))
+  S.obligations = observeRun(S.obligations, { ...run, output: run.output.slice(-EVIDENCE_CHARS) })
+  if (failureKnown) return
+  const fresh = S.obligations.filter((o) => o.status === 'contradicted' && !before.has(o.id))
+  if (!fresh.length) return
+  const at = await now($)
+  const failures = fresh.flatMap((o) => {
+    const f = failureOf(run.command, run.exit || 1, run.output.slice(-8000), at, S.obligationEdited)
+    return f ? [{ ...f, fingerprint: o.id, class: 'defect' as const }] : []
+  })
+  S.obligationEdited = false
+  S.envelope = { ...S.envelope, failures: [...S.envelope.failures, ...failures].slice(-20), verified: false }
+  if (S.policy === 'auto') await runLadder($, at)
+}
+
 async function noteCommand($: EngineInterface, command: string) {
   if (!S.envelope) return
   const op = classifyOperation(command)
@@ -2097,6 +2154,7 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
     const p = String(input.file_path ?? '')
     if (p && !out.deny) {
       S.editedSinceCheck = true
+      if (gateOn()) { syncObligations(); S.obligations = reopen(S.obligations); S.obligationEdited = true }
       S.editLog = [...S.editLog, { path: p, at: await now($) }].slice(-200)
       const edited = [...new Set([...S.envelope.editedPaths, p])]
       const lines = (S.envelope.changedLines ?? 0) + changedLines(e.tool, input)
@@ -2154,12 +2212,18 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
         else await legacyEscalation($, f.fingerprint, at)
       }
     }
+    await noteRun($, { command: String(input.command), output: text, exit: exitCode }, !passed)
     S.editedSinceCheck = false
     return out
   }
   if (e.tool === 'Bash' && S.envelope) {
     const out = await next(e)
-    if (!out.deny) await noteCommand($, String(input.command ?? ''))
+    if (!out.deny) {
+      await noteCommand($, String(input.command ?? ''))
+      const text = resultText(out)
+      const exit = text.match(/Exit code (\d+)/)
+      await noteRun($, { command: String(input.command ?? ''), output: text, exit: exit ? Number(exit[1]) : out.isError === true ? 1 : 0 }, false)
+    }
     return out
   }
   return next(e)
@@ -2455,6 +2519,7 @@ function freshSession() {
     current: null, pending: null, envelope: null, lastSummary: '', resetPending: true,
     votes: { tier: null, n: 0 }, requestsSinceSwitch: 0, verifiedSinceSwitch: false, cache: null, lastReply: '', lastPromptText: '',
     turnPrompt: new Map(), workers: new Map(), agents: new Map(), lastCheck: null, editedSinceCheck: false,
+    obligations: [], obligationsTask: null, obligationEdited: false, completionBlocks: 0, completionState: 'none' as CompletionState,
     toldJudgeDown: false, taskSeq: 0, lastOutcome: null, sessionId: 'unknown', restored: false, expectWorker: 0,
     warm: {}, turnRequests: new Map(), stayUp: 0, redoFloor: null, heldRoute: null, planMode: false, planExited: false, editLog: [],
     consulted: [], consultCounts: {}, resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,

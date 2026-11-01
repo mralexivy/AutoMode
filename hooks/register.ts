@@ -19,7 +19,7 @@
 import type { EngineInterface, Register } from 'claude-code'
 import { COMPACT_SYSTEM, transcriptOf } from './lib/compact.ts'
 import { guardianPromptSubmit, guardianSessionEnd, guardianSessionStart, guardianSnapshot, guardianStep, guardianToolCall, guardianTurnComplete, guardianTurnStart } from './guardian.ts'
-import { useV4, v4AgentSpawn, v4Append, v4Attachment, v4CommandRun, v4Compact, v4PromptSubmit, v4SessionStart, v4Snapshot, v4ToolCall, v4TurnComplete, v4TurnStep } from './v4.ts'
+import { useV4, v4AgentSpawn, v4Append, v4Attachment, v4CommandRun, v4Compact, v4PromptSubmit, v4SessionStart, v4Snapshot, v4Stop, v4ToolCall, v4TurnComplete, v4TurnStep } from './v4.ts'
 import { setOptions } from './options.ts'
 import { setSources } from './ui/publish.ts'
 import { registerUi, uiSessionStart } from './ui/register-ui.tsx'
@@ -364,6 +364,7 @@ export const register: Register = (on, options) => {
 
   // Session and cost guardian (hooks/guardian.ts): its own hooks, each falling through to the engine on any error.
   // Off with AUTOMODE_GUARDIAN=off or config.json "guardian": { "mode": "off" }; the router above is unaffected.
+  on('classic.Stop', async ($, e, next) => ((await useV4($)) ? v4Stop($, e, next) : next(e))).catch(($, e, next) => next(e))
   on('session.end', ($, e, next) => guardianSessionEnd($, e, next)).catch(($, e, next) => next(e))
   // The presentation layer (hooks/ui): drawings, the /automode command and the controls. It reads the view atom only.
   registerUi(on)

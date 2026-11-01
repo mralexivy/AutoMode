@@ -52,6 +52,18 @@
         "legacy"
       ]
     },
+    "completionGate": {
+      "type": "string",
+      "title": "AutoMode: Completion gate",
+      "description": "default: follow config.json. report records whether the work showed its stated results. block also sends the model back, once per task, when that evidence is missing. off turns it off.",
+      "default": "default",
+      "options": [
+        "default",
+        "off",
+        "report",
+        "block"
+      ]
+    },
     "routeModels": {
       "type": "string",
       "title": "AutoMode: Route models",

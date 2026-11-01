@@ -115,6 +115,7 @@ export function harness(on: any, setup: Setup) {
     return { turnId: e.turnId, index: e.index, answer: 'ok', toolUses: [], stopReason: 'end_turn', usage: usage(e.model, prefix) }
   })
   on('turn.complete', (_$: unknown, e: { answer: string; usage?: unknown }) => ({ text: e.answer, usage: e.usage }))
+  on('classic.Stop', () => ({}))
   let nextAgent = 0
   on('agent.spawn', (_$: unknown, e: { subagentType: string; model?: string }) => { spawned.push({ subagentType: e.subagentType, model: e.model }); nextAgent += 1; return { model: e.model ?? 'x', agentId: `w${nextAgent}` } })
   on('tool.call', (_$: unknown, e: { tool: string; command?: string }) => {
