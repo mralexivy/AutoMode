@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- Route learning. AutoMode remembers, per project, which kinds of task needed rescue. After two rescues or corrections in a kind of task, with at least 40% of its recent tasks going wrong, that kind starts on Opus. Learning only raises a route, never overrides a pin, and evidence ages out after 30 days. `learning: false` turns it off.
+
 ### Changed
 
 - A T3 task whose need names Opus now starts on Sonnet at high effort. Only T4, a Fable verdict, T3 on critical work or an escalation requires Opus. A failed attempt still moves to Opus through the ladder. `sonnetFirst: false` restores the old rule.

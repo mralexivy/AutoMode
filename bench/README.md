@@ -107,6 +107,10 @@ node bench/run.mts --experiment delegate-canary --out bench/results/delegate-can
 
 These runs test safety. They measure no saving and no gain in context size. `bench/waste-audit.mts` prices the upper limit: full reads in the audit's bloat list were about 1.6% of 30 days of spend.
 
+## Route learning
+
+`node bench/learn-replay.mts` replays your own decision records through `lib/learn.ts` and costs nothing. A live run cannot test this feature, because it acts only after repeated failures across tasks in one project. The harness tests in `tests/learn.test.ts` cover that path.
+
 ## Quality checks
 
 - `node bench/grade.mts results.jsonl --judges claude-sonnet-5-5,claude-opus-5-5` runs a panel. Disagreements go to `<results>.disputes.jsonl`. For a release, add a non-Claude judge.

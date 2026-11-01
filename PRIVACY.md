@@ -17,6 +17,7 @@ Everything is in `~/.claude/plugins/data/automode/`, on your machine.
 
 | Data | Holds | Kept for |
 |---|---|---|
+| `learned-<project hash>.json` | Route learning: task ids, tier and model labels, outcomes, times. No prompt text. | Until you delete it. It keeps the last 200 tasks. |
 | `records/` | Routing decisions and outcomes: ids, labels, tokens, costs. No prompt text. | Until you delete it. A file rotates at 10 MB. |
 | `guardian/` | Guardian events: ids, labels, numbers and the paths of saved outputs. | 30 days |
 | `checkpoints/` | The task state for a handoff after `/clear`: the first 500 characters of your request, file paths, check commands, the git branch and the changed files. | 7 days |
