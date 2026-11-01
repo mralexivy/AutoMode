@@ -1040,7 +1040,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   // eligible, or the anchor is out). Its effort is valid for that model only.
   const consequence = env.risk.effective
   if (!shortcut && !fallback && !hmCached && !executorOn()) {
-    const second = secondCall({ allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence, floors, current: null, cost: () => 0 }, anchor)
+    const second = secondCall({ allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence, sonnetFirst: S.cfg.sonnetFirst, floors, current: null, cost: () => 0 }, anchor)
     if (second) {
       const j2 = await effortlessJudge($, second, text, { messages, midTurnEffort: midTurn && S.current ? runningEffort() : undefined, attachments: attachList, purpose: 'effortless-judge:second' })
       verdicts = { ...verdicts, [second]: j2.verdict }
@@ -1062,8 +1062,8 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   if (executed) steps.push(`executor: sonnet ${executed.verdicts.sonnet!.effort}`)
   const choice: AutoChoice = kept
     ? optimizeAuto({ allowed, verdicts: { [kept.model]: kept }, need: kept, hm: null, floors: { ...floors, fixedFamily: allowed.includes(td!.family) ? td!.family : undefined }, current, cost })
-    : optimizeAuto({ allowed, ...(executed ?? { verdicts, floors }), need, hm, consequence, current, cost })
-  const shadow = executed ? optimizeAuto({ allowed, verdicts, need, hm, consequence, floors, current, cost }).best : null
+    : optimizeAuto({ allowed, ...(executed ?? { verdicts, floors }), need, hm, consequence, sonnetFirst: S.cfg.sonnetFirst, current, cost })
+  const shadow = executed ? optimizeAuto({ allowed, verdicts, need, hm, consequence, sonnetFirst: S.cfg.sonnetFirst, floors, current, cost }).best : null
   steps.push(`optimizer: ${choice.rule} -> ${choice.best.family}/${choice.best.effort}`)
   const own = S.current ? choice.candidates.find((c) => c.family === S.current!.family) : undefined
   // A hold keeps the model, never its old effort: the held model runs at its own verdict for this prompt (or its
