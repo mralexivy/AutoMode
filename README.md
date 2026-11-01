@@ -8,7 +8,7 @@
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-22d3ee"></a>
   <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-34d399"></a>
   <a href="https://github.com/mralexivy/AutoMode/issues?q=is%3Aopen+label%3A%22good+first+issue%22"><img alt="Good first issues" src="https://img.shields.io/badge/good%20first-issues-8b5cf6"></a>
-  <img alt="Version 0.2.1" src="https://img.shields.io/badge/version-0.2.1-fbbf24">
+  <img alt="Version 0.3.0" src="https://img.shields.io/badge/version-0.3.0-fbbf24">
   <img alt="Claude Code 2.1.287 or later" src="https://img.shields.io/badge/Claude%20Code-2.1.287%2B-38bdf8">
 </p>
 
@@ -100,7 +100,7 @@ There is nothing to turn on. AutoMode starts with every session after you instal
 - **Stop it everywhere:** set `"mode": "off"` in your `config.json`, or set `AUTOMODE_ROUTER=off`.
 - **Check it is running:** `/automode setup`.
 
-**Requires** Claude Code **2.1.287 or later** in the terminal. Mods are on by default from that version. The Desktop app needs 2.1.286 or later, and the VS Code extension needs 2.1.299 or later. Tested with Claude Code 2.1.314.
+**Requires** Claude Code **2.1.287 or later** in the terminal. Mods are on by default from that version. The Desktop app needs 2.1.286 or later, and the VS Code extension needs 2.1.299 or later. Tested with Claude Code 2.1.316.
 
 If you set `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` in an early build, remove it. Claude Code 2.1.287 and later ignores it.
 
