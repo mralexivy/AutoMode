@@ -12,7 +12,7 @@ import { canonical, experimentProblems, loadExperiment, specHash } from './lib/e
 import { loadTemplate, renderPrompt } from './lib/prompt.mts'
 import { estimatedUsd, rowProblems } from './lib/result.mts'
 import { RunQueue, WINDOW_MS, waitMs, windowSpend } from './lib/pacer.mts'
-import { oneRun, removeTree, runIdFor, v4JudgeCost } from './lib/run-one.mts'
+import { agentChange, oneRun, removeTree, runIdFor, v4JudgeCost } from './lib/run-one.mts'
 import { loadTasks, normalizeTask, problems } from './lib/task-repo.mts'
 import { brier, ece, effortDistance, nll, replicaForecast, spearman, withinOne } from './lib/calibration.mts'
 import { buildManifest, verifyManifest } from './lib/manifest.mts'
@@ -107,6 +107,27 @@ test('a test command that never returns is a harness error, not a rejection', as
   assert.equal(row.accept_exit, null)
   assert.ok(row.harness_error)
   assert.equal(isResult(row), false)
+  assert.equal(isDone(row), false)
+})
+
+test('a hidden test path that starts with an underscore stays out of the change', () => {
+  const wt = fs.mkdtempSync(path.join(os.tmpdir(), 'am-pathspec-'))
+  const git = (...args: string[]) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', ...args], { cwd: wt, encoding: 'utf8' })
+  fs.mkdirSync(path.join(wt, '__tests__'))
+  fs.writeFileSync(path.join(wt, '__tests__', 'a.js'), 'old\n')
+  fs.writeFileSync(path.join(wt, 'src.js'), 'old\n')
+  git('init', '-q')
+  git('add', '-A')
+  git('commit', '-qm', 'base')
+  const base = git('rev-parse', 'HEAD').trim()
+  fs.writeFileSync(path.join(wt, '__tests__', 'a.js'), 'new\n')
+  fs.writeFileSync(path.join(wt, 'src.js'), 'new\n')
+  assert.match(agentChange(wt, base, ['__tests__/a.js']).shortstat, /^1 file changed/)
+  git('add', '-A')
+  git('commit', '-qm', 'reference')
+  const reference = git('rev-parse', 'HEAD').trim()
+  assert.doesNotMatch(referenceDiff({ base, reference, hidden_tests: ['__tests__/a.js'] } as any, wt), /__tests__/)
+  fs.rmSync(wt, { recursive: true, force: true })
 })
 
 test('an agent stopped at the time limit is still measured, and its cost counts as the cap', async () => {

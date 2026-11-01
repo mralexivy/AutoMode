@@ -14,7 +14,7 @@ import { COST_BASIS, RESULT_SCHEMA, estimatedUsd, harnessInfo, pricingSnapshot }
 import { configDir, runEvidence, sessionFiles } from './run-evidence.mts'
 import { observedFrom, safetyVerdict } from '../safety/evaluate.mts'
 import { SCENARIOS } from '../safety/scenarios.mts'
-import { taskRepo, type Task } from './task-repo.mts'
+import { excludePaths, taskRepo, type Task } from './task-repo.mts'
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..')
 const SETUP_MS = 10 * 60_000
@@ -101,7 +101,7 @@ export function agentChange(wt: string, base: string, hiddenTests: string[]) {
   return {
     diff: git(['diff', base], wt) + untracked.map((f) => `\n--- new file: ${f}\n${fs.readFileSync(path.join(wt, f), 'utf8').slice(0, 20000)}`).join(''),
     // Staged for a moment, so that new files count too.
-    shortstat: (() => { git(['add', '-A'], wt); const stat = git(['diff', '--cached', '--shortstat', base, '--', '.', ...hiddenTests.map((t) => `:!${t}`)], wt).trim(); git(['reset', '-q'], wt); return stat })(),
+    shortstat: (() => { git(['add', '-A'], wt); const stat = git(['diff', '--cached', '--shortstat', base, '--', '.', ...excludePaths(hiddenTests)], wt).trim(); git(['reset', '-q'], wt); return stat })(),
     // A patch that applies, for a harness that scores the change elsewhere. Staging is undone, so nothing else sees it.
     patch: () => { git(['add', '-A'], wt); const p = git(['diff', '--cached', '--binary', base], wt); git(['reset', '-q'], wt); return p },
     files: new Set([...lines(git(['diff', '--name-only', base], wt)), ...untracked]).size,
