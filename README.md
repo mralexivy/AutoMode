@@ -330,7 +330,7 @@ The `hooks:` line lists the events AutoMode handles. The `calls:` line lists the
 
 | AutoMode calls | Why |
 |---|---|
-| `$.model.complete` | One short Haiku call per prompt, for the judge. It uses your own Claude login. |
+| `$.model.complete` | One short Haiku call per prompt, for the judge. With `delegation: on`, one Haiku call for each `extract`, which sends the named files. It uses your own Claude login. |
 | `$.fs.read`, `$.fs.write`, `$.fs.exists`, `$.fs.list` | Reads `config.json` and your settings file. Writes its records, checkpoints and caches to its own data folder, `~/.claude/plugins/data/automode/`. With `debugLog` on, it also writes a log in the plugin folder. |
 | `$.process.run` | Four commands. `chmod` and `rm -f` on its own data files. `git rev-parse` and `git status`, both read only, for the task checkpoint. |
 | `$.env.get` | Reads `AUTOMODE_*` switches, your provider variables, and `HOME`. It reads `ANTHROPIC_API_KEY` only to test whether it is set, so it can tell a plan from an API key. It never stores or sends the value. |

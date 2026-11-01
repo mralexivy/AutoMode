@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- Delegated reads, off by default. With `delegation: on`, a full read of a large text file stops once and returns an outline with line numbers. The model can then read a range, read the whole file again, or call `extract`. `extract` asks Haiku one question, respects the person's Read permissions, and keeps a finding only if its quote is in the file at the cited lines. `shadow` records what the gate would do and changes nothing.
+
 ## [0.4.0] - 2026-11-01
 
 ### Added

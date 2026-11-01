@@ -22,6 +22,17 @@ Nothing here weakens `PREREGISTERED.md`. These runs are probes, like `hard-probe
 
 `completionGate: block` as a default needs a separate run on easy tasks. A rise of more than 15% in cost vetoes it. These canaries do not measure that.
 
+## Delegated reads canary
+
+`delegate-canary.json` runs `delegate-stress` on 4 cheap tasks, 2 repeats each. Spend is capped at $3. At the shipped gate, only 3 of 76 tasks ever hit a full read of 5k tokens or more, so a normal run would mostly measure nothing. The stress arm gates at 1.5k tokens on tasks with no risk rating. It therefore tests a harsher gate than the one that ships. The baseline is `auto` in `final-check.jsonl`, which passed all four tasks.
+
+- A rejected run that a rerun does not clear vetoes the change.
+- A read loop, or a stopped run that traces to the gate, is a defect.
+- More than half of gated files read in full afterwards vetoes `delegation: on`, because the session pays twice.
+- `delegate-eval.mts` must keep at least 8 of 10 cases, and no invented finding may survive on the absent case.
+
+These rows count toward no claim, and they say nothing about cost.
+
 ## What a pass allows
 
 A pass permits wider opt-in use and shadow collection. Changing a default needs new tasks with real outcome data, and it is a separate decision.

@@ -1,0 +1,87 @@
+{
+  "cases": 10,
+  "passed": 10,
+  "usd": 0.4619,
+  "rows": [
+    {
+      "id": "budget-stop",
+      "passed": true,
+      "parsed": true,
+      "kept": 4,
+      "dropped": 0,
+      "usd": 0.10613545
+    },
+    {
+      "id": "explore-redirect",
+      "passed": true,
+      "parsed": true,
+      "kept": 8,
+      "dropped": 0,
+      "usd": 0.10688225
+    },
+    {
+      "id": "tool-errors",
+      "passed": true,
+      "parsed": true,
+      "kept": 6,
+      "dropped": 0,
+      "usd": 0.10720925
+    },
+    {
+      "id": "stale-report",
+      "passed": true,
+      "parsed": true,
+      "kept": 9,
+      "dropped": 0,
+      "usd": 0.10881175
+    },
+    {
+      "id": "reduce-size",
+      "passed": true,
+      "parsed": true,
+      "kept": 2,
+      "dropped": 0,
+      "usd": 0.00519105
+    },
+    {
+      "id": "keep-lines",
+      "passed": true,
+      "parsed": true,
+      "kept": 2,
+      "dropped": 0,
+      "usd": 0.00522572
+    },
+    {
+      "id": "risk-rules",
+      "passed": true,
+      "parsed": true,
+      "kept": 10,
+      "dropped": 0,
+      "usd": 0.00639245
+    },
+    {
+      "id": "plugin-copy",
+      "passed": true,
+      "parsed": true,
+      "kept": 4,
+      "dropped": 0,
+      "usd": 0.00338425
+    },
+    {
+      "id": "two-files",
+      "passed": true,
+      "parsed": true,
+      "kept": 4,
+      "dropped": 1,
+      "usd": 0.00837265
+    },
+    {
+      "id": "absent",
+      "passed": true,
+      "parsed": true,
+      "kept": 0,
+      "dropped": 0,
+      "usd": 0.00429735
+    }
+  ]
+}

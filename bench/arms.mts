@@ -118,6 +118,8 @@ export const EFFORT_ARMS: Record<string, Arm> = {
   'auto-from-opus': { label: 'AutoMode Auto, session started on Opus', model: 'claude-opus-5-5', v4: true, plugin: automode({}) },
   // Canaries (bench/experiments/CANARIES.md). Each changes one thing, so a result names its cause.
   'gate-block': { label: 'AutoMode Auto, completion gate blocking', model: HM_MODEL, v4: true, plugin: automode({ completionGate: 'block' }) },
+  // A low threshold makes the gate fire: at the shipped 5k tokens it fired on 3 of 76 tasks, so a normal run measures nothing.
+  'delegate-stress': { label: 'AutoMode Auto, delegated reads at a 1.5k-token gate', model: HM_MODEL, v4: true, plugin: automode({ delegation: 'on', delegationGateTokens: 1500 }) },
   'executor-sonnet': { label: 'AutoMode Auto, Sonnet executor', model: HM_MODEL, v4: true, plugin: automode({ executor: 'sonnet' }) },
   // The specialized agents, asked for with the command a person uses: Haiku explorers, Opus plan and review, Sonnet build and verify.
   // `claude -p` stops background work 10 minutes after the last turn, so a workflow needs the ceiling off.

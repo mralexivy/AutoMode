@@ -19,7 +19,7 @@ export const says = (model: string, effort = 'medium') => (p: string) => effortV
 // A per-model effortless judge for tests: `per` maps the model asked about to its [model, effort] verdict.
 export const perModel = (per: Record<string, [string, string]>) => (p: string) => { const v = per[currentOf(p)] ?? ['sonnet', 'medium']; return effortVerdict(p, v[1], v[0]) }
 
-export type Setup = { ratios?: number[]; preflight?: { systemChars: number; tools: number }; firstPrefixes?: Record<string, number[]>; firstPrefix?: number | null; policy?: string; config?: Record<string, unknown>; bash?: (command: string) => unknown; sessionId?: string; mode?: string; model?: string; judge?: string | null | ((p: string) => string); effortJudge?: string | null | ((p: string) => string); env?: Record<string, string>; workerAnswer?: string; tools?: Record<string, () => unknown>; failWrites?: RegExp; agentList?: () => unknown }
+export type Setup = { extract?: string | null; ratios?: number[]; preflight?: { systemChars: number; tools: number }; firstPrefixes?: Record<string, number[]>; firstPrefix?: number | null; policy?: string; config?: Record<string, unknown>; bash?: (command: string) => unknown; sessionId?: string; mode?: string; model?: string; judge?: string | null | ((p: string) => string); effortJudge?: string | null | ((p: string) => string); env?: Record<string, string>; workerAnswer?: string; tools?: Record<string, () => unknown>; failWrites?: RegExp; agentList?: () => unknown }
 
 // The policy the suite runs under when a test names none. The test runtime has no process.env, so this is a constant.
 const DEFAULT_POLICY: string | undefined = undefined
@@ -89,7 +89,10 @@ export function harness(on: any, setup: Setup) {
     on('tool.list', () => ({ value: Array.from({ length: p.tools }, (_, i) => ({ name: `T${i}`, description: 'd'.repeat(36), mcp: false })) }))
   }
   on('tool.register', (_$: unknown, e: { name: string }) => { registered.push(e.name); return { value: { tool: `mcp__automode__${e.name}` } } })
+  on('fs.stat', (_$: unknown, e: { path: string }) => ({ value: { kind: 'file', size: (writes[e.path] ?? '').length, mtimeMs: 0, isLink: false } }))
+  on('tool.check', (_$: unknown, e: { input: { file_path?: string } }) => ({ decision: /secret/.test(String(e.input?.file_path)) ? 'deny' : 'allow' }))
   on('model.complete', (_$: unknown, e: { prompt: string; system?: string }) => {
+    if (String(e.system).startsWith('You extract')) return { value: setup.extract === null ? { isAnswered: false, reason: 'api-error', status: 529 } : { isAnswered: true, text: setup.extract ?? '{"findings":[],"omitted":[]}', usage: usage('claude-haiku-5-5', 1000) } }
     if (String(e.system).startsWith('You compact')) return { value: { isAnswered: true, text: 'S'.repeat(400), usage: usage('claude-haiku-5-5', 1000) } }
     // The effortless judge (policy auto): answered per model from its "Current: <model> / <effort>" line.
     if (String(e.system).startsWith('You choose which Claude model')) {
