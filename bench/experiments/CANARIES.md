@@ -33,6 +33,16 @@ Nothing here weakens `PREREGISTERED.md`. These runs are probes, like `hard-probe
 
 These rows count toward no claim, and they say nothing about cost.
 
+## Opus rule canary
+
+`opus-rule-canary.json` runs `auto` on 4 tasks the old rule sent to Opus, 2 repeats each. Spend is capped at $6. The baseline is the `auto` and `executor-sonnet` rows on the same tasks.
+
+- On `marked`, `tomli` and `dnspython`, any rejected run vetoes the change.
+- `sqlglot` is the one hard task. The routed baseline is 1 of 5 on Opus. If 0 of 2 pass and the ladder never reached Opus in either run, that vetoes the change.
+- A run that never leaves Opus on these tasks means the rule did not take effect, and that is a defect.
+
+These rows count toward no claim. They can show a drop in Opus use on these tasks, and they prove no general saving.
+
 ## What a pass allows
 
 A pass permits wider opt-in use and shadow collection. Changing a default needs new tasks with real outcome data, and it is a separate decision.

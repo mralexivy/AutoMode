@@ -222,6 +222,7 @@ Defaults live in [`config.json`](config.json). To override them, put a `config.j
 | `policy` | `auto` | The routing policy |
 | `defaultPath` | `direct` | `workflow` sends every standard task through the workflow |
 | `autoWorkflow` | `false` | `true` lets the router enter the workflow by itself. `am:run` works either way. Decision records show what entry would have done |
+| `sonnetFirst` | `true` | A T3 task whose need names Opus starts on Sonnet at high. `false` sends it straight to Opus |
 | `reviewPolicy` | `risk` | `always` adds an Opus review to every change |
 | `maxConcurrency` | `1` | Workstreams built at once (maximum 2) |
 | `blockGitWritesWhenActive` | `true` | Deny git writes from subagents |

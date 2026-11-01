@@ -75,6 +75,8 @@ const V4_DEFAULTS = {
   routeModels: true,
   // Completion evidence (lib/completion.ts). `report` records the state. `block` also sends the model back, once per task.
   completionGate: 'report' as CompletionGate,
+  // T3 with need=opus starts on Sonnet at high (lib/auto.ts). config.json turns it on; false restores the old rule.
+  sonnetFirst: false,
   // Delegated reads (lib/delegation.ts). `shadow` records what the gate would do and changes nothing.
   delegation: 'off' as DelegationMode, delegationGateTokens: GATE_TOKENS,
   // Policy auto: `sonnet` makes Sonnet the task's model and keeps the judge's pick as a shadow route (lib/executor.ts).
@@ -1160,7 +1162,7 @@ function reoptimizeAuto(t: Trigger, event: string, at: number, turnId: string | 
   const td = S.taskDecision && S.taskDecision.taskId === env.taskId ? S.taskDecision : null
   const executed = executorInput(S.lastAuto.verdicts, baseFloors, !reset && td && cacheFresh(at) ? td : null)
   const floors = executed?.floors ?? baseFloors
-  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, floors, current, cost: autoCost(complexity, at) })
+  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, sonnetFirst: S.cfg.sonnetFirst, floors, current, cost: autoCost(complexity, at) })
   let floor = mq.tier
   if (t.mandatory) { const lift = tierOf(choice.best.family, choice.best.effort); if (tierRank(lift) > tierRank(floor.tier)) floor = { tier: lift, effort: choice.best.effort, because: [t.reason] } }
   const own = S.current ? choice.candidates.find((c) => c.family === S.current!.family) : undefined
@@ -1199,7 +1201,7 @@ async function rejudgeAuto($: EngineInterface, note: string, t: Trigger, event: 
   const verdicts: Partial<Record<Family, FamilyVerdict | null>> = Object.fromEntries(families.map((f, i) => [f, first[i].verdict]))
   const need = verdicts[anchor] ?? S.lastAuto.need
   const hmNow = hmj.answer ? { tier: hmj.answer.tier, complexity: hmj.answer.complexity } : S.lastAuto.hm
-  const second = routeModels ? secondCall({ allowed, verdicts, need, hm: hmNow, consequence: env.risk.effective, floors: { because: [] }, current: null, cost: () => 0 }, anchor) : null
+  const second = routeModels ? secondCall({ allowed, verdicts, need, hm: hmNow, consequence: env.risk.effective, sonnetFirst: S.cfg.sonnetFirst, floors: { because: [] }, current: null, cost: () => 0 }, anchor) : null
   if (second) verdicts[second] = (await effortlessJudge($, second, prompt, { messages, purpose: `effortless-judge:${event}:second` })).verdict
   // A fresh call that failed keeps that model's stored verdict; models not asked now carry no stale verdict.
   for (const f of [...families, second].filter(Boolean) as Family[]) if (!verdicts[f] && S.lastAuto.verdicts[f]) verdicts[f] = S.lastAuto.verdicts[f]
