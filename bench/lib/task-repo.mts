@@ -37,6 +37,9 @@ export interface Task {
 const joined = (c: string | string[] | undefined) => (Array.isArray(c) ? c.join(' && ') : c)
 
 // normalizeTask reads a v1 or v2 file into one shape. A v1 file has flat commands. A v2 file nests them in `evaluation`.
+// excludePaths spells each path in the long form. In the short form `:!`, git reads a leading underscore as unknown magic.
+export const excludePaths = (paths: string[]) => paths.map((p) => `:(exclude)${p}`)
+
 export function normalizeTask(raw: any): Task {
   if (raw.schema_version !== 2) return raw
   const { evaluation: ev = {}, ...rest } = raw

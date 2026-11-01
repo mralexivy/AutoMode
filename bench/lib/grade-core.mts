@@ -1,7 +1,7 @@
 // The blind grader's parts: what it reads and how a reply is parsed. bench/grade.mts schedules the calls.
 import { execFileSync, spawn } from 'node:child_process'
 import { billingEnv } from '../arms.mts'
-import type { Task } from './task-repo.mts'
+import { excludePaths, type Task } from './task-repo.mts'
 
 // A full id, because an alias can move to a newer model between two grading passes.
 export const GRADER_MODEL = 'claude-sonnet-5-5'
@@ -24,7 +24,7 @@ const clip = (s: string) => (s.length > CAP ? `${s.slice(0, CAP)}\n[... ${s.leng
 
 // referenceDiff covers base..reference, which can be more than one commit.
 export function referenceDiff(task: Task, repoDir: string) {
-  return execFileSync('git', ['diff', task.base, task.reference, '--', '.', ...task.hidden_tests.map((t) => `:!${t}`)], { cwd: repoDir, encoding: 'utf8', maxBuffer: 1e8 })
+  return execFileSync('git', ['diff', task.base, task.reference, '--', '.', ...excludePaths(task.hidden_tests)], { cwd: repoDir, encoding: 'utf8', maxBuffer: 1e8 })
 }
 
 export const gradePrompt = (taskText: string, reference: string, agent: string) =>
