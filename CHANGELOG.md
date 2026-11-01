@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- A completion gate reads the results a request states and compares them with real command output. It reports one state: unverified, partially verified, failed or verified. `completionGate` is `report` by default, and `block` sends the model back once per task when the evidence is missing. A contradicted result counts as a failure on the escalation ladder.
+
 ## [0.3.0] - 2026-11-01
 
 ### Fixed
