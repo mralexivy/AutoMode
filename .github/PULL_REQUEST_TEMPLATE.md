@@ -9,6 +9,7 @@ Closes #
 <!-- CI runs the type check, the tests and the validator. Say what else you tried. -->
 
 - [ ] I added or updated a test for the change
+- [ ] This branch holds the benchmark and its report, or I say here why the task needs none
 
 ## Privacy
 
