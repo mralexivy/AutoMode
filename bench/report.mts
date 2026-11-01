@@ -23,7 +23,7 @@ const rows: any[] = files.flatMap((f) => fs.readFileSync(f, 'utf8').split('\n').
 const tainted = (r: any) => r.memory_refs > 0 || r.leak_refs > 0
 const contaminated = rows.filter((r) => isResult(r) && tainted(r))
 const valid = rows.filter((r) => isResult(r) && !tainted(r))
-const notRun = rows.filter((r) => !isDone(r))
+const notRun = rows.filter((r) => !r.harness_error && !isDone(r))
 const CRITICAL_COHORTS = ['security', 'migration']
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)

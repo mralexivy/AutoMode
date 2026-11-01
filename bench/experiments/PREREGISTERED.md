@@ -92,6 +92,10 @@ Gates A and C are ratios, AutoMode over the fixed arm. Gate D is AutoMode minus 
 
 Report each gate separately, passed or failed.
 
+## Outcome
+
+The screen ran on 2026-10-31 and 2026-11-01. It found 1 hard task, so the stop rule fired and the confirmation did not run. See `bench/results/final-proof-2026-11-01.md`.
+
 ## Limits of this design
 
 - Selecting on screen outcomes inflates the Opus gap. Report how many candidates separated.
