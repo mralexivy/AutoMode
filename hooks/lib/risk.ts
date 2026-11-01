@@ -4,7 +4,7 @@
 // words alone ("token", "permissions") never raise risk: that sent 14 of 16 benchmark runs to review.
 import type { Risk, RiskAssessment } from './types.ts'
 import { maxRisk } from './types.ts'
-import { textConsequence } from './consequence.ts'
+import { assess, textConsequence } from './consequence.ts'
 
 // Consequential surfaces, matched against file paths (named in the task or edited).
 export const RISK_PATHS: { reason: string; level: Risk; path: RegExp }[] = [
@@ -29,24 +29,20 @@ export function pathRisk(paths: string[]): { level: Risk; reasons: string[] } {
   return { level, reasons: [...reasons].slice(0, 6) }
 }
 
-// prospectiveRisk: before any change. The text layer is the layered consequence detector
-// (consequence.ts: domain AND change intent, never a topic word); named or planned paths add the
-// path layer; the judge can raise but never lower. A path alone does not make a question, a surface
-// edit or a behavior-preserving change critical: then it counts as elevated.
+// prospectiveRisk: before any change, through the layered assessment (consequence.ts assess). Named or planned paths
+// are the path layer. A path alone does not make a question, a surface edit or a behavior-preserving change critical:
+// then it counts as elevated. The judge can raise but never lower.
 export function prospectiveRisk(text: string, judge: { risk: Risk; why: string } | null, plannedPaths: string[] = []): RiskAssessment {
   const t = textConsequence(text)
-  let level: Risk = t.level
-  const reasons: string[] = [...t.reasons]
-  let source: RiskAssessment['source'] = t.level !== 'none' ? 'user' : 'rules'
   const fromPaths = pathRisk([...pathsIn(text), ...plannedPaths])
-  if (fromPaths.level !== 'none') {
-    const softened = fromPaths.level === 'critical' && t.level !== 'critical' && (t.intent !== 'change' || PRESERVING.test(text))
-    level = maxRisk(level, softened ? 'elevated' : fromPaths.level)
-    reasons.push(...fromPaths.reasons, ...(softened ? ['intent: no consequential change to these paths yet'] : []))
-    source = plannedPaths.length ? 'plan' : 'rules'
-  }
-  if (judge && judge.risk !== 'none') { level = maxRisk(level, judge.risk); reasons.push(`judge: ${judge.why || judge.risk}`); if (source === 'rules' && !fromPaths.reasons.length) source = 'judge' }
-  return { level, reasons, source }
+  const softened = fromPaths.level === 'critical' && t.level !== 'critical' && (t.intent !== 'change' || PRESERVING.test(text))
+  const pathLevel = softened ? 'elevated' : fromPaths.level
+  const a = assess({ text, judge: judge ? { risk: judge.risk } : null, pathLevel })
+  const reasons = [...t.reasons, ...a.hard, ...fromPaths.reasons, ...(softened ? ['intent: no consequential change to these paths yet'] : [])]
+  let source: RiskAssessment['source'] = t.level !== 'none' ? 'user' : 'rules'
+  if (fromPaths.level !== 'none') source = plannedPaths.length ? 'plan' : 'rules'
+  if (judge && judge.risk !== 'none') { reasons.push(`judge: ${judge.why || judge.risk}`); if (source === 'rules' && !fromPaths.reasons.length) source = 'judge' }
+  return { level: a.level, reasons, source, ...(a.routing !== a.level ? { routing: a.routing } : {}), ...(a.review === 'sonnet' ? { review: 'sonnet' as const } : {}), ...(a.hard.length ? { hard: a.hard } : {}) }
 }
 
 export const PRESERVING = /\b(without changing (its |the )?behaviou?r|no behaviou?r change|behaviou?r[- ]preserving|(pure|just a|only a) (rename|move|refactor)|rename\b[^.]*\bwithout)\b/i
@@ -76,11 +72,16 @@ export function observedRisk(o: ObservedInput, large = DEFAULT_LARGE): RiskAsses
   return { level, reasons, source: 'diff' }
 }
 
+// A judge's word alone buys a Sonnet review. Every other reason to review keeps the Opus reviewer.
+const JUDGE_ONLY = 'judge-only critical'
+export const reviewerFamily = (because: string[]): 'sonnet' | 'opus' => (because.length && because.every((b) => b.startsWith(JUDGE_ONLY)) ? 'sonnet' : 'opus')
+
 // reviewNeeded applies the review rules: critical risk, consequential surfaces, a large change, or a
 // verification that failed or never ran. A passing test never clears rules 1, 3 or 4.
 export function reviewNeeded(prospective: RiskAssessment, observed: RiskAssessment | null, verification: ObservedInput['verification'], large: boolean): string[] {
   const because: string[] = []
   if (prospective.level === 'critical') because.push(`prospective critical: ${prospective.reasons.join('; ')}`)
+  else if (prospective.review === 'sonnet') because.push(`${JUDGE_ONLY}: ${prospective.reasons.join('; ')}`)
   if (observed && observed.level === 'critical') because.push(`observed critical: ${observed.reasons.join('; ')}`)
   if (large) because.push('large change')
   if (verification === 'fail' || verification === 'unverified') because.push(`verification ${verification}`)

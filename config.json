@@ -6,6 +6,7 @@
   "workflowName": "automode:run",
   "standardMode": "discover",
   "defaultPath": "direct",
+  "autoWorkflow": false,
   "reviewPolicy": "risk",
   "maxConcurrency": 1,
   "taskGraph": true,

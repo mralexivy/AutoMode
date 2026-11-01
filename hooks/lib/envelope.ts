@@ -26,7 +26,7 @@ export function newEnvelope(taskId: string, promptId: string, text: string, now:
   const env: TaskEnvelope = {
     taskId, revision: 1, createdAt: now, promptIds: [promptId], spec: { promptId, text },
     summary: '', acceptance: acceptanceFrom(text), complexity,
-    risk: { prospective, observed: null, effective: prospective.level },
+    risk: { prospective, observed: null, effective: prospective.routing ?? prospective.level },
     reviewRequired: { value: false, because: [] }, verified: false, workflow: {}, discovery: [], failures: [],
     escalations: 0, editedPaths: [], status: 'open', injectedRevision: 0,
   }

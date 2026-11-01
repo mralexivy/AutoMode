@@ -4,6 +4,55 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-01
+
+### Fixed
+
+- The route now follows the task, not the model the session started on. One effortless answer with a fixed anchor (`Current: sonnet`) decides the model, and the running model is asked only for its own effort.
+- Opus now needs T4, a Fable verdict, an escalation floor, T3 with critical work, or T3 with the need naming Opus. Otherwise the route is Sonnet, or Haiku when both judges name it. Price is only a tie-break.
+- An upgrade that only the judges ask for now waits for the switch gate. Floors, escalation, T4, real work on Haiku and provider limits still move at once.
+- Decision records now hold the need and its anchor, and outcome records hold the route and the AutoMode tier.
+- Native `/model` and `/effort` now stand for the session, until `am:reset`. Before, routing overwrote them without notice.
+- `routeModels: false` keeps the model you picked from the first prompt. A first-prompt judge failure does too.
+- A failed judge raises task risk only until a judge answers again.
+- A short message, or one the judge rates as no risk, still goes through the text and path risk checks.
+- A return to a warm model is priced for the turns its cache lacks, and a compaction clears that warm state.
+- The effort judge is asked as upstream asks it, and gets the closing line only when it gave no verdict. The line pushed some verdicts too low.
+- A return to a warm model is priced for turns added after a thinking drop, and the legacy policy reads what that cache holds.
+- A model switch that loses the running model's thinking holds inside a task. A mandatory switch still goes and logs it. A compaction clears the flag.
+- A cold cache inside a task no longer skips the risk, confidence and dwell gates. A low point is priced as the difference between the two cache writes.
+- An upgrade compares capability, not tier, and needs a model that is not weaker. Sonnet max to Opus low is not an upgrade, and neither is Opus low to Sonnet high.
+- A shrink with no compaction noted since the last request is priced as a warm switch, and step pricing uses the cache lifetime's write rate.
+- A calibrated `effortOutput` is read, a hold records the tier of its effort, and `underRouting` records only real corrections.
+- A plain `grep`, `rg` or `diff` that must find nothing no longer fails the workflow on exit 1. Verifier reports carry `expected_exit`, and it counts for no other command.
+- The workflow's `stages` win over `mode`, so the conditional stages run on the router path.
+- The workflow band counts planned and changed files and blocking unknowns, not files that explorers cited, and the router sends the real tier.
+- The workflow fixes major correctness and security defects as well as blockers, sends evidence gaps to the verifier, and skips the fix pass when there is no defect.
+- Subagents take the task's risk: on critical work a general-purpose agent keeps the parent's model unless it only reads, and a diagnoser runs on Sonnet when the task carries risk. Effort is the stronger of the helper's pick and the policy.
+- Removed the unsupported "73%" figure from the subagent reason.
+- An `am:` command beats a `/model` or `/effort` pin for its turn.
+- `/model` and `/effort` register when they name the value the route already runs, or the app's own value. A `pin` record shows each detection.
+- A model outside Haiku, Sonnet and Opus, such as Fable, passes through unrewritten and turns routing off.
+- A model change in plan mode is no longer read as a pin, and an effort pin applies to helpers.
+- An escalation that a pin undoes no longer claims a move.
+- The Bash guard fails closed: a guard that throws before the call denies it, as every other tool guard does.
+- Check detection reads through wrappers, env prefixes, virtual environments, `python3 -m` and `npx`, and it counts subagent checks and edits.
+- `am:reset` also clears pins under policy `legacy`.
+
+### Changed
+
+- Automatic workflow entry is off by default (`autoWorkflow: false`). `am:run` still works. Decision records show what entry would have done, and `workflow-entry` records show whether a chosen workflow was called.
+- The workflow result carries `next_action`, and its trace carries `effort`. `planModel` and `reviewModel` args set those models below S3. The defaults stay Opus.
+- The escalation ladder takes more evidence. A first repeat, three tool errors in a row or scope growth raises the effort one step. A repeat after that raise, a test or compile regression, a revert or a reviewer blocker moves the model, with an Opus consult first.
+- Sonnet xhigh is a rung of its own, below Opus high, so the ladder tries it before it moves the model.
+- Critical review needs hard evidence: an edited path, an operation such as a force push or `terraform apply`, or a production target. Text or the judge alone caps at elevated, unless both agree. A judge-only critical task gets a Sonnet reviewer, and routing still reads the judge.
+- A surface word such as "add a test" now covers only its own clause.
+
+### Added
+
+- Each decision records the shadow rent rule's verdict beside the live one. It changes no route.
+- A `model-switch` record notes the continuity flag and the tokens the prompt dropped on arrival.
+
 ## [0.2.1] - 2026-10-30
 
 ### Fixed

@@ -1,6 +1,6 @@
 ---
 name: diagnoser
-description: AutoMode diagnoser (Haiku). Read-only diagnosis of a failing test, build or lint run from its output. Finds the cause and returns a compact report with evidence pointers and a fix plan, so long logs stay out of the main session. Changes nothing.
+description: AutoMode diagnoser (Haiku, or Sonnet when the task carries risk). Read-only diagnosis of a failing test, build or lint run from its output. Finds the cause and returns a compact report with evidence pointers and a fix plan, so long logs stay out of the main session. Changes nothing.
 tools: Read, Grep, Glob
 model: haiku
 maxTurns: 20

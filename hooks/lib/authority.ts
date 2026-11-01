@@ -8,6 +8,7 @@ import type { Candidate, EffectiveRoute, Effort, Family, Floor, Owner, Route, Ti
 import { tierRank } from './types.ts'
 import type { SwitchInput } from './policy.ts'
 import { switchCheck, tierAtLeast } from './policy.ts'
+import { tierOf } from './optimizer.ts'
 
 export interface Ladder { models: Record<Family, string>; tiers: Record<Tier, { family: Family; effort: Effort }> }
 
@@ -36,7 +37,7 @@ export interface AuthorityInput {
   heldEffort?: Effort                       // the effort the CURRENT model should run at for this prompt, if the model switch is held
   // Policy auto (from v4.1): output per request and steps per request by configuration, so the switch check prices each as it will run.
   effortCost?: { output: (r: Route) => number; steps: (r: Route) => number }
-  currentInadequate?: boolean               // policy auto: the running model is ruled out for the task, so a stronger one switches at once
+  currentInadequate?: boolean               // policy auto: a floor, an escalation or a provider limit rules out the running model, so the switch is mandatory
   current: Route | null
   switchInput: Omit<SwitchInput, 'current' | 'candidate' | 'target' | 'floor' | 'mandatory'>
   ladder?: Ladder
@@ -84,5 +85,5 @@ export function resolve(i: AuthorityInput, resetSinceLastRequest = false): Effec
   const keep = i.current ?? target
   const heldAt = i.current && i.heldEffort && check.gate !== 'provider-effort' ? i.heldEffort : keep.effort
   overridden.push({ owner: i.candidate.source === 'judge' ? 'judge' : i.candidate.source, reason: `held by ${check.gate}: ${target.tier}/${target.effort}` })
-  return { ...keep, effort: heldAt, owner: 'cache-policy', reason: `hold (${check.gate})${heldAt !== keep.effort ? `, effort ${heldAt}` : ''}`, floor: i.floor, candidate: i.candidate, check, overridden }
+  return { ...keep, tier: heldAt !== keep.effort ? tierOf(keep.family, heldAt) : keep.tier, effort: heldAt, owner: 'cache-policy', reason: `hold (${check.gate})${heldAt !== keep.effort ? `, effort ${heldAt}` : ''}`, floor: i.floor, candidate: i.candidate, check, overridden }
 }

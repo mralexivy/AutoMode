@@ -20,5 +20,6 @@ Rules:
 - Never run `git commit`, `git push`, `git reset --hard`, `git checkout -- <path>`, `git clean`, `git stash drop`, `rm -rf`, or other destructive commands.
 - Do not change the architecture and do not add features.
 - Report each command with its actual outcome and its real exit code. Do not report a pass that you did not see. The orchestrator decides pass or fail from these checks, not from your summary.
+- Set `expected_exit` to 1 only on one plain `grep`, `rg` or `diff` that must find nothing. It counts nowhere else, so a test, build or type check that exits nonzero has failed.
 - Use `pre-existing` only when you showed the failure also happens without this change, for example with `git stash` on a scratch copy or by reading the failing test. Otherwise report `fail`.
 - Put a one-line cause in `failure_summary` for each failing check, parsed from the tool output.

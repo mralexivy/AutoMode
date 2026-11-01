@@ -29,7 +29,7 @@ export interface Economics {
   current: string | null          // model/effort now
   candidate: string               // model/effort proposed
   prefixTokens: number
-  writePenaltyUsd: number         // the cache rewrite a model change costs now
+  writePenaltyUsd: number         // the cache rewrite a model change costs now; below zero at a low point where the target writes for less
   ttlMs: number
   effortSharesCache: boolean      // provider rule
   remaining: { k: number; p25: number; median: number; p75: number; n: number }
@@ -39,12 +39,29 @@ export interface Economics {
 }
 export interface SwitchCheck {
   verdict: 'switch' | 'hold'
-  gate?: 'votes' | 'quality' | 'dwell' | 'payback' | 'context' | 'provider-effort' | 'oscillation'
+  gate?: 'votes' | 'quality' | 'dwell' | 'payback' | 'context' | 'provider-effort' | 'oscillation' | 'continuity'
   estUsd: number
   basis: Basis
   lowPenaltyPoint: boolean
   reason?: string
   economics?: Economics
+  continuity?: 'kept' | 'lost' | 'cleared' // whether the target reads the running model's thinking; a compaction clears the flag
+  rent?: RentVerdict             // shadow only: the rent rule's verdict, recorded and never applied
+}
+
+export type Boundary = 'new-task' | 'checkpoint' | 'cold' | 'compaction' | 'none'
+
+// The rent rule's price for a move: the way out, and pi times the way back.
+export interface Transition { hiUsd: number; retWarmUsd: number; retExpiredUsd: number; pi: number; totalUsd: number }
+
+export interface RentVerdict {
+  verdict: 'switch' | 'hold'
+  to: Family
+  boundary: Boundary
+  rentUsd: number
+  stepRatio: number
+  transition: Transition
+  heldBy?: SwitchCheck['gate']   // a gate the rule keeps, when that gate held the move
 }
 
 export interface EffectiveRoute extends Route {
@@ -56,7 +73,9 @@ export interface EffectiveRoute extends Route {
   overridden: { owner: Owner; reason: string }[]
 }
 
-export interface RiskAssessment { level: Risk; reasons: string[]; source: 'judge' | 'rules' | 'plan' | 'diff' | 'user' }
+// level: the consequence the controls act on. routing: what model routing reads, where it differs (a critical word with no hard evidence).
+// review: 'sonnet' when a review runs without critical evidence. hard: the evidence that made the level critical.
+export interface RiskAssessment { level: Risk; reasons: string[]; source: 'judge' | 'rules' | 'plan' | 'diff' | 'user'; routing?: Risk; review?: 'sonnet'; hard?: string[] }
 
 export interface Acceptance { text: string; source: 'user' | 'plan' | 'model' }
 
@@ -68,6 +87,19 @@ export interface FailureRecord {
   at: number
   editedSince: boolean
   evidence: string // the normalized tail, at most 1,500 chars
+  tests?: string[] // the failing test names the output gave
+}
+
+// What the escalation ladder remembers about one task (lib/failures.ts escalation).
+export interface LadderState {
+  raised: Record<string, number>  // failure fingerprint: its count when a step ran for it
+  passed: Record<string, number>  // check command: when it last passed
+  toolErrors: number              // tool errors in a row
+  scopeGrew: boolean
+  reverts: number
+  reviewerBlockers: number
+  fired: string[]                 // causes already acted on
+  floor?: { family: Family; effort: Effort; band: number; because: string; command?: string } // holds until a check passes
 }
 
 export interface DiscoveryRecord {
@@ -100,6 +132,7 @@ export interface TaskEnvelope {
   editedPaths: string[]
   changedLines?: number // lines added or replaced by Edit, MultiEdit and Write in this task
   interfacesChanged?: number // exported declarations changed by edits in this task
+  ladder?: LadderState
   status: 'open' | 'done' | 'abandoned' | 'superseded'
   injectedRevision: number // the revision whose summary the model last saw
 }
@@ -111,6 +144,7 @@ export interface CacheState {
   lastRequestAt: number | null
   ttlMs: number
   effortSharesCache: boolean
+  outputTokens?: number // the last request's output: the next prompt carries it
 }
 
 export interface TokenUsage { input: number; output: number; cacheRead: number; cacheWrite5m: number; cacheWrite1h: number }

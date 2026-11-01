@@ -176,7 +176,7 @@ export function attemptCost(c: Candidate, d: Pick<Demand, 'steps'>, x: CostInput
     const cold = i === 0 && !warmHere
     const write = cold ? prefix : 0
     const read = cold ? 0 : prefix
-    usd += (read * r.input * r.cacheReadX + write * r.input * cacheWriteX(x.cache.ttlMs) + p.newInputPerStep * r.input * 1.25 + out * r.output) / 1e6
+    usd += (read * r.input * r.cacheReadX + write * r.input * cacheWriteX(x.cache.ttlMs) + p.newInputPerStep * r.input * cacheWriteX(x.cache.ttlMs) + out * r.output) / 1e6
     if (cold) switchUsd = (write * r.input * cacheWriteX(x.cache.ttlMs)) / 1e6
     prefix += p.newInputPerStep + out
   }
