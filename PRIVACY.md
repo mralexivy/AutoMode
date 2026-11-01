@@ -8,6 +8,7 @@ AutoMode has no network code of its own. Its model calls go through Claude Code,
 
 - **The judges.** For each prompt, AutoMode calls Haiku to pick a route. The call holds your prompt text, a short part of the last reply, and state lines about the session.
 - **Compaction.** When AutoMode compacts a chat on Haiku, the chat text goes to that model.
+- **Delegated reads.** With `delegation: on`, each `extract` call sends the named files and one question to Haiku. It is off by default, and it reads only files your Read permissions allow.
 - **The workflow agents.** They run as ordinary Claude Code subagents.
 
 ## What AutoMode stores
