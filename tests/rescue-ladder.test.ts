@@ -135,3 +135,71 @@ describe('Priced consult', () => {
     expect(of(h.writes, 'escalation').at(-1)!.estimate).toBeUndefined()
   })
 })
+
+describe('Consult outcomes', () => {
+  const ok = { result: 'ok', isError: false, text: '' }
+  const bad = { result: 'Error: Exit code 1\n--- FAIL: TestX (0.00s)\nFAIL', isError: true, text: '' }
+  const setup = (config: Record<string, unknown> = {}) => { const s = { passing: false }; return { s, h: (on: any) => harness(on, { ...sonnetAt('high', config), judge: (p: string) => judge({ tier: 'T2', complexity: 'standard', newTask: /verbose/.test(p) }), bash: () => (s.passing ? ok : bad) }) } }
+  const toConsult = async ($: any, h: any) => {
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await fail($)
+    const out = await fail($)
+    expect(JSON.stringify(out)).toContain('automode:architect')
+    const res: any = await architect($)
+    await h.complete($, 'claude-opus-5-5', res.agentId, 'Cause: the alias is dropped in parser.go.\nPlan: fix parser.go.')
+  }
+  const review = async ($: any, h: any, answer: string) => { const r: any = await $.agent.spawn({ subagentType: 'automode:reviewer', prompt: 'review', description: 'review', parentModel: 'claude-sonnet-5-5', fork: false, background: false, tool_use_id: 'r' } as never); await h.complete($, 'claude-opus-5-5', r.agentId, answer) }
+
+  test('a pass and then an approval: verified_resolved, and the plan was followed', async ($, on) => {
+    const { s, h: make } = setup()
+    const h = make(on)
+    await toConsult($, h)
+    s.passing = true
+    await fail($) // the edit to parser.go, then the check passes
+    expect(of(h.writes, 'consult-outcome')).toEqual([])
+    await review($, h, 'Verdict: approve\nNo blockers.')
+    expect(of(h.writes, 'consult-outcome')[0]).toMatchObject({ outcome: 'verified_resolved', influence: 'followed', editsAfter: 1 })
+  })
+
+  test('the failure comes back and the session moves: escalated', async ($, on) => {
+    const { h: make } = setup()
+    const h = make(on)
+    await toConsult($, h)
+    await fail($)
+    expect(of(h.writes, 'consult-outcome')[0]).toMatchObject({ outcome: 'escalated' })
+  })
+
+  test('a pass with no independent check, then a new task: unverified', async ($, on) => {
+    const { s, h: make } = setup()
+    const h = make(on)
+    await toConsult($, h)
+    s.passing = true
+    await fail($)
+    await h.complete($)
+    await h.submit($, 'now add a --verbose flag to the CLI', { origin: { kind: 'composer' } })
+    await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't2' })
+    await h.complete($, 'claude-sonnet-5-5', undefined, 'done', { turnId: 't2' })
+    expect(of(h.writes, 'consult-outcome').map((x) => x.outcome)).toEqual(['unverified'])
+  })
+
+  test('under a rescue setting a consult requires the review; under the shipped values it does not', async ($, on) => {
+    const { h: make } = setup({ consult: 'priced' })
+    const h = make(on)
+    h.setPrefix(400_000)
+    await toConsult($, h)
+    await h.complete($)
+    const next = await h.submit($, 'keep going on the parser')
+    expect(next.context.join('\n')).toContain('an Opus consult ran on a failure')
+  })
+
+  test('the shipped values add no review reason for a consult', async ($, on) => {
+    const { h: make } = setup()
+    const h = make(on)
+    await toConsult($, h)
+    await h.complete($)
+    const next = await h.submit($, 'keep going on the parser')
+    expect(next.context.join('\n')).not.toContain('an Opus consult ran on a failure')
+  })
+})

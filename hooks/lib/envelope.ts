@@ -40,6 +40,12 @@ export function withReview(env: TaskEnvelope, verification: 'pass' | 'fail' | 'u
   return { ...env, reviewRequired: { value: true, because: merged }, revision: env.revision + (merged.length === env.reviewRequired.because.length ? 0 : 1) }
 }
 
+// requireReview adds a reason the independent review must run. It never removes one.
+export function requireReview(env: TaskEnvelope, because: string): TaskEnvelope {
+  if (env.reviewRequired.because.includes(because)) return env
+  return { ...env, reviewRequired: { value: true, because: [...env.reviewRequired.because, because] }, revision: env.revision + 1 }
+}
+
 // observe raises the envelope's risk from what was actually changed. It never lowers it.
 export function observe(env: TaskEnvelope, observed: RiskAssessment): TaskEnvelope {
   const prior = env.risk.observed

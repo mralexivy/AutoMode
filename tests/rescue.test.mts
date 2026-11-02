@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { CONSULT_MS_PRIOR, cacheNote, closeEpisodes, durationsFrom, effortFirst, episodeBase, expireChance, influence, openEpisode, planFiles, priceConsult } from '../hooks/lib/rescue.ts'
+import { CONSULT_MS_PRIOR, cacheNote, closeEpisodes, consultOutcome, durationsFrom, effortFirst, episodeBase, expireChance, influence, openEpisode, planFiles, priceConsult } from '../hooks/lib/rescue.ts'
 import { EMPTY_LADDER } from '../hooks/lib/failures.ts'
+import { newEnvelope, requireReview } from '../hooks/lib/envelope.ts'
 
 test('cacheNote: what is left of a warm cache, and a cold one', () => {
   const c = { model: 'm', effort: null, prefixTokens: 150_000, lastRequestAt: 1_000, ttlMs: 300_000, effortSharesCache: true }
@@ -94,4 +95,24 @@ test('durationsFrom: measured quantiles from 10 samples, the prior before', () =
   assert.equal(durationsFrom([1, 2, 3, 4, 5, 6, 7, 8, 9]).basis, 'prior')
   const d = durationsFrom([10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
   assert.deepEqual(d, { p25: 30, p50: 50, p90: 90, basis: 'measured' })
+})
+
+test('consultOutcome: a pass waits for an independent check, and the task end settles the rest', () => {
+  const none = { switched: false, recurred: false, checkPassed: false, independentlyVerified: false, taskEnded: false }
+  assert.equal(consultOutcome(none), null)
+  assert.equal(consultOutcome({ ...none, checkPassed: true }), null)
+  assert.equal(consultOutcome({ ...none, checkPassed: true, independentlyVerified: true }), 'verified_resolved')
+  assert.equal(consultOutcome({ ...none, recurred: true }), 'recurred')
+  assert.equal(consultOutcome({ ...none, recurred: true, switched: true }), 'escalated')
+  assert.equal(consultOutcome({ ...none, checkPassed: true, taskEnded: true }), 'unverified')
+  assert.equal(consultOutcome({ ...none, taskEnded: true }), 'abandoned')
+  // An independent check with no pass of the failing check is not a fix.
+  assert.equal(consultOutcome({ ...none, independentlyVerified: true }), null)
+})
+
+test('requireReview adds a reason once and never removes one', () => {
+  const env = newEnvelope('t', 'p', 'fix the parser', 0, 'standard', { level: 'none', reasons: [], source: 'prompt' } as never)
+  const once = requireReview(env, 'an Opus consult ran on a failure')
+  assert.equal(once.reviewRequired.value, true)
+  assert.deepEqual(requireReview(once, 'an Opus consult ran on a failure').reviewRequired.because, once.reviewRequired.because)
 })

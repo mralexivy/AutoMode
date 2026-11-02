@@ -9,6 +9,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Escalation records carry the cache state: prefix size, time since the last refresh, and what is left of its lifetime. Each architect consult writes a `consult-run` record with its measured duration and cost. A `baseline` bench arm pins every rescue setting at its old value.
 - `strongStep: effort-first` raises effort on the running model once per failure episode, on strong evidence, before the Opus consult and the switch. Critical-risk work and a floor that needs the model skip it. The shipped value `model` keeps the old order. Arm: `rescue-effort-first`.
 - `consult: priced` asks the Opus architect only when that costs less than moving the session. The price counts what is left of the cache lifetime against how long a consult runs, one verify request, and the chance the failure comes back and still needs the switch. Quality rules come first. Unmeasured inputs are labeled priors, and each escalation record carries the estimate. The shipped value `always` keeps the old behavior. Arm: `rescue-consult-priced`.
+- Each ladder consult gets an outcome record: `verified_resolved`, `recurred`, `escalated`, `unverified` or `abandoned`. A passing check alone is not a fix. It also needs the reviewer's approval or a verified completion gate. The record also says whether the edits after the consult followed the architect's plan. The bar shows an open consult. Under a rescue setting, a consult or a strong-evidence raise also requires the independent review.
 
 ## [0.7.0] - 2026-11-02
 

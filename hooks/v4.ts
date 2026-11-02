@@ -31,7 +31,7 @@ import { continuity, noteDrop, observedDrop } from './lib/continuity.ts'
 import { accrueRent, type Rent } from './lib/rent.ts'
 import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
-import { compactInstructions, injection, isBoundary, newEnvelope, observe, summaryOf, withReview } from './lib/envelope.ts'
+import { compactInstructions, injection, isBoundary, newEnvelope, observe, requireReview, summaryOf, withReview } from './lib/envelope.ts'
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
 import { checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, reviewerBlocked, scopeGrew, withPipefail } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
@@ -55,7 +55,7 @@ import { currentOptions, storedOptions } from './options.ts'
 import { publish } from './ui/publish.ts'
 import type { AgentSnap, Ledger, RouterSnap } from './ui/view.ts'
 import { sid, fsRead, sessionModel, fsWrite, fsExists } from './lib/io.ts'
-import { cacheNote, closeEpisodes, durationsFrom, effortFirst, episodeBase, openEpisode, patchEpisode, planFiles, priceConsult } from './lib/rescue.ts'
+import { cacheNote, closeEpisodes, consultOutcome, durationsFrom, effortFirst, episodeBase, openEpisode, patchEpisode, influence, planFiles, priceConsult } from './lib/rescue.ts'
 import { EMPTY_LEARNED, bucketOf, noteTask, opusBuckets, parseLearned, type Learned } from './lib/learn.ts'
 import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence, type DelegationMode } from './lib/delegation.ts'
 
@@ -512,6 +512,8 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
   if (boundary) {
     if (S.envelope && S.envelope.status === 'open' && S.envelope.reviewRequired.value && !S.envelope.verified && S.mode === 'auto')
       $.ui.toast(`AutoMode: the previous task still had a required review (${S.envelope.reviewRequired.because[0]}).`)
+    // The ending task's consults take their outcome before its edit log and envelope go.
+    settleConsults(at, { taskEnded: true, verified: S.completionState === 'verified' })
     const risk = prospectiveRisk(text, answer ? { risk: maxRisk(answer.risk, answer.consequence ?? 'none'), why: answer.riskWhy } : null)
     S.taskSeq += 1
     S.envelope = newEnvelope(`task-${at}-${S.taskSeq}`, `turn-${at}`, text, at, answer?.complexity ?? 'standard', risk)
@@ -1785,6 +1787,11 @@ export async function v4TurnComplete($: EngineInterface, e: any, next: any) {
       // An approval closes the reviewer episode: the next blocker is a new failure with its own rungs.
       S.envelope = { ...S.envelope, ladder: { ...S.envelope.ladder, episodes: closeEpisodes(S.envelope.ladder.episodes, (x) => x.base === 'reviewer', await now($)).episodes } }
     }
+    // An approval is the independent check a consult's pass waits for. A reviewer consult passes with the approval itself.
+    if (w?.type === 'automode:reviewer' && !w.workflow && S.envelope && !e.isAborted && !reviewerBlocked(String(e.answer ?? ''))) {
+      S.consultLog = S.consultLog.map((c) => (!c.outcome && c.episode.startsWith('reviewer') ? { ...c, checkPassed: true } : c))
+      if (settleConsults(await now($), { verified: true })) await flush($)
+    }
     if (w?.type === 'automode:architect' && !w.workflow) await noteConsultRun($, e, w)
     const kind = w && w.validate !== false ? WORKERS[w.type] : undefined
     if (S.cfg.debugLog) { S.records.push({ v: 1, kind: 'debug-sub-complete', agentId: e.agentId, known: !!w, type: w?.type, answerLen: String(e.answer ?? '').length, mode: S.mode, env: !!S.envelope }); await flush($) }
@@ -1934,7 +1941,27 @@ async function noteToolResult($: EngineInterface, e: any, out: any) {
 }
 
 // A ladder consult: the episode it answers, the architect run that answered it, and its outcome once known.
-interface ConsultLog { episode: string; fingerprint?: string; at: number; agentId?: string; plan?: string[]; outcome?: string }
+interface ConsultLog { episode: string; fingerprint?: string; at: number; edits: number; agentId?: string; plan?: string[]; checkPassed?: boolean; outcome?: string }
+
+// settleConsults gives each open consult its outcome once the evidence decides it (lib/rescue.ts consultOutcome), and
+// records how far the edits after it followed its plan. A pass alone is not a fix: it waits for an independent check.
+// It is synchronous, so the task boundary can settle too; the records go out with the next flush.
+function settleConsults(at: number, ev: { episode?: string; switched?: boolean; recurred?: boolean; verified?: boolean; taskEnded?: boolean }): boolean {
+  let changed = false
+  S.consultLog = S.consultLog.map((c) => {
+    if (c.outcome || (ev.episode !== undefined && c.episode !== ev.episode)) return c
+    const outcome = consultOutcome({ switched: !!ev.switched, recurred: !!ev.recurred, checkPassed: !!c.checkPassed, independentlyVerified: !!ev.verified, taskEnded: !!ev.taskEnded })
+    if (!outcome) return c
+    changed = true
+    const edits = S.editLog.slice(c.edits).map((x) => x.path)
+    S.records.push({ v: 1, kind: 'consult-outcome', at, sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', episode: c.episode, agentId: c.agentId ?? null, consultAt: c.at, outcome, influence: c.agentId ? influence(c.plan ?? [], edits) : 'unknown', editsAfter: edits.length })
+    return { ...c, outcome }
+  })
+  return changed
+}
+
+// The rescue settings past their old values turn on the review rule: a consult or a strong-evidence raise ran.
+const rescueReview = () => S.cfg.strongStep === 'effort-first' || S.cfg.consult === 'priced'
 
 // noteConsultRun records what an architect consult really cost and how long it ran. Its duration feeds the consult
 // price, and the files its plan names feed the influence measure.
@@ -1974,7 +2001,7 @@ async function runLadder($: EngineInterface, at: number) {
   const spent = { ...l, fired: [...l.fired, esc.key], raised: esc.fingerprint ? { ...l.raised, [esc.fingerprint]: count } : l.raised, episodes }
   const cache = cacheNote(cacheState(), at)
   const why = first.why ? { effortFirst: first.why } : {}
-  if (!step) { S.envelope = { ...env, ladder: spent }; S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because, cache, episode, ...why }); return }
+  if (!step) { S.envelope = { ...env, ladder: spent }; if (ep.consulted) settleConsults(at, { episode, recurred: true }); S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because, cache, episode, ...why }); return }
   const packet = () => evidencePacket(env.spec.text.slice(0, 1500), env.acceptance.map((a) => a.text), env.failures, env.editedPaths, esc.because)
   // Under effort-first the episode, not the cause, remembers the consult: a new failure of the same kind gets its own.
   const consultedBefore = S.cfg.strongStep === 'effort-first' ? ep.consulted : S.consulted.includes(esc.cause)
@@ -1987,8 +2014,9 @@ async function runLadder($: EngineInterface, at: number) {
   const estimate = price ? { estimate: { consultUsd: price.consultUsd, switchUsd: price.switchUsd, parts: price.parts, pExpire: price.pExpire, pRecur: price.pRecur, basis: { ...price.basis, priors: S.priors.basis }, why: price.why } } : {}
   if (toOpus && (!price || price.choice === 'consult')) {
     S.consulted = [...S.consulted, esc.cause].slice(-20)
-    S.consultLog = [...S.consultLog, { episode, ...(esc.fingerprint ? { fingerprint: esc.fingerprint } : {}), at }]
-    S.envelope = { ...env, ladder: { ...spent, episodes: patchEpisode(episodes, episode, { consulted: true, consultAt: at }) }, escalations: env.escalations + 1 }
+    S.consultLog = [...S.consultLog, { episode, ...(esc.fingerprint ? { fingerprint: esc.fingerprint } : {}), at, edits: S.editLog.length }]
+    const consultEnv = { ...env, ladder: { ...spent, episodes: patchEpisode(episodes, episode, { consulted: true, consultAt: at }) }, escalations: env.escalations + 1 }
+    S.envelope = rescueReview() ? requireReview(consultEnv, 'an Opus consult ran on a failure') : consultEnv
     S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'consult-opus', via: 'architect', because: esc.because, cache, episode, ...why, ...estimate })
     await flush($)
     $.ui.toast(`AutoMode: ${esc.because}. Asking an Opus architect before moving the session.`)
@@ -1997,14 +2025,17 @@ async function runLadder($: EngineInterface, at: number) {
   }
   const tier = tierOf(step.family, step.effort)
   const floor = { tier, band: step.band, effort: step.effort, because: [esc.because] }
-  const target = { ...routeFor(tier, DEFAULT_LADDER, step.effort), owner: 'quality-escalation' as Owner, reason: esc.because, floor, overridden: [] }
+  const target = { ...routeFor(tier, DEFAULT_LADDER, step.effort), owner: 'quality-escalation' as Owner, reason: strongRaise ? `${esc.because}; effort first` : esc.because, floor, overridden: [] }
   const applied = pinned(target, S.appModel ?? target.model)
   const moved = applied.family !== running.family || applied.effort !== running.effort
   S.pending = applied
   const moving = moved && step.kind === 'model'
   const raised = { ...env, escalations: env.escalations + 1, ladder: { ...spent, ...(moving ? { episodes: patchEpisode(episodes, episode, { switched: true }) } : {}), floor: { family: step.family, effort: step.effort, band: step.band, because: esc.because, ...(esc.fingerprint ? { command: env.failures[env.failures.length - 1].command } : {}) } } }
   // A defect that outlived a repair (and a consult) gets the independent review once it passes.
-  S.envelope = esc.check ? withReview(raised, 'fail', false) : raised
+  const reviewed = esc.check ? withReview(raised, 'fail', false) : raised
+  S.envelope = strongRaise && rescueReview() ? requireReview(reviewed, 'effort rose on strong evidence') : reviewed
+  // A consulted episode that escalates again: the consult did not fix it.
+  if (ep.consulted) settleConsults(at, { episode, ...(moving ? { switched: true } : { recurred: true }) })
   S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: tier, band: step.band, route: `${step.family}/${step.effort}`, applied: `${applied.family}/${applied.effort}`, action: moved ? (step.kind === 'model' ? 'switch' : 'raise') : 'held-by-pin', via: 'switch', because: esc.because, cache, episode, ...why, ...estimate })
   await flush($)
   if (!moved) {
@@ -2154,6 +2185,8 @@ export async function v4Stop($: EngineInterface, e: any, next: any) {
   syncObligations()
   const state = assessCompletion({ edited: S.envelope.editedPaths.length > 0, editedSinceCheck: S.editedSinceCheck, lastCheckPassed: S.lastCheck ? S.lastCheck.passed : null, obligations: S.obligations })
   S.completionState = state
+  // The gate's own evidence, the obligations met by real output, is an independent check for a consult's pass.
+  if (state === 'verified' && settleConsults(await now($), { verified: true })) await flush($)
   if (state === 'none') return out
   const gate = S.mode === 'auto' && !out?.block ? S.cfg.completionGate : 'report'
   const reason = blockReason(state, S.obligations, { gate, stopHookActive: e.stop_hook_active === true, blocks: S.completionBlocks, backgroundWork: Array.isArray(e.background_tasks) ? e.background_tasks.length : 0 })
@@ -2250,6 +2283,7 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
       // A pass closes the episodes of the failures this command reported.
       const bases = new Set(S.envelope.failures.filter((f) => f.command === command.slice(0, 200)).map((f) => `check:${f.fingerprint}`))
       const episodes = ladder.episodes ? closeEpisodes(ladder.episodes, (x) => bases.has(x.base), at).episodes : undefined
+      S.consultLog = S.consultLog.map((c) => (!c.outcome && c.fingerprint && bases.has(`check:${c.fingerprint}`) ? { ...c, checkPassed: true } : c))
       S.envelope = { ...S.envelope, ladder: { ...ladder, passed: { ...ladder.passed, [command.slice(0, 200)]: at }, ...(ended ? { floor: undefined } : {}), ...(episodes ? { episodes } : {}) } }
       if (S.policy === 'auto') for (const f of S.envelope.failures) if (f.command === command.slice(0, 200)) S.resolvedCounts = { ...S.resolvedCounts, [f.fingerprint]: S.envelope.failures.filter((x) => x.fingerprint === f.fingerprint).length }
       S.verifiedSinceSwitch = true
@@ -2550,6 +2584,7 @@ export function v4Snapshot(sessionModel: string | null, now: number): RouterSnap
     stage: S.workStage, planMode: S.planMode,
     review: { required: !!S.envelope?.reviewRequired.value, because: [...(S.envelope?.reviewRequired.because ?? [])] },
     lastCheck: S.lastCheck, ttlMs: S.ttl,
+    consult: S.consultLog.length ? { episode: S.consultLog.at(-1)!.episode, state: (S.consultLog.at(-1)!.outcome ?? 'open') as NonNullable<RouterSnap['consult']>['state'] } : null,
     warm: Object.fromEntries(Object.entries(S.warm).map(([f, w]) => [f, { until: w!.until, effort: w!.effort }])),
     candidates: U.candidates, agents: [...U.agents.values()], ledger: S.ledger,
   }
