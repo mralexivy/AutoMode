@@ -66,10 +66,12 @@ const MODEL_UP: Partial<Record<Family, { family: Family; effort: Effort }>> = { 
 
 // ladderStep turns the strength of the evidence into one step from the running route. Weak evidence raises the effort
 // on the running model. Strong evidence moves the model. On Opus, or with the stronger model out, only effort is left.
-export function ladderStep(running: { family: Family; effort: Effort }, level: 'weak' | 'strong', allowed: Family[]): LadderStep | null {
+// With `effortFirst`, strong evidence takes the effort step too while there is one: the caller allows that once per
+// failure episode (lib/rescue.ts effortFirst), so a repeat still moves the model.
+export function ladderStep(running: { family: Family; effort: Effort }, level: 'weak' | 'strong', allowed: Family[], opts: { effortFirst?: boolean } = {}): LadderStep | null {
   const effort = nextEffort(running.family, running.effort)
   const byEffort: LadderStep | null = effort ? { family: running.family, effort, band: BAND_OF[running.family][effort], kind: 'effort' } : null
-  if (level === 'weak') return byEffort
+  if (level === 'weak' || (opts.effortFirst && byEffort)) return byEffort
   const up = MODEL_UP[running.family]
   if (up && (!allowed.length || allowed.includes(up.family))) return { ...up, band: BAND_OF[up.family][up.effort], kind: 'model' }
   return byEffort

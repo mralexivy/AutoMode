@@ -30,3 +30,68 @@ describe('Rescue records', () => {
     expect(run.usd).toBeGreaterThan(0)
   })
 })
+
+describe('Effort first on strong evidence', () => {
+  test('effort-first: raise once, then the consult, then the model', async ($, on) => {
+    let passing = true
+    const h = harness(on, { ...sonnetAt('high', { strongStep: 'effort-first' }), bash: () => (passing ? { result: 'ok', isError: false, text: '' } : { result: 'Error: Exit code 1\n--- FAIL: TestX (0.00s)\nFAIL', isError: true, text: '' }) })
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await h.clock.advance(1_000) // the regression rule needs the pass to come before the failure
+    passing = false
+    await $.tool.call(edit())
+    const first = await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    expect(JSON.stringify(first)).toContain('escalated to T2 (sonnet xhigh)')
+    expect(JSON.stringify(first)).toContain('Effort rises first')
+    await h.step($, 'claude-sonnet-5-5', undefined, { index: 1 })
+    expect(h.steps.at(-1)).toMatchObject({ model: 'claude-sonnet-5-5', effort: 'xhigh' })
+    const second = await fail($)
+    expect(JSON.stringify(second)).toContain('automode:architect')
+    const third = await fail($)
+    expect(JSON.stringify(third)).toContain('escalated to T3 (opus high)')
+    const esc = of(h.writes, 'escalation')
+    expect(esc.map((x) => [x.level, x.action])).toEqual([['strong', 'raise'], ['strong', 'consult-opus'], ['strong', 'switch']])
+    expect(new Set(esc.map((x) => x.episode)).size).toBe(1)
+    expect(esc[0].effortFirst).toContain('effort first')
+  })
+
+  test('model (the shipped value): the same regression consults at once', async ($, on) => {
+    let passing = true
+    const h = harness(on, { ...sonnetAt('high'), bash: () => (passing ? { result: 'ok', isError: false, text: '' } : { result: 'Error: Exit code 1\n--- FAIL: TestX (0.00s)\nFAIL', isError: true, text: '' }) })
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await h.clock.advance(1_000) // the regression rule needs the pass to come before the failure
+    passing = false
+    await $.tool.call(edit())
+    const first = await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    expect(JSON.stringify(first)).toContain('automode:architect')
+    expect(of(h.writes, 'escalation').map((x) => x.action)).toEqual(['consult-opus'])
+  })
+
+  test('critical work skips effort-first: the model path runs at once', async ($, on) => {
+    let passing = true
+    const h = harness(on, { ...sonnetAt('high', { strongStep: 'effort-first' }), judge: judge({ tier: 'T2', complexity: 'standard', risk: 'critical', riskWhy: 'payment path' }), bash: () => (passing ? { result: 'ok', isError: false, text: '' } : { result: 'Error: Exit code 1\n--- FAIL: TestX (0.00s)\nFAIL', isError: true, text: '' }) })
+    await h.submit($, 'change how the payment webhook retries')
+    await h.step($)
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await h.clock.advance(1_000) // the regression rule needs the pass to come before the failure
+    passing = false
+    await $.tool.call(edit())
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    const esc = of(h.writes, 'escalation')
+    expect(esc[0].action).not.toBe('raise')
+    expect(esc[0].effortFirst).toContain('critical')
+  })
+
+  test('a reviewer blocker raises effort first, and a second blocker in the same round consults', async ($, on) => {
+    const h = harness(on, { ...sonnetAt('high', { strongStep: 'effort-first' }), bash: () => ({ result: 'ok', isError: false, text: '' }) })
+    await h.submit($, 'fix the parser')
+    await h.step($)
+    const review = async () => { const r: any = await $.agent.spawn({ subagentType: 'automode:reviewer', prompt: 'review', description: 'review', parentModel: 'claude-sonnet-5-5', fork: false, background: false, tool_use_id: 'z' } as never); await h.complete($, 'claude-opus-5-5', r.agentId, 'Verdict: changes_required\nblocker a.go:1') }
+    await review()
+    await review()
+    expect(of(h.writes, 'escalation').map((x) => x.action)).toEqual(['raise', 'consult-opus'])
+  })
+})

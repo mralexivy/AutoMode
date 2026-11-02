@@ -7,6 +7,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ### Added
 
 - Escalation records carry the cache state: prefix size, time since the last refresh, and what is left of its lifetime. Each architect consult writes a `consult-run` record with its measured duration and cost. A `baseline` bench arm pins every rescue setting at its old value.
+- `strongStep: effort-first` raises effort on the running model once per failure episode, on strong evidence, before the Opus consult and the switch. Critical-risk work and a floor that needs the model skip it. The shipped value `model` keeps the old order. Arm: `rescue-effort-first`.
 
 ## [0.7.0] - 2026-11-02
 

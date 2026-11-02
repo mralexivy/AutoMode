@@ -4,7 +4,8 @@
   "track": "automode-system",
   "description": "Does each rescue setting keep the pass rate of the baseline ladder? Counts toward no claim. See CANARIES.md.",
   "arms": [
-    "baseline"
+    "baseline",
+    "rescue-effort-first"
   ],
   "tasks": [
     "longctx-sqlglot-intersect-precedence-across-dialects",

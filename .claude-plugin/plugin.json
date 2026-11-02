@@ -98,6 +98,17 @@
         "sonnet"
       ]
     },
+    "strongStep": {
+      "type": "string",
+      "title": "AutoMode: Strong evidence step",
+      "description": "default: follow config.json. model: strong failure evidence moves to the stronger model (an Opus consult first). effort-first: it raises effort on the running model once per failure, unless a critical-risk floor needs the model.",
+      "default": "default",
+      "options": [
+        "default",
+        "model",
+        "effort-first"
+      ]
+    },
     "routeModels": {
       "type": "string",
       "title": "AutoMode: Route models",

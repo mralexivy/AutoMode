@@ -19,6 +19,7 @@ export const FIELDS = {
   completionGate: { title: 'Completion gate', options: ['default', 'off', 'report', 'block'], default: 'default', applies: 'next prompt', section: 'router' },
   learning: { title: 'Route learning', options: ONOFF, default: 'default', applies: 'next prompt', section: 'router' },
   delegation: { title: 'Delegated reads', options: ['default', 'off', 'shadow', 'on'], default: 'default', applies: 'next prompt', section: 'router' },
+  strongStep: { title: 'Strong evidence step', options: ['default', 'model', 'effort-first'], default: 'default', applies: 'next prompt', section: 'router' },
   executor: { title: 'Executor', options: ['default', 'judge', 'sonnet'], default: 'default', applies: 'next prompt', section: 'router' },
   subagentsEverySession: { title: 'Subagents in every session', options: ONOFF, default: 'default', applies: 'next prompt', section: 'subagents' },
   guardianMode: { title: 'Guardian', options: ['default', 'off', 'observe', 'recommend', 'assist', 'auto'], default: 'default', applies: 'next prompt', section: 'guardian' },
@@ -66,6 +67,8 @@ export function routerOverrides(options: Options, stored: Options = {}): Record<
   if (delegation !== 'default') out.delegation = delegation
   const executor = valueOf('executor', options, stored)
   if (executor !== 'default') out.executor = executor
+  const strongStep = valueOf('strongStep', options, stored)
+  if (strongStep !== 'default') out.strongStep = strongStep
   const sub = bool(valueOf('subagentsEverySession', options, stored))
   if (sub !== undefined) out.subagentsEverySession = sub
   return out
