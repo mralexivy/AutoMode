@@ -36,17 +36,17 @@ T0 to T2 work without critical risk can run on Haiku, unless the need names Opus
 |---|---:|
 | Accepted, excluding `sqlglot` | 9 of 9 |
 | `sqlglot` | Started on Opus, rejected, $3.44 |
-| Ran on Haiku | 3 of 10 |
-| Ran on Sonnet | 4 of 10 |
-| Ran on Opus | 3 of 10 |
+| Started on Haiku | 3 of 10, one moved to Sonnet |
+| Started on Sonnet | 4 of 10 |
+| Started on Opus | 3 of 10 |
 
-**One rule was missed.** `CANARIES.md` asked for Haiku on at least half of the tasks, and it ran on 3 of 10. Every T1 or T2 task without critical risk did reach Haiku, so the flag works. The judges rated the other tasks T3 or critical. The rule was a guess at that mix. It stands as written, and this report records the miss.
+**One rule was missed.** `CANARIES.md` asked for Haiku on at least half of the tasks, and it started on 3 of 10. Every T1 or T2 task without critical risk did reach Haiku, so the flag works. The judges rated the other tasks T3 or critical. The rule was a guess at that mix. It stands as written, and this report records the miss.
 
 **Open points.**
 
 - The judges are noisy on `sqlglot`: 2 of 3 Opus after the fix, and a verdict of need=sonnet in other runs.
 - `sqlglot` failed on Opus here too, with no escalation, because no check failed before the model stopped.
-- One Haiku run cost $0.98, about 30 times the Haiku average.
+- One run, `markdown`, started on Haiku and moved to Sonnet mid-session, with 12 Haiku and 24 Sonnet requests. It cost $0.98, which is more than either model alone usually costs here. A second judgment inside a task can undo the Haiku saving.
 
 ## Other stopped runs
 
