@@ -301,3 +301,40 @@ describe('Fork diagnosis rung', () => {
     expect(JSON.stringify(await fail($))).toContain('automode:architect')
   })
 })
+
+describe('Failed stops climb the ladder', () => {
+  const chain = { completionGate: 'block', strongStep: 'effort-first', consult: 'priced', forkRung: 'on' }
+
+  test('each failed stop is a rung, carried in the block itself, at most three times', async ($, on) => {
+    const h = harness(on, sonnetAt('high', chain))
+    h.setPrefix(400_000)
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    // A Bash edit, then one failing run: no repeat, so the ladder has not acted yet.
+    await $.tool.call({ tool: 'Bash', command: "sed -i '' 's/a/b/' parser.go" })
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    expect(of(h.writes, 'escalation')).toEqual([])
+    const first = await $.classic.Stop({ stop_hook_active: false })
+    expect(first.block).toContain('Effort rises first')
+    const second = await $.classic.Stop({ stop_hook_active: true })
+    expect(second.block).toContain('subagent_type "fork"')
+    const third = await $.classic.Stop({ stop_hook_active: true })
+    expect(third.block).toContain('automode:architect')
+    expect((await $.classic.Stop({ stop_hook_active: true })).block).toBeUndefined()
+    expect(of(h.writes, 'escalation').map((x) => [x.action, x.because])).toEqual([
+      ['raise', 'the session tried to stop with its last check failing'],
+      ['fork-diagnose', 'the session tried to stop with its last check failing'],
+      ['consult-opus', 'the session tried to stop with its last check failing'],
+    ])
+  })
+
+  test('the shipped gate (report) never blocks, so a failed stop stays a record', async ($, on) => {
+    const h = harness(on, sonnetAt('high'))
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await $.tool.call({ tool: 'Bash', command: "sed -i '' 's/a/b/' parser.go" })
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    expect((await $.classic.Stop({ stop_hook_active: false })).block).toBeUndefined()
+    expect(of(h.writes, 'escalation')).toEqual([])
+  })
+})

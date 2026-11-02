@@ -100,6 +100,7 @@ export interface LadderState {
   reviewerBlockers: number
   fired: string[]                 // causes already acted on
   floor?: { family: Family; effort: Effort; band: number; because: string; command?: string } // holds until a check passes
+  stops?: number                  // stops the completion gate sent back on a failing check
   episodes?: Record<string, Episode> // one per failure the ladder works on (lib/rescue.ts); absent in older tasks
 }
 

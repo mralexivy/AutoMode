@@ -33,7 +33,7 @@ import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, requireReview, summaryOf, withReview } from './lib/envelope.ts'
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
-import { checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, reviewerBlocked, scopeGrew, withPipefail } from './lib/failures.ts'
+import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, reviewerBlocked, scopeGrew, withPipefail, writesFiles } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
 import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
 import { guardTool, READ_ONLY_AGENTS, subagentBlocked } from './lib/guard.ts'
@@ -186,6 +186,7 @@ const S = {
   consultMs: [] as number[], // how long each architect consult ran in this session, for the consult price
   consultLog: [] as ConsultLog[], // this task's ladder consults and what came of them (lib/rescue.ts)
   taskPrompts: [] as string[], // the person's messages in this task after the first, for the consult packet
+  bashEdits: 0, // edits made through Bash in this task (writesFiles): an edit for the completion gate too
   forkRuns: new Map<string, { at: number; episode: string | null; first?: { cacheRead: number; prompt: number } }>(), // fork agents the ladder asked for
   resolvedCounts: {} as Record<string, number>, // policy auto: failures of that fingerprint when its command passed again
   switchesThisTask: 0,        // discretionary model switches in this task (anti-oscillation)
@@ -528,6 +529,7 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
     S.consulted = []
     S.consultLog = []
     S.taskPrompts = []
+    S.bashEdits = 0
     S.consultCounts = {}
     S.resolvedCounts = {}
     S.switchesThisTask = 0
@@ -2007,6 +2009,8 @@ async function git($: EngineInterface, argv: string[]): Promise<string> {
   try { const r = await $.process.run(argv, { timeoutMs: 5_000 }); return r.exitCode === 0 ? String(r.stdout ?? '') : '' } catch { return '' }
 }
 
+const MAX_LADDER_STOPS = 3
+
 // The rescue settings past their old values turn on the review rule: a consult or a strong-evidence raise ran.
 const rescueReview = () => S.cfg.strongStep === 'effort-first' || S.cfg.consult === 'priced'
 
@@ -2046,7 +2050,7 @@ async function runLadder($: EngineInterface, at: number) {
   const editedSincePass = (since: number) => [...new Set(S.editLog.filter((x) => x.at > since).map((x) => x.path))]
   const esc = escalation(env.failures, { ...l, editedSincePass, effortCapped: !nextEffort(running.family, running.effort) })
   if (esc.level === 'none') return
-  const count = esc.fingerprint ? env.failures.filter((f) => f.fingerprint === esc.fingerprint).length : 0
+  const count = esc.count ?? (esc.fingerprint ? env.failures.filter((f) => f.fingerprint === esc.fingerprint).length : 0)
   // One episode per failure: what the ladder spent on it, so an unrelated failure gets its own rungs (lib/rescue.ts).
   const opened = openEpisode(l.episodes ?? {}, episodeBase(esc, l), at)
   const episode = opened.id
@@ -2256,14 +2260,24 @@ export async function v4Stop($: EngineInterface, e: any, next: any) {
   const out = await next(e)
   if (!gateOn() || S.mode === 'off' || !S.envelope || !(await activeV4($))) return out
   syncObligations()
-  const state = assessCompletion({ edited: S.envelope.editedPaths.length > 0, editedSinceCheck: S.editedSinceCheck, lastCheckPassed: S.lastCheck ? S.lastCheck.passed : null, obligations: S.obligations })
+  const state = assessCompletion({ edited: S.envelope.editedPaths.length > 0 || S.bashEdits > 0, editedSinceCheck: S.editedSinceCheck, lastCheckPassed: S.lastCheck ? S.lastCheck.passed : null, obligations: S.obligations })
   S.completionState = state
   // The gate's own evidence, the obligations met by real output, is an independent check for a consult's pass.
   if (state === 'verified' && settleConsults(await now($), { verified: true })) await flush($)
   if (state === 'none') return out
   const gate = S.mode === 'auto' && !out?.block ? S.cfg.completionGate : 'report'
-  const reason = blockReason(state, S.obligations, { gate, stopHookActive: e.stop_hook_active === true, blocks: S.completionBlocks, backgroundWork: Array.isArray(e.background_tasks) ? e.background_tasks.length : 0 })
+  // Under a rescue setting a failed stop may come back up to three times, each one a rung of the ladder; else once.
+  const ladderStops = rescueReview() && state === 'failed'
+  const blocks = ladderStops ? Math.max(0, S.completionBlocks - (MAX_LADDER_STOPS - 1)) : S.completionBlocks
+  let reason = blockReason(state, S.obligations, { gate, stopHookActive: e.stop_hook_active === true && !ladderStops, blocks, backgroundWork: Array.isArray(e.background_tasks) ? e.background_tasks.length : 0 })
   if (reason) S.completionBlocks += 1
+  if (reason && ladderStops && S.policy === 'auto') {
+    // The stop goes to the ladder as strong evidence, and its next step rides in the block itself.
+    const l = S.envelope.ladder ?? EMPTY_LADDER
+    S.envelope = { ...S.envelope, ladder: { ...l, stops: (l.stops ?? 0) + 1 } }
+    await runLadder($, await now($))
+    if (S.ladderNote) { reason = `${reason}\n\n${S.ladderNote}`; S.ladderNote = null; S.newInput = true }
+  }
   S.records.push({ v: 1, kind: 'completion', at: await now($), sessionId: S.sessionId, taskId: S.envelope.taskId, state, blocked: !!reason, obligations: publicObligations(S.obligations) })
   await flush($)
   if (S.current) barLine($, S.current)
@@ -2336,6 +2350,10 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
     const out = await next(pf ? ({ ...e, command: pf } as never) : e)
     if (out.deny) return out
     const command = pf ?? String(input.command)
+    // The check by its own commands, so the same failing check matches across the edits run beside it (checkKey).
+    const key = checkKey(command)
+    // An edit made in the same Bash call counts as an edit before this check.
+    if (writesFiles(String(input.command))) { S.editedSinceCheck = true; S.bashEdits += 1 }
     await noteCommand($, String(input.command))
     if (S.cfg.debugLog) {
       const r = out.result as Record<string, unknown> | undefined
@@ -2349,22 +2367,22 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
     const at = await now($)
     S.lastCheck = { command, passed }
     if (passed) {
-      S.envelope = { ...S.envelope, failures: markFlaky(S.envelope.failures, command, true, S.editedSinceCheck), verified: true }
+      S.envelope = { ...S.envelope, failures: markFlaky(S.envelope.failures, key, true, S.editedSinceCheck), verified: true }
       // A pass ends a floor that its own check set, and one no check set.
       const ladder = S.envelope.ladder ?? EMPTY_LADDER
-      const ended = ladder.floor && (!ladder.floor.command || ladder.floor.command === command.slice(0, 200))
+      const ended = ladder.floor && (!ladder.floor.command || ladder.floor.command === key)
       // A pass closes the episodes of the failures this command reported.
-      const bases = new Set(S.envelope.failures.filter((f) => f.command === command.slice(0, 200)).map((f) => `check:${f.fingerprint}`))
+      const bases = new Set([...S.envelope.failures.filter((f) => f.command === key).map((f) => `check:${f.fingerprint}`), `check:cmd:${fnv1a(key)}`])
       const episodes = ladder.episodes ? closeEpisodes(ladder.episodes, (x) => bases.has(x.base), at).episodes : undefined
       S.consultLog = S.consultLog.map((c) => (!c.outcome && c.fingerprint && bases.has(`check:${c.fingerprint}`) ? { ...c, checkPassed: true } : c))
-      S.envelope = { ...S.envelope, ladder: { ...ladder, passed: { ...ladder.passed, [command.slice(0, 200)]: at }, ...(ended ? { floor: undefined } : {}), ...(episodes ? { episodes } : {}) } }
-      if (S.policy === 'auto') for (const f of S.envelope.failures) if (f.command === command.slice(0, 200)) S.resolvedCounts = { ...S.resolvedCounts, [f.fingerprint]: S.envelope.failures.filter((x) => x.fingerprint === f.fingerprint).length }
+      S.envelope = { ...S.envelope, ladder: { ...ladder, passed: { ...ladder.passed, [key]: at }, ...(ended ? { floor: undefined } : {}), ...(episodes ? { episodes } : {}) } }
+      if (S.policy === 'auto') for (const f of S.envelope.failures) if (f.command === key) S.resolvedCounts = { ...S.resolvedCounts, [f.fingerprint]: S.envelope.failures.filter((x) => x.fingerprint === f.fingerprint).length }
       S.verifiedSinceSwitch = true
       const tr = trigger(trigState(), { kind: 'check-pass', implementing: S.stage === 'implement' && S.editedSinceCheck })
       S.verifiedAfterPlan = true
       if (tr.action === 'reoptimize') reoptimize(tr, 'check-pass', at, undefined)
     } else {
-      const f = failureOf(command, exitCode || 1, text.slice(-8000), at, S.editedSinceCheck)
+      const f = failureOf(key, exitCode || 1, text.slice(-8000), at, S.editedSinceCheck)
       if (f) {
         S.envelope = { ...S.envelope, failures: [...S.envelope.failures, f].slice(-20), verified: false }
         if (S.policy === 'auto') await runLadder($, at)
@@ -2379,6 +2397,8 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
     const out = await next(e)
     if (!out.deny) {
       await noteCommand($, String(input.command ?? ''))
+      // An edit through Bash (sed -i, a heredoc that writes a file) is an edit for the ladder too.
+      if (writesFiles(String(input.command ?? ''))) { S.editedSinceCheck = true; S.bashEdits += 1 }
       const text = resultText(out)
       const exit = text.match(/Exit code (\d+)/)
       await noteRun($, { command: String(input.command ?? ''), output: text, exit: exit ? Number(exit[1]) : out.isError === true ? 1 : 0 }, false)
@@ -2685,7 +2705,7 @@ function freshSession() {
     obligations: [], obligationsTask: null, obligationEdited: false, completionBlocks: 0, completionState: 'none' as CompletionState,
     toldJudgeDown: false, taskSeq: 0, lastOutcome: null, sessionId: 'unknown', restored: false, expectWorker: 0,
     warm: {}, turnRequests: new Map(), stayUp: 0, redoFloor: null, heldRoute: null, planMode: false, planExited: false, editLog: [],
-    learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], taskPrompts: [], forkRuns: new Map(), resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
+    learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], taskPrompts: [], forkRuns: new Map(), bashEdits: 0, resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
     judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, judgeRiskTask: undefined,

@@ -2,7 +2,7 @@
 // weak and strong evidence, and regressions.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { EMPTY_LADDER, checkPassed, escalation, failingTests, failureOf, isCheck, isRevert, regression, reviewerBlocked, scopeGrew } from '../hooks/lib/failures.ts'
+import { EMPTY_LADDER, checkKey, checkPassed, escalation, failingTests, failureOf, isCheck, isRevert, regression, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
 import { simpleCommands, tools, unwrapped } from '../hooks/lib/shell.ts'
 
 const CHECKS = [
@@ -159,4 +159,41 @@ test('python unittest: failed tests are a defect even with an environment-lookin
   assert.equal(failureOf('python3 -m unittest', 1, "ERROR: test_a (tests.test_x.T.test_a)\nModuleNotFoundError: No module named 'yaml'\nFAILED (errors=4)", 1, true)!.class, 'environment')
   // A masked unittest run is read from its own summary line.
   assert.equal(checkPassed('python3 -m unittest 2>&1 | tail -5', 0, false, 'Ran 3 tests\n\nFAILED (failures=1)'), false)
+})
+
+test('checkKey: the check commands alone, so edits and wrappers beside them do not make a new failure', () => {
+  assert.equal(checkKey('PYTHONPATH=.:.bench-deps timeout 900 python3 -m unittest discover -s tests -t . 2>&1 | tail -80'), 'unittest discover -s tests -t .')
+  assert.equal(checkKey("export PYTHONPATH=.; sed -i '' 's/a/b/' p.py; python3 -m unittest discover -s tests -t . 2>&1 | tail -5"), 'unittest discover -s tests -t .')
+  assert.equal(checkKey('go test ./...'), 'go test ./...')
+})
+
+test('writesFiles: edits through Bash count, reads and scratch writes do not', () => {
+  for (const c of ["sed -i '' 's/a/b/' x.py", "python3 - <<'EOF'\nopen('a.py', 'w').write(s)\nEOF", "cat >> tests/t.py <<'E'\nx\nE", 'git apply fix.diff', 'echo x > src/a.ts'])
+    assert.equal(writesFiles(c), true, c)
+  for (const c of ['git diff > /tmp/x.diff', 'python3 -m unittest 2>&1 | tail -3', 'grep -n foo a.py', 'echo hi > /dev/null', "python3 - <<'EOF'\nprint(1)\nEOF"])
+    assert.equal(writesFiles(c), false, c)
+})
+
+test('escalation: the same check failing 3 times after edits, each time in a new way, is a repeat of the check', () => {
+  const f = (at: number, fp: string) => ({ fingerprint: fp, class: 'defect' as const, command: 'unittest discover', exitCode: 1, at, editedSince: true, evidence: fp })
+  const s = { ...EMPTY_LADDER, effortCapped: false }
+  assert.equal(escalation([f(1, 'a'), f(2, 'b')], s).level, 'none')
+  const third = escalation([f(1, 'a'), f(2, 'b'), f(3, 'c')], s)
+  assert.equal(third.level, 'weak')
+  assert.match(third.fingerprint!, /^cmd:/)
+  assert.equal(third.count, 3)
+  // After that raise, a fourth failure of the check is strong.
+  const raised = { ...s, fired: [third.key], raised: { [third.fingerprint!]: 3 } }
+  assert.equal(escalation([f(1, 'a'), f(2, 'b'), f(3, 'c'), f(4, 'd')], raised).level, 'strong')
+  // A pass of the check in between starts the count again: the failure after it is a regression, not a third try.
+  assert.doesNotMatch(escalation([f(1, 'a'), f(2, 'b'), f(4, 'c')], { ...s, passed: { 'unittest discover': 3 } }).because, /times after edits/)
+})
+
+test('escalation: a stop the gate sent back on a failing check is strong evidence, once per stop', () => {
+  const s = { ...EMPTY_LADDER, effortCapped: false, stops: 1 }
+  const e = escalation([], s)
+  assert.equal(e.level, 'strong')
+  assert.equal(e.cause, 'stop')
+  assert.equal(escalation([], { ...s, fired: [e.key] }).level, 'none')
+  assert.equal(escalation([], { ...s, fired: [e.key], stops: 2 }).level, 'strong')
 })
