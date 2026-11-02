@@ -1,4 +1,4 @@
-// Generated from hooks/ at commit 3ae315a0f7b24d231d4b417aef2fd958470744f3 by tools/release.mts. The readable source is hooks/ on the main branch.
+// Generated from hooks/ at commit b2222eb92ea754e4725a148cc1986c9f3fa83e19 by tools/release.mts. The readable source is hooks/ on the main branch.
 // hooks/lib/io.ts
 function sid($) {
   return $.session.id();
