@@ -87,7 +87,7 @@ A pass permits wider opt-in use and shadow collection. Changing a default needs 
 
 ## Rescue canary
 
-`rescue-canary.json` runs `baseline` and each rescue arm on 4 tasks where a check fails mid-task, 2 repeats each. Spend is capped at $40. Each rescue arm changes one setting from `baseline`, so a difference has one cause. The rules below are fixed before any row exists.
+`rescue-canary.json` runs `baseline`, each rescue arm and `rescue-all` on 4 tasks where a check fails mid-task, 2 repeats each, 56 runs in all. Spend is capped at $80. Each rescue arm changes one setting from `baseline`, so a difference has one cause. `rescue-all` changes them all, and it shows only whether they combine without a regression. The rules below are fixed before any row exists.
 
 - A task that passes fewer repeats under a rescue arm than under `baseline` vetoes that arm's setting as a default.
 - `rescue-effort-first`: a run whose ladder raises effort twice on one episode is a defect. So is a critical task that raises effort before the model moves.

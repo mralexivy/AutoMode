@@ -15,3 +15,8 @@ test('rescue arms: baseline is explicit, and each arm changes one setting', () =
     assert.equal(changed.length, 1, `${id} changes ${changed.join(', ') || 'nothing'}`)
   }
 })
+
+test('rescue-all changes every rescue setting', () => {
+  const c = config('rescue-all')
+  for (const [k, v] of Object.entries(RESCUE_BASELINE)) assert.notEqual(c[k], v, k)
+})

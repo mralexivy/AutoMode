@@ -8,7 +8,8 @@
     "rescue-effort-first",
     "rescue-consult-priced",
     "rescue-packet-rich",
-    "rescue-packet-fork"
+    "rescue-packet-fork",
+    "rescue-all"
   ],
   "tasks": [
     "longctx-sqlglot-intersect-precedence-across-dialects",
@@ -20,6 +21,6 @@
   "parallel": 1,
   "prompt_template": "repo-change-v1",
   "run_cap_usd": 4,
-  "budget_usd": 40,
+  "budget_usd": 80,
   "window_usd": 120
 }
