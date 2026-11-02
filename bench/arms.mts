@@ -152,6 +152,7 @@ export const COMPATIBLE_ARMS: Record<string, Arm> = {
 
 export const ARMS: Record<string, Arm> = {
   ...FIXED,
+  'haiku': { label: 'Plain Haiku 5.5', model: 'haiku' },
   'sonnet': { label: 'Plain Sonnet 5.5', model: 'sonnet' },
   'sonnet-ts': { label: 'Plain Sonnet 5.5, tool search on', model: 'sonnet', env: { ENABLE_TOOL_SEARCH: 'true' } },
   'opus': { label: 'Plain Opus 5.5', model: 'opus' },

@@ -26,6 +26,7 @@
   "policy": "auto",
   "completionGate": "report",
   "learning": true,
+  "reachHaiku": true,
   "delegation": "off",
   "executor": "judge",
   "subagentsEverySession": true,

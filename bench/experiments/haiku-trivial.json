@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "haiku-trivial",
+  "track": "automode-system",
+  "description": "Can Haiku solve the trivial tasks? This labels them for classify-eval. Counts toward no claim.",
+  "arms": [
+    "haiku"
+  ],
+  "tasks": [
+    "trivial-bottle-if-none-match",
+    "trivial-cheerio-data-mixed-selection",
+    "trivial-fastxmlparser-doctype-element-keywords",
+    "trivial-marked-empty-code-block"
+  ],
+  "repeats": 3,
+  "parallel": 4,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 1,
+  "budget_usd": 2,
+  "window_usd": 120
+}

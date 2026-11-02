@@ -1,0 +1,149 @@
+{
+  "passes": 5,
+  "total": 55,
+  "right": 34,
+  "usd": 0.0319,
+  "rows": {
+    "longctx-sqlglot-intersect-precedence-across-dialects": {
+      "want": "opus",
+      "route": {
+        "opus": 5
+      },
+      "tier": {
+        "T3": 5
+      },
+      "need": {
+        "opus": 5
+      }
+    },
+    "migration-tomli-decode-error-api": {
+      "want": "sonnet",
+      "route": {
+        "sonnet": 5
+      },
+      "tier": {
+        "T3": 4,
+        "T2": 1
+      },
+      "need": {
+        "sonnet": 5
+      }
+    },
+    "feature-marked-emstrongmask-hook": {
+      "want": "sonnet",
+      "route": {
+        "sonnet": 5
+      },
+      "tier": {
+        "T2": 5
+      },
+      "need": {
+        "sonnet": 3,
+        "opus": 1,
+        "none": 1
+      }
+    },
+    "longctx-tornado-body-parse-errors": {
+      "want": "sonnet",
+      "route": {
+        "sonnet": 4,
+        "opus": 1
+      },
+      "tier": {
+        "T3": 5
+      },
+      "need": {
+        "sonnet": 4,
+        "opus": 1
+      }
+    },
+    "migration-jsyaml-max-total-merge-keys": {
+      "want": "sonnet",
+      "route": {
+        "sonnet": 5
+      },
+      "tier": {
+        "T2": 4,
+        "T3": 1
+      },
+      "need": {
+        "sonnet": 5
+      }
+    },
+    "feature-xmltodict-selective-cdata": {
+      "want": "sonnet",
+      "route": {
+        "sonnet": 5
+      },
+      "tier": {
+        "T1": 5
+      },
+      "need": {
+        "sonnet": 5
+      }
+    },
+    "refactor-pymarkdown-block-level": {
+      "want": "sonnet",
+      "route": {
+        "sonnet": 5
+      },
+      "tier": {
+        "T1": 3,
+        "T2": 2
+      },
+      "need": {
+        "sonnet": 5
+      }
+    },
+    "trivial-bottle-if-none-match": {
+      "want": "haiku",
+      "route": {
+        "sonnet": 5
+      },
+      "tier": {
+        "T1": 5
+      },
+      "need": {
+        "sonnet": 4,
+        "none": 1
+      }
+    },
+    "trivial-cheerio-data-mixed-selection": {
+      "want": "haiku",
+      "route": {
+        "sonnet": 5
+      },
+      "tier": {
+        "T1": 5
+      },
+      "need": {
+        "sonnet": 4,
+        "none": 1
+      }
+    },
+    "trivial-fastxmlparser-doctype-element-keywords": {
+      "want": "haiku",
+      "route": {
+        "sonnet": 5
+      },
+      "tier": {
+        "T1": 5
+      },
+      "need": {
+        "sonnet": 5
+      }
+    },
+    "trivial-marked-empty-code-block": {
+      "want": "haiku",
+      "route": {
+        "sonnet": 5
+      },
+      "tier": {
+        "T1": 5
+      },
+      "need": {
+        "sonnet": 5
+      }
+    }
+  }
+}

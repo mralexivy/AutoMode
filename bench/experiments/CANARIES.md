@@ -56,6 +56,16 @@ Each of these is a defect to fix before a release:
 
 7 tasks make this a pilot. It finds defects and shows a direction. It proves no general saving.
 
+## Classification canary
+
+`classify-canary.json` runs `auto` on the final code, on 9 tasks outside the 11 used to find the defect, plus `sqlglot`, 1 repeat each. Spend is capped at $6.
+
+- A rejected run on a task Sonnet high passes is a defect, unless a rerun clears it.
+- If `auto` runs Haiku on fewer than half of the tasks, the fix did not take effect.
+- `sqlglot` must start on Opus.
+
+A pass allows a release. It proves no general saving.
+
 ## What a pass allows
 
 A pass permits wider opt-in use and shadow collection. Changing a default needs new tasks with real outcome data, and it is a separate decision.

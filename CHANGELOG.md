@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- Classification now sends T0 to T2 work without critical risk to Haiku, and T2 work whose need names Opus to Opus. `reachHaiku: false` restores the old rules.
+
 ### Removed
 
 - `sonnetFirst`, added in 0.5.0. Prompt classification picks the model, so a T3 task whose need names Opus runs on Opus again.
