@@ -72,7 +72,13 @@ export function fnv1a(s: string): string {
   return h.toString(16).padStart(8, '0')
 }
 
+// TESTS_FAILED: the runner itself says tests failed on an assertion. That is a defect whatever else the output prints:
+// a stray "No module named" from a version helper after "FAILED (failures=3)" hid sqlglot's failures from the ladder
+// (rescue-delivery, 2026-11-02). A run with errors alone (a missing module in every test) stays environment.
+const TESTS_FAILED = /^FAIL: \S+ \(|^FAILED \(failures=[1-9]|^--- FAIL: |^\s*\d+ failed\b|^Tests?:\s+\d+ failed|^FAILED \S+::|^\s*AssertionError\b/m
+
 export function classify(output: string): FailureRecord['class'] {
+  if (TESTS_FAILED.test(output)) return 'defect'
   if (ENVIRONMENT.some((r) => r.test(output))) return 'environment'
   if (DEFECT.some((r) => r.test(output))) return 'defect'
   return 'unknown'
@@ -95,6 +101,7 @@ export function failingTests(norm: string): string[] {
   for (const m of norm.matchAll(/^\s*--- FAIL: (\S+)/gm)) out.add(m[1])
   for (const m of norm.matchAll(/^FAIL\s+(\S+\.(?:test|spec)\.[jt]sx?)/gm)) out.add(m[1])
   for (const m of norm.matchAll(/^FAILED (\S+::\S+)/gm)) out.add(m[1])
+  for (const m of norm.matchAll(/^(?:FAIL|ERROR): (\S+) \(([^)\s]+)\)/gm)) out.add(m[2].endsWith(`.${m[1]}`) ? m[2] : `${m[2]}.${m[1]}`) // python unittest, 3.11 and older
   for (const m of norm.matchAll(/^not ok \d+ - (.+)$/gm)) out.add(m[1].trim())
   for (const m of norm.matchAll(/error (TS\d+)/g)) out.add(m[1])
   return [...out].sort().slice(0, 20)
@@ -246,7 +253,7 @@ export function withPipefail(cmd: string): string | null {
 }
 export const exitReliable = (cmd: string) => !masked(cmd) && (!hasPipe(cmd) || /pipefail/.test(cmd))
 // Structural failure markers, line-anchored: a test runner's own summary lines, not any "FAIL" in a log.
-export const FAILURE_MARKERS = /^--- FAIL: \S+|^FAIL\t\S+|^FAIL$|^\s*\d+ (failed|failing)\b|^Tests?:\s+\d+ failed|^not ok \d+ |^FAILED \S+::|error TS\d+:|^\s*AssertionError\b/m
+export const FAILURE_MARKERS = /^FAIL: \S+ \(|^FAILED \((failures|errors)=\d+|^--- FAIL: \S+|^FAIL\t\S+|^FAIL$|^\s*\d+ (failed|failing)\b|^Tests?:\s+\d+ failed|^not ok \d+ |^FAILED \S+::|error TS\d+:|^\s*AssertionError\b/m
 
 // checkPassed: a reliable exit code decides; a masked or unreliable one falls back to the runner's own
 // summary lines. Never "passed" on missing evidence: an error result is a failure.

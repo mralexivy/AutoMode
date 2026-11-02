@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Fixed
+
+- A test run that reports failed tests now counts as a defect even when a later line looks like a missing module. Before, a stray `No module named` after `FAILED (failures=3)` filed sqlglot's real failures as environment noise, so the escalation ladder never acted on them. Python unittest's `FAIL:` and `ERROR:` lines now name the failing tests, and its `FAILED (failures=…)` summary marks a masked check as failed.
+
 ### Added
 
 - Escalation records carry the cache state: prefix size, time since the last refresh, and what is left of its lifetime. Each architect consult writes a `consult-run` record with its measured duration and cost. A `baseline` bench arm pins every rescue setting at its old value.

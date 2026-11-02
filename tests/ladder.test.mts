@@ -2,7 +2,7 @@
 // weak and strong evidence, and regressions.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { EMPTY_LADDER, escalation, failureOf, isCheck, isRevert, regression, reviewerBlocked, scopeGrew } from '../hooks/lib/failures.ts'
+import { EMPTY_LADDER, checkPassed, escalation, failingTests, failureOf, isCheck, isRevert, regression, reviewerBlocked, scopeGrew } from '../hooks/lib/failures.ts'
 import { simpleCommands, tools, unwrapped } from '../hooks/lib/shell.ts'
 
 const CHECKS = [
@@ -144,4 +144,17 @@ test('signals: reverts, reviewer verdicts and scope', () => {
   assert.equal(scopeGrew(['a', 'b', 'c', 'z'], new Set(['z']), 4, 8), false)
   assert.equal(scopeGrew(['a', 'b', 'c', 'd'], new Set(), 4, 8), false, 'no discovery data: only a large change counts')
   assert.equal(scopeGrew(Array.from({ length: 9 }, (_, i) => `f${i}`), new Set(), 4, 8), true)
+})
+
+test('python unittest: failed tests are a defect even with an environment-looking line after them', () => {
+  // rescue-delivery, sqlglot: the runner printed FAILED (failures=3), then a version helper printed "No module named".
+  const out = "FAIL: test_x (tests.test_parser.TestParser.test_x)\nAssertionError: 1 != 2\n----\nRan 1542 tests in 76.997s\n\nFAILED (failures=3, errors=1, skipped=2)\nsqlglotc: failed to determine the sqlglot version to pin: No module named 'setuptools_scm'"
+  const f = failureOf('python3 -m unittest discover -s tests -t .', 1, out, 1, true)!
+  assert.equal(f.class, 'defect')
+  assert.deepEqual(f.tests, ['tests.test_parser.TestParser.test_x'])
+  assert.deepEqual(failingTests('ERROR: test_y (tests.test_a.T)\n'), ['tests.test_a.T.test_y'])
+  // Errors alone from a missing module are still the environment.
+  assert.equal(failureOf('python3 -m unittest', 1, "ERROR: test_a (tests.test_x.T.test_a)\nModuleNotFoundError: No module named 'yaml'\nFAILED (errors=4)", 1, true)!.class, 'environment')
+  // A masked unittest run is read from its own summary line.
+  assert.equal(checkPassed('python3 -m unittest 2>&1 | tail -5', 0, false, 'Ran 3 tests\n\nFAILED (failures=1)'), false)
 })
