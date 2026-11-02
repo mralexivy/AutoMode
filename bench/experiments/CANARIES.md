@@ -43,6 +43,19 @@ These rows count toward no claim, and they say nothing about cost.
 
 These rows count toward no claim. They can show a drop in Opus use on these tasks, and they prove no general saving.
 
+## Classification check
+
+`classification-check.json` runs `auto` with fixed `sonnet-high` and `opus-medium` on the same 7 tasks, 3 repeats each. The tasks are ones the router sent to Opus at least once. `sqlglot` is the hard task. Hidden tests are the primary result. A timeout or a failed setup is no result.
+
+Each of these is a defect to fix before a release:
+
+- **Lost quality.** `auto` passes 2 or more fewer runs than `opus-medium` in total.
+- **Under-routing.** On a task where `sonnet-high` fails at least 2 of 3, `auto` runs on Sonnet in 2 or more repeats.
+- **Over-routing.** On 3 or more tasks, `auto` runs on Opus in 2 or more repeats, while `sonnet-high` passes 3 of 3 at no more than half the cost of `auto`.
+- **No value.** `auto` costs more per task than `opus-medium`, on the mean.
+
+7 tasks make this a pilot. It finds defects and shows a direction. It proves no general saving.
+
 ## What a pass allows
 
 A pass permits wider opt-in use and shadow collection. Changing a default needs new tasks with real outcome data, and it is a separate decision.

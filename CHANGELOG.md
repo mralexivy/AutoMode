@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Removed
+
+- `sonnetFirst`, added in 0.5.0. Prompt classification picks the model, so a T3 task whose need names Opus runs on Opus again.
+
 ### Fixed
 
 - A `.sql` method in prompt text, such as `scope.expression.sql`, no longer rates a task as critical. A `.sql` file still does.
