@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "id": "rescue-sqlglot",
+  "track": "automode-system",
+  "description": "On the one hard task, does the Sonnet executor with the full rescue chain (effort, fork, consult, switch) pass like Opus from the start, and at what cost? A pilot. See CANARIES.md.",
+  "arms": [
+    "sonnet-rescue-gate",
+    "opus-medium"
+  ],
+  "tasks": [
+    "longctx-sqlglot-intersect-precedence-across-dialects"
+  ],
+  "repeats": 3,
+  "parallel": 3,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 6,
+  "budget_usd": 30,
+  "window_usd": 150
+}
