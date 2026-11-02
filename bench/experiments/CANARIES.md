@@ -43,23 +43,6 @@ These rows count toward no claim, and they say nothing about cost.
 
 These rows count toward no claim. They can show a drop in Opus use on these tasks, and they prove no general saving.
 
-## Sonnet-first paired run
-
-`sonnet-first-paired.json` compares `auto` with `auto-opus-rule` on the same code and tasks, 3 repeats each. `auto-from-opus` starts a session on Opus. The tasks are ones the old router sent to Opus at least once, without a critical rating from the judge. `sqlglot` is the hard task.
-
-Hidden tests are the primary result. A timeout or a failed setup is no result, and it runs again. Each of these vetoes `sonnetFirst: true` as the default:
-
-- On the six easy tasks, `auto` passes 2 or more fewer runs than `auto-opus-rule` in total.
-- On `sqlglot`, `auto` passes 2 or more fewer runs than `auto-opus-rule`.
-- `auto` costs more per task than `auto-opus-rule`, on the mean across all 7 tasks.
-
-Each of these is a defect to fix before a release:
-
-- A rejected `auto` run on Sonnet whose records show a failed check but no escalation.
-- `auto-from-opus` spends more on Opus than `auto-opus-rule` on the mean. That means a session on Opus does not move.
-
-7 tasks make this a pilot. It can veto, and it can show a direction. It proves no general saving.
-
 ## What a pass allows
 
 A pass permits wider opt-in use and shadow collection. Changing a default needs new tasks with real outcome data, and it is a separate decision.

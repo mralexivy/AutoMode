@@ -115,7 +115,6 @@ export const EFFORT_ARMS: Record<string, Arm> = {
   // The value users get. A native 1M model may drop the suffix; the row records what ran.
   'auto': { label: 'AutoMode Auto: model and effort routing', model: HM_MODEL, v4: true, plugin: automode({}) },
   // The same router, for a person whose session starts on Opus. Does it move them down when Sonnet is enough?
-  'auto-opus-rule': { label: 'AutoMode Auto, T3 with need=opus goes straight to Opus', model: HM_MODEL, v4: true, plugin: automode({ sonnetFirst: false }) },
   'auto-from-opus': { label: 'AutoMode Auto, session started on Opus', model: 'claude-opus-5-5', v4: true, plugin: automode({}) },
   // Canaries (bench/experiments/CANARIES.md). Each changes one thing, so a result names its cause.
   'gate-block': { label: 'AutoMode Auto, completion gate blocking', model: HM_MODEL, v4: true, plugin: automode({ completionGate: 'block' }) },
