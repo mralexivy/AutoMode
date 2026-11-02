@@ -113,7 +113,7 @@ describe('The first prompt does not guess its own size (D6)', () => {
   })
 
   test('an estimate past the Haiku limit sends a lookup to Sonnet', async ($, on) => {
-    const h = harness(on, { firstPrefix: 120_000, judge: judge({ tier: 'T0', complexity: 'trivial', effort: 'low' }) })
+    const h = harness(on, { firstPrefix: 170_000, judge: judge({ tier: 'T0', complexity: 'trivial', effort: 'low' }) })
     await h.submit($, 'where is the output folder written?')
     await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't1' })
     expect(h.steps[0].model).toBe('claude-sonnet-5-5')
@@ -128,7 +128,7 @@ describe('The first prompt does not guess its own size (D6)', () => {
   })
 
   test('a new project whose machine-wide p75 is past the Haiku limit goes to Sonnet', async ($, on) => {
-    const h = harness(on, { firstPrefixes: { other1: [70_000, 75_000, 90_000, 95_000] }, judge: judge({ tier: 'T0', complexity: 'trivial', effort: 'low' }) })
+    const h = harness(on, { firstPrefixes: { other1: [130_000, 140_000, 160_000, 170_000] }, judge: judge({ tier: 'T0', complexity: 'trivial', effort: 'low' }) })
     await h.submit($, 'where is the output folder written?')
     await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't1' })
     expect(h.steps[0].model).toBe('claude-sonnet-5-5')
@@ -157,7 +157,7 @@ describe('The first prompt does not guess its own size (D6)', () => {
   })
 
   test('an uncalibrated preflight that is already past the limit rules Haiku out', async ($, on) => {
-    const h = harness(on, { firstPrefixes: {}, preflight: { systemChars: 300_000, tools: 50 }, judge: judge({ tier: 'T0', complexity: 'trivial', effort: 'low' }) })
+    const h = harness(on, { firstPrefixes: {}, preflight: { systemChars: 700_000, tools: 50 }, judge: judge({ tier: 'T0', complexity: 'trivial', effort: 'low' }) })
     await h.submit($, 'where is the output folder written?')
     await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't1' })
     expect(h.steps[0].model).toBe('claude-sonnet-5-5')
@@ -395,7 +395,7 @@ describe('Parity, sessions, rollback and boundaries', () => {
     expect(decisions(records(h.writes))[0].policy).toBe('legacy')
   })
 
-  for (const [median, model] of [[75_999, 'claude-haiku-5-5'], [76_001, 'claude-sonnet-5-5']] as const) {
+  for (const [median, model] of [[145_999, 'claude-haiku-5-5'], [146_001, 'claude-sonnet-5-5']] as const) {
     test(`the Haiku limit is exact: a measured size of ${median} (plus 4,000 headroom) routes a lookup to ${model}`, async ($, on) => {
       const h = harness(on, { sessionId: `edge-${median}`, firstPrefixes: { unknown: [median] }, judge: judge({ tier: 'T0', complexity: 'trivial', effort: 'low' }), effortJudge: says('haiku', 'low') })
       await h.submit($, 'where is the output folder written?')

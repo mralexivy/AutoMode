@@ -24,14 +24,14 @@
       "expect": "haiku/medium"
     },
     {
-      "name": "lookup above 80k context: Sonnet, Haiku ruled out",
+      "name": "lookup above 150k context: Sonnet, Haiku ruled out",
       "verdict": {
         "tier": "T0",
         "complexity": "trivial",
         "effort": "low",
         "risk": "none"
       },
-      "prefix": 120000,
+      "prefix": 160000,
       "expectFamily": "sonnet"
     },
     {

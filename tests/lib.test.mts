@@ -245,7 +245,7 @@ test('policy: switch check gates', () => {
   assert.equal(down({ risk: 'elevated' }).gate, 'quality')
   assert.equal(down({ candidate: cand('T0', 0.6) }).gate, 'quality')
   assert.equal(down({ sameTask: true, requestsSinceSwitch: 3 }).gate, 'dwell')
-  assert.equal(down({ cache: cache({ prefixTokens: 120_000 }), now: 2_000 + 2 * HOUR }).gate, 'context', 'Haiku above 80k does not fit')
+  assert.equal(down({ cache: cache({ prefixTokens: 160_000 }), now: 2_000 + 2 * HOUR }).gate, 'context', 'Haiku above 150k does not fit')
   assert.equal(down({ cache: cache({ prefixTokens: 10_000 }) }).verdict, 'switch', 'small context costs little to move')
   // Retrospective replay (bench/retro-replay.mts, 2026-10-26): in one real session, escalations to Opus after
   // repeated failing checks were held on Sonnet at 810k-949k tokens by the 20% context reserve. Opus has the same 1M
@@ -254,7 +254,7 @@ test('policy: switch check gates', () => {
   assert.equal(check({ mandatory: true, cache: big }).verdict, 'switch', 'a same-window escalation is not blocked by the reserve')
   assert.equal(check({ votes: 2, cache: big }).verdict, 'switch', 'nor is a confirmed upgrade')
   assert.equal(switchCheck({ ...base({ cache: big }), current: null, candidate: cand('T3'), target: opus, floor: noFloor, mandatory: false }).gate, 'context', 'a first route past the reserve still holds')
-  assert.equal(down({ mandatory: true, cache: cache({ prefixTokens: 120_000 }) }).gate, 'context', 'Haiku past its own limit never fits')
+  assert.equal(down({ mandatory: true, cache: cache({ prefixTokens: 160_000 }) }).gate, 'context', 'Haiku past its own limit never fits')
   // The payback quantile stays p25 by default. The replay (2026-10-26) priced looser quantiles: they gained only with
   // a perfect judge and lost money with a cautious one (more switching back and forth), so the default is unchanged.
   assert.equal(toSonnet.reason, switchCheck({ ...base(), current: opus, candidate: cand('T1', 0.95), target: sonnet, floor: noFloor, mandatory: false, params: { ...DEFAULT_PARAMS, paybackQuantile: 'p25' } }).reason)

@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Fixed
+
+- A task on Haiku no longer leaves it at 80k tokens of context. The limit is now 150k. Fixed Haiku passed 9 of 10 screen runs past 80k, while one forced move to Sonnet raised a task from $0.12 to $0.98.
+
 ## [0.6.0] - 2026-11-02
 
 ### Changed

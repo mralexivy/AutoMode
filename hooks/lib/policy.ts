@@ -18,7 +18,7 @@ export interface PolicyParams {
   remainingRequests: number     // legacy single R; the check reads the remaining-work quantiles instead
   maxSwitches: number           // discretionary model switches per task before the route holds
   contextReserve: number        // share of the window kept free
-  haikuMaxContext: number       // Haiku only below this many tokens
+  haikuMaxContext: number       // Haiku only below this many tokens. Fixed Haiku passed 9 of 10 screen runs past 80k
   smallContext: number          // below this, a switch costs little (jev-router's 20k guard)
   calibrated: boolean           // true once the parameters passed calibration
   paybackQuantile?: 'p25' | 'median' | 'p75' // the remaining-work quantile the payback is priced on (default p25)
@@ -26,7 +26,7 @@ export interface PolicyParams {
 
 export const DEFAULT_PARAMS: PolicyParams = {
   upgradeVotes: 2, downgradeConfidence: 0.85, minDwellRequests: 8, paybackFactor: 1.5, remainingRequests: 6, maxSwitches: 3,
-  contextReserve: 0.2, haikuMaxContext: 80_000, smallContext: 20_000, calibrated: false,
+  contextReserve: 0.2, haikuMaxContext: 150_000, smallContext: 20_000, calibrated: false,
 }
 
 export const WINDOW: Record<string, number> = { haiku: 1_000_000, sonnet: 1_000_000, opus: 1_000_000 }

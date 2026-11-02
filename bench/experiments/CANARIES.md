@@ -66,6 +66,14 @@ Each of these is a defect to fix before a release:
 
 A pass allows a release. It proves no general saving.
 
+## Haiku context canary
+
+`haiku-context-canary.json` runs `auto` on `markdown` with 3 repeats, the task a move to Sonnet took from $0.12 to $0.98. Spend is capped at $3.
+
+- A rejected run is a defect.
+- A run that starts on Haiku and moves to Sonnet under 150k tokens is a defect.
+- A mean above $0.30 means the limit change did not help.
+
 ## What a pass allows
 
 A pass permits wider opt-in use and shadow collection. Changing a default needs new tasks with real outcome data, and it is a separate decision.

@@ -290,7 +290,7 @@ describe('Adaptive edges', () => {
   test('a Haiku route past its context limit moves up before the next request, no judge call', async ($, on) => {
     const h = harness(on, { judge: judge({ tier: 'T0', complexity: 'trivial', effort: 'low' }), effortJudge: says('haiku', 'low') })
     await h.submit($, 'where is the output folder written?')
-    h.setPrefix(90_000)
+    h.setPrefix(160_000)
     await h.step($)
     await h.step($, 'claude-sonnet-5-5', undefined, { index: 1 })
     await h.complete($)
