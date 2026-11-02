@@ -15,17 +15,16 @@
 //                the judge benches instead.
 //
 // A record without a complete route input is unreplayable, and the report counts it by reason. No field is guessed.
-import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { pathToFileURL } from 'node:url'
 import { outcomeOf, routeAuto, routeFingerprint, type AutoRouteInput, type RouteOutcome } from '../hooks/lib/auto-route.ts'
 import { counterfactual, exact, type BatchPolicy } from './lib/route-replay.mts'
+import { policyB } from './lib/route-policy.mts'
 
 const args = process.argv.slice(2)
 const opt = (n: string, d?: string) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : d }
-const here = path.dirname(fileURLToPath(import.meta.url))
 const local: BatchPolicy = (inputs) => inputs.map((i) => outcomeOf(routeAuto(i)))
 
 // --serve: the child side. Reads a JSON array of inputs on stdin and writes their outcomes as JSON on stdout.
@@ -55,42 +54,15 @@ function loadRecords(): any[] {
   return files.filter((f) => fs.existsSync(f)).flatMap(readJsonl)
 }
 
-// child: run policy B in its own node process.
-function child(script: string, cwd: string, extra: string[]): BatchPolicy {
-  return (inputs) => {
-    const r = spawnSync(process.execPath, [script, '--serve', ...extra], { cwd, input: JSON.stringify(inputs), maxBuffer: 1 << 30, encoding: 'utf8' })
-    if (r.status !== 0) throw new Error(`policy B failed: ${(r.stderr || '').slice(-800)}`)
-    return JSON.parse(r.stdout)
-  }
-}
-
 const records = loadRecords()
 let report: unknown
 if (mode === 'exact') {
   report = exact(records, (i) => outcomeOf(routeAuto(i)), routeFingerprint())
 } else if (mode === 'counterfactual') {
-  const ref = opt('--policy')
-  const mod = opt('--policy-module')
-  if (!ref === !mod) { console.error('counterfactual needs exactly one of --policy <git-ref> or --policy-module <path>'); process.exit(1) }
-  let cleanup = () => {}
-  let b: BatchPolicy
-  if (ref) {
-    const root = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: here, encoding: 'utf8' }).stdout.trim()
-    const sha = spawnSync('git', ['rev-parse', '--verify', `${ref}^{commit}`], { cwd: root, encoding: 'utf8' }).stdout.trim()
-    if (!sha) { console.error(`unknown git ref: ${ref}`); process.exit(1) }
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'am-replay-'))
-    const add = spawnSync('git', ['worktree', 'add', '--detach', dir, sha], { cwd: root, encoding: 'utf8' })
-    if (add.status !== 0) { console.error(add.stderr); process.exit(1) }
-    cleanup = () => { spawnSync('git', ['worktree', 'remove', '--force', dir], { cwd: root }) }
-    const script = path.join(dir, 'bench', 'route-replay.mts')
-    if (!fs.existsSync(script)) { cleanup(); console.error(`${ref} (${sha.slice(0, 8)}) has no bench/route-replay.mts, so it cannot replay route inputs`); process.exit(1) }
-    b = child(script, dir, [])
-    console.error(`policy B: ${ref} at ${sha.slice(0, 12)}`)
-  } else {
-    b = child(fileURLToPath(import.meta.url), process.cwd(), ['--module', path.resolve(mod!)])
-    console.error(`policy B: module ${mod}`)
-  }
-  try { report = counterfactual(records, local, b) } finally { cleanup() }
+  let b
+  try { b = policyB({ ref: opt('--policy'), module: opt('--policy-module') }) } catch (err) { console.error((err as Error).message); process.exit(1) }
+  console.error(`policy B: ${b.label}`)
+  try { report = counterfactual(records, local, b.batch) } finally { b.cleanup() }
 } else {
   console.error(`unknown mode: ${mode}`)
   process.exit(1)

@@ -61,7 +61,19 @@ An experiment names its tasks, so a new task file never joins an older study.
 - **Outcome matrix.** A cell is one task and one arm under one identity: model, policy, spec hash, environment, grader and harness SHA. Repeats share a cell. Two identities are never pooled. They show as a conflict, and the signals read the larger cell. A cell that never ran is missing, not zero. Each cell has an exact Clopper-Pearson interval over its repeats.
 - **Health signals.** Three signals, never combined. Difficulty is the pass rate of a reference arm, `sonnet-high` by default (`--reference`). Outcome discrimination means the arms' per-task majority verdicts differ. A tie is not solved. Economic discrimination means two arms share a verdict, but one costs at least `COST_RATIO` (1.5×) the other per accepted run. Set-level numbers count tasks, never repeats. The report names `FOCUS_TASK` on all three.
 - **Health warning.** Under 20% of comparable tasks with outcome discrimination, the report warns. The warning is a heuristic, not a release gate.
-- **False completion rate.** Explicit completion claims that failed acceptance, divided by explicit claims with a valid grade. The claim is the boolean `completion.claimed`. No row has it yet: the completion gate writes its records to the plugin's records, not to the row. A row without it is N/A, and the report prints the N/A count.
+- **False completion rate.** Explicit completion claims that failed acceptance, divided by explicit claims with a valid grade. Prompt template `repo-change-v2` asks the final message to end with `Status: done` or `Status: not done`. The runner turns that line into the boolean `completion.claimed` and keeps no reply text (`lib/claim.mts`). Runs on `repo-change-v1` never asked, so they are N/A. A v2 run with no status line is ambiguous, also N/A. The report prints both counts. It also counts how often the completion gate's `verified` met failing hidden tests.
+
+## Replay routes and pick tasks for a change
+
+Both tools cost $0. They read records and results, and they call no model.
+
+- **`route-replay.mts`** replays policy-auto routes from decision records. Each record holds `auto.replay`: the route input, the outcome and its provenance. `--mode exact` checks that this code reproduces each recorded route. It counts agreement only for records with this code's route fingerprint, and lists the others apart. `--mode counterfactual --policy <git-ref>` routes the same frozen evidence under another policy. That policy runs in a child process from a pinned worktree. `--policy-module <path>` runs a module instead, such as the Experiment A mutant in `fixtures/`. Records hold no prompt text, so `--mode classifier` only explains where judge changes are measured instead. A record without a complete input counts as unreplayable, by reason. No field is guessed.
+- **`select.mts`** picks the tasks a router change should run on. It builds three parts, each with its rule in the output:
+  - **Disagreement:** tasks whose recorded first route moves between this tree and `--policy`.
+  - **Sentinel:** tasks whose past AutoMode runs used what the changed files own.
+  - **Control:** a fixed set per cohort.
+
+  `--experiment <name>` writes `experiments/pr-check-<name>.json` with the picked tasks. Its repeats and budget come from `PR_CHECK`, fixed before any result exists, and no run stops early. Its result covers the selected tasks only and is regression discovery, never a claim.
 
 ## Run the neutral track
 

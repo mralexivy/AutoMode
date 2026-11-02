@@ -74,6 +74,13 @@ A pass allows a release. It proves no general saving.
 - A run that starts on Haiku and moves to Sonnet under 150k tokens is a defect.
 - A mean above $0.30 means the limit change did not help.
 
+## PR check
+
+`bench/select.mts --experiment <name>` writes `pr-check-<name>.json`. It runs `auto` and `sonnet-high` on the tasks the selector picked for a router change: 2 repeats each, `budget_usd` 10. `PR_CHECK` in `lib/select.mts` fixes the repeats and budget before any row exists. No run stops early, because a significance test checked during collection inflates false alarms.
+
+- A selected task that `sonnet-high` passes in both repeats and `auto` fails in both is a regression to explain before merge.
+- A result covers the selected tasks only. It is regression discovery. It never supports a claim of non-inferiority or improvement.
+
 ## What a pass allows
 
 A pass permits wider opt-in use and shadow collection. Changing a default needs new tasks with real outcome data, and it is a separate decision.
