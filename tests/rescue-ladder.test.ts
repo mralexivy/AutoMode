@@ -305,7 +305,7 @@ describe('Fork diagnosis rung', () => {
 describe('Failed stops climb the ladder', () => {
   const chain = { completionGate: 'block', strongStep: 'effort-first', consult: 'priced', forkRung: 'on' }
 
-  test('each failed stop is a rung, carried in the block itself, at most three times', async ($, on) => {
+  test('each failed stop is a rung, carried in the block itself, up to the switch', async ($, on) => {
     const h = harness(on, sonnetAt('high', chain))
     h.setPrefix(400_000)
     await h.submit($, 'fix the failing parser test')
@@ -320,12 +320,11 @@ describe('Failed stops climb the ladder', () => {
     expect(second.block).toContain('subagent_type "fork"')
     const third = await $.classic.Stop({ stop_hook_active: true })
     expect(third.block).toContain('automode:architect')
+    const fourth = await $.classic.Stop({ stop_hook_active: true })
+    expect(fourth.block).toContain('escalated to T3 (opus high)')
     expect((await $.classic.Stop({ stop_hook_active: true })).block).toBeUndefined()
-    expect(of(h.writes, 'escalation').map((x) => [x.action, x.because])).toEqual([
-      ['raise', 'the session tried to stop with its last check failing'],
-      ['fork-diagnose', 'the session tried to stop with its last check failing'],
-      ['consult-opus', 'the session tried to stop with its last check failing'],
-    ])
+    const why = 'the session tried to stop with its last check failing'
+    expect(of(h.writes, 'escalation').map((x) => [x.action, x.because])).toEqual([['raise', why], ['fork-diagnose', why], ['consult-opus', why], ['switch', why]])
   })
 
   test('the shipped gate (report) never blocks, so a failed stop stays a record', async ($, on) => {

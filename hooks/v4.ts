@@ -2009,7 +2009,9 @@ async function git($: EngineInterface, argv: string[]): Promise<string> {
   try { const r = await $.process.run(argv, { timeoutMs: 5_000 }); return r.exitCode === 0 ? String(r.stdout ?? '') : '' } catch { return '' }
 }
 
-const MAX_LADDER_STOPS = 3
+// Four rungs after a failed stop: effort, fork, consult, then the switch. With three, the final run on sqlglot spent the
+// fork and the consult and ended on Sonnet one rung short of Opus, the model that passes it.
+const MAX_LADDER_STOPS = 4
 
 // The rescue settings past their old values turn on the review rule: a consult or a strong-evidence raise ran.
 const rescueReview = () => S.cfg.strongStep === 'effort-first' || S.cfg.consult === 'priced'
@@ -2269,7 +2271,7 @@ export async function v4Stop($: EngineInterface, e: any, next: any) {
   if (state === 'verified' && settleConsults(await now($), { verified: true })) await flush($)
   if (state === 'none') return out
   const gate = S.mode === 'auto' && !out?.block ? S.cfg.completionGate : 'report'
-  // Under a rescue setting a failed stop may come back up to three times, each one a rung of the ladder; else once.
+  // Under a rescue setting a failed stop may come back up to MAX_LADDER_STOPS times, each one a rung; else once.
   const ladderStops = rescueReview() && state === 'failed'
   const blocks = ladderStops ? Math.max(0, S.completionBlocks - (MAX_LADDER_STOPS - 1)) : S.completionBlocks
   let reason = blockReason(state, S.obligations, { gate, stopHookActive: e.stop_hook_active === true && !ladderStops, blocks, backgroundWork: Array.isArray(e.background_tasks) ? e.background_tasks.length : 0 })

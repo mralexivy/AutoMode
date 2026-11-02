@@ -19,7 +19,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - `packet: rich` gives the Opus consult a packet where each fact names its source. It holds the person's later messages, the diff from git, every failing check with a 40-line tail, and what was tried. `packet: fork-gated` adds a same-model `$.model.fork` only for a gap the conversation could fill, and only while the fork costs under a quarter of the consult. Its record keeps the measured cache read. The shipped value `basic` keeps the old packet. Arms: `rescue-packet-rich`, `rescue-packet-fork`.
 - The guardian's lifecycle record carries `expected`: a fuller compaction model, recorded in shadow. It adds context regrowth, the chance the cache expires before the next request, and the cost of re-reading a detail the summary drops. It changes no offer.
 - `forkRung: on` adds a rung before the Opus consult. The main model starts a `fork` agent, which shares the conversation and its warm cache, to diagnose the failure without editing. A `fork-run` record measures its cost and how much of its first request the cache served. Arm: `rescue-fork`.
-- Under a rescue setting with `completionGate: block`, a stop on a failing check is strong evidence for the ladder. Each such stop, up to three, is sent back with the ladder's next rung in the block message.
+- Under a rescue setting with `completionGate: block`, a stop on a failing check is strong evidence for the ladder. Each such stop, up to four (effort, fork, consult, switch), is sent back with the next rung in the block message.
 
 ## [0.7.0] - 2026-11-02
 
