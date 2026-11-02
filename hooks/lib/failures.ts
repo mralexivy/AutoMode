@@ -72,13 +72,17 @@ export function fnv1a(s: string): string {
   return h.toString(16).padStart(8, '0')
 }
 
-// TESTS_FAILED: the runner itself says tests failed on an assertion. That is a defect whatever else the output prints:
-// a stray "No module named" from a version helper after "FAILED (failures=3)" hid sqlglot's failures from the ladder
-// (rescue-delivery, 2026-11-02). A run with errors alone (a missing module in every test) stays environment.
+// The runner itself says tests failed. That is a defect whatever else the output prints: a stray "No module named"
+// from a version helper after "FAILED (failures=3)" hid sqlglot's failures from the ladder (rescue-delivery,
+// 2026-11-02). TESTS_FAILED is an assertion failure, a defect outright. TESTS_ERRORED is a test that raised: a defect
+// unless the output holds an import traceback line, the sign of a missing module in the tests themselves.
 const TESTS_FAILED = /^FAIL: \S+ \(|^FAILED \(failures=[1-9]|^--- FAIL: |^\s*\d+ failed\b|^Tests?:\s+\d+ failed|^FAILED \S+::|^\s*AssertionError\b/m
+const TESTS_ERRORED = /^ERROR: \S+ \(|^FAILED \(errors=[1-9]|^\s*\d+ errors?\b.* in [\d.]+s/m
+const IMPORT_TRACEBACK = /^\s*(?:E\s+)?(?:ModuleNotFoundError|ImportError)\b/m
 
 export function classify(output: string): FailureRecord['class'] {
   if (TESTS_FAILED.test(output)) return 'defect'
+  if (TESTS_ERRORED.test(output) && !IMPORT_TRACEBACK.test(output)) return 'defect'
   if (ENVIRONMENT.some((r) => r.test(output))) return 'environment'
   if (DEFECT.some((r) => r.test(output))) return 'defect'
   return 'unknown'

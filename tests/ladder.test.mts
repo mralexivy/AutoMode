@@ -153,6 +153,8 @@ test('python unittest: failed tests are a defect even with an environment-lookin
   assert.equal(f.class, 'defect')
   assert.deepEqual(f.tests, ['tests.test_parser.TestParser.test_x'])
   assert.deepEqual(failingTests('ERROR: test_y (tests.test_a.T)\n'), ['tests.test_a.T.test_y'])
+  // A test that raised, with the same stray line, is a defect too (rescue-delivery, sqlglot, second run).
+  assert.equal(failureOf('python3 -m unittest discover', 1, "Ran 1542 tests in 77.6s\n\nFAILED (errors=1, skipped=2)\nsqlglotc: failed to determine the sqlglot version to pin: No module named 'setuptools_scm'", 1, true)!.class, 'defect')
   // Errors alone from a missing module are still the environment.
   assert.equal(failureOf('python3 -m unittest', 1, "ERROR: test_a (tests.test_x.T.test_a)\nModuleNotFoundError: No module named 'yaml'\nFAILED (errors=4)", 1, true)!.class, 'environment')
   // A masked unittest run is read from its own summary line.
