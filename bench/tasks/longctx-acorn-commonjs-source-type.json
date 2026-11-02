@@ -1,0 +1,19 @@
+{
+  "id": "longctx-acorn-commonjs-source-type",
+  "cohort": "longctx",
+  "repo": "https://github.com/acornjs/acorn",
+  "license": "MIT",
+  "base": "2e1550534005a8d02030df99e20f06c0392ac28b",
+  "reference": "8bcc8974b518bb5c543e81cacf57bf86b5739e4d",
+  "task": "Add a third value for the sourceType option: \"commonjs\". CommonJS code runs inside a function wrapper, so a top-level return is legal there. Today acorn has no way to parse such files.\n\nsourceType \"commonjs\" is the same as \"script\" in every way, except that the top-level scope behaves like a function body. That means, in both acorn and acorn-loose:\n\n- return at the top level is allowed. return {} / 2 parses to a Program with a ReturnStatement whose argument is a BinaryExpression dividing an ObjectExpression by 2.\n- new.target is allowed at the top level and in a top-level arrow, as in new.target and let y = () => new.target, with ecmaVersion 6.\n- using x = resource; is allowed at the top level with ecmaVersion 17.\n- await using x = resource; at the top level still fails, with \"Await using cannot appear outside of async function (1:0)\", with ecmaVersion 17.\n- return inside a class static block still fails: class X { static { return; } } with ecmaVersion 13 gives \"'return' outside of function (1:19)\".\n- The Program node's sourceType is \"script\", not \"commonjs\".\n\nThe option allowAwaitOutsideFunction: true cannot be combined with sourceType \"commonjs\". Parsing anything with both must throw an Error, not a SyntaxError, with the message \"Cannot use allowAwaitOutsideFunction with sourceType: commonjs\". With allowAwaitOutsideFunction: false, parsing works.\n\nEvery existing script-mode test case, normal and loose, must give the same result when parsed with sourceType \"commonjs\", except cases about top-level return, top-level new.target and top-level using. The test runner checks this by running the script cases a second time with sourceType \"commonjs\". The TypeScript definitions and the README should list the new value.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "test/driver.js",
+    "test/run.js",
+    "test/tests-commonjs.js",
+    "test/tests-harmony.js",
+    "test/tests-using.js",
+    "test/tests.js"
+  ],
+  "accept": "npm run build --silent && node test/run.js",
+  "setup": "npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund --before=2025-06-14T00:00:00Z --prefix .bench-tools rollup@3.29.4 @rollup/plugin-buble@1.0.3 && ln -s .bench-tools/node_modules node_modules"
+}

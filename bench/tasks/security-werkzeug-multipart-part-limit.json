@@ -1,0 +1,14 @@
+{
+  "id": "security-werkzeug-multipart-part-limit",
+  "cohort": "security",
+  "repo": "https://github.com/pallets/werkzeug",
+  "license": "BSD-3-Clause",
+  "base": "cf275f42acad1b5950c50ffe8ef58fe62cdce028",
+  "reference": "fe899d0cdf767a7289a8bf746b7f72c2907a1b4b",
+  "task": "A multipart/form-data body with a huge number of small parts makes form parsing very slow, and max_content_length and max_form_memory_size do not stop it. This is a denial-of-service risk. Add a limit on the number of parts.\n\n- Request gets a class attribute max_form_parts, default 1000. It can be changed per request, like max_form_memory_size.\n- When Request.form or Request.files is read and the body has more parts than max_form_parts, parsing raises werkzeug.exceptions.RequestEntityTooLarge.\n- Example: a request built with Request.from_values from a multipart body with boundary foo that has one field foo with value Hello World and one more part. With max_form_parts set to 1, reading req.form[\"foo\"] raises RequestEntityTooLarge. With the default limit it returns \"Hello World\".\n- FormDataParser and MultiPartParser take a new keyword argument max_form_parts, default None, meaning no limit, and pass it down. The sans-IO MultipartDecoder takes a matching optional limit, max_parts, and raises RequestEntityTooLarge as soon as it starts a part past the limit.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/test_formparser.py"
+  ],
+  "accept": "PYTHONPATH=src:.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests --ignore=tests/test_serving.py --ignore=tests/test_debug.py --ignore=tests/middleware/test_http_proxy.py",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==7.2.0 pytest-timeout==2.1.0 pytest-xprocess==0.22.2 ephemeral-port-reserve==1.1.4 cryptography==39.0.0 watchdog==2.2.1 greenlet==2.0.2 markupsafe==2.1.2"
+}

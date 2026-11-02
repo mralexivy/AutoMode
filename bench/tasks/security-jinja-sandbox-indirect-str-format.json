@@ -1,0 +1,14 @@
+{
+  "id": "security-jinja-sandbox-indirect-str-format",
+  "cohort": "security",
+  "repo": "https://github.com/pallets/jinja",
+  "license": "BSD-3-Clause",
+  "base": "0871c71d0166152801798c1e59b3b32d3fb7469e",
+  "reference": "91a972f5808973cd441f4dc06873b2f8378f30c7",
+  "task": "The sandbox can be escaped through str.format. A template can take a reference to a string's format method and have Python code call it later, and then the format string runs unsandboxed and can read attributes such as __call__ and __builtins__.\n\nReproduction, with a SandboxedEnvironment that has one custom filter:\n\n    def run(value, arg):\n        return value.run(arg)\n\n    env = SandboxedEnvironment()\n    env.filters[\"run\"] = run\n    env.from_string('{% set ns = namespace(run=\"{0.__call__.__builtins__[__import__]}\".format) %}{{ ns | run(not_here) }}').render()\n\nThis must raise SecurityError. Today it does not, because the sandbox only checks format calls that the template itself makes.\n\nA str.format or str.format_map method that sandboxed code gets hold of must stay sandboxed however it is called later, including when a filter, a test or other Python code calls it. This covers str subclasses such as Markup too, which must keep escaping their arguments.\n\nThe existing rules still hold. A direct call from a template stays sandboxed, for both format and format_map. format_map takes exactly one positional argument and no keyword arguments. Unsafe attribute lookups in a format string still raise SecurityError, and safe ones still render.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/test_security.py"
+  ],
+  "accept": "PYTHONPATH=src:.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 trio markupsafe"
+}

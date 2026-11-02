@@ -2,7 +2,9 @@
 
 A task is one JSON file in this folder. See [`bench/README.md`](../README.md) for how the benchmark works. The runner (`node bench/run.mts`), the grader (`bench/grade.mts`) and the fixture check (`node bench/validate-fixture.mts`) read every `*.json` file here.
 
-This folder holds 76 tasks. The first 12 are the dev set, two per cohort. Every arm passed all 12, so they never count as proof. The other 64 are candidates for the task screen: 54 new tasks from 29 repositories, and 10 `-v2` tasks. A candidate has no hard or easy label until the screen gives it one. See [`bench/experiments/PREREGISTERED.md`](../experiments/PREREGISTERED.md). More tasks are the most useful contribution to AutoMode, because results under 30 tasks are a pilot.
+This folder holds 86 tasks. The first 12 are the dev set, two per cohort. Every arm passed all 12, so they never count as proof. The other 64 are candidates for the task screen: 54 new tasks from 29 repositories, and 10 `-v2` tasks. A candidate has no hard or easy label until the screen gives it one.
+
+The screen of 2026-10-31 found 1 hard task, so a retry needs new tasks. 10 more candidates were added after it, from 6 repositories. Each passed `bench/fixture-check.mts` with a kill rate above 0. No experiment names them yet. `bench/experiments/heldout.json` splits them into a screen set and a confirm set. See [`bench/experiments/PREREGISTERED.md`](../experiments/PREREGISTERED.md). More tasks are the most useful contribution to AutoMode, because results under 30 tasks are a pilot.
 
 A `-v2` task is an existing task with its location hints removed, its `accept` widened, or both. It keeps the same commits. A study runs one version of a task, never both.
 

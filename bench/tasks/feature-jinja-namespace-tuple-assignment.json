@@ -1,0 +1,14 @@
+{
+  "id": "feature-jinja-namespace-tuple-assignment",
+  "cohort": "feature",
+  "repo": "https://github.com/pallets/jinja",
+  "license": "BSD-3-Clause",
+  "base": "1d55cddbb28e433779511f28f13a2d8c4ec45826",
+  "reference": "ee832194cd9f55f75e5a51359b709d535efe957f",
+  "task": "Multiple assignment with set does not work when a target is a namespace attribute. This template fails to compile:\n\n    {% set ns = namespace(a=12, b=36) %}{% set ns.a, ns.b = ns.a + 1, ns.b + 1 %}{{ ns.a }}|{{ ns.b }}\n\nIt must render 13|37, with trim_blocks and lstrip_blocks on as well as off. A single namespace attribute assignment, {% set ns.a = ... %}, and block assignment, {% set ns.a %}...{% endset %}, must keep working.\n\nThe safety check stays: assigning to an attribute of something that is not a namespace, alone or inside a multiple assignment, must still raise TemplateRuntimeError with the message \"cannot assign attribute on non-namespace object\". A dotted name outside a set target must still parse as normal attribute access.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "tests/test_core_tags.py"
+  ],
+  "accept": "PYTHONPATH=src:.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider tests",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5 trio markupsafe"
+}

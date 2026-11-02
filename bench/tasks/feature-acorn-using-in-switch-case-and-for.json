@@ -1,0 +1,14 @@
+{
+  "id": "feature-acorn-using-in-switch-case-and-for",
+  "cohort": "feature",
+  "repo": "https://github.com/acornjs/acorn",
+  "license": "MIT",
+  "base": "e37a9c31423db95ee8de97a2e645a702240e2aa8",
+  "reference": "064bec70ca5b696f469467bfba88efd422427e50",
+  "task": "acorn accepts using and await using declarations in two places where the explicit resource management syntax forbids them. Make both syntax errors.\n\n1. A using or await using declaration placed directly in a case or default clause of a switch, not inside a nested block. With ecmaVersion 17 and sourceType module:\n   - switch (x) { case 1: using y = resource; } must fail with \"Using declaration cannot appear in the top level when source type is `script` or in the bare case statement (1:21)\".\n   - switch (x) { case 1: break; default: using y = resource; } must fail with the same message at (1:37).\n   A using declaration inside a block within a case, such as case 1: { using y = resource; }, stays valid.\n\n2. for (await using a of x) {} outside an async function, in a script with ecmaVersion 17, must fail with \"Await using cannot appear outside of async function (1:11)\". The position is the start of the using keyword. A plain block, {await using a = x}, already fails this way.\n\nThe existing error for a top-level using or await using in a script changes its text to the same message as in case 1. using x = resource; and await using x = resource; with sourceType script both fail with \"Using declaration cannot appear in the top level when source type is `script` or in the bare case statement (1:0)\".\n\nEverything else must keep working, including acorn-loose.",
+  "hidden_tests": [
+    "test/tests-using.js"
+  ],
+  "accept": "npm run build --silent && node test/run.js",
+  "setup": "npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund --before=2025-06-11T00:00:00Z --prefix .bench-tools rollup@3.29.4 @rollup/plugin-buble@1.0.3 && ln -s .bench-tools/node_modules node_modules"
+}

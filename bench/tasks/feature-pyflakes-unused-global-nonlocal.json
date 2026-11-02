@@ -1,0 +1,16 @@
+{
+  "id": "feature-pyflakes-unused-global-nonlocal",
+  "cohort": "feature",
+  "repo": "https://github.com/PyCQA/pyflakes",
+  "license": "MIT",
+  "base": "5f1f434c2f85aebd05776f8eb94e83a1bf9e881e",
+  "reference": "cadcd60a70c118c1d8b6dc8c09e53dc8f32b1666",
+  "task": "pyflakes says nothing about a global or nonlocal statement that does nothing. A global or nonlocal declaration only matters if the function then assigns the name. If the function only reads it, the statement is dead code and often hides a bug.\n\nAdd a new message class, pyflakes.messages.UnusedIndirectAssignment. Its text is '`%s %s` is unused: name is never assigned in scope', where the first value is the keyword, global or nonlocal, and the second is the name. It is reported at the Global or Nonlocal statement node.\n\nThe rule: report it for each name in a global or nonlocal statement inside a function when that same function never binds the name. Any binding counts, such as an assignment, an augmented assignment, a for target, an import, a def or class statement, or a del. A read does not count. A binding in a nested function does not count either: it creates a local there.\n\nExamples, each with the full set of messages pyflakes must report:\n\n- g = 0; def f1(): global g; g = 1 and def f2(): global g; return g. One UnusedIndirectAssignment, for f2.\n- def f(): x = 1, with a nested set_x that does nonlocal x; x = 2, and a nested get_x that does nonlocal x; return x. One UnusedIndirectAssignment, for get_x.\n- g = 0; def f(): global g, with a nested def f2(): g = 2. UnusedIndirectAssignment and UnusedVariable.\n- import fu; def f(): global fu. UnusedImport and UnusedIndirectAssignment.\n- import foo; def f(): global foo; def g(): foo.is_used(). UnusedIndirectAssignment only.\n- def f(): global foo, then def g(): foo = 'anything'; foo.is_used(). UnusedIndirectAssignment only.\n\nExisting messages must stay as they are. Where a test already expects UndefinedName or UndefinedLocal next to such a global statement, it now gets UnusedIndirectAssignment as well.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "pyflakes/test/test_imports.py",
+    "pyflakes/test/test_other.py",
+    "pyflakes/test/test_undefined_names.py"
+  ],
+  "accept": "PYTHONPATH=.bench-deps python3 -m pytest -q -o addopts= -p no:cacheprovider pyflakes/test",
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps pytest==8.3.5"
+}

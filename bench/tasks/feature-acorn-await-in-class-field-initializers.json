@@ -1,0 +1,14 @@
+{
+  "id": "feature-acorn-await-in-class-field-initializers",
+  "cohort": "feature",
+  "repo": "https://github.com/acornjs/acorn",
+  "license": "MIT",
+  "base": "b6a98df77774826cfde315238aa19a30403c428d",
+  "reference": "9e365f71f339360df3d3b74b3df698a4483439b2",
+  "task": "acorn handles await wrongly inside class field initializers that sit inside an async function. A class field initializer is its own function-like boundary: the async context of the enclosing function does not reach into it, but an async arrow inside the initializer has its own async context.\n\nWith ecmaVersion 2024, in a script unless noted:\n\n- async () => class { x = await 1 } must fail with \"Unexpected token (1:30)\". In the initializer, await is a plain identifier, so the parser stops at the 1. Today it reports \"Cannot use 'await' as identifier inside an async function (1:24)\".\n- async () => class { x = async () => await 1 } must parse. The await belongs to the inner async arrow.\n- async () => class { x = await } must parse, with await as an identifier.\n- With sourceType module, async () => class { x = await } must fail with \"Cannot use keyword 'await' outside an async function (1:24)\".\n\nThe rules for yield in generator class fields, for arguments in class field initializers, and for new.target in class field initializers must follow the same scoping and keep their current results.\n\nEverything else must keep working, including acorn-loose.",
+  "hidden_tests": [
+    "test/tests-asyncawait.js"
+  ],
+  "accept": "npm run build --silent && node test/run.js",
+  "setup": "npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund --before=2024-12-30T00:00:00Z --prefix .bench-tools rollup@3.29.4 @rollup/plugin-buble@1.0.3 && ln -s .bench-tools/node_modules node_modules"
+}
