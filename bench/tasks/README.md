@@ -56,4 +56,12 @@ node bench/validate-fixture.mts your-task-id
 
 The check validates the task file, clones the repository into `bench/.cache/` (ignored by git), and runs `accept` at `base` and at `reference` in the same kind of workspace a real run gets: the tree at that commit, with no project history. It makes no model call and costs nothing. A valid task prints `"valid":true`.
 
+```bash
+node bench/fixture-check.mts your-task-id
+```
+
+This runs the same check, then a hunk mutation check. It applies the reference with one code hunk left out and runs `accept`. A killed hunk makes `accept` fail. A task where no hunk is killed is `weak`: its tests may not pin the change. It tests at most 12 hunks, at most 300 seconds each, and prints a kill rate and the share of changed code files with a killed hunk. Add only tasks with a kill rate above 0.
+
+`node bench/split.mts` assigns new candidates to a `screen` set or a `confirm` set by a fixed hash rule, and writes `bench/experiments/heldout.json`. Run it once, before any screen run.
+
 Then open a pull request. Do not add anything from a private repository, and do not add real chat history to a task.
