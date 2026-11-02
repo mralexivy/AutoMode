@@ -2052,7 +2052,10 @@ async function runLadder($: EngineInterface, at: number) {
   if (esc.level === 'none') return
   const count = esc.count ?? (esc.fingerprint ? env.failures.filter((f) => f.fingerprint === esc.fingerprint).length : 0)
   // One episode per failure: what the ladder spent on it, so an unrelated failure gets its own rungs (lib/rescue.ts).
-  const opened = openEpisode(l.episodes ?? {}, episodeBase(esc, l), at)
+  // A failed stop joins the open episode of the check that is failing, so it climbs from that check's rung, not anew.
+  const lastFail = env.failures[env.failures.length - 1]
+  const joined = esc.cause === 'stop' && lastFail ? Object.values(l.episodes ?? {}).find((x) => x.closedAt === undefined && (x.base === `check:${lastFail.fingerprint}` || x.base === `check:cmd:${fnv1a(lastFail.command)}`))?.base : undefined
+  const opened = openEpisode(l.episodes ?? {}, joined ?? episodeBase(esc, l), at)
   const episode = opened.id
   const ep = opened.episodes[episode]
   const allowed = allowedFamilies(at)

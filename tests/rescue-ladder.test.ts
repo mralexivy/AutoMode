@@ -338,3 +338,20 @@ describe('Failed stops climb the ladder', () => {
     expect(of(h.writes, 'escalation')).toEqual([])
   })
 })
+
+describe('A failed stop joins the failing check', () => {
+  test('the stop climbs the failing check\'s own episode: no rung twice', async ($, on) => {
+    const h = harness(on, { ...sonnetAt('high', { completionGate: 'block', strongStep: 'effort-first', consult: 'priced', forkRung: 'on' }) })
+    h.setPrefix(400_000)
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await fail($) // weak: effort
+    await fail($) // strong: the episode's one effort raise
+    expect((await $.classic.Stop({ stop_hook_active: false })).block).toContain('subagent_type "fork"')
+    expect((await $.classic.Stop({ stop_hook_active: true })).block).toContain('automode:architect')
+    const esc = of(h.writes, 'escalation')
+    expect(esc.map((x) => x.action)).toEqual(['raise', 'raise', 'fork-diagnose', 'consult-opus'])
+    expect(new Set(esc.map((x) => x.episode)).size).toBe(1)
+  })
+})
