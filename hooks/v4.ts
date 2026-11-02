@@ -92,6 +92,8 @@ const V4_DEFAULTS = {
   consult: 'always' as 'always' | 'priced',
   // Policy auto: what an Opus consult gets (lib/handoff.ts). `fork-gated` adds a same-model fork only for a gap the conversation holds.
   packet: 'basic' as 'basic' | 'rich' | 'fork-gated',
+  // Policy auto: `on` puts a same-model fork agent before the Opus consult: full context, warm cache, read only.
+  forkRung: 'off' as 'off' | 'on',
   effortJudgeTimeoutMs: JUDGE_CALL.timeoutMs,
 }
 type V4Config = typeof V4_DEFAULTS
@@ -184,6 +186,7 @@ const S = {
   consultMs: [] as number[], // how long each architect consult ran in this session, for the consult price
   consultLog: [] as ConsultLog[], // this task's ladder consults and what came of them (lib/rescue.ts)
   taskPrompts: [] as string[], // the person's messages in this task after the first, for the consult packet
+  forkRuns: new Map<string, { at: number; episode: string | null; first?: { cacheRead: number; prompt: number } }>(), // fork agents the ladder asked for
   resolvedCounts: {} as Record<string, number>, // policy auto: failures of that fingerprint when its command passed again
   switchesThisTask: 0,        // discretionary model switches in this task (anti-oscillation)
   dropped: {} as Partial<Record<Family, number>>, // thinking tokens dropped since each family last ran (lib/continuity.ts)
@@ -1799,6 +1802,7 @@ export async function v4TurnComplete($: EngineInterface, e: any, next: any) {
       if (settleConsults(await now($), { verified: true })) await flush($)
     }
     if (w?.type === 'automode:architect' && !w.workflow) await noteConsultRun($, e, w)
+    if (S.forkRuns.has(e.agentId)) await noteForkRun($, e)
     const kind = w && w.validate !== false ? WORKERS[w.type] : undefined
     if (S.cfg.debugLog) { S.records.push({ v: 1, kind: 'debug-sub-complete', agentId: e.agentId, known: !!w, type: w?.type, answerLen: String(e.answer ?? '').length, mode: S.mode, env: !!S.envelope }); await flush($) }
     if (!kind || S.mode !== 'auto' || !S.envelope) return out
@@ -1911,6 +1915,9 @@ export async function v4AgentSpawn($: EngineInterface, e: any, next: any) {
   if (hp && res?.agentId) S.records.push({ v: 1, kind: 'spawn', at: await now($), sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', type: e.subagentType, to: model ?? null, effort: hp.effort, why: hp.why, agentId: res.agentId })
   // Every agent the session starts is recorded with its type, so required-review completion can be measured.
   if (res?.agentId) S.records.push({ v: 1, kind: 'agent', at: await now($), sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', type: e.subagentType, agentId: res.agentId })
+  // A fork the ladder asked for: its cost, its cache reuse and what came of it are measured (noteForkRun).
+  const forkAsk = e.subagentType === 'fork' && res?.agentId ? [...S.consultLog].reverse().find((c) => c.via === 'fork' && !c.agentId && !c.outcome) : undefined
+  if (forkAsk) { S.forkRuns.set(res.agentId, { at: await now($), episode: forkAsk.episode }); S.consultLog = S.consultLog.map((c) => (c === forkAsk ? { ...c, agentId: res.agentId } : c)) }
   if (S.cfg.debugLog) S.records.push({ v: 1, kind: 'debug-spawn', type: e.subagentType, model: e.model, resKeys: res ? Object.keys(res) : null, agentId: res?.agentId })
   if (res && 'agentId' in res && res.agentId && READ_ONLY_AGENTS.includes(e.subagentType)) {
     // Workflow agents use the workflow's own report schema: guard them, but validate only workers the
@@ -1947,7 +1954,7 @@ async function noteToolResult($: EngineInterface, e: any, out: any) {
 }
 
 // A ladder consult: the episode it answers, the architect run that answered it, and its outcome once known.
-interface ConsultLog { episode: string; fingerprint?: string; at: number; edits: number; agentId?: string; plan?: string[]; checkPassed?: boolean; outcome?: string }
+interface ConsultLog { episode: string; via?: 'architect' | 'fork'; fingerprint?: string; at: number; edits: number; agentId?: string; plan?: string[]; checkPassed?: boolean; outcome?: string }
 
 // settleConsults gives each open consult its outcome once the evidence decides it (lib/rescue.ts consultOutcome), and
 // records how far the edits after it followed its plan. A pass alone is not a fix: it waits for an independent check.
@@ -1960,7 +1967,7 @@ function settleConsults(at: number, ev: { episode?: string; switched?: boolean; 
     if (!outcome) return c
     changed = true
     const edits = S.editLog.slice(c.edits).map((x) => x.path)
-    S.records.push({ v: 1, kind: 'consult-outcome', at, sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', episode: c.episode, agentId: c.agentId ?? null, consultAt: c.at, outcome, influence: c.agentId ? influence(c.plan ?? [], edits) : 'unknown', editsAfter: edits.length })
+    S.records.push({ v: 1, kind: 'consult-outcome', at, sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', episode: c.episode, via: c.via ?? 'architect', agentId: c.agentId ?? null, consultAt: c.at, outcome, influence: c.agentId ? influence(c.plan ?? [], edits) : 'unknown', editsAfter: edits.length })
     return { ...c, outcome }
   })
   return changed
@@ -2010,9 +2017,21 @@ async function noteConsultRun($: EngineInterface, e: any, w: { at?: number }) {
   const durationMs = w.at !== undefined ? Math.max(0, at - w.at) : null
   if (durationMs !== null) S.consultMs = [...S.consultMs, durationMs].slice(-50)
   const plan = planFiles(String(e.answer ?? ''))
-  const open = [...S.consultLog].reverse().find((c) => !c.agentId && !c.outcome)
+  const open = [...S.consultLog].reverse().find((c) => !c.agentId && !c.outcome && c.via !== 'fork')
   if (open) S.consultLog = S.consultLog.map((c) => (c === open ? { ...c, agentId: e.agentId, plan } : c))
   S.records.push({ v: 1, kind: 'consult-run', at, sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', agentId: e.agentId, episode: open?.episode ?? null, durationMs, usd: U.agents.get(e.agentId)?.usd ?? null, answerChars: String(e.answer ?? '').length, planFiles: plan.length, aborted: !!(e.isAborted || e.reason === 'aborted') })
+  await flush($)
+}
+
+// noteForkRun records a ladder fork: duration, cost, and how much of its first request the cache served. That share
+// is the claim the fork rung rests on, so it is measured, never assumed.
+async function noteForkRun($: EngineInterface, e: any) {
+  const f = S.forkRuns.get(e.agentId)!
+  const at = await now($)
+  const plan = planFiles(String(e.answer ?? ''))
+  S.consultLog = S.consultLog.map((c) => (c.agentId === e.agentId ? { ...c, plan } : c))
+  S.records.push({ v: 1, kind: 'fork-run', at, sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', agentId: e.agentId, episode: f.episode, durationMs: Math.max(0, at - f.at), usd: U.agents.get(e.agentId)?.usd ?? null, firstCacheRead: f.first?.cacheRead ?? null, firstPrompt: f.first?.prompt ?? null, planFiles: plan.length, aborted: !!(e.isAborted || e.reason === 'aborted') })
+  S.forkRuns.delete(e.agentId)
   await flush($)
 }
 
@@ -2041,17 +2060,29 @@ async function runLadder($: EngineInterface, at: number) {
   const spent = { ...l, fired: [...l.fired, esc.key], raised: esc.fingerprint ? { ...l.raised, [esc.fingerprint]: count } : l.raised, episodes }
   const cache = cacheNote(cacheState(), at)
   const why = first.why ? { effortFirst: first.why } : {}
-  if (!step) { S.envelope = { ...env, ladder: spent }; if (ep.consulted) settleConsults(at, { episode, recurred: true }); S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because, cache, episode, ...why }); return }
+  if (!step) { S.envelope = { ...env, ladder: spent }; if (ep.consulted || ep.forked) settleConsults(at, { episode, recurred: true }); S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because, cache, episode, ...why }); return }
   const packet = () => evidencePacket(env.spec.text.slice(0, 1500), env.acceptance.map((a) => a.text), env.failures, env.editedPaths, esc.because)
   // Under effort-first the episode, not the cause, remembers the consult: a new failure of the same kind gets its own.
   const consultedBefore = S.cfg.strongStep === 'effort-first' ? ep.consulted : S.consulted.includes(esc.cause)
   const toOpus = step.kind === 'model' && step.family === 'opus' && !consultedBefore
+  // forkRung: before the Opus consult, a same-model fork agent diagnoses with the whole conversation on its warm cache.
+  if (toOpus && S.cfg.forkRung === 'on' && !ep.forked) {
+    S.consultLog = [...S.consultLog, { episode, via: 'fork', ...(esc.fingerprint ? { fingerprint: esc.fingerprint } : {}), at, edits: S.editLog.length }]
+    S.envelope = { ...env, ladder: { ...spent, episodes: patchEpisode(episodes, episode, { forked: true }) }, escalations: env.escalations + 1 }
+    S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'fork-diagnose', via: 'fork', because: esc.because, cache, episode, ...why })
+    await flush($)
+    $.ui.toast(`AutoMode: ${esc.because}. A fork of this session diagnoses it before an Opus consult.`)
+    S.ladderNote = `[AutoMode: ${esc.because}. Before changing more code, call the Agent tool with subagent_type "fork" and wait for it. Its job: find the root cause of this failure and return the cause, the fix plan and the files to change. It must not edit files. It shares this conversation and its warm cache, so it costs little. Apply its plan, then run the check again. If the failure comes back, an Opus consult follows.]`
+    return
+  }
   // consult: priced weighs the consult, its retries and the cache it may lose against moving the session. Quality rules
   // run first: a floor that already needs Opus moves the session.
   const price = toOpus && S.cfg.consult === 'priced'
     ? priceConsult({ cache, remainingRequests: S.priors.remainingRequests, outPerRequest: S.priors.outputPerStep.opus, packetTokens: Math.ceil(packet().length / 3.5), planTokens: 2_000, main: S.current.family, prices: prices(), durations: durationsFrom(S.consultMs) }, { recurredBefore: ep.consulted, floorRequiresSwitch: (l.floor?.band ?? -1) >= step.band })
     : null
   const estimate = price ? { estimate: { consultUsd: price.consultUsd, switchUsd: price.switchUsd, parts: price.parts, pExpire: price.pExpire, pRecur: price.pRecur, basis: { ...price.basis, priors: S.priors.basis }, why: price.why } } : {}
+  // A fork that ran on this episode did not fix it: the failure is back.
+  if (toOpus && ep.forked) settleConsults(at, { episode, recurred: true })
   if (toOpus && (!price || price.choice === 'consult')) {
     S.consulted = [...S.consulted, esc.cause].slice(-20)
     S.consultLog = [...S.consultLog, { episode, ...(esc.fingerprint ? { fingerprint: esc.fingerprint } : {}), at, edits: S.editLog.length }]
@@ -2077,7 +2108,7 @@ async function runLadder($: EngineInterface, at: number) {
   const reviewed = esc.check ? withReview(raised, 'fail', false) : raised
   S.envelope = strongRaise && rescueReview() ? requireReview(reviewed, 'effort rose on strong evidence') : reviewed
   // A consulted episode that escalates again: the consult did not fix it.
-  if (ep.consulted) settleConsults(at, { episode, ...(moving ? { switched: true } : { recurred: true }) })
+  if (ep.consulted || ep.forked) settleConsults(at, { episode, ...(moving ? { switched: true } : { recurred: true }) })
   S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: tier, band: step.band, route: `${step.family}/${step.effort}`, applied: `${applied.family}/${applied.effort}`, action: moved ? (step.kind === 'model' ? 'switch' : 'raise') : 'held-by-pin', via: 'switch', because: esc.because, cache, episode, ...why, ...estimate })
   await flush($)
   if (!moved) {
@@ -2580,6 +2611,8 @@ function noteJudge(usd: number) {
   S.ledger = { ...S.ledger, judgeUsd: round6(S.ledger.judgeUsd + usd), judgeCalls: S.ledger.judgeCalls + 1 }
 }
 function noteLedger(model: string, u: TokenUsage, usd: number, agentId?: string) {
+  const fr = agentId !== undefined ? S.forkRuns.get(agentId) : undefined
+  if (fr && !fr.first) fr.first = { cacheRead: u.cacheRead, prompt: u.input + u.cacheRead + u.cacheWrite5m + u.cacheWrite1h }
   const L = S.ledger
   const row = L.byModel[model] ?? { usd: 0, requests: 0 }
   S.ledger = {
@@ -2652,7 +2685,7 @@ function freshSession() {
     obligations: [], obligationsTask: null, obligationEdited: false, completionBlocks: 0, completionState: 'none' as CompletionState,
     toldJudgeDown: false, taskSeq: 0, lastOutcome: null, sessionId: 'unknown', restored: false, expectWorker: 0,
     warm: {}, turnRequests: new Map(), stayUp: 0, redoFloor: null, heldRoute: null, planMode: false, planExited: false, editLog: [],
-    learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], taskPrompts: [], resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
+    learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], taskPrompts: [], forkRuns: new Map(), resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
     judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, judgeRiskTask: undefined,

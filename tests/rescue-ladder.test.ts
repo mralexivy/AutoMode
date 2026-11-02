@@ -268,3 +268,36 @@ describe('Consult packet', () => {
     expect(of(h.writes, 'handoff')).toEqual([])
   })
 })
+
+describe('Fork diagnosis rung', () => {
+  const fork = async ($: any) => $.agent.spawn({ subagentType: 'fork', prompt: 'diagnose', description: 'diagnose', parentModel: 'claude-sonnet-5-5', fork: true, background: false, tool_use_id: 'f1' } as never)
+
+  test('on: effort, then a fork, then the Opus consult, then the model; the fork run is measured', async ($, on) => {
+    const h = harness(on, sonnetAt('high', { forkRung: 'on' }))
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await fail($) // weak: effort
+    const forkNote = JSON.stringify(await fail($))
+    expect(forkNote).toContain('subagent_type \\"fork\\"')
+    expect(forkNote).not.toContain('automode:architect')
+    const res: any = await fork($)
+    await h.step($, 'claude-sonnet-5-5', res.agentId)
+    await h.complete($, 'claude-sonnet-5-5', res.agentId, 'Cause: the alias drops in parser.go. Plan: fix parser.go.')
+    const run = of(h.writes, 'fork-run')[0]
+    expect(run).toMatchObject({ agentId: res.agentId, planFiles: 1, firstCacheRead: 29500 })
+    expect(JSON.stringify(await fail($))).toContain('automode:architect')
+    expect(of(h.writes, 'consult-outcome')[0]).toMatchObject({ via: 'fork', outcome: 'recurred', influence: 'followed' })
+    expect(JSON.stringify(await fail($))).toContain('escalated to T3 (opus high)')
+    expect(of(h.writes, 'escalation').map((x) => x.action)).toEqual(['raise', 'fork-diagnose', 'consult-opus', 'switch'])
+  })
+
+  test('off (the shipped value): no fork rung', async ($, on) => {
+    const h = harness(on, sonnetAt('high'))
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await fail($)
+    expect(JSON.stringify(await fail($))).toContain('automode:architect')
+  })
+})

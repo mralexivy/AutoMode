@@ -29,6 +29,7 @@
   "reachHaiku": true,
   "delegation": "off",
   "executor": "judge",
+  "forkRung": "off",
   "packet": "basic",
   "consult": "always",
   "strongStep": "model",

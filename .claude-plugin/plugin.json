@@ -132,6 +132,17 @@
         "fork-gated"
       ]
     },
+    "forkRung": {
+      "type": "string",
+      "title": "AutoMode: Fork diagnosis rung",
+      "description": "default: follow config.json. on: before the Opus consult, the main model starts a fork agent. The fork shares the conversation and its warm cache, and it diagnoses the failure without editing. A repeat after it goes on to the consult.",
+      "default": "default",
+      "options": [
+        "default",
+        "off",
+        "on"
+      ]
+    },
     "routeModels": {
       "type": "string",
       "title": "AutoMode: Route models",

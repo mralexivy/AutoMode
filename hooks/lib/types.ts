@@ -108,6 +108,7 @@ export interface Episode {
   base: string
   raised: number           // strong-evidence effort raises spent in this episode
   consulted: boolean
+  forked?: boolean          // a fork agent diagnosed this episode before the consult
   switched: boolean
   openedAt: number
   closedAt?: number
