@@ -10,5 +10,5 @@
     "tests/test_apis.py"
   ],
   "accept": "PYTHONPATH=.bench-deps python3 -m unittest tests.test_apis.testETreeComments tests.test_apis.testElementTailTests tests.test_apis.TestBlockParser tests.test_apis.TestHtmlStash tests.test_apis.testSerializers tests.test_apis.testAtomicString tests.test_apis.TestEscapeAppend tests.test_apis.TestAncestorExclusion tests.test_legacy tests.test_extensions && PYTHONPATH=.bench-deps python3 -m unittest discover -s tests/test_syntax -t . && test -z \"$(grep -rn 'isBlockLevel' markdown --include='*.py' | grep -v 'def isBlockLevel')\"",
-  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps PyYAML==6.0.2 && python3 -m pip install -q --disable-pip-version-check --no-input --no-deps --no-build-isolation --target .bench-deps . && rm -rf .bench-deps/markdown build Markdown.egg-info"
+  "setup": "python3 -m pip install -q --disable-pip-version-check --no-input --only-binary :all: --upgrade --target .bench-deps PyYAML==6.0.2 Pygments==2.11.2 && python3 -m pip install -q --disable-pip-version-check --no-input --no-deps --no-build-isolation --target .bench-deps . && rm -rf .bench-deps/markdown build Markdown.egg-info"
 }
