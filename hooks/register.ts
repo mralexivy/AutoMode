@@ -1,4 +1,4 @@
-// Generated from hooks/ at commit b2222eb92ea754e4725a148cc1986c9f3fa83e19 by tools/release.mts. The readable source is hooks/ on the main branch.
+// Generated from hooks/ at commit a7826fa1fdf27d93c14ce2db622cc471282c769f by tools/release.mts. The readable source is hooks/ on the main branch.
 // hooks/lib/io.ts
 function sid($) {
   return $.session.id();
@@ -33,6 +33,11 @@ var ANTHROPIC = {
     haiku: { input: 0.1, output: 0.5, cacheReadX: 0.1, longContext: { above: 1e5, multiplier: 5 } }
   }
 };
+function rateAt(rate, promptTokens) {
+  if (!rate.longContext || promptTokens <= rate.longContext.above) return rate;
+  const m = rate.longContext.multiplier;
+  return { ...rate, input: rate.input * m, output: rate.output * m };
+}
 var cacheWriteX = (ttlMs2) => ttlMs2 >= 36e5 ? 2 : 1.25;
 
 // hooks/lib/guardian.ts
@@ -302,13 +307,13 @@ function reduceMcp(result, aboveChars, savedAt) {
   const bare = Array.isArray(result);
   const r = bare ? { content: result } : result;
   if (!r || !Array.isArray(r.content) || r.isError || r.structuredContent !== void 0) return null;
-  const texts = r.content.filter((b) => b?.type === "text" && typeof b.text === "string");
-  const total = texts.reduce((a, b) => a + b.text.length, 0);
+  const texts = r.content.filter((b2) => b2?.type === "text" && typeof b2.text === "string");
+  const total = texts.reduce((a, b2) => a + b2.text.length, 0);
   if (total <= aboveChars) return null;
-  const joined = texts.map((b) => b.text).join("\n");
+  const joined = texts.map((b2) => b2.text).join("\n");
   const red = reduceOutput(joined, aboveChars, savedAt);
   if (!red.reduced) return null;
-  const content = [{ type: "text", text: red.text }, ...r.content.filter((b) => b?.type !== "text")];
+  const content = [{ type: "text", text: red.text }, ...r.content.filter((b2) => b2?.type !== "text")];
   return { result: bare ? content : { ...r, content }, from: total, to: red.text.length, full: joined };
 }
 function handoffText(cp) {
@@ -395,8 +400,8 @@ function guardianOverrides(options2, stored2 = {}) {
   const mode = valueOf("guardianMode", options2, stored2);
   if (mode !== "default") out.mode = mode;
   for (const [field, key] of [["guardianEverySession", "everySession"], ["hardPause", "hardPause"], ["autoCompact", "autoCompact"], ["reduceOutputs", "reduceOutputs"]]) {
-    const b = bool(valueOf(field, options2, stored2));
-    if (b !== void 0) out[key] = b;
+    const b2 = bool(valueOf(field, options2, stored2));
+    if (b2 !== void 0) out[key] = b2;
   }
   return out;
 }
@@ -535,10 +540,10 @@ function alertOf(r, g, u, cache, now3) {
   if (r.active && r.mode === "auto" && r.judgeDown.length && r.judgeDown.length >= 2) {
     return { kind: "judge", key: `judge:${r.judgeDown.join(",")}`, tone: "error", title: "Judges not answering", line: "Routing holds the last route and the effort fallback. No verdict is shown until a judge answers.", actions: ["details"] };
   }
-  const open = r.breakers.filter((b) => b.until > now3);
+  const open = r.breakers.filter((b2) => b2.until > now3);
   if (r.active && r.mode === "auto" && open.length) {
-    const b = open[0];
-    return { kind: "judge", key: `breaker:${b.model}:${b.until}`, tone: "error", title: `${modelName(b.model)} not answering`, line: `Routing without it for ${Math.max(1, Math.ceil((b.until - now3) / 6e4))} min${b.cls ? ` (${b.cls})` : ""}.`, actions: ["details"] };
+    const b2 = open[0];
+    return { kind: "judge", key: `breaker:${b2.model}:${b2.until}`, tone: "error", title: `${modelName(b2.model)} not answering`, line: `Routing without it for ${Math.max(1, Math.ceil((b2.until - now3) / 6e4))} min${b2.cls ? ` (${b2.cls})` : ""}.`, actions: ["details"] };
   }
   if (g.enabled && g.offer) {
     const k = Math.round(g.offer.contextTokens / 1e3);
@@ -551,7 +556,7 @@ function alertOf(r, g, u, cache, now3) {
   if (cache.state === "cold" && (u.contextTokens ?? 0) >= COLD_MIN_TOKENS) {
     return { kind: "cold", key: `cold:${cache.until}`, tone: "cyan", title: "Cache went cold", line: `The next message rereads ${tokensText(u.contextTokens)} tokens at full price. Compact or hand off first if the task is done.`, actions: ["compact", "handoff"] };
   }
-  const limit = u.limits.filter((l) => l.percent >= LIMIT_ALERT).sort((a, b) => b.percent - a.percent)[0];
+  const limit = u.limits.filter((l) => l.percent >= LIMIT_ALERT).sort((a, b2) => b2.percent - a.percent)[0];
   if (limit) return { kind: "limit", key: `limit:${limit.name}:${Math.floor(limit.percent)}`, tone: "warn", title: "Usage limit close", line: `${Math.floor(limit.percent)}% of the ${limit.name.replace("_", "-")} limit is used.`, actions: ["details"] };
   return null;
 }
@@ -1348,10 +1353,10 @@ async function offer($, action, costs, objective) {
 }
 async function git($) {
   try {
-    const b = await $.process.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], { timeoutMs: 5e3 });
-    if (b.exitCode !== 0) return { branch: null, dirty: [] };
+    const b2 = await $.process.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], { timeoutMs: 5e3 });
+    if (b2.exitCode !== 0) return { branch: null, dirty: [] };
     const s = await $.process.run(["git", "status", "--porcelain"], { timeoutMs: 5e3 });
-    return { branch: b.stdout.trim(), dirty: s.stdout.split("\n").map((l) => l.slice(3).trim()).filter(Boolean).slice(0, 40) };
+    return { branch: b2.stdout.trim(), dirty: s.stdout.split("\n").map((l) => l.slice(3).trim()).filter(Boolean).slice(0, 40) };
   } catch {
     return { branch: null, dirty: [] };
   }
@@ -1432,28 +1437,27 @@ import { isTask, JUDGE_SYSTEM, JUDGE_SYSTEM_V3, JUDGE_SYSTEM_V4, judgePrompt, pa
 import { transitionOf } from "./lib/transition.ts";
 import { classifyError, UNCLASSIFIED } from "./lib/errors.ts";
 import { stageOf } from "./lib/stage.ts";
-import { BAND_OF, bandOf, demandBand, ladderStep, nextEffort, TIER_BAND } from "./lib/bands.ts";
+import { BAND_OF as BAND_OF2, bandOf, demandBand as demandBand2, ladderStep, nextEffort, TIER_BAND as TIER_BAND2 } from "./lib/bands.ts";
 import { DEFAULT_LARGE, interfaceChanges, observedRisk, prospectiveRisk, reviewerFamily } from "./lib/risk.ts";
 import { textConsequence } from "./lib/consequence.ts";
-import { DEFAULT_PARAMS, remainingFor } from "./lib/policy.ts";
-import { continuity, noteDrop, observedDrop } from "./lib/continuity.ts";
+import { DEFAULT_PARAMS as DEFAULT_PARAMS2 } from "./lib/policy.ts";
+import { continuity as continuity2, noteDrop, observedDrop } from "./lib/continuity.ts";
 import { accrueRent } from "./lib/rent.ts";
-import { DEFAULT_LADDER, resolve, routeFor } from "./lib/authority.ts";
-import { choose, consultOrSwitch, workFromFiles, workflowValue } from "./lib/strategy.ts";
+import { DEFAULT_LADDER as DEFAULT_LADDER2, resolve as resolve2, routeFor as routeFor2 } from "./lib/authority.ts";
+import { choose, consultOrSwitch as consultOrSwitch2, workFromFiles, workflowValue } from "./lib/strategy.ts";
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, summaryOf, withReview } from "./lib/envelope.ts";
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen } from "./lib/completion.ts";
-import { executorEffort } from "./lib/executor.ts";
-import { checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, reviewerBlocked, scopeGrew, withPipefail } from "./lib/failures.ts";
+import { checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a as fnv1a2, isCheck, isRevert, markFlaky, reviewerBlocked, scopeGrew, withPipefail } from "./lib/failures.ts";
 import { classifyOperation } from "./lib/operations.ts";
 import { applyPins, commandChoice, readAppChoice, turnAxes } from "./lib/pins.ts";
 import { guardTool, READ_ONLY_AGENTS, subagentBlocked } from "./lib/guard.ts";
 import { BUDGET_STOP, clampGrep, clampRead, diagnosePrompt, DISCOVERY_REPORT, HAIKU_BUDGET, priorCoverage, validateReport } from "./lib/workers.ts";
 import { decisionRecord, needRecord, nextSignal, outcomeRecord, requestRecord, shouldRotate } from "./lib/records.ts";
-import { adequacy, attemptCost, CAPABILITY, DEFAULT_PRIORS, demandOf, FLOOR_CAPABILITY, mid, optimize, TASK_STEPS, tierOf } from "./lib/optimizer.ts";
+import { adequacy, attemptCost, CAPABILITY as CAPABILITY2, DEFAULT_PRIORS as DEFAULT_PRIORS2, demandOf, FLOOR_CAPABILITY as FLOOR_CAPABILITY2, mid as mid2, optimize, TASK_STEPS as TASK_STEPS2, tierOf as tierOf2 } from "./lib/optimizer.ts";
 import { trigger } from "./lib/triggers.ts";
 import { workflowArgs } from "./lib/stages.ts";
 import { subagentEffort, subagentRoute } from "./lib/subagents.ts";
-import { effortFor, helperEffort, takesEffort, looksLikeRedo, maxEffort as maxEffort2, midTurnNote, REDO_STAY_PROMPTS, thinkingOf } from "./lib/effort.ts";
+import { effortFor, helperEffort, takesEffort, looksLikeRedo as looksLikeRedo2, midTurnNote, REDO_STAY_PROMPTS as REDO_STAY_PROMPTS2, thinkingOf } from "./lib/effort.ts";
 import { effortSharesCache, modeOf as modeOf2, providerOf, thinkingRisk, ttlMs } from "./lib/mode.ts";
 import { bounded as bounded2, helperFloor, helperQuestion, JUDGE_CALL, JUDGE_SYSTEM as EFFORTLESS_SYSTEM, keepsEffort, parseVerdict } from "./lib/effortless.ts";
 
@@ -1520,17 +1524,357 @@ var EFFORTS2 = ["low", "medium", "high", "xhigh", "max"];
 var TIERS = ["T0", "T1", "T2", "T3", "T4"];
 var tierRank = (t) => TIERS.indexOf(t);
 
+// hooks/lib/bands.ts
+var BAND_OF = {
+  haiku: { low: -1, medium: 0, high: 0, xhigh: 0, max: 0 },
+  // Sonnet xhigh is a rung of its own, below Opus high: the ladder tries it before it moves the model. Sonnet max adds none.
+  sonnet: { low: 0, medium: 1, high: 2, xhigh: 2.5, max: 2.5 },
+  opus: { low: 1, medium: 2, high: 3, xhigh: 4, max: 5 }
+};
+var TIER_BAND = { T0: 0, T1: 1, T2: 2, T3: 3, T4: 5 };
+
+// hooks/lib/optimizer.ts
+var b = (lo, hi) => ({ lo, hi });
+var CAPABILITY = {
+  haiku: { low: b(1, 1.4), medium: b(1.6, 2), high: b(1.9, 2.4), xhigh: b(2.1, 2.6), max: b(2.2, 2.7) },
+  sonnet: { low: b(2, 2.4), medium: b(2.7, 3.1), high: b(3.1, 3.5), xhigh: b(3.3, 3.8), max: b(3.4, 4) },
+  opus: { low: b(2.7, 3.1), medium: b(3.2, 3.6), high: b(3.8, 4.2), xhigh: b(4, 4.5), max: b(4.2, 4.7) }
+};
+var mid = (x) => (x.lo + x.hi) / 2;
+var RETRY = { sufficient: b(0.05, 0.15), likely: b(0.15, 0.35), uncertain: b(0.35, 0.65), insufficient: b(0.65, 0.95) };
+var REMAINING = [
+  { k: 0, n: 1369, p25: 2, median: 6, p75: 19 },
+  { k: 1, n: 1060, p25: 3, median: 8, p75: 26 },
+  { k: 2, n: 935, p25: 4, median: 9, p75: 30 },
+  { k: 4, n: 784, p25: 4, median: 11, p75: 39 },
+  { k: 8, n: 553, p25: 6, median: 18, p75: 54 },
+  { k: 16, n: 377, p25: 9, median: 29, p75: 79 },
+  { k: 32, n: 231, p25: 18, median: 45, p75: 88 }
+];
+function remainingWork(k, table = REMAINING) {
+  let row = table[0];
+  for (const r of table) if (r.k <= k) row = r;
+  return row;
+}
+var TASK_STEPS = { trivial: REMAINING[0].p25, standard: REMAINING[0].median, complex: REMAINING[0].p75 };
+var DEFAULT_PRIORS = {
+  outputPerStep: { haiku: 344, sonnet: 616, opus: 688 },
+  effortOutput: { low: 0.6, medium: 1, high: 1.36, xhigh: 1.5, max: 1.8 },
+  effortSteps: { low: 0.85, medium: 1, high: 1.1, xhigh: 1.2, max: 1.25 },
+  newInputPerStep: 983,
+  remainingRequests: REMAINING[0].median,
+  basis: "estimate",
+  source: "bench/calibrate.mts on the author transcripts, 2026-10-21; effort ratios uncontrolled"
+};
+function tierOf(family, effort) {
+  if (family === "haiku") return "T0";
+  if (family === "sonnet") return effort === "low" || effort === "medium" ? "T1" : "T2";
+  return effort === "max" ? "T4" : "T3";
+}
+var FLOOR_CAPABILITY = { T0: 0, T1: mid(CAPABILITY.sonnet.medium), T2: mid(CAPABILITY.sonnet.high), T3: mid(CAPABILITY.opus.high), T4: mid(CAPABILITY.opus.max) };
+
+// hooks/lib/continuity.ts
+var MODEL = /(opus|sonnet|haiku)-5-5/i;
+var STRENGTH = { haiku: 0, sonnet: 1, opus: 2 };
+var READS_WEAKER = ["anthropic", "vertex"];
+function continuity(from, to, provider) {
+  if (from === to) return "kept";
+  const f = MODEL.exec(from)?.[1].toLowerCase();
+  const t = MODEL.exec(to)?.[1].toLowerCase();
+  if (!f || !t) return "lost";
+  if (f === t) return "kept";
+  return STRENGTH[t] > STRENGTH[f] && READS_WEAKER.includes(provider) ? "kept" : "lost";
+}
+function addedSince(prefix, held, dropped = 0) {
+  return Math.max(0, prefix + dropped - held);
+}
+
+// hooks/lib/policy.ts
+var DEFAULT_PARAMS = {
+  upgradeVotes: 2,
+  downgradeConfidence: 0.85,
+  minDwellRequests: 8,
+  paybackFactor: 1.5,
+  remainingRequests: 6,
+  maxSwitches: 3,
+  contextReserve: 0.2,
+  haikuMaxContext: 15e4,
+  smallContext: 2e4,
+  calibrated: false
+};
+var WINDOW = { haiku: 1e6, sonnet: 1e6, opus: 1e6 };
+function lowPenaltyPoint(cache, now3, resetSinceLastRequest) {
+  if (resetSinceLastRequest || cache.lastRequestAt === null || cache.prefixTokens === 0) return true;
+  return now3 - cache.lastRequestAt > cache.ttlMs;
+}
+function switchCostUsd(cache, from, to, prices2, warm) {
+  if (!warm || cache.prefixTokens === 0) return 0;
+  const tokens = cache.prefixTokens;
+  const t = rateAt(prices2.rates[to.family], tokens);
+  const write = tokens * t.input * cacheWriteX(cache.ttlMs);
+  if (!from) return write / 1e6;
+  const f = rateAt(prices2.rates[from.family], tokens);
+  return Math.max(0, write - tokens * f.input * f.cacheReadX) / 1e6;
+}
+function returnCostUsd(cache, heldTokens, addedTokens, from, to, prices2, warm) {
+  if (!warm || cache.prefixTokens === 0) return 0;
+  const t = rateAt(prices2.rates[to.family], heldTokens + addedTokens);
+  const cost = heldTokens * t.input * t.cacheReadX + addedTokens * t.input * cacheWriteX(cache.ttlMs);
+  if (!from) return cost / 1e6;
+  const f = rateAt(prices2.rates[from.family], cache.prefixTokens);
+  return Math.max(0, cost - cache.prefixTokens * f.input * f.cacheReadX) / 1e6;
+}
+function lowPointUsd(tokens, heldTokens, addedTokens, from, to, prices2, ttlMs2) {
+  if (!from || tokens === 0) return 0;
+  const x = cacheWriteX(ttlMs2);
+  const t = rateAt(prices2.rates[to.family], heldTokens + addedTokens);
+  const f = rateAt(prices2.rates[from.family], tokens);
+  return (heldTokens * t.input * t.cacheReadX + addedTokens * t.input * x - tokens * f.input * x) / 1e6;
+}
+function transitionUsd(x) {
+  const held = x.cache.prefixTokens;
+  const after = held - (x.droppedTokens ?? 0) + x.addedTokens;
+  const retWarmUsd = returnCostUsd({ ...x.cache, prefixTokens: after }, held, x.addedTokens, x.to, x.from, x.prices, true);
+  const m = rateAt(x.prices.rates[x.from.family], held + x.addedTokens);
+  const n = rateAt(x.prices.rates[x.to.family], after);
+  const retExpiredUsd = Math.max(0, (held + x.addedTokens) * m.input * cacheWriteX(x.cache.ttlMs) - after * n.input * n.cacheReadX) / 1e6;
+  const pi = x.sameTask ? 1 : 0.5;
+  return { hiUsd: x.hiUsd, retWarmUsd, retExpiredUsd, pi, totalUsd: x.hiUsd + pi * (x.expired ? retExpiredUsd : retWarmUsd) };
+}
+function boundaryOf(i, low) {
+  if (i.compacted) return "compaction";
+  if (!i.sameTask) return "new-task";
+  if (low) return "cold";
+  return i.verifiedSinceSwitch ? "checkpoint" : "none";
+}
+function perRequestSavingUsd(prefix, out, from, to, prices2) {
+  const f = rateAt(prices2.rates[from.family], prefix);
+  const t = rateAt(prices2.rates[to.family], prefix);
+  return (prefix * (f.input * f.cacheReadX - t.input * t.cacheReadX) + out * (f.output - t.output)) / 1e6;
+}
+var capability = (r) => mid(CAPABILITY[r.family][r.effort]);
+function perRequestCostUsd(prefix, out, route, prices2) {
+  const r = rateAt(prices2.rates[route.family], prefix);
+  return (prefix * r.input * r.cacheReadX + out * r.output) / 1e6;
+}
+function fits(route, tokens, params) {
+  if (route.family === "haiku" && tokens > params.haikuMaxContext) return false;
+  return tokens <= (WINDOW[route.family] ?? 2e5) * (1 - params.contextReserve);
+}
+function remainingFor(i) {
+  if (i.newTaskSteps !== void 0) {
+    const s = i.newTaskSteps;
+    return { k: 0, n: REMAINING[0].n, p25: Math.max(1, Math.round(s / 3)), median: s, p75: s * 3 };
+  }
+  return remainingWork(i.requestsInPrompt ?? 0, i.remainingTable);
+}
+function switchCheck(i, resetSinceLastRequest = false) {
+  const p = i.params ?? DEFAULT_PARAMS;
+  const basis = p.calibrated ? "calibrated" : "estimate";
+  const warmByTime = i.cache.lastRequestAt !== null && i.now - i.cache.lastRequestAt <= i.cache.ttlMs;
+  const partialReset = resetSinceLastRequest && warmByTime && (i.resetPrefixTokens ?? 0) > 0;
+  if (partialReset) i = { ...i, cache: { ...i.cache, prefixTokens: i.resetPrefixTokens } };
+  const low = partialReset ? false : lowPenaltyPoint(i.cache, i.now, resetSinceLastRequest);
+  const warm = !low;
+  const sameRoute = i.current && i.current.model === i.target.model;
+  const effortOnly = sameRoute && i.current.effort !== i.target.effort;
+  const held = i.targetWarm ? i.targetWarmPrefix ?? i.cache.prefixTokens : 0;
+  const added = i.targetWarm ? addedSince(i.cache.prefixTokens, held, i.dropped?.[i.target.family]) : i.cache.prefixTokens;
+  const lowTokens = resetSinceLastRequest ? i.resetPrefixTokens ?? 0 : i.cache.prefixTokens;
+  const cost = sameRoute ? 0 : low ? lowPointUsd(lowTokens, held, i.targetWarm ? added : lowTokens, i.current, i.target, i.prices, i.cache.ttlMs) : i.targetWarm ? returnCostUsd(i.cache, held, added, i.current, i.target, i.prices, warm) : switchCostUsd(i.cache, i.current, i.target, i.prices, warm);
+  const rem = remainingFor(i);
+  const per = !i.current || sameRoute ? 0 : i.targetOutputTokens !== void 0 ? perRequestCostUsd(i.cache.prefixTokens, i.expectedOutputTokens, i.current, i.prices) - (i.targetStepRatio ?? 1) * perRequestCostUsd(i.cache.prefixTokens, i.targetOutputTokens, i.target, i.prices) : perRequestSavingUsd(i.cache.prefixTokens, i.expectedOutputTokens, i.current, i.target, i.prices);
+  const economics = {
+    current: i.current ? `${i.current.model}/${i.current.effort}` : null,
+    candidate: `${i.target.model}/${i.target.effort}`,
+    prefixTokens: i.cache.prefixTokens,
+    writePenaltyUsd: round(cost),
+    ttlMs: i.cache.ttlMs,
+    effortSharesCache: i.cache.effortSharesCache,
+    remaining: { k: rem.k, p25: rem.p25, median: rem.median, p75: rem.p75, n: rem.n },
+    savingUsd: { p25: round(per * rem.p25), median: round(per * rem.median), p75: round(per * rem.p75) },
+    ...i.reworkUsd !== void 0 ? { reworkUsd: round(i.reworkUsd) } : {},
+    basis
+  };
+  const modelChange = !!i.current && !sameRoute;
+  const pair = modelChange ? continuity(i.current.model, i.target.model, i.provider ?? "anthropic") : null;
+  const flag = pair === "lost" && i.compacted ? "cleared" : pair;
+  const lostHere = flag === "lost" && i.sameTask;
+  const rentFor = (verdict, gate) => {
+    if (!modelChange || i.mandatory) return void 0;
+    const boundary = boundaryOf(i, low);
+    const growth = rem.p25 * (DEFAULT_PRIORS.newInputPerStep + i.expectedOutputTokens);
+    const transition = transitionUsd({ cache: i.cache, from: i.current, to: i.target, prices: i.prices, hiUsd: cost, addedTokens: growth, sameTask: i.sameTask, expired: low });
+    const rentUsd = i.rent && i.rent.from === i.current.family && i.rent.to === i.target.family ? i.rent.usd : 0;
+    const heldBy = verdict === "hold" && gate !== "votes" && gate !== "payback" ? gate : void 0;
+    const pays = low && !i.sameTask || boundary !== "none" && rentUsd >= transition.totalUsd;
+    return { verdict: !heldBy && pays ? "switch" : "hold", to: i.target.family, boundary, rentUsd: round(rentUsd), stepRatio: i.targetStepRatio ?? 1, transition, ...heldBy ? { heldBy } : {} };
+  };
+  const out = (verdict, reason, gate) => {
+    const rent = rentFor(verdict, gate);
+    return { verdict, ...gate ? { gate } : {}, estUsd: cost, basis, lowPenaltyPoint: low, reason, economics, ...flag ? { continuity: flag } : {}, ...rent ? { rent } : {} };
+  };
+  const sameWindow = !!i.current && i.target.family !== "haiku" && (WINDOW[i.target.family] ?? 0) >= (WINDOW[i.current.family] ?? Infinity);
+  if (!fits(i.target, i.cache.prefixTokens, p) && !sameWindow) return out("hold", "the target cannot hold this context", "context");
+  if (!i.current) return out("switch", "first route");
+  if (sameRoute && !effortOnly) return out("switch", "same route");
+  if (effortOnly) return !i.cache.effortSharesCache && warm && !i.mandatory ? out("hold", "provider splits the cache by effort", "provider-effort") : out("switch", "effort change on the same model");
+  if (i.mandatory) return out("switch", "mandatory quality floor");
+  if ((i.switchesThisTask ?? 0) >= p.maxSwitches) return out("hold", `${p.maxSwitches} discretionary switches already in this task`, "oscillation");
+  const lost = `${i.target.family} cannot read ${i.current.family} thinking, and this task still needs it`;
+  if (low && !i.sameTask) return out("switch", "low-switch-penalty point");
+  const up = capability(i.target) > capability(i.current) && STRENGTH[i.target.family] >= STRENGTH[i.current.family];
+  if (up) {
+    if (lostHere) return out("hold", lost, "continuity");
+    if (low) return out("switch", "low-switch-penalty point");
+    return i.votes >= p.upgradeVotes || i.cache.prefixTokens < p.smallContext ? out("switch", "upgrade confirmed") : out("hold", `upgrade needs ${p.upgradeVotes} votes`, "votes");
+  }
+  if (i.risk !== "none" || i.candidate.confidence < p.downgradeConfidence) return out("hold", "risk or confidence too high for a downgrade", "quality");
+  if (i.sameTask && (i.requestsSinceSwitch < p.minDwellRequests || !i.verifiedSinceSwitch)) return out("hold", "dwell: too soon after the last switch, or no passed check yet", "dwell");
+  if (lostHere) return out("hold", lost, "continuity");
+  if (low) return out("switch", "low-switch-penalty point");
+  if (i.cache.prefixTokens >= p.smallContext) {
+    const q = p.paybackQuantile ?? "p25";
+    const saving = per * rem[q] - Math.max(0, i.reworkUsd ?? 0);
+    if (saving <= p.paybackFactor * cost) return out("hold", `${q} saving $${saving.toFixed(4)} does not pay back ${p.paybackFactor}x the $${cost.toFixed(4)} rewrite`, "payback");
+  }
+  return out("switch", "downgrade pays back");
+}
+var round = (n) => Math.round(n * 1e6) / 1e6;
+var tierAtLeast = (t, floor) => tierRank(t) >= tierRank(floor.tier) ? t : floor.tier;
+
+// hooks/lib/authority.ts
+var DEFAULT_LADDER = {
+  models: { haiku: "claude-haiku-5-5", sonnet: "claude-sonnet-5-5", opus: "claude-opus-5-5" },
+  tiers: {
+    T0: { family: "haiku", effort: "low" },
+    T1: { family: "sonnet", effort: "medium" },
+    T2: { family: "sonnet", effort: "high" },
+    T3: { family: "opus", effort: "high" },
+    T4: { family: "opus", effort: "max" }
+  }
+};
+function routeFor(tier, ladder = DEFAULT_LADDER, effort) {
+  const t = ladder.tiers[tier];
+  return { tier, family: t.family, model: ladder.models[t.family], effort: effort ?? t.effort };
+}
+function resolve(i, resetSinceLastRequest = false) {
+  const ladder = i.ladder ?? DEFAULT_LADDER;
+  const overridden = [];
+  if (i.override?.tier || i.override?.effort) {
+    const tier = i.override.tier ?? i.current?.tier ?? i.candidate.tier;
+    const r = routeFor(tier, ladder, i.override.effort);
+    if (tierRank(tier) < tierRank(i.floor.tier)) overridden.push({ owner: "quality-escalation", reason: `floor ${i.floor.tier} (${i.floor.because.join("; ")}) kept as a pending requirement` });
+    return { ...r, owner: "user-override", reason: i.override.reason, floor: i.floor, candidate: i.candidate, overridden };
+  }
+  if (i.workflowRole) {
+    return { ...routeFor(i.workflowRole.tier, ladder), owner: "workflow-role", reason: i.workflowRole.reason, floor: i.floor, candidate: i.candidate, overridden };
+  }
+  const lifted = tierAtLeast(i.candidate.tier, i.floor);
+  const floorMandatory = tierRank(i.floor.tier) > 0 && tierRank(lifted) === tierRank(i.floor.tier) && (!i.current || tierRank(i.current.tier) < tierRank(i.floor.tier));
+  const mandatory = floorMandatory || !!i.currentInadequate;
+  if (lifted !== i.candidate.tier) overridden.push({ owner: i.candidate.source === "judge" ? "judge" : i.candidate.source, reason: `${i.candidate.tier} lifted to floor ${i.floor.tier}` });
+  const tierEffort = lifted === i.floor.tier && i.floor.effort ? i.floor.effort : ladder.tiers[lifted].effort;
+  const effort = lifted !== i.candidate.tier ? tierEffort : i.effortHint ?? tierEffort;
+  const target = routeFor(lifted, ladder, effort);
+  const priced = i.effortCost && i.current ? { expectedOutputTokens: i.effortCost.output(i.current), targetOutputTokens: i.effortCost.output(target), targetStepRatio: i.effortCost.steps(target) / i.effortCost.steps(i.current) } : {};
+  const check = switchCheck({ ...i.switchInput, ...priced, current: i.current, candidate: i.candidate, target, floor: i.floor, mandatory }, resetSinceLastRequest);
+  if (check.verdict === "switch") {
+    const owner = mandatory ? "quality-escalation" : i.candidate.source === "judge" ? "judge" : i.candidate.source;
+    const reason = floorMandatory ? `floor ${i.floor.tier}: ${i.floor.because.join("; ")}` : mandatory ? `the running route is below the need: ${i.candidate.reason}` : i.candidate.reason;
+    return { ...target, owner, reason, floor: i.floor, candidate: i.candidate, check, overridden };
+  }
+  const keep = i.current ?? target;
+  const heldAt = i.current && i.heldEffort && check.gate !== "provider-effort" ? i.heldEffort : keep.effort;
+  overridden.push({ owner: i.candidate.source === "judge" ? "judge" : i.candidate.source, reason: `held by ${check.gate}: ${target.tier}/${target.effort}` });
+  return { ...keep, tier: heldAt !== keep.effort ? tierOf(keep.family, heldAt) : keep.tier, effort: heldAt, owner: "cache-policy", reason: `hold (${check.gate})${heldAt !== keep.effort ? `, effort ${heldAt}` : ""}`, floor: i.floor, candidate: i.candidate, check, overridden };
+}
+
+// hooks/lib/strategy.ts
+var DEFAULT_STRATEGY = {
+  remainingRequests: 10,
+  retryRate: 0.2,
+  workerSetupTokens: { haiku: 18e3, sonnet: 18e3, opus: 18e3 },
+  reportTokens: 2500,
+  isolationMargin: 0.8,
+  minConfidence: 0.6,
+  calibrated: false
+};
+var M = 1e6;
+function consultOrSwitch(i, margin = 0.7) {
+  const o = rateAt(i.prices.rates.opus, i.prefixTokens);
+  const m = rateAt(i.prices.rates[i.main], i.prefixTokens);
+  const R = i.remainingRequests;
+  const switchUsd = (i.prefixTokens * o.input * cacheWriteX(i.ttlMs) + R * (i.prefixTokens * o.input * o.cacheReadX + i.outPerRequest * o.output)) / M;
+  const stayUsd = R * (i.prefixTokens * m.input * m.cacheReadX + i.outPerRequest * m.output) / M;
+  const setup = i.setupTokens ?? DEFAULT_STRATEGY.workerSetupTokens.opus;
+  const oc = rateAt(i.prices.rates.opus, setup + i.packetTokens);
+  const consultUsd = stayUsd + ((setup + i.packetTokens) * oc.input * 1.25 + i.planTokens * oc.output) / M + i.planTokens * m.input * cacheWriteX(i.ttlMs) / M;
+  const choice = consultUsd < margin * switchUsd ? "consult" : "switch";
+  return { choice, consultUsd, switchUsd, why: `consult $${consultUsd.toFixed(3)} vs switch $${switchUsd.toFixed(3)} (estimate, R=${R})` };
+}
+
+// hooks/lib/executor.ts
+var rank = (e) => EFFORTS2.indexOf(e);
+function executorEffort(judged, taskEffort) {
+  const verdict = judged ?? "medium";
+  const clamped = rank(verdict) <= rank("medium") ? "medium" : "high";
+  return taskEffort && rank(taskEffort) > rank(clamped) ? taskEffort : clamped;
+}
+
+// hooks/lib/effort.ts
+var effortRank = (e) => EFFORTS2.indexOf(e);
+var maxEffort = (a, b2) => effortRank(a) >= effortRank(b2) ? a : b2;
+
+// hooks/lib/learn.ts
+var WINDOW_MS = 30 * 864e5;
+var bucketOf = (tier, need) => `${tier}/${need ?? "none"}`;
+
+// hooks/lib/failures.ts
+var PM_FLAGS = String.raw`(?:\s+--?\w[\w-]*(?:=\S+|\s+[^-\s]\S*)?)*`;
+var CHECKS = [
+  String.raw`go (test|vet|build)\b`,
+  String.raw`npm${PM_FLAGS}\s+(t|test|run${PM_FLAGS}\s+(test|lint|build|typecheck|check))\b`,
+  String.raw`pnpm${PM_FLAGS}\s+(test|lint|build|typecheck|run${PM_FLAGS}\s+\w+)\b`,
+  String.raw`yarn${PM_FLAGS}\s+(test|lint|build|typecheck|run\s+(test|lint|build|typecheck|check))\b`,
+  String.raw`bun\s+(test|run\s+(test|lint|build|typecheck|check))\b`,
+  String.raw`deno (test|lint|check)\b`,
+  String.raw`(tsc|eslint|vitest|jest|mocha|ava|pytest|py\.test|unittest|nose2|tox|nox|ruff|mypy|pyright|flake8|pylint|rspec|phpunit|ctest|shellcheck|golangci-lint)\b`,
+  String.raw`(black|prettier)\b.*\s--check\b`,
+  String.raw`biome (check|ci|lint)\b`,
+  String.raw`playwright test\b`,
+  String.raw`cypress run\b`,
+  String.raw`cargo(\s+\+\S+)?\s+(test|build|clippy|check|nextest)\b`,
+  String.raw`mvnw?\b.*\s(test|verify)\b`,
+  String.raw`gradle\w*\b.*\s(test|check|build)\b`,
+  String.raw`make\b(\s+-\S+(\s+[^-\s]\S*)?)*\s+(test|lint|check|build)\b`,
+  String.raw`rake (test|spec)\b`,
+  String.raw`(dotnet|swift) (test|build)\b`,
+  String.raw`(mix|flutter) test\b`,
+  String.raw`node\b.*\s--test\b`,
+  String.raw`python[\d.]*\s+(\S+/)?manage\.py test\b`
+];
+var CHECK_COMMAND = new RegExp(`^(?:${CHECKS.join("|")})`);
+function fnv1a(s) {
+  let h2 = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h2 ^= s.charCodeAt(i);
+    h2 = Math.imul(h2, 16777619) >>> 0;
+  }
+  return h2.toString(16).padStart(8, "0");
+}
+
 // hooks/lib/auto.ts
 var RANK2 = { haiku: 0, sonnet: 1, opus: 2, fable: 3 };
 var FAMILIES = ["haiku", "sonnet", "opus"];
 var at = (e) => EFFORTS2.indexOf(e);
-var maxEffort = (a, b) => at(a) >= at(b) ? a : b;
+var maxEffort2 = (a, b2) => at(a) >= at(b2) ? a : b2;
 var hmModel = (t) => t === "T0" ? "haiku" : t === "T1" || t === "T2" ? "sonnet" : "opus";
 var effortlessFloor = (need) => need ? RANK2[need.model] : null;
 function effortMinFor(family, i) {
   const floor = i.floors.effortMin?.[family];
   const hard = i.hm?.tier === "T4" || effortlessFloor(i.need) === RANK2.fable;
-  return family === "opus" && hard ? maxEffort(floor ?? "low", "high") : floor;
+  return family === "opus" && hard ? maxEffort2(floor ?? "low", "high") : floor;
 }
 function opusRequired(i) {
   const tier = i.hm?.tier;
@@ -1612,13 +1956,13 @@ function optimizeAuto(i) {
   const usable = candidates.filter((c) => c.eligibility === "eligible" && Number.isFinite(c.attemptUsd));
   const weaker = usable.filter((c) => c.family !== "opus");
   const field = weaker.length ? weaker : usable;
-  const order = (a, b) => a.attemptUsd - b.attemptUsd || Number(b.family === i.current?.family) - Number(a.family === i.current?.family) || at(a.effort) - at(b.effort);
+  const order = (a, b2) => a.attemptUsd - b2.attemptUsd || Number(b2.family === i.current?.family) - Number(a.family === i.current?.family) || at(a.effort) - at(b2.effort);
   if (field.length) return { best: field.sort(order)[0], candidates, inadequate: false, rule: field.length > 1 ? "cheapest eligible pair" : "the weakest eligible model" };
   const pool = candidates.filter((c) => c.eligibility !== "unavailable");
   const waiting = i.need ? void 0 : pool.find((c) => c.family === "sonnet" && c.eligibility === "needs-verdict");
-  const strongest = waiting ?? (pool.length ? pool : candidates).slice().sort((a, b) => RANK2[b.family] - RANK2[a.family])[0];
-  const floored = maxEffort(i.verdicts[strongest.family]?.effort ?? i.current?.effort ?? "high", effortMinFor(strongest.family, i) ?? "low");
-  const effort = i.floors.fixedEffort ?? (i.hm && tierRank(i.hm.tier) >= 3 ? maxEffort(floored, "medium") : floored);
+  const strongest = waiting ?? (pool.length ? pool : candidates).slice().sort((a, b2) => RANK2[b2.family] - RANK2[a.family])[0];
+  const floored = maxEffort2(i.verdicts[strongest.family]?.effort ?? i.current?.effort ?? "high", effortMinFor(strongest.family, i) ?? "low");
+  const effort = i.floors.fixedEffort ?? (i.hm && tierRank(i.hm.tier) >= 3 ? maxEffort2(floored, "medium") : floored);
   const best = { ...strongest, effort, attemptUsd: i.cost(strongest.family, effort) };
   const inadequate = strongest.eligibility !== "eligible" && strongest.eligibility !== "needs-verdict";
   return { best, candidates, inadequate, rule: inadequate ? "no eligible model: the strongest available, labeled inadequate" : waiting ? "no need: sonnet at its known or running effort" : "no effort verdict for an eligible model: the strongest available at its known or running effort" };
@@ -1644,9 +1988,9 @@ function fallbackEffort(i) {
   if (i.escalation) return { effort: i.escalation.effort, source: "escalation applies without a judge" };
   const floor = i.effortMin ?? "low";
   if (i.previous && i.sameTask && i.sameStage && !i.riskChanged && !i.planBoundary && i.previousAdequate)
-    return { effort: maxEffort(i.previous.effort, floor), source: "judge failed: same task and stage, previous effort kept (upstream)" };
+    return { effort: maxEffort2(i.previous.effort, floor), source: "judge failed: same task and stage, previous effort kept (upstream)" };
   const app = i.appEffort ?? "medium";
-  return { effort: maxEffort(app, floor), source: i.previous ? "judge failed on a changed task or stage: the app effort within the floors" : "judge failed with no previous decision: the app effort within the floors" };
+  return { effort: maxEffort2(app, floor), source: i.previous ? "judge failed on a changed task or stage: the app effort within the floors" : "judge failed with no previous decision: the app effort within the floors" };
 }
 function legalEffort(i) {
   if (!i.perMessage) return { effective: i.requested, legalAt: "top-level effort: applies to this request", deferred: false };
@@ -1657,9 +2001,216 @@ function legalEffort(i) {
   return { effective: i.lastEffective, legalAt: "tool-result continuation: takes effect at the next new input", deferred: true };
 }
 
+// hooks/lib/auto-route.ts
+var AUTO_ROUTE_SCHEMA = 1;
+var LOW_CONFIDENCE = 0.3;
+var FAMILIES2 = ["haiku", "sonnet", "opus"];
+var CHEAPER = { haiku: [], sonnet: ["haiku"], opus: ["haiku", "sonnet"] };
+function escalationStep(floor, allowed) {
+  return floor && (!allowed.length || allowed.includes(floor.family)) ? floor : null;
+}
+function autoFloors(f, complexity, allowed, stage) {
+  const effortMin = {};
+  const exclude = {};
+  const because = [];
+  let tier = { tier: "T0", because: [] };
+  if (f.risk === "critical" && complexity !== "trivial") {
+    const why = `critical consequence: ${f.riskReasons.slice(0, 2).join("; ") || "observed"}`;
+    exclude.haiku = why;
+    effortMin.sonnet = "high";
+    effortMin.opus = "medium";
+    because.push(why);
+    tier = { tier: "T2", because: [why] };
+  }
+  const step = escalationStep(f.ladderFloor, allowed);
+  if (step) {
+    for (const x of FAMILIES2) {
+      const e = EFFORTS2.find((y) => BAND_OF[x][y] >= step.band);
+      if (!e) exclude[x] = step.because;
+      else effortMin[x] = maxEffort(effortMin[x] ?? "low", e);
+    }
+    because.push(step.because);
+    const t = tierOf(step.family, step.effort);
+    if (tierRank(t) >= tierRank(tier.tier)) tier = { tier: t, effort: step.effort, band: step.band, because: [step.because] };
+  }
+  const td = f.taskDecision && f.taskDecision.taskId === f.taskId ? f.taskDecision : null;
+  if (stage === "reconsider" && td) {
+    const band = BAND_OF[td.family][td.effort];
+    const why = `a challenge keeps the work's ${td.family} ${td.effort}`;
+    for (const x of FAMILIES2) {
+      const e = EFFORTS2.find((y) => BAND_OF[x][y] >= band);
+      if (!e) exclude[x] ??= why;
+      else effortMin[x] = maxEffort(effortMin[x] ?? "low", e);
+    }
+    because.push(why);
+  }
+  if (f.stayUp > 0 && f.currentFamily) for (const x of CHEAPER[f.currentFamily]) exclude[x] ??= `a redo keeps the model for ${f.stayUp} more prompts`;
+  return { floors: { effortMin, exclude, because }, tier, escalated: step ? { family: step.family, effort: step.effort } : null };
+}
+function executorInput(on, verdicts, floors, taskRoute) {
+  if (!on || floors.fixedFamily || floors.exclude?.sonnet) return null;
+  const effort = executorEffort(verdicts.sonnet?.effort, taskRoute?.family === "sonnet" ? taskRoute.effort : void 0);
+  return { verdicts: { ...verdicts, sonnet: { model: "sonnet", effort, why: "executor" } }, floors: { ...floors, fixedFamily: "sonnet" } };
+}
+var costOf = (attempt) => (family, effort) => attempt[family][effort] ?? Infinity;
+function planAuto(i) {
+  const reasons = [];
+  const cur = i.current?.route ?? null;
+  const mq = autoFloors(i.floor, i.complexity, i.allowed, i.stage);
+  if (mq.floors.because.length) reasons.push(`floors: ${mq.floors.because.join("; ")}`);
+  const floors = { ...mq.floors, ...i.fixedFamily ? { fixedFamily: i.fixedFamily } : {}, ...i.fixedEffort ? { fixedEffort: i.fixedEffort } : {} };
+  let verdicts = { ...i.verdicts };
+  const notes = [];
+  const askedNeed = i.verdicts[i.anchor] ?? null;
+  const answer = i.judge;
+  let fallback;
+  let ownFallback;
+  if (!i.shortcut) {
+    if (cur && !verdicts[cur.family] && (!i.fixedFamily || i.fixedFamily === cur.family)) {
+      const fb = fallbackEffort({ sameTask: !i.boundary, sameStage: i.stage === i.previousStage, riskChanged: i.riskChanged, planBoundary: i.planBoundary, previous: { family: cur.family, effort: i.current.running }, previousAdequate: true, appEffort: i.appEffort, escalation: mq.escalated, effortMin: mq.floors.effortMin?.[cur.family] });
+      verdicts = { ...verdicts, [cur.family]: { model: cur.family, effort: fb.effort, why: "fallback" } };
+      notes.push({ family: cur.family, effort: fb.effort, fallback: fb.source });
+      if (askedNeed) {
+        ownFallback = fb.source;
+        reasons.push(`own verdict failed: ${fb.source}`);
+      } else fallback = fb.source;
+    }
+    if (cur && !askedNeed && !i.fixedFamily && !fallback) fallback = "the need call failed: no model switch";
+    if (!cur && !Object.values(verdicts).some(Boolean)) {
+      const f = i.fixedFamily ?? (i.allowed.includes(i.appFamily) ? i.appFamily : i.allowed[i.allowed.length - 1]);
+      const fb = fallbackEffort({ sameTask: false, sameStage: false, riskChanged: false, planBoundary: false, previous: null, previousAdequate: false, appEffort: i.appEffort, escalation: null, effortMin: mq.floors.effortMin?.[f] });
+      verdicts = { [f]: { model: f, effort: fb.effort, why: "fallback" } };
+      floors.fixedFamily = f;
+      fallback = fb.source;
+    }
+    if ((!answer || fallback) && cur && !i.fixedFamily && i.allowed.includes(cur.family)) {
+      floors.fixedFamily = cur.family;
+      fallback = fallback ?? "automode judge failed: no model switch";
+    }
+    if (!answer && !cur && !i.fixedFamily && !floors.fixedFamily) {
+      floors.fixedFamily = i.allowed.includes(i.appFamily) ? i.appFamily : i.allowed[i.allowed.length - 1];
+      fallback = fallback ?? "automode judge failed on the first prompt: the app model";
+    }
+    if (fallback && answer && floors.fixedFamily && !i.fixedFamily && !i.executor.on) {
+      const fm = fallbackModel(floors.fixedFamily, { tier: answer.tier, effort: answer.effort, confidence: answer.confidence }, i.allowed, i.floor.risk, i.policy.lowConfidence);
+      if (fm.family !== floors.fixedFamily) {
+        floors.fixedFamily = fm.family;
+        verdicts = { ...verdicts, [fm.family]: { model: fm.family, effort: maxEffort(fm.effort ?? "high", mq.floors.effortMin?.[fm.family] ?? "low"), why: "fallback" } };
+        notes.push({ family: fm.family, effort: verdicts[fm.family].effort, fallback: fm.why });
+      }
+      fallback = `${fallback}; ${fm.why}`;
+    }
+    if (fallback) reasons.push(`fallback: ${fallback}`);
+  }
+  if (answer && cur && answer.confidence < i.policy.lowConfidence && !floors.fixedFamily) {
+    const rankF = { haiku: 0, sonnet: 1, opus: 2 };
+    for (const f of FAMILIES2) if (rankF[f] < rankF[cur.family]) floors.exclude = { ...floors.exclude ?? {}, [f]: `low judge confidence (${answer.confidence}): no downgrade` };
+    reasons.push("low confidence: no downgrade (jev-router)");
+  }
+  const taught = i.learned.on && answer && askedNeed && !floors.fixedFamily && i.allowed.includes("opus") ? bucketOf(answer.tier, askedNeed.model) : null;
+  let learnedBucket;
+  if (taught && i.learned.opusBuckets.includes(taught)) {
+    floors.exclude = { ...floors.exclude ?? {}, haiku: `learned: ${taught} needed rescue in this project`, sonnet: `learned: ${taught} needed rescue in this project` };
+    reasons.push(`learned: ${taught} starts on opus`);
+    learnedBucket = taught;
+  }
+  const secondJudge = !i.shortcut && !fallback && !i.judgeCached && !i.executor.on ? secondCall({ allowed: i.allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence: i.floor.risk, reachHaiku: i.reachHaiku, floors, current: null, cost: () => 0 }, i.anchor) : null;
+  return { floors, tier: mq.tier, escalated: mq.escalated, verdicts, notes, ...fallback ? { fallback } : {}, ...ownFallback ? { ownFallback } : {}, ...learnedBucket ? { learnedBucket } : {}, secondJudge, reasons };
+}
+function routeAuto(i) {
+  const { secondJudge: _, ...plan } = planAuto(i);
+  const reasons = [...plan.reasons];
+  const { floors, verdicts, fallback } = plan;
+  const cur = i.current?.route ?? null;
+  const answer = i.judge;
+  const hm = answer ? { tier: answer.tier, complexity: answer.complexity } : null;
+  if (i.second) {
+    const v = i.verdicts[i.second];
+    reasons.push(`second effortless call: ${i.second}${v ? ` -> ${v.model}/${v.effort}` : " failed"}`);
+  }
+  const cost = costOf(i.economics.attempt);
+  const current2 = cur ? { family: cur.family, effort: i.current.running } : null;
+  const askedNeed = i.verdicts[i.anchor] ?? null;
+  const need = askedNeed ?? (floors.fixedFamily ? verdicts[floors.fixedFamily] ?? null : null);
+  const kept = i.shortcut && i.kept ? { model: i.kept.family, effort: i.kept.effort, why: "kept" } : null;
+  const executed = kept ? null : executorInput(i.executor.on, verdicts, floors, i.executor.taskRoute);
+  if (executed) reasons.push(`executor: sonnet ${executed.verdicts.sonnet.effort}`);
+  const consequence = i.floor.risk;
+  const choice = kept ? optimizeAuto({ allowed: i.allowed, verdicts: { [kept.model]: kept }, need: kept, hm: null, floors: { ...floors, fixedFamily: i.allowed.includes(i.kept.family) ? i.kept.family : void 0 }, current: current2, cost }) : optimizeAuto({ allowed: i.allowed, ...executed ?? { verdicts, floors }, need, hm, consequence, reachHaiku: i.reachHaiku, current: current2, cost });
+  const shadow = executed ? optimizeAuto({ allowed: i.allowed, verdicts, need, hm, consequence, reachHaiku: i.reachHaiku, floors, current: current2, cost }).best : null;
+  reasons.push(`optimizer: ${choice.rule} -> ${choice.best.family}/${choice.best.effort}`);
+  const own = cur ? choice.candidates.find((c) => c.family === cur.family) : void 0;
+  const ownVerdict = cur ? verdicts[cur.family] : null;
+  const heldEffort = ownEffort(own) ?? (cur && ownVerdict ? maxEffort(ownVerdict.effort, plan.floors.effortMin?.[cur.family] ?? "low") : void 0);
+  const currentInadequate = runningRuledOut(cur?.family, choice, floors, hm);
+  const candidate = { tier: tierOf(choice.best.family, choice.best.effort), source: i.shortcut ? "continuation" : fallback ? "fallback" : "judge", confidence: answer?.confidence ?? 0.5, reason: `${i.shortcut ? "short go-ahead keeps the task" : answer?.why || "judges"}; ${choice.best.family} ${choice.best.effort} ${choice.best.eligibility}${choice.inadequate ? " (inadequate)" : ""}` };
+  const votes = i.votes.tier === candidate.tier ? { tier: candidate.tier, n: i.votes.n + 1 } : { tier: candidate.tier, n: 1 };
+  let tier = plan.tier;
+  if (currentInadequate && cur && tierRank(tierOf(choice.best.family, choice.best.effort)) > tierRank(tier.tier))
+    tier = { tier: tierOf(choice.best.family, choice.best.effort), effort: choice.best.effort, because: [`${cur.family} ${i.current.running} is ruled out for this task (${own.eligibility})`] };
+  const commandRoute = i.command ? { tier: tierOf(choice.best.family, choice.best.effort), effort: choice.best.effort, reason: `user: ${i.command.label}` } : void 0;
+  const e = i.economics;
+  const sw = i.switching;
+  const effortCost2 = { output: (r) => e.outputPerStep[r.family] * e.effortOutput[r.effort], steps: (r) => e.effortSteps[r.effort] };
+  const resolved = resolve({
+    override: commandRoute,
+    floor: tier,
+    candidate,
+    effortHint: choice.best.effort,
+    heldEffort,
+    ...currentInadequate ? { currentInadequate } : {},
+    effortCost: effortCost2,
+    current: i.usable,
+    switchInput: {
+      cache: sw.cache,
+      now: i.now,
+      votes: votes.n,
+      requestsSinceSwitch: sw.requestsSinceSwitch,
+      verifiedSinceSwitch: sw.verifiedSinceSwitch,
+      sameTask: !i.boundary && !i.planExited,
+      risk: i.floor.risk,
+      expectedOutputTokens: e.outputPerStep[cur?.family ?? "sonnet"],
+      prices: e.prices,
+      params: { ...DEFAULT_PARAMS, calibrated: e.calibrated },
+      requestsInPrompt: 0,
+      newTaskSteps: i.boundary ? TASK_STEPS[i.complexity] : void 0,
+      remainingTable: sw.remainingTable,
+      switchesThisTask: sw.switchesThisTask,
+      targetWarm: sw.warm[choice.best.family],
+      targetWarmPrefix: sw.warmPrefix[choice.best.family],
+      resetPrefixTokens: sw.resetPrefixTokens,
+      ...sw.continuity
+    }
+  }, sw.reset);
+  reasons.push(`authority: ${resolved.owner} ${resolved.family}/${resolved.effort}${resolved.check?.gate ? ` (${resolved.check.gate})` : ""}`);
+  let route = resolved;
+  let consult = null;
+  const lastWorkBand = hm ? i.stage === "reconsider" ? i.consult.lastWorkBand : TIER_BAND[hm.tier] : i.consult.lastWorkBand;
+  const key = `stage:${i.floor.taskId}:${lastWorkBand ?? 0}`;
+  if (i.stage === "reconsider" && cur && cur.family !== "opus" && (resolved.family === "opus" || choice.best.family === "opus") && sw.cache.prefixTokens >= DEFAULT_PARAMS.smallContext && !i.consult.consulted.includes(key)) {
+    const c = consultOrSwitch({ prefixTokens: sw.cache.prefixTokens, remainingRequests: remainingFor({ requestsInPrompt: 0, remainingTable: sw.remainingTable }).median, outPerRequest: e.outputPerStep.opus, packetTokens: i.consult.packetTokens, planTokens: 2e3, main: cur.family, ttlMs: i.consult.ttlMs, prices: e.prices });
+    consult = { key, ...c };
+    if (c.choice === "consult") {
+      const effort = own?.effort ?? cur.effort;
+      route = { ...cur, tier: tierOf(cur.family, effort), effort, owner: "quality-escalation", reason: `consult Opus instead of a switch: ${c.why}`, floor: tier, candidate: resolved.candidate, overridden: [...resolved.overridden, { owner: resolved.owner, reason: "opus switch replaced by a consult" }] };
+      reasons.push("consult: Opus architect instead of a switch");
+    }
+  }
+  return { ...plan, tier, reasons, need, kept, choice, shadow, own, votes, resolved, route, lastWorkBand, consult };
+}
+var outcomeOf = (r) => ({ route: `${r.route.family}/${r.route.effort}`, owner: r.route.owner, ...r.resolved.check?.gate ? { gate: r.resolved.check.gate } : {}, ...r.consult ? { consult: r.consult.choice } : {}, ...r.fallback ? { fallback: true } : {} });
+var fingerprint2;
+function routeFingerprint() {
+  fingerprint2 ??= fnv1a([routeAuto, planAuto, autoFloors, executorInput, escalationStep, optimizeAuto, eligibilityOf, secondCall, fallbackEffort, fallbackModel, ownEffort, runningRuledOut, resolve, switchCheck, consultOrSwitch, executorEffort].map((f) => f.toString()).join("\n"));
+  return fingerprint2;
+}
+function replayOf(input, result, priceBook, flags) {
+  return { input: JSON.parse(JSON.stringify(input)), outcome: outcomeOf(result), provenance: { schema: AUTO_ROUTE_SCHEMA, fingerprint: routeFingerprint(), priceBook, flags } };
+}
+
 // hooks/v4.ts
 import { COMPACT_SYSTEM, transcriptOf } from "./lib/compact.ts";
-import { EMPTY_LEARNED, bucketOf, noteTask, opusBuckets, opusFirst, parseLearned } from "./lib/learn.ts";
+import { EMPTY_LEARNED, bucketOf as bucketOf2, noteTask, opusBuckets, parseLearned } from "./lib/learn.ts";
 import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence } from "./lib/delegation.ts";
 var V4_DEFAULTS = {
   router: "classic",
@@ -1874,7 +2425,7 @@ var S = {
     this.votes = this.votes.tier === tier ? { tier, n: this.votes.n + 1 } : { tier, n: 1 };
     return this.votes.n;
   },
-  priors: DEFAULT_PRIORS,
+  priors: DEFAULT_PRIORS2,
   providerGuard: false,
   toldGuard: false,
   // The bar's mode selector (hooks/ui): this session only, never written to config. loadV4 applies it over config.json
@@ -1957,7 +2508,7 @@ async function loadV4($) {
   S.thinkingRisk = thinkingRisk({ MAX_THINKING_TOKENS: await safe($.env.get("MAX_THINKING_TOKENS")), AUTOMODE_THINKING_GUARD: await safe($.env.get("AUTOMODE_THINKING_GUARD")) }, settings);
 }
 var FIRST_PREFIX_KEEP = 20;
-var projectKey = (cwd) => cwd ? fnv1a(cwd) : "unknown";
+var projectKey = (cwd) => cwd ? fnv1a2(cwd) : "unknown";
 var nums = (v) => (Array.isArray(v) ? v : []).filter((x) => typeof x === "number" && Number.isFinite(x) && x > 0);
 async function firstFile($) {
   try {
@@ -1974,11 +2525,11 @@ var PER_TOOL_TOKENS = 150;
 var PREFLIGHT_MIN_RATIOS = 3;
 async function preflightRaw($) {
   try {
-    const [composed, tools] = await Promise.all([$.prompt.compose(), $.tool.list()]);
+    const [composed, tools2] = await Promise.all([$.prompt.compose(), $.tool.list()]);
     const sys = composed.sections.reduce((a, s) => a + s.text.length, 0);
     if (!sys) return null;
-    const toolChars = tools.reduce((a, t) => a + t.name.length + (t.description?.length ?? 0), 0);
-    return Math.round((sys + toolChars) / CHARS_PER_TOKEN + tools.length * PER_TOOL_TOKENS);
+    const toolChars = tools2.reduce((a, t) => a + t.name.length + (t.description?.length ?? 0), 0);
+    return Math.round((sys + toolChars) / CHARS_PER_TOKEN + tools2.length * PER_TOOL_TOKENS);
   } catch {
     return null;
   }
@@ -1987,22 +2538,22 @@ var FIRST_PREFIX_HEADROOM = 4e3;
 async function loadPrefixEstimate($) {
   const { byProject: by, ratios } = await firstFile($);
   if (!S.cache && S.preflight === void 0) S.preflight = await preflightRaw($);
-  const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor((xs.length - 1) / 2)];
+  const median = (xs) => [...xs].sort((a, b2) => a - b2)[Math.floor((xs.length - 1) / 2)];
   if (!S.cache && S.preflight && ratios.length >= PREFLIGHT_MIN_RATIOS) {
     S.prefixSource = "preflight (calibrated)";
     return Math.round(S.preflight * median(ratios)) + FIRST_PREFIX_HEADROOM;
   }
-  const own = (by[projectKey(S.cwd)] ?? []).sort((a, b) => a - b);
+  const own = (by[projectKey(S.cwd)] ?? []).sort((a, b2) => a - b2);
   if (own.length) {
     S.prefixSource = "project median";
     return own[Math.floor(own.length / 2)] + FIRST_PREFIX_HEADROOM;
   }
-  const all = Object.values(by).flat().sort((a, b) => a - b);
+  const all = Object.values(by).flat().sort((a, b2) => a - b2);
   if (all.length) {
     S.prefixSource = "machine p75";
     return all[Math.floor(0.75 * (all.length - 1))] + FIRST_PREFIX_HEADROOM;
   }
-  if (!S.cache && S.preflight && S.preflight + FIRST_PREFIX_HEADROOM > DEFAULT_PARAMS.haikuMaxContext) {
+  if (!S.cache && S.preflight && S.preflight + FIRST_PREFIX_HEADROOM > DEFAULT_PARAMS2.haikuMaxContext) {
     S.prefixSource = "preflight (lower bound)";
     return S.preflight + FIRST_PREFIX_HEADROOM;
   }
@@ -2027,23 +2578,23 @@ function routingCache() {
 async function loadPriors($) {
   try {
     const file = `${await dataDir2($)}/calibration.json`;
-    if (!await fsExists($, file)) return DEFAULT_PRIORS;
+    if (!await fsExists($, file)) return DEFAULT_PRIORS2;
     const c = JSON.parse(await fsRead($, file));
     const p = c.priors ?? c;
     const num = (v, d) => typeof v === "number" && Number.isFinite(v) && v > 0 ? v : d;
     return {
-      ...DEFAULT_PRIORS,
-      outputPerStep: { haiku: num(p.outputPerStep?.haiku, DEFAULT_PRIORS.outputPerStep.haiku), sonnet: num(p.outputPerStep?.sonnet, DEFAULT_PRIORS.outputPerStep.sonnet), opus: num(p.outputPerStep?.opus, DEFAULT_PRIORS.outputPerStep.opus) },
-      effortOutput: Object.fromEntries(EFFORTS3.map((x) => [x, num(p.effortOutput?.[x], DEFAULT_PRIORS.effortOutput[x])])),
-      newInputPerStep: num(p.newInputPerStep, DEFAULT_PRIORS.newInputPerStep),
-      remainingRequests: num(p.remainingRequests, DEFAULT_PRIORS.remainingRequests),
+      ...DEFAULT_PRIORS2,
+      outputPerStep: { haiku: num(p.outputPerStep?.haiku, DEFAULT_PRIORS2.outputPerStep.haiku), sonnet: num(p.outputPerStep?.sonnet, DEFAULT_PRIORS2.outputPerStep.sonnet), opus: num(p.outputPerStep?.opus, DEFAULT_PRIORS2.outputPerStep.opus) },
+      effortOutput: Object.fromEntries(EFFORTS3.map((x) => [x, num(p.effortOutput?.[x], DEFAULT_PRIORS2.effortOutput[x])])),
+      newInputPerStep: num(p.newInputPerStep, DEFAULT_PRIORS2.newInputPerStep),
+      remainingRequests: num(p.remainingRequests, DEFAULT_PRIORS2.remainingRequests),
       remaining: Array.isArray(p.remaining) && p.remaining.every((r) => [r.k, r.n, r.p25, r.median, r.p75].every((x) => typeof x === "number")) && p.remaining.length ? p.remaining : void 0,
       remainingByStage: p.remainingByStage && typeof p.remainingByStage === "object" ? Object.fromEntries(Object.entries(p.remainingByStage).filter(([, t]) => Array.isArray(t) && t.length && t.every((r) => [r.k, r.n, r.p25, r.median, r.p75].every((x) => typeof x === "number")))) : void 0,
       basis: p.basis === "calibrated" ? "calibrated" : "estimate",
       source: String(p.source ?? "calibration.json")
     };
   } catch {
-    return DEFAULT_PRIORS;
+    return DEFAULT_PRIORS2;
   }
 }
 async function activeV4($) {
@@ -2145,7 +2696,7 @@ async function noteLearned($, corrected) {
   const start = seen?.family ?? S.current.family;
   const rescued = start !== "opus" && S.current.family === "opus" && env.escalations > 0;
   const outcome = corrected || rescued ? "bad" : env.verified ? "ok" : "open";
-  S.learned = noteTask(S.learned, { id: env.taskId, bucket: bucketOf(a.hm.tier, a.need?.model), family: start, outcome, at: await now2($) });
+  S.learned = noteTask(S.learned, { id: env.taskId, bucket: bucketOf2(a.hm.tier, a.need?.model), family: start, outcome, at: await now2($) });
   await fsWrite($, await learnedFile($), JSON.stringify(S.learned)).catch(() => {
   });
 }
@@ -2261,7 +2812,7 @@ async function decide($, text, midTurn, attachments, at2, attachList = []) {
   if (S.policy === "auto") return decideAuto($, text, midTurn, attachList.length ? attachList : Array.from({ length: attachments }, () => ({ type: "file" })), at2);
   const override = parseOverride(text);
   const tr = attachments ? null : transitionOf(text, S.lastReply);
-  const redo = !!S.current && looksLikeRedo(text);
+  const redo = !!S.current && looksLikeRedo2(text);
   if (override?.reset) {
     S.stayUp = 0;
     S.redoFloor = null;
@@ -2270,7 +2821,7 @@ async function decide($, text, midTurn, attachments, at2, attachList = []) {
   }
   const followUp = !!tr && tr.bypassJudge && !!S.envelope && !redo && !override?.reset;
   if (redo) {
-    S.stayUp = REDO_STAY_PROMPTS;
+    S.stayUp = REDO_STAY_PROMPTS2;
     S.redoFloor = TIER_ORDER[Math.min(4, tierRank2(S.current.tier) + 1)];
   } else if (S.stayUp > 0) S.stayUp -= 1;
   if (S.stayUp === 0) S.redoFloor = null;
@@ -2323,7 +2874,7 @@ ${midTurnNote(S.current.effort)}` : text, midTurn, attachments);
     used = demand;
     if (stage !== "reconsider") S.lastWorkBand = demand.band;
     opt = pick(S.policy, demand, floor, at2, void 0, false, stageMin);
-    candidate = { tier: tierOf(opt.best.family, opt.best.effort), source: "judge", confidence: answer.confidence, reason: `${answer.why || "judge"}; ${opt.best.family} ${opt.best.effort} ${opt.best.adequacy}${opt.inadequate ? " (inadequate)" : ""}` };
+    candidate = { tier: tierOf2(opt.best.family, opt.best.effort), source: "judge", confidence: answer.confidence, reason: `${answer.why || "judge"}; ${opt.best.family} ${opt.best.effort} ${opt.best.adequacy}${opt.inadequate ? " (inadequate)" : ""}` };
     currentInadequate = false;
     floor = inadequateFloor(floor, opt);
     heldEffort = heldEffortFor(demand, floor, at2, opt, stageMin);
@@ -2335,10 +2886,10 @@ ${midTurnNote(S.current.effort)}` : text, midTurn, attachments);
     S.lastDemand = demand;
     used = demand;
     opt = pick(S.policy, demand, floor, at2, void 0, true);
-    candidate = { tier: tierOf(opt.best.family, opt.best.effort), source: "fallback", confidence: 0.5, reason: `judge unavailable: conservative ${opt.best.family} ${opt.best.effort}` };
+    candidate = { tier: tierOf2(opt.best.family, opt.best.effort), source: "fallback", confidence: 0.5, reason: `judge unavailable: conservative ${opt.best.family} ${opt.best.effort}` };
   }
   S.votes = S.votes.tier === candidate.tier ? { tier: candidate.tier, n: S.votes.n + 1 } : { tier: candidate.tier, n: 1 };
-  const route = resolve({
+  const route = resolve2({
     override: override?.tier || override?.effort ? { tier: override.tier, effort: override.effort, reason: `user: ${text.trim().split(/\s/)[0]}` } : void 0,
     floor,
     candidate,
@@ -2357,7 +2908,7 @@ ${midTurnNote(S.current.effort)}` : text, midTurn, attachments);
       risk: env.risk.effective,
       expectedOutputTokens: S.priors.outputPerStep[S.current?.family ?? "sonnet"],
       prices: prices(),
-      params: { ...DEFAULT_PARAMS, calibrated: S.priors.basis === "calibrated" },
+      params: { ...DEFAULT_PARAMS2, calibrated: S.priors.basis === "calibrated" },
       requestsInPrompt: 0,
       newTaskSteps: boundary ? S.lastDemand?.steps : void 0,
       remainingTable: remainingTable(),
@@ -2409,17 +2960,16 @@ ${midTurnNote(S.current.effort)}` : text, midTurn, attachments);
 }
 var DEFAULT_EFFORT = { haiku: "medium", sonnet: "high", opus: "medium" };
 var JUDGE_RETRY_MODEL = "haiku";
-var LOW_CONFIDENCE = 0.3;
 var JUDGE_FAILURES_TO_PAUSE = 3;
 var JUDGE_PAUSE_MS = 6e4;
 function judgePaused(kind, t) {
   return (S.judgeBreaker[kind]?.until ?? 0) > t;
 }
 function judgeOutcome(kind, ok, t) {
-  const b = S.judgeBreaker[kind] ?? { failures: 0, until: 0 };
-  const failures = ok ? 0 : Math.min(b.failures + 1, JUDGE_FAILURES_TO_PAUSE);
-  const until = !ok && failures >= JUDGE_FAILURES_TO_PAUSE ? t + JUDGE_PAUSE_MS : ok ? 0 : b.until;
-  if (!ok && until > t && b.until <= t) S.records.push({ v: 1, kind: "judge-pause", at: t, sessionId: S.sessionId, judge: kind, untilMs: JUDGE_PAUSE_MS });
+  const b2 = S.judgeBreaker[kind] ?? { failures: 0, until: 0 };
+  const failures = ok ? 0 : Math.min(b2.failures + 1, JUDGE_FAILURES_TO_PAUSE);
+  const until = !ok && failures >= JUDGE_FAILURES_TO_PAUSE ? t + JUDGE_PAUSE_MS : ok ? 0 : b2.until;
+  if (!ok && until > t && b2.until <= t) S.records.push({ v: 1, kind: "judge-pause", at: t, sessionId: S.sessionId, judge: kind, untilMs: JUDGE_PAUSE_MS });
   S.judgeBreaker = { ...S.judgeBreaker, [kind]: { failures, until } };
 }
 var effortSharedFor = (model) => effortSharesCache(S.penv, model);
@@ -2475,60 +3025,20 @@ async function effortlessJudge($, family, prompt, o) {
   return { verdict: v ? { model: v.model, effort: v.effort, why: v.why, ...v.sure !== void 0 ? { sure: v.sure } : {} } : null, ms, usd };
 }
 var normalizeText = (t) => t.trim().toLowerCase().replace(/\s+/g, " ");
-var CHEAPER = { haiku: [], sonnet: ["haiku"], opus: ["haiku", "sonnet"] };
-function escalationStep(env, allowed) {
-  const floor = env.ladder?.floor;
-  return floor && (!allowed.length || allowed.includes(floor.family)) ? floor : null;
-}
-function autoFloors(env, complexity, allowed, stage) {
-  const effortMin = {};
-  const exclude = {};
-  const because = [];
-  let tier = { tier: "T0", because: [] };
-  if (env.risk.effective === "critical" && complexity !== "trivial") {
-    const why = `critical consequence: ${env.risk.prospective.reasons.slice(0, 2).join("; ") || "observed"}`;
-    exclude.haiku = why;
-    effortMin.sonnet = "high";
-    effortMin.opus = "medium";
-    because.push(why);
-    tier = { tier: "T2", because: [why] };
-  }
-  const step = escalationStep(env, allowed);
-  if (step) {
-    for (const f of ["haiku", "sonnet", "opus"]) {
-      const e = EFFORTS3.find((x) => BAND_OF[f][x] >= step.band);
-      if (!e) exclude[f] = step.because;
-      else effortMin[f] = maxEffort2(effortMin[f] ?? "low", e);
-    }
-    because.push(step.because);
-    const t = tierOf(step.family, step.effort);
-    if (tierRank2(t) >= tierRank2(tier.tier)) tier = { tier: t, effort: step.effort, band: step.band, because: [step.because] };
-  }
-  const td = S.taskDecision && S.taskDecision.taskId === env.taskId ? S.taskDecision : null;
-  if (stage === "reconsider" && td) {
-    const band = BAND_OF[td.family][td.effort];
-    const why = `a challenge keeps the work's ${td.family} ${td.effort}`;
-    for (const f of ["haiku", "sonnet", "opus"]) {
-      const e = EFFORTS3.find((x) => BAND_OF[f][x] >= band);
-      if (!e) exclude[f] ??= why;
-      else effortMin[f] = maxEffort2(effortMin[f] ?? "low", e);
-    }
-    because.push(why);
-  }
-  if (S.stayUp > 0 && S.current) for (const f of CHEAPER[S.current.family]) exclude[f] ??= `a redo keeps the model for ${S.stayUp} more prompts`;
-  return { floors: { effortMin, exclude, because }, tier, escalated: step ? { family: step.family, effort: step.effort } : null };
+function floorFacts(env) {
+  return { taskId: env.taskId, risk: env.risk.effective, riskReasons: env.risk.prospective.reasons, ladderFloor: env.ladder?.floor ?? null, taskDecision: S.taskDecision ?? null, stayUp: S.stayUp, currentFamily: S.current?.family ?? null };
 }
 var executorOn = () => S.cfg.executor === "sonnet" && S.cfg.routeModels !== false;
 var cacheFresh = (at2) => !!S.cache?.lastRequestAt && at2 - S.cache.lastRequestAt <= S.ttl;
-function executorInput(verdicts, floors, taskRoute) {
-  if (!executorOn() || floors.fixedFamily || floors.exclude?.sonnet) return null;
-  const effort = executorEffort(verdicts.sonnet?.effort, taskRoute?.family === "sonnet" ? taskRoute.effort : void 0);
-  return { verdicts: { ...verdicts, sonnet: { model: "sonnet", effort, why: "executor" } }, floors: { ...floors, fixedFamily: "sonnet" } };
-}
-function autoCost(complexity, at2) {
+function attemptTable(complexity, at2) {
   const x = { cache: routingCache(), warm: S.warm, now: at2, prices: prices(), priors: S.priors, neutral: true };
-  return (family, effort) => attemptCost({ family, effort, cap: { lo: 0, hi: 0 } }, { steps: TASK_STEPS[complexity] }, x).usd;
+  const cell = (family, effort) => {
+    const usd = attemptCost({ family, effort, cap: { lo: 0, hi: 0 } }, { steps: TASK_STEPS2[complexity] }, x).usd;
+    return Number.isFinite(usd) ? usd : null;
+  };
+  return Object.fromEntries(["haiku", "sonnet", "opus"].map((f) => [f, Object.fromEntries(EFFORTS3.map((e) => [e, cell(f, e)]))]));
 }
+var autoCost = (complexity, at2) => costOf(attemptTable(complexity, at2));
 var appFamily = () => familyOf2(S.appModel ?? "") ?? familyOf2(S.sessionModel ?? "") ?? familyOf2(S.current?.model ?? "") ?? "sonnet";
 async function noteAppChoice($, e, at2) {
   const c = readAppChoice({ model: S.appModel, effort: S.appEffort }, e, { family: S.pinFamily, effort: S.pinEffort }, S.planMode || S.appPlan !== S.planMode);
@@ -2588,14 +3098,14 @@ async function v4CommandRun($, e, next) {
   return out;
 }
 function pinned(r, appModel) {
-  return applyPins(r, { family: S.pinFamily, effort: S.pinEffort }, S.turnOverride ?? {}, appModel, DEFAULT_LADDER.models);
+  return applyPins(r, { family: S.pinFamily, effort: S.pinEffort }, S.turnOverride ?? {}, appModel, DEFAULT_LADDER2.models);
 }
 var pinnedEffort = () => S.turnOverride?.effort ?? S.pinEffort;
 function allowedAuto(at2) {
-  const ok = allowedFamilies(at2).filter((f) => !(f === "haiku" && routingCache().prefixTokens > DEFAULT_PARAMS.haikuMaxContext));
+  const ok = allowedFamilies(at2).filter((f) => !(f === "haiku" && routingCache().prefixTokens > DEFAULT_PARAMS2.haikuMaxContext));
   return ok.length ? ok : ["sonnet"];
 }
-function autoRecord(choice, verdicts, hm, steps, required, fallback, need) {
+function autoRecord(choice, verdicts, hm, steps, required, fallback, need, replay) {
   return {
     verdicts,
     need,
@@ -2605,6 +3115,7 @@ function autoRecord(choice, verdicts, hm, steps, required, fallback, need) {
     required,
     ...fallback ? { fallback } : {},
     routeModels: S.cfg.routeModels !== false,
+    ...replay ? { replay } : {},
     candidates: choice.candidates.map((c) => ({ route: `${c.family}/${c.effort}`, ...c.verdictEffort ? { verdict: c.verdictEffort } : {}, eligibility: c.eligibility, usd: round6(Number.isFinite(c.attemptUsd) ? c.attemptUsd : -1), why: c.why.slice(0, 6) }))
   };
 }
@@ -2612,14 +3123,14 @@ async function decideAuto($, text, midTurn, attachList, at2) {
   const steps = [];
   await syncSignals($);
   const override = parseOverride(text);
-  const redo = !!S.current && looksLikeRedo(text);
+  const redo = !!S.current && looksLikeRedo2(text);
   if (override?.reset) {
     S.stayUp = 0;
     S.pinFamily = void 0;
     S.pinEffort = void 0;
   }
   if (!S.appModel && !S.sessionModel) S.sessionModel = await sessionModel($).then((m) => m.trim() || void 0).catch(() => void 0);
-  if (redo) S.stayUp = REDO_STAY_PROMPTS;
+  if (redo) S.stayUp = REDO_STAY_PROMPTS2;
   else if (S.stayUp > 0) S.stayUp -= 1;
   S.redoFloor = null;
   const tr = attachList.length ? null : transitionOf(text, S.lastReply);
@@ -2627,11 +3138,11 @@ async function decideAuto($, text, midTurn, attachList, at2) {
   const ctx = messages.length ? contextOf(messages) : S.lastReply ? `assistant: ${S.lastReply}` : "";
   const routeModels = S.cfg.routeModels !== false;
   const allowed = allowedAuto(at2);
-  const fixedFamily = !routeModels ? appFamily() : override?.tier ? DEFAULT_LADDER.tiers[override.tier].family : override?.effort && S.current ? S.current.family : S.pinFamily;
+  const fixedFamily = !routeModels ? appFamily() : override?.tier ? DEFAULT_LADDER2.tiers[override.tier].family : override?.effort && S.current ? S.current.family : S.pinFamily;
   const fixedEffort = override?.effort ?? (override?.tier === "T4" ? "max" : S.pinEffort);
   if (!routeModels) steps.push("routeModels false: the app model is kept");
   if (override?.tier || override?.effort) steps.push(`command: ${fixedFamily ?? "model by policy"}${fixedEffort ? ` at ${fixedEffort}` : ""}`);
-  const pendingEscalation = S.envelope ? escalationStep(S.envelope, allowed) : null;
+  const pendingEscalation = S.envelope ? escalationStep(S.envelope.ladder?.floor ?? null, allowed) : null;
   const belowFloor = !!pendingEscalation && !!S.current && bandOf(S.current.family, runningEffort()) < pendingEscalation.band;
   const req = decisionRequired({ planEntered: S.planMode && !S.decidedPlanMode, planExited: S.planExited, escalation: belowFloor, command: !!override, compacted: S.compactedPending });
   const td = S.taskDecision && S.envelope && S.taskDecision.taskId === S.envelope.taskId ? S.taskDecision : null;
@@ -2652,7 +3163,7 @@ async function decideAuto($, text, midTurn, attachList, at2) {
   } else {
     const families = firstCalls(fixedFamily, S.current && allowed.includes(S.current.family) ? S.current.family : void 0);
     anchor = families[0];
-    const key = fnv1a([S.envelope?.taskId ?? "none", S.workStage, String(S.planMode), normalizeText(text), fnv1a(S.lastReply.slice(-600)), S.envelope?.risk.effective ?? "none", families.join(","), String(midTurn)].join("|"));
+    const key = fnv1a2([S.envelope?.taskId ?? "none", S.workStage, String(S.planMode), normalizeText(text), fnv1a2(S.lastReply.slice(-600)), S.envelope?.risk.effective ?? "none", families.join(","), String(midTurn)].join("|"));
     cacheKey = key;
     const hit = S.verdictCache[key];
     if (hit) {
@@ -2700,153 +3211,96 @@ ${midTurnNote(runningEffort())}` : text, midTurn, attachList.length),
   const required = decisionRequired({ ...req.required ? Object.fromEntries(req.why.map((w) => [w, true])) : {}, newTask: boundary, riskChanged, stageChanged: stage !== S.workStage });
   const previousStage = S.workStage;
   S.workStage = stage;
-  const mq = autoFloors(env, complexity, allowed, stage);
-  if (mq.floors.because.length) steps.push(`floors: ${mq.floors.because.join("; ")}`);
-  const floors = { ...mq.floors, ...fixedFamily ? { fixedFamily } : {}, ...fixedEffort ? { fixedEffort } : {} };
-  let fallback;
-  let ownFallback;
   const hm = answer ? { tier: answer.tier, complexity: answer.complexity } : null;
-  if (!shortcut) {
-    if (S.current && !verdicts[S.current.family] && (!fixedFamily || fixedFamily === S.current.family)) {
-      const fb = fallbackEffort({ sameTask: !boundary, sameStage: stage === previousStage, riskChanged, planBoundary: req.why.includes("planExited") || req.why.includes("planEntered"), previous: { family: S.current.family, effort: runningEffort() }, previousAdequate: true, appEffort: S.appEffort, escalation: mq.escalated, effortMin: mq.floors.effortMin?.[S.current.family] });
-      verdicts = { ...verdicts, [S.current.family]: { model: S.current.family, effort: fb.effort, why: "fallback" } };
-      verdictRec[S.current.family] = { model: S.current.family, effort: fb.effort, why: "", ok: false, cached: false, fallback: fb.source };
-      if (askedNeed) {
-        ownFallback = fb.source;
-        steps.push(`own verdict failed: ${fb.source}`);
-      } else fallback = fb.source;
-    }
-    if (S.current && !askedNeed && !fixedFamily && !fallback) fallback = "the need call failed: no model switch";
-    if (!S.current && !Object.values(verdicts).some(Boolean)) {
-      const f = fixedFamily ?? (allowed.includes(appFamily()) ? appFamily() : allowed[allowed.length - 1]);
-      const fb = fallbackEffort({ sameTask: false, sameStage: false, riskChanged: false, planBoundary: false, previous: null, previousAdequate: false, appEffort: S.appEffort, escalation: null, effortMin: mq.floors.effortMin?.[f] });
-      verdicts = { [f]: { model: f, effort: fb.effort, why: "fallback" } };
-      floors.fixedFamily = f;
-      fallback = fb.source;
-    }
-    if ((!answer || fallback) && S.current && !fixedFamily && allowed.includes(S.current.family)) {
-      floors.fixedFamily = S.current.family;
-      fallback = fallback ?? "automode judge failed: no model switch";
-    }
-    if (!answer && !S.current && !fixedFamily && !floors.fixedFamily) {
-      floors.fixedFamily = allowed.includes(appFamily()) ? appFamily() : allowed[allowed.length - 1];
-      fallback = fallback ?? "automode judge failed on the first prompt: the app model";
-    }
-    if (fallback && answer && floors.fixedFamily && !fixedFamily && !executorOn()) {
-      const fm = fallbackModel(floors.fixedFamily, { tier: answer.tier, effort: answer.effort, confidence: answer.confidence }, allowed, env.risk.effective, LOW_CONFIDENCE);
-      if (fm.family !== floors.fixedFamily) {
-        floors.fixedFamily = fm.family;
-        verdicts = { ...verdicts, [fm.family]: { model: fm.family, effort: maxEffort2(fm.effort ?? "high", mq.floors.effortMin?.[fm.family] ?? "low"), why: "fallback" } };
-        verdictRec[fm.family] = { model: fm.family, effort: verdicts[fm.family].effort, why: "", ok: false, cached: false, fallback: fm.why };
-      }
-      fallback = `${fallback}; ${fm.why}`;
-    }
-    if (fallback) {
-      method = "fallback";
-      steps.push(`fallback: ${fallback}`);
-    }
-    if (fallback && !S.toldJudgeDown && S.mode === "auto") {
-      S.toldJudgeDown = true;
-      $.ui.toast("AutoMode: a judge did not answer, so routing keeps the current model until it does.");
-    }
-  }
-  if (answer && S.current && answer.confidence < LOW_CONFIDENCE && !floors.fixedFamily) {
-    const rankF = { haiku: 0, sonnet: 1, opus: 2 };
-    for (const f of ["haiku", "sonnet", "opus"]) if (rankF[f] < rankF[S.current.family]) floors.exclude = { ...floors.exclude ?? {}, [f]: `low judge confidence (${answer.confidence}): no downgrade` };
-    steps.push("low confidence: no downgrade (jev-router)");
-  }
-  const taught = S.cfg.learning && answer && askedNeed && !floors.fixedFamily && allowed.includes("opus") ? bucketOf(answer.tier, askedNeed.model) : null;
-  if (taught && opusFirst(S.learned, taught, at2)) {
-    floors.exclude = { ...floors.exclude ?? {}, haiku: `learned: ${taught} needed rescue in this project`, sonnet: `learned: ${taught} needed rescue in this project` };
-    steps.push(`learned: ${taught} starts on opus`);
-    if (S.learnedTold !== env.taskId) {
-      S.learnedTold = env.taskId;
-      S.records.push({ v: 1, kind: "learned", at: at2, sessionId: S.sessionId, taskId: env.taskId, bucket: taught });
-      $.ui.toast(`AutoMode: tasks like this needed Opus here before, so this one starts on Opus.`);
-    }
-  }
-  const consequence = env.risk.effective;
-  if (!shortcut && !fallback && !hmCached && !executorOn()) {
-    const second = secondCall({ allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence, reachHaiku: S.cfg.reachHaiku, floors, current: null, cost: () => 0 }, anchor);
-    if (second) {
-      const j2 = await effortlessJudge($, second, text, { messages, midTurnEffort: midTurn && S.current ? runningEffort() : void 0, attachments: attachList, purpose: "effortless-judge:second" });
-      verdicts = { ...verdicts, [second]: j2.verdict };
-      verdictRec[second] = j2.verdict ? { ...j2.verdict, ms: j2.ms, usd: round6(j2.usd ?? 0), ok: true, cached: false } : { model: "-", effort: "-", why: "", ms: j2.ms, ok: false, cached: false };
-      judgeInfo = { ...judgeInfo, called: true, ms: (judgeInfo?.ms ?? 0) + j2.ms, usd: round6((judgeInfo?.usd ?? 0) + (j2.usd ?? 0)) };
-      steps.push(`second effortless call: ${second}${j2.verdict ? ` -> ${j2.verdict.model}/${j2.verdict.effort}` : " failed"}`);
-    }
-  }
-  if (cacheKey && answer && Object.values(verdicts).every(Boolean) && !fallback && !ownFallback) S.verdictCache = Object.fromEntries([...Object.entries(S.verdictCache).slice(-40), [cacheKey, { verdicts, answer }]]);
-  const cost = autoCost(complexity, at2);
-  const current2 = S.current ? { family: S.current.family, effort: runningEffort() } : null;
-  const need = askedNeed ?? (floors.fixedFamily ? verdicts[floors.fixedFamily] ?? null : null);
-  const kept = shortcut ? { model: td.family, effort: td.effort, why: "kept" } : null;
-  const executed = kept ? null : executorInput(verdicts, floors, td && !boundary && !S.compactedPending && cacheFresh(at2) ? td : null);
-  if (executed) steps.push(`executor: sonnet ${executed.verdicts.sonnet.effort}`);
-  const choice = kept ? optimizeAuto({ allowed, verdicts: { [kept.model]: kept }, need: kept, hm: null, floors: { ...floors, fixedFamily: allowed.includes(td.family) ? td.family : void 0 }, current: current2, cost }) : optimizeAuto({ allowed, ...executed ?? { verdicts, floors }, need, hm, consequence, reachHaiku: S.cfg.reachHaiku, current: current2, cost });
-  const shadow = executed ? optimizeAuto({ allowed, verdicts, need, hm, consequence, reachHaiku: S.cfg.reachHaiku, floors, current: current2, cost }).best : null;
-  steps.push(`optimizer: ${choice.rule} -> ${choice.best.family}/${choice.best.effort}`);
-  const own = S.current ? choice.candidates.find((c) => c.family === S.current.family) : void 0;
-  const ownVerdict = S.current ? verdicts[S.current.family] : null;
-  const heldEffort = ownEffort(own) ?? (S.current && ownVerdict ? maxEffort2(ownVerdict.effort, mq.floors.effortMin?.[S.current.family] ?? "low") : void 0);
-  const currentInadequate = runningRuledOut(S.current?.family, choice, floors, hm);
-  const candidate = { tier: tierOf(choice.best.family, choice.best.effort), source: shortcut ? "continuation" : fallback ? "fallback" : "judge", confidence: answer?.confidence ?? 0.5, reason: `${shortcut ? "short go-ahead keeps the task" : answer?.why || "judges"}; ${choice.best.family} ${choice.best.effort} ${choice.best.eligibility}${choice.inadequate ? " (inadequate)" : ""}` };
-  S.votes = S.votes.tier === candidate.tier ? { tier: candidate.tier, n: S.votes.n + 1 } : { tier: candidate.tier, n: 1 };
-  if (currentInadequate && S.current && tierRank2(tierOf(choice.best.family, choice.best.effort)) > tierRank2(mq.tier.tier))
-    mq.tier = { tier: tierOf(choice.best.family, choice.best.effort), effort: choice.best.effort, because: [`${S.current.family} ${runningEffort()} is ruled out for this task (${own.eligibility})`] };
-  const commandRoute = override?.tier || override?.effort ? { tier: tierOf(choice.best.family, choice.best.effort), effort: choice.best.effort, reason: `user: ${text.trim().split(/\s/)[0]}` } : void 0;
-  const route = resolve({
-    override: commandRoute,
-    floor: mq.tier,
-    candidate,
-    effortHint: choice.best.effort,
-    heldEffort,
-    ...currentInadequate ? { currentInadequate } : {},
-    effortCost,
-    current: usableCurrent(at2),
-    switchInput: {
-      cache: cacheState(),
-      now: at2,
-      votes: S.votes.n,
-      requestsSinceSwitch: S.requestsSinceSwitch,
-      verifiedSinceSwitch: S.verifiedSinceSwitch,
-      sameTask: !boundary && !S.planExited,
-      risk: env.risk.effective,
-      expectedOutputTokens: S.priors.outputPerStep[S.current?.family ?? "sonnet"],
-      prices: prices(),
-      params: { ...DEFAULT_PARAMS, calibrated: S.priors.basis === "calibrated" },
-      requestsInPrompt: 0,
-      newTaskSteps: boundary ? TASK_STEPS[complexity] : void 0,
-      remainingTable: remainingTable(),
-      switchesThisTask: S.switchesThisTask,
-      targetWarm: warmFor(choice.best.family, at2),
-      targetWarmPrefix: S.warm[choice.best.family]?.prefixTokens,
-      resetPrefixTokens: S.compactedAt ? S.basePrefix : void 0,
-      ...continuityInput(S.compactedPending)
-    }
-  }, S.resetPending);
-  steps.push(`authority: ${route.owner} ${route.family}/${route.effort}${route.check?.gate ? ` (${route.check.gate})` : ""}`);
-  S.planExited = false;
-  let consult;
-  let routed = route;
-  if (hm) S.lastWorkBand = stage === "reconsider" ? S.lastWorkBand : TIER_BAND[hm.tier];
-  const consultKey = `stage:${env.taskId}:${S.lastWorkBand ?? 0}`;
-  if (stage === "reconsider" && S.current && S.current.family !== "opus" && (route.family === "opus" || choice.best.family === "opus") && cacheState().prefixTokens >= DEFAULT_PARAMS.smallContext && !S.consulted.includes(consultKey)) {
-    const packet = `Goal: ${env.spec.text.slice(0, 1500)}
+  const packet = `Goal: ${env.spec.text.slice(0, 1500)}
 
 The person now asks: ${text.slice(0, 600)}
 
 Acceptance: ${env.acceptance.map((a) => a.text).join("; ").slice(0, 400) || "none stated"}
 
 Files edited so far: ${env.editedPaths.slice(0, 30).join(", ") || "none"}`;
-    const c = consultOrSwitch({ prefixTokens: cacheState().prefixTokens, remainingRequests: remainingFor({ requestsInPrompt: 0, remainingTable: remainingTable() }).median, outPerRequest: S.priors.outputPerStep.opus, packetTokens: Math.ceil(packet.length / 3.5), planTokens: 2e3, main: S.current.family, ttlMs: S.ttl, prices: prices() });
+  const inputFor = (v, second2) => ({
+    schemaVersion: AUTO_ROUTE_SCHEMA,
+    now: at2,
+    allowed,
+    appFamily: appFamily(),
+    ...fixedFamily ? { fixedFamily } : {},
+    ...fixedEffort ? { fixedEffort } : {},
+    ...override?.tier || override?.effort ? { command: { label: text.trim().split(/\s/)[0] } } : {},
+    shortcut,
+    kept: shortcut ? { family: td.family, effort: td.effort } : null,
+    judge: answer ? { tier: answer.tier, complexity: answer.complexity, effort: answer.effort, confidence: answer.confidence, why: answer.why } : null,
+    judgeCached: hmCached,
+    anchor,
+    verdicts: v,
+    ...second2 ? { second: second2 } : {},
+    complexity,
+    stage,
+    previousStage,
+    boundary,
+    riskChanged,
+    planBoundary: req.why.includes("planExited") || req.why.includes("planEntered"),
+    planExited: S.planExited,
+    floor: floorFacts(env),
+    current: S.current ? { route: S.current, running: runningEffort() } : null,
+    usable: usableCurrent(at2),
+    appEffort: S.appEffort,
+    executor: { on: executorOn(), taskRoute: td && !boundary && !S.compactedPending && cacheFresh(at2) ? td : null },
+    reachHaiku: S.cfg.reachHaiku,
+    learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning ? opusBuckets(S.learned, at2) : [] },
+    votes: S.votes,
+    switching: {
+      cache: cacheState(),
+      reset: S.resetPending,
+      requestsSinceSwitch: S.requestsSinceSwitch,
+      verifiedSinceSwitch: S.verifiedSinceSwitch,
+      switchesThisTask: S.switchesThisTask,
+      remainingTable: remainingTable(),
+      warm: { haiku: warmFor("haiku", at2), sonnet: warmFor("sonnet", at2), opus: warmFor("opus", at2) },
+      warmPrefix: { haiku: S.warm.haiku?.prefixTokens, sonnet: S.warm.sonnet?.prefixTokens, opus: S.warm.opus?.prefixTokens },
+      resetPrefixTokens: S.compactedAt ? S.basePrefix : void 0,
+      continuity: continuityInput(S.compactedPending)
+    },
+    economics: { attempt: attemptTable(complexity, at2), outputPerStep: S.priors.outputPerStep, effortOutput: S.priors.effortOutput, effortSteps: DEFAULT_PRIORS2.effortSteps, prices: prices(), calibrated: S.priors.basis === "calibrated" },
+    consult: { lastWorkBand: S.lastWorkBand, consulted: S.consulted, packetTokens: Math.ceil(packet.length / 3.5), ttlMs: S.ttl },
+    policy: { lowConfidence: LOW_CONFIDENCE }
+  });
+  const plan = planAuto(inputFor(verdicts));
+  for (const n of plan.notes) verdictRec[n.family] = { model: n.family, effort: n.effort, why: "", ok: false, cached: false, fallback: n.fallback };
+  if (plan.fallback) method = "fallback";
+  if (plan.fallback && !S.toldJudgeDown && S.mode === "auto") {
+    S.toldJudgeDown = true;
+    $.ui.toast("AutoMode: a judge did not answer, so routing keeps the current model until it does.");
+  }
+  if (plan.learnedBucket && S.learnedTold !== env.taskId) {
+    S.learnedTold = env.taskId;
+    S.records.push({ v: 1, kind: "learned", at: at2, sessionId: S.sessionId, taskId: env.taskId, bucket: plan.learnedBucket });
+    $.ui.toast(`AutoMode: tasks like this needed Opus here before, so this one starts on Opus.`);
+  }
+  const second = plan.secondJudge;
+  if (second) {
+    const j2 = await effortlessJudge($, second, text, { messages, midTurnEffort: midTurn && S.current ? runningEffort() : void 0, attachments: attachList, purpose: "effortless-judge:second" });
+    verdicts = { ...verdicts, [second]: j2.verdict };
+    verdictRec[second] = j2.verdict ? { ...j2.verdict, ms: j2.ms, usd: round6(j2.usd ?? 0), ok: true, cached: false } : { model: "-", effort: "-", why: "", ms: j2.ms, ok: false, cached: false };
+    judgeInfo = { ...judgeInfo, called: true, ms: (judgeInfo?.ms ?? 0) + j2.ms, usd: round6((judgeInfo?.usd ?? 0) + (j2.usd ?? 0)) };
+  }
+  const routeInput = inputFor(verdicts, second ?? void 0);
+  const r = routeAuto(routeInput);
+  steps.push(...r.reasons);
+  const { choice, shadow, own, need, kept, fallback, ownFallback } = r;
+  verdicts = r.verdicts;
+  if (cacheKey && answer && Object.values(verdicts).every(Boolean) && !fallback && !ownFallback) S.verdictCache = Object.fromEntries([...Object.entries(S.verdictCache).slice(-40), [cacheKey, { verdicts, answer }]]);
+  S.votes = r.votes;
+  S.planExited = false;
+  if (hm) S.lastWorkBand = r.lastWorkBand;
+  let consult;
+  const routed = r.route;
+  if (r.consult) {
+    const c = r.consult;
     S.records.push({ v: 1, kind: "escalation", at: at2, sessionId: S.sessionId, taskId: env.taskId, floor: null, action: c.choice === "consult" ? "consult-opus" : "switch", via: c.choice === "consult" ? "architect" : "switch", because: "challenge to finished hard work", estimate: { consultUsd: round6(c.consultUsd), switchUsd: round6(c.switchUsd), basis: S.priors.basis } });
     if (c.choice === "consult") {
-      S.consulted = [...S.consulted, consultKey].slice(-20);
-      const ownEffort2 = own?.effort ?? S.current.effort;
-      routed = { ...S.current, tier: tierOf(S.current.family, ownEffort2), effort: ownEffort2, owner: "quality-escalation", reason: `consult Opus instead of a switch: ${c.why}`, floor: mq.tier, candidate: route.candidate, overridden: [...route.overridden, { owner: route.owner, reason: "opus switch replaced by a consult" }] };
+      S.consulted = [...S.consulted, c.key].slice(-20);
       consult = packet;
-      steps.push("consult: Opus architect instead of a switch");
     }
   }
   const heldBelow = own?.eligibility === "ineligible" && routed.owner === "cache-policy";
@@ -2862,9 +3316,9 @@ Files edited so far: ${env.editedPaths.slice(0, 30).join(", ") || "none"}`;
   const strategy = choose({ hint, workflowPurpose: entry.purpose, risk: env.risk.effective, designDecision: routed.tier === "T3" && answer?.complexity === "complex", main: routed.family, worker: "haiku", cache: cacheState(), work, outputTokens: 1500, prices: prices() }, answer?.confidence ?? 0.5);
   const injected = injection(env, reason, S.lastSummary);
   const chosen = override?.strategy ?? strategy.chosen;
-  const needBand = hm ? TIER_BAND[hm.tier] : 0;
-  if (!shortcut) S.inadequate = choice.inadequate && routed.owner !== "user-override" ? { need: needBand, shortfall: Math.max(0, needBand - BAND_OF[routed.family][routed.effort]), route: `${routed.family}/${routed.effort}` } : null;
-  const legacy = S.lastDemand && answer ? pick("legacy", S.lastDemand, { tier: mq.tier.tier }, at2) : null;
+  const needBand = hm ? TIER_BAND2[hm.tier] : 0;
+  if (!shortcut) S.inadequate = choice.inadequate && routed.owner !== "user-override" ? { need: needBand, shortfall: Math.max(0, needBand - BAND_OF2[routed.family][routed.effort]), route: `${routed.family}/${routed.effort}` } : null;
+  const legacy = S.lastDemand && answer ? pick("legacy", S.lastDemand, { tier: r.tier.tier }, at2) : null;
   const mainUsd = choice.candidates.find((c) => c.family === routed.family)?.attemptUsd;
   return {
     route: routed,
@@ -2888,7 +3342,7 @@ Files edited so far: ${env.editedPaths.slice(0, 30).join(", ") || "none"}`;
     ...shadow ? { shadowRoute: `${shadow.family}/${shadow.effort}` } : {},
     ...S.inadequate ? { inadequate: S.inadequate } : {},
     routing: { cheapestAdequate: `${choice.best.family}/${choice.best.effort}`, chosen: `${routed.family}/${routed.effort}`, overRouted: routed.family !== choice.best.family || routed.effort !== choice.best.effort ? (choice.candidates.find((c) => c.family === routed.family)?.attemptUsd ?? 0) > choice.best.attemptUsd || EFFORTS3.indexOf(routed.effort) > EFFORTS3.indexOf(choice.best.effort) ? routed.owner : null : null, underRouted: own && S.current && routed.family === S.current.family && own.eligibility !== "eligible" && own.eligibility !== "needs-verdict" ? routed.owner : null },
-    auto: autoRecord(choice, verdictRec, hm ? { ...hm, ok: true, cached: hmCached } : shortcut ? null : { tier: "-", complexity: "-", ok: false, cached: false }, steps, required.why, fallback ?? ownFallback, needRecord(anchor, shortcut ? kept : askedNeed))
+    auto: autoRecord(choice, verdictRec, hm ? { ...hm, ok: true, cached: hmCached } : shortcut ? null : { tier: "-", complexity: "-", ok: false, cached: false }, steps, required.why, fallback ?? ownFallback, needRecord(anchor, shortcut ? kept : askedNeed), replayOf(routeInput, r, `${prices().provider} ${prices().checkedAt}`, { executor: executorOn(), learning: !!S.cfg.learning, reachHaiku: !!S.cfg.reachHaiku, routeModels: S.cfg.routeModels !== false }))
   };
 }
 function reoptimizeAuto(t, event, at2, turnId, reset = false) {
@@ -2896,24 +3350,24 @@ function reoptimizeAuto(t, event, at2, turnId, reset = false) {
   const env = S.envelope;
   const complexity = S.lastAuto.hm?.complexity ?? env.complexity;
   const allowed = allowedAuto(at2);
-  const mq = autoFloors(env, complexity, allowed, S.workStage);
+  const mq = autoFloors(floorFacts(env), complexity, allowed, S.workStage);
   const routeModels = S.cfg.routeModels !== false;
   const current2 = S.current ? { family: S.current.family, effort: runningEffort() } : null;
   const baseFloors = { ...mq.floors, ...!routeModels ? { fixedFamily: appFamily() } : {} };
   const td = S.taskDecision && S.taskDecision.taskId === env.taskId ? S.taskDecision : null;
-  const executed = executorInput(S.lastAuto.verdicts, baseFloors, !reset && td && cacheFresh(at2) ? td : null);
+  const executed = executorInput(executorOn(), S.lastAuto.verdicts, baseFloors, !reset && td && cacheFresh(at2) ? td : null);
   const floors = executed?.floors ?? baseFloors;
   const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, floors, current: current2, cost: autoCost(complexity, at2) });
   let floor = mq.tier;
   if (t.mandatory) {
-    const lift = tierOf(choice.best.family, choice.best.effort);
+    const lift = tierOf2(choice.best.family, choice.best.effort);
     if (tierRank2(lift) > tierRank2(floor.tier)) floor = { tier: lift, effort: choice.best.effort, because: [t.reason] };
   }
   const own = S.current ? choice.candidates.find((c) => c.family === S.current.family) : void 0;
   const heldEffort = ownEffort(own) ?? (executed && S.current ? runningEffort() : void 0);
   const currentInadequate = runningRuledOut(S.current?.family, choice, floors, S.lastAuto.hm);
-  const candidate = { tier: tierOf(choice.best.family, choice.best.effort), source: "rules", confidence: 0.9, reason: `${t.reason}; ${choice.best.family} ${choice.best.effort} ${choice.best.eligibility}` };
-  const route = resolve({
+  const candidate = { tier: tierOf2(choice.best.family, choice.best.effort), source: "rules", confidence: 0.9, reason: `${t.reason}; ${choice.best.family} ${choice.best.effort} ${choice.best.eligibility}` };
+  const route = resolve2({
     floor,
     candidate,
     effortHint: choice.best.effort,
@@ -2931,7 +3385,7 @@ function reoptimizeAuto(t, event, at2, turnId, reset = false) {
       risk: env.risk.effective,
       expectedOutputTokens: S.priors.outputPerStep[S.current?.family ?? "sonnet"],
       prices: prices(),
-      params: { ...DEFAULT_PARAMS, calibrated: S.priors.basis === "calibrated" },
+      params: { ...DEFAULT_PARAMS2, calibrated: S.priors.basis === "calibrated" },
       requestsInPrompt: S.requestsInPrompt,
       remainingTable: remainingTable(),
       switchesThisTask: S.switchesThisTask,
@@ -2942,7 +3396,7 @@ function reoptimizeAuto(t, event, at2, turnId, reset = false) {
     }
   }, reset);
   S.pending = route;
-  S.inadequate = choice.inadequate ? { need: S.lastAuto.hm ? TIER_BAND[S.lastAuto.hm.tier] : 0, shortfall: 0, route: `${route.family}/${route.effort}` } : null;
+  S.inadequate = choice.inadequate ? { need: S.lastAuto.hm ? TIER_BAND2[S.lastAuto.hm.tier] : 0, shortfall: 0, route: `${route.family}/${route.effort}` } : null;
   pushDecision("trigger", { route, strategy: "direct", strategyChoice: null, method: `trigger:${event}`, answer: null, newTask: false, contextNote: null, optimizer: null, redo: false, stage: S.workStage, auto: autoRecord(choice, {}, null, [`trigger ${event}: stored verdicts, no judge call`, `optimizer: ${choice.rule}`], [event], void 0, needRecord(NEED_ANCHOR, S.lastAuto.need)) }, true, at2, turnId, void 0, { event, reason: t.reason, mandatory: t.mandatory });
 }
 async function rejudgeAuto($, note, t, event, turnId) {
@@ -2982,8 +3436,8 @@ async function helperPick($, e, model) {
 }
 function pick(_policy, demand, floor, at2, family, keepRunning = false, _stageMin = 0) {
   const x = { cache: routingCache(), warm: S.warm, now: at2, prices: prices(), priors: S.priors, neutral: true };
-  const common = { haikuMaxContext: DEFAULT_PARAMS.haikuMaxContext, allowed: allowedFamilies(at2), ...family ? { family } : {} };
-  return optimize(demand, x, { ...common, minCap: Math.max(FLOOR_CAPABILITY[floor.tier], keepRunning && S.current ? capOf(S.current) : 0) });
+  const common = { haikuMaxContext: DEFAULT_PARAMS2.haikuMaxContext, allowed: allowedFamilies(at2), ...family ? { family } : {} };
+  return optimize(demand, x, { ...common, minCap: Math.max(FLOOR_CAPABILITY2[floor.tier], keepRunning && S.current ? capOf(S.current) : 0) });
 }
 function heldEffortFor(demand, floor, at2, opt, stageMin = 0) {
   if (!S.current || S.current.family === opt.best.family || !allowedFamilies(at2).includes(S.current.family)) return void 0;
@@ -3067,7 +3521,7 @@ function floorFor(env, complexity) {
   const floors = [{ tier: riskFloor, because: `critical consequence: ${env.risk.prospective.reasons.slice(0, 2).join("; ") || "observed"}` }];
   if (esc.floor) floors.push({ tier: esc.floor, ...escBand ? { band: escBand.band } : {}, because: esc.because });
   if (S.redoFloor) floors.push({ tier: S.redoFloor, because: `a redo asked for better (${S.stayUp} prompts left)` });
-  const top = floors.reduce((a, b) => tierRank2(b.tier) > tierRank2(a.tier) ? b : a);
+  const top = floors.reduce((a, b2) => tierRank2(b2.tier) > tierRank2(a.tier) ? b2 : a);
   return { tier: top.tier, ...top.band !== void 0 ? { band: top.band } : {}, because: top.tier === "T0" ? [] : [top.because] };
 }
 function reoptimize(t, event, at2, turnId, reset = false) {
@@ -3075,12 +3529,12 @@ function reoptimize(t, event, at2, turnId, reset = false) {
   if (!S.lastDemand || !S.envelope) return;
   const env = S.envelope;
   const failures = substantiveFailures(env);
-  const b = S.lastDemand.tier ? demandBand({ tier: S.lastDemand.tier, unsure: S.lastDemand.unsure, planning: S.planMode, failures, complexity: S.lastDemand.complexity }) : null;
-  const demand = { ...S.lastDemand, planning: S.planMode, failures, consequence: env.risk.effective, ...b ? { band: b.band, bandWhy: b.why } : {} };
+  const b2 = S.lastDemand.tier ? demandBand2({ tier: S.lastDemand.tier, unsure: S.lastDemand.unsure, planning: S.planMode, failures, complexity: S.lastDemand.complexity }) : null;
+  const demand = { ...S.lastDemand, planning: S.planMode, failures, consequence: env.risk.effective, ...b2 ? { band: b2.band, bandWhy: b2.why } : {} };
   S.lastDemand = demand;
   let floor = floorFor(env, env.complexity);
   const opt = pick(S.policy, demand, floor, at2);
-  const lift = t.mandatory ? tierOf(opt.best.family, opt.best.effort) : floor.tier;
+  const lift = t.mandatory ? tierOf2(opt.best.family, opt.best.effort) : floor.tier;
   if (tierRank2(lift) > tierRank2(floor.tier)) {
     floor.tier = lift;
     floor.because = [t.reason];
@@ -3088,8 +3542,8 @@ function reoptimize(t, event, at2, turnId, reset = false) {
   const currentInadequate = false;
   floor = inadequateFloor(floor, opt);
   const heldEffort = heldEffortFor(demand, floor, at2, opt);
-  const candidate = { tier: tierOf(opt.best.family, opt.best.effort), source: "rules", confidence: demand.confidence, reason: `${t.reason}; ${opt.best.family} ${opt.best.effort} ${opt.best.adequacy}${opt.inadequate ? " (inadequate)" : ""}` };
-  const route = resolve({
+  const candidate = { tier: tierOf2(opt.best.family, opt.best.effort), source: "rules", confidence: demand.confidence, reason: `${t.reason}; ${opt.best.family} ${opt.best.effort} ${opt.best.adequacy}${opt.inadequate ? " (inadequate)" : ""}` };
+  const route = resolve2({
     floor,
     candidate,
     effortHint: opt.best.effort,
@@ -3106,7 +3560,7 @@ function reoptimize(t, event, at2, turnId, reset = false) {
       risk: env.risk.effective,
       expectedOutputTokens: S.priors.outputPerStep[S.current?.family ?? "sonnet"],
       prices: prices(),
-      params: { ...DEFAULT_PARAMS, calibrated: S.priors.basis === "calibrated" },
+      params: { ...DEFAULT_PARAMS2, calibrated: S.priors.basis === "calibrated" },
       requestsInPrompt: S.requestsInPrompt,
       remainingTable: remainingTable(),
       switchesThisTask: S.switchesThisTask,
@@ -3133,10 +3587,10 @@ ${note}`, true, 0);
   reoptimize(t, "scope-change", at2, void 0);
 }
 function undoFailure(key, _why) {
-  const b = S.breakers[key];
-  if (!b) return;
-  const failures = Math.max(0, b.failures - 1);
-  S.breakers = { ...S.breakers, [key]: { ...b, failures, openUntil: failures < (b.threshold ?? BREAKER_FAILURES) ? 0 : b.openUntil } };
+  const b2 = S.breakers[key];
+  if (!b2) return;
+  const failures = Math.max(0, b2.failures - 1);
+  S.breakers = { ...S.breakers, [key]: { ...b2, failures, openUntil: failures < (b2.threshold ?? BREAKER_FAILURES) ? 0 : b2.openUntil } };
 }
 async function reconcileErrors($, t) {
   const left = [];
@@ -3155,8 +3609,8 @@ async function reconcileErrors($, t) {
         $.ui.toast("AutoMode: the API refused a request with a rewritten effort. Effort changes are off for this session; the model route still applies.");
       }
     } else if (act.kind === "breaker") {
-      const b = S.breakers[f.key];
-      if (b) S.breakers = { ...S.breakers, [f.key]: { ...b, class: err.error, threshold: act.threshold, cooldownMs: act.cooldownMs, openUntil: b.failures >= act.threshold ? f.at + act.cooldownMs : 0 } };
+      const b2 = S.breakers[f.key];
+      if (b2) S.breakers = { ...S.breakers, [f.key]: { ...b2, class: err.error, threshold: act.threshold, cooldownMs: act.cooldownMs, openUntil: b2.failures >= act.threshold ? f.at + act.cooldownMs : 0 } };
     } else {
       undoFailure(f.key, act.kind);
       if (act.kind === "context" && familyOf2(f.model) === "haiku") S.haikuOutUntilCompaction = true;
@@ -3177,7 +3631,7 @@ async function reconcileErrors($, t) {
 }
 function allowedFamilies(at2) {
   const all = ["haiku", "sonnet", "opus"];
-  const open = (f) => Object.entries(S.breakers).some(([k, b]) => b.openUntil > at2 && familyOf2(k.slice(k.indexOf(":") + 1)) === f);
+  const open = (f) => Object.entries(S.breakers).some(([k, b2]) => b2.openUntil > at2 && familyOf2(k.slice(k.indexOf(":") + 1)) === f);
   const ok = all.filter((f) => !open(f) && !(f === "haiku" && (prefixUnknown() || S.haikuOutUntilCompaction)));
   return ok.length ? ok : all.filter((f) => !(f === "haiku" && prefixUnknown()));
 }
@@ -3191,7 +3645,7 @@ async function hashFiles($, paths) {
   for (const p of paths.slice(0, 40)) {
     try {
       const text = await fsRead($, p);
-      if (text.length <= 4e5) out[p] = fnv1a(text);
+      if (text.length <= 4e5) out[p] = fnv1a2(text);
     } catch {
     }
   }
@@ -3200,8 +3654,8 @@ async function hashFiles($, paths) {
 function routingRecord(d) {
   const best = d.optimizer.best;
   const bands = false;
-  const chosen = bands ? bandOf(d.route.family, d.route.effort) : mid(CAPABILITY[d.route.family][d.route.effort]);
-  const target = bands ? bandOf(best.family, best.effort) : mid(best.cap);
+  const chosen = bands ? bandOf(d.route.family, d.route.effort) : mid2(CAPABILITY2[d.route.family][d.route.effort]);
+  const target = bands ? bandOf(best.family, best.effort) : mid2(best.cap);
   const tol = bands ? 0 : 0.05;
   const heldPricier = d.route.owner === "cache-policy" && d.route.family !== best.family;
   const over = chosen > target + tol || heldPricier;
@@ -3210,13 +3664,13 @@ function routingRecord(d) {
 }
 function inadequateFloor(floor, opt) {
   if (!S.current || currentAdequate(opt)) return floor;
-  const tier = tierOf(opt.best.family, opt.best.effort);
-  const why = false ? `${S.current.family} ${S.current.effort} is below band ${opt.required} for this task` : `${S.current.family} ${S.current.effort} is ${adequacy(CAPABILITY[S.current.family][S.current.effort], opt.required)} for this task (need ${opt.required.toFixed(2)})`;
+  const tier = tierOf2(opt.best.family, opt.best.effort);
+  const why = false ? `${S.current.family} ${S.current.effort} is below band ${opt.required} for this task` : `${S.current.family} ${S.current.effort} is ${adequacy(CAPABILITY2[S.current.family][S.current.effort], opt.required)} for this task (need ${opt.required.toFixed(2)})`;
   return tierRank2(tier) > tierRank2(floor.tier) ? { tier, because: [why] } : floor;
 }
 var effortCost = {
   output: (r) => S.priors.outputPerStep[r.family] * S.priors.effortOutput[r.effort],
-  steps: (r) => DEFAULT_PRIORS.effortSteps[r.effort]
+  steps: (r) => DEFAULT_PRIORS2.effortSteps[r.effort]
 };
 var remainingTable = () => S.policy === "auto" ? S.priors.remainingByStage?.[S.workStage] ?? S.priors.remaining : S.priors.remaining;
 function usableCurrent(at2) {
@@ -3224,7 +3678,7 @@ function usableCurrent(at2) {
 }
 function currentAdequate(opt) {
   if (!S.current) return true;
-  return opt.acceptable.includes(adequacy(CAPABILITY[S.current.family][S.current.effort], opt.required));
+  return opt.acceptable.includes(adequacy(CAPABILITY2[S.current.family][S.current.effort], opt.required));
 }
 function substantiveFailures(env) {
   const defects = env.failures.filter((f) => f.class === "defect" && f.editedSince);
@@ -3380,10 +3834,10 @@ var INADEQUATE_REVIEW = "no available model met the need for this task";
 function statusLine($, r) {
   $.ui.status(`AutoMode · ${r.family} ${r.effort}${S.planMode ? " · plan" : S.policy === "auto" && S.workStage !== "implement" ? ` · ${S.workStage === "plan-approved" ? "approved" : S.workStage}` : ""}${S.envelope?.reviewRequired.value ? " · review pending" : ""}${S.completionState === "none" ? "" : ` · ${S.completionState.replace("_", " ")}`}`);
 }
-var capOf = (r) => S.policy === "auto" ? bandOf(r.family, r.effort) + EFFORT_ORDER.indexOf(r.effort) / 10 : mid(CAPABILITY[r.family][r.effort]);
+var capOf = (r) => S.policy === "auto" ? bandOf(r.family, r.effort) + EFFORT_ORDER.indexOf(r.effort) / 10 : mid2(CAPABILITY2[r.family][r.effort]);
 var EFFORT_ORDER = ["low", "medium", "high", "xhigh", "max"];
 function trigState() {
-  return { haikuMaxContext: DEFAULT_PARAMS.haikuMaxContext, longContextAt: 1e5, scopeThreshold: 4, judgedThisStage: S.judgedThisStage, verifiedAfterPlan: S.verifiedAfterPlan };
+  return { haikuMaxContext: DEFAULT_PARAMS2.haikuMaxContext, longContextAt: 1e5, scopeThreshold: 4, judgedThisStage: S.judgedThisStage, verifiedAfterPlan: S.verifiedAfterPlan };
 }
 function usageOf(u, subagent = false) {
   const total = u.cache_creation_input_tokens ?? 0;
@@ -3495,18 +3949,18 @@ async function* v4TurnStep($, e, next) {
       pushRequest(e, { model, effort: ef.sent }, r.owner, ef.applied, ef.why, res, tEnd, application);
       return res;
     }
-    const b = { ...S.breakers[key] ?? { failures: 0, openUntil: 0 } };
-    if (b.lastAt !== void 0 && tEnd - b.lastAt > 3 * (b.cooldownMs ?? BREAKER_COOLDOWN_MS)) b.failures = 0;
-    const threshold = b.threshold ?? BREAKER_FAILURES;
-    if (b.failures >= threshold && b.openUntil <= tEnd) b.failures = threshold - 1;
-    b.lastAt = tEnd;
-    b.failures += 1;
-    b.turnId = e.turnId;
-    if (b.failures >= threshold) b.openUntil = tEnd + (b.cooldownMs ?? BREAKER_COOLDOWN_MS);
-    S.breakers = { ...S.breakers, [key]: b };
+    const b2 = { ...S.breakers[key] ?? { failures: 0, openUntil: 0 } };
+    if (b2.lastAt !== void 0 && tEnd - b2.lastAt > 3 * (b2.cooldownMs ?? BREAKER_COOLDOWN_MS)) b2.failures = 0;
+    const threshold = b2.threshold ?? BREAKER_FAILURES;
+    if (b2.failures >= threshold && b2.openUntil <= tEnd) b2.failures = threshold - 1;
+    b2.lastAt = tEnd;
+    b2.failures += 1;
+    b2.turnId = e.turnId;
+    if (b2.failures >= threshold) b2.openUntil = tEnd + (b2.cooldownMs ?? BREAKER_COOLDOWN_MS);
+    S.breakers = { ...S.breakers, [key]: b2 };
     S.lastNoResponse = { key, turnId: e.turnId, at: tEnd };
     S.failures = [...S.failures, { key, model, at: tEnd, turnId: e.turnId, cls: "pending" }].slice(-10);
-    S.records.push({ v: 1, kind: "provider-failure", at: tEnd, sessionId: S.sessionId, turnId: e.turnId, model, family: r.family, provider: S.provider, class: "no-response", consecutive: b.failures, breaker: b.openUntil > tEnd ? "open" : "counting" });
+    S.records.push({ v: 1, kind: "provider-failure", at: tEnd, sessionId: S.sessionId, turnId: e.turnId, model, family: r.family, provider: S.provider, class: "no-response", consecutive: b2.failures, breaker: b2.openUntil > tEnd ? "open" : "counting" });
     try {
       await reconcileErrors($, tEnd);
     } catch {
@@ -3517,7 +3971,7 @@ async function* v4TurnStep($, e, next) {
       $.ui.toast(`AutoMode: ${model} did not answer ${open.failures} request${open.failures === 1 ? "" : "s"} in a row (${open.class ?? "unclassified"}). Routing without it for ${Math.round((open.cooldownMs ?? BREAKER_COOLDOWN_MS) / 6e4)} minutes.`);
     }
     const back = familyOf2(e.model) ?? "sonnet";
-    S.pending = { ...routeFor(back === "haiku" ? "T0" : back === "opus" ? "T3" : "T1"), model: e.model, owner: "fallback", reason: `${r.family} did not answer`, floor: { tier: "T0", because: [] }, overridden: [] };
+    S.pending = { ...routeFor2(back === "haiku" ? "T0" : back === "opus" ? "T3" : "T1"), model: e.model, owner: "fallback", reason: `${r.family} did not answer`, floor: { tier: "T0", because: [] }, overridden: [] };
     pushRequest(e, { model, effort: ef.sent }, r.owner, ef.applied, ef.why, res, tEnd, application);
     return res;
   }
@@ -3571,7 +4025,7 @@ function noteSwitch(family, model, prefix, shrank, t) {
   const known = moved && !shrank && !(S.compactedAt && S.compactedAt >= (was.lastRequestAt ?? 0));
   const drop = known ? observedDrop(was.prefixTokens, was.outputTokens ?? 0, prefix) : 0;
   S.dropped = noteDrop(S.dropped, family, drop);
-  if (moved) S.records.push({ v: 1, kind: "model-switch", at: t, sessionId: S.sessionId, taskId: S.envelope?.taskId ?? "none", from: was.model, to: model, continuity: continuity(was.model, model, S.provider), prefixBefore: was.prefixTokens, prefixAfter: prefix, droppedTokens: known ? drop : null });
+  if (moved) S.records.push({ v: 1, kind: "model-switch", at: t, sessionId: S.sessionId, taskId: S.envelope?.taskId ?? "none", from: was.model, to: model, continuity: continuity2(was.model, model, S.provider), prefixBefore: was.prefixTokens, prefixAfter: prefix, droppedTokens: known ? drop : null });
 }
 function markWarm(fam, effort, res, t) {
   if (!fam || !res?.usage) return;
@@ -3640,7 +4094,7 @@ async function v4TurnComplete($, e, next) {
       const d = await decide($, p.text, false, 0, p.at).catch(() => null);
       S.resetPending = false;
       if (d) {
-        S.current = routeFor(d.route.tier, DEFAULT_LADDER, d.route.effort);
+        S.current = routeFor2(d.route.tier, DEFAULT_LADDER2, d.route.effort);
         pushDecision("prompt", d, false, at2, e.turnId, e.usage ? { model: e.usage.model } : void 0);
       }
     }
@@ -3764,9 +4218,9 @@ ${packet()}
 Ask it for the cause and a fix plan. Apply its plan, then run the check again.]`;
     return;
   }
-  const tier = tierOf(step.family, step.effort);
+  const tier = tierOf2(step.family, step.effort);
   const floor = { tier, band: step.band, effort: step.effort, because: [esc.because] };
-  const target = { ...routeFor(tier, DEFAULT_LADDER, step.effort), owner: "quality-escalation", reason: esc.because, floor, overridden: [] };
+  const target = { ...routeFor2(tier, DEFAULT_LADDER2, step.effort), owner: "quality-escalation", reason: esc.because, floor, overridden: [] };
   const applied = pinned(target, S.appModel ?? target.model);
   const moved = applied.family !== running.family || applied.effort !== running.effort;
   S.pending = applied;
@@ -4051,7 +4505,7 @@ async function legacyEscalation($, fp, at2) {
   const step = failureStep(env.failures, S.current?.tier ?? "T1");
   if (step.action === "consult-opus" && S.current && S.current.family !== "opus" && !S.consulted.includes(fp)) {
     const packet2 = evidencePacket(env.spec.text.slice(0, 1500), env.acceptance.map((a) => a.text), env.failures, env.editedPaths);
-    const c = consultOrSwitch({ prefixTokens: cacheState().prefixTokens, remainingRequests: S.priors.remainingRequests, outPerRequest: S.priors.outputPerStep.opus, packetTokens: Math.ceil(packet2.length / 3.5), planTokens: 2e3, main: S.current.family, ttlMs: S.ttl, prices: prices() });
+    const c = consultOrSwitch2({ prefixTokens: cacheState().prefixTokens, remainingRequests: S.priors.remainingRequests, outPerRequest: S.priors.outputPerStep.opus, packetTokens: Math.ceil(packet2.length / 3.5), planTokens: 2e3, main: S.current.family, ttlMs: S.ttl, prices: prices() });
     if (c.choice === "consult") {
       S.consulted = [...S.consulted, fp].slice(-20);
       S.consultCounts = { ...S.consultCounts, [fp]: env.failures.filter((x) => x.fingerprint === fp).length };
@@ -4066,7 +4520,7 @@ Ask it for the cause and a fix plan. Apply its plan, then run the check again.]`
     }
   }
   if (!step.floor || !S.current || TIER_ORDER.indexOf(step.floor) <= TIER_ORDER.indexOf(S.current.tier)) return;
-  const target = routeFor(step.floor);
+  const target = routeFor2(step.floor);
   const applied = pinned(target, S.appModel ?? target.model);
   S.pending = { ...applied, owner: "quality-escalation", reason: step.because, floor: { tier: step.floor, because: [step.because] }, overridden: [] };
   S.envelope = withReview({ ...env, escalations: env.escalations + 1 }, "fail", false);
@@ -4295,8 +4749,8 @@ function v4Snapshot(sessionModel2, now3) {
     deferredEffort: U.deferred,
     verdict: U.verdict,
     judging: U.judging,
-    judgeDown: Object.entries(S.judgeBreaker).filter(([, b]) => (b?.until ?? 0) > now3).map(([k]) => k),
-    breakers: Object.entries(S.breakers).filter(([, b]) => b.openUntil > now3).map(([k, b]) => ({ model: k.slice(k.indexOf(":") + 1), until: b.openUntil, cls: b.class ?? null })),
+    judgeDown: Object.entries(S.judgeBreaker).filter(([, b2]) => (b2?.until ?? 0) > now3).map(([k]) => k),
+    breakers: Object.entries(S.breakers).filter(([, b2]) => b2.openUntil > now3).map(([k, b2]) => ({ model: k.slice(k.indexOf(":") + 1), until: b2.openUntil, cls: b2.class ?? null })),
     inadequate: S.inadequate ? { shortfall: S.inadequate.shortfall, route: S.inadequate.route } : null,
     stage: S.workStage,
     planMode: S.planMode,
@@ -4586,7 +5040,7 @@ function parse(args) {
   const i = s.search(/\s/);
   return i < 0 ? { sub: s.toLowerCase(), rest: "" } : { sub: s.slice(0, i).toLowerCase(), rest: s.slice(i + 1).trim() };
 }
-function resolve2(sub) {
+function resolve3(sub) {
   for (const c of SUBCOMMANDS) if (c.name === sub || c.aliases.includes(sub)) return c.name;
   return null;
 }
@@ -4619,7 +5073,7 @@ function helpText() {
 function unknownText(sub) {
   return `Unknown subcommand "${sub.slice(0, 40)}". ${usageLine()}`;
 }
-var yes = (b) => b ? "yes" : "no";
+var yes = (b2) => b2 ? "yes" : "no";
 var home = (s, h2) => h2 && s.startsWith(h2) ? `~${s.slice(h2.length)}` : s;
 function setupText(v, f) {
   const r = v.router;
@@ -4687,7 +5141,7 @@ function debugText(v, f, now3) {
     `route requested  ${r.requested ? `${r.requested.family}/${r.requested.effort} by ${r.requested.owner}: ${r.requested.reason}` : "none"}`,
     `route effective  ${r.effective.model ?? "unknown"} / ${r.effective.effort ?? "unknown"} (${age(r.effective.at)})`,
     `judge            ${v.judge.state}${r.judgeDown.length ? `, down: ${r.judgeDown.join(", ")}` : ""}`,
-    `breakers         ${r.breakers.length ? r.breakers.map((b) => `${b.model}${b.cls ? ` (${b.cls})` : ""}`).join(", ") : "none"}`,
+    `breakers         ${r.breakers.length ? r.breakers.map((b2) => `${b2.model}${b2.cls ? ` (${b2.cls})` : ""}`).join(", ") : "none"}`,
     `plan mode        ${yes(!!r.planMode)}`,
     `stage            ${r.active ? r.stage ?? "none" : "idle"}`,
     `guardian         ${g.mode}, level ${g.level}${g.paused ? ", PAUSED" : ""}${g.killed ? ", killed by env" : ""}`,
@@ -4786,7 +5240,7 @@ function registerUi(on) {
       if (!v) return { text: "AutoMode is starting." };
       const now3 = Date.now();
       const { sub } = parse(e.args);
-      const name = resolve2(sub);
+      const name = resolve3(sub);
       if (!name) return { text: unknownText(sub) };
       const head = barText(barSegments(v, 200, now3));
       switch (name) {
