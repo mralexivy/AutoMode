@@ -11513,7 +11513,14 @@ export const SNAPSHOT: unknown = {
    "applied": "sonnet/xhigh",
    "action": "raise",
    "via": "switch",
-   "because": "the same check failed after an edit (676c95d9)"
+   "because": "the same check failed after an edit (676c95d9)",
+   "cache": {
+    "prefixTokens": 30000,
+    "sinceRefreshMs": 0,
+    "ttlMs": 3600000,
+    "warm": true,
+    "remainingMs": 3600000
+   }
   },
   {
    "v": 1,
@@ -11525,7 +11532,14 @@ export const SNAPSHOT: unknown = {
    "floor": null,
    "action": "consult-opus",
    "via": "architect",
-   "because": "the same check failed after an effort raise (676c95d9)"
+   "because": "the same check failed after an effort raise (676c95d9)",
+   "cache": {
+    "prefixTokens": 30000,
+    "sinceRefreshMs": 0,
+    "ttlMs": 3600000,
+    "warm": true,
+    "remainingMs": 3600000
+   }
   },
   {
    "v": 1,

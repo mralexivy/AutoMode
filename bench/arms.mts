@@ -97,6 +97,8 @@ export interface Arm {
 
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
 const FAMILIES = { haiku: 'Haiku', sonnet: 'Sonnet', opus: 'Opus' }
+// The rescue settings (hooks/lib/rescue.ts) at the values that keep the ladder as it was before them.
+export const RESCUE_BASELINE: Record<string, string> = {}
 const automode = (config: Record<string, unknown>): Arm['plugin'] => ({ kind: 'automode', config: { router: 'v4', mode: 'auto', recordDecisions: true, policy: 'auto', ...config } })
 
 // One fixed arm per family and effort. Each pins the model by its full id, so effort is the only variable.
@@ -120,6 +122,9 @@ export const EFFORT_ARMS: Record<string, Arm> = {
   'gate-block': { label: 'AutoMode Auto, completion gate blocking', model: HM_MODEL, v4: true, plugin: automode({ completionGate: 'block' }) },
   // A low threshold makes the gate fire: at the shipped 5k tokens it fired on 3 of 76 tasks, so a normal run measures nothing.
   'delegate-stress': { label: 'AutoMode Auto, delegated reads at a 1.5k-token gate', model: HM_MODEL, v4: true, plugin: automode({ delegation: 'on', delegationGateTokens: 1500 }) },
+  // The rescue ladder's controlled reference: each rescue setting at the value that keeps the behavior before it.
+  // Each rescue arm below changes one of them; `rescue-all` changes all, so each effect has its own cause.
+  baseline: { label: 'AutoMode Auto, rescue settings at their old behavior', model: HM_MODEL, v4: true, plugin: automode({ ...RESCUE_BASELINE }) },
   'executor-sonnet': { label: 'AutoMode Auto, Sonnet executor', model: HM_MODEL, v4: true, plugin: automode({ executor: 'sonnet' }) },
   // The specialized agents, asked for with the command a person uses: Haiku explorers, Opus plan and review, Sonnet build and verify.
   // `claude -p` stops background work 10 minutes after the last turn, so a workflow needs the ceiling off.

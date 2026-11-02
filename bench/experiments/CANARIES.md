@@ -84,3 +84,16 @@ A pass allows a release. It proves no general saving.
 ## What a pass allows
 
 A pass permits wider opt-in use and shadow collection. Changing a default needs new tasks with real outcome data, and it is a separate decision.
+
+## Rescue canary
+
+`rescue-canary.json` runs `baseline` and each rescue arm on 4 tasks where a check fails mid-task, 2 repeats each. Spend is capped at $40. Each rescue arm changes one setting from `baseline`, so a difference has one cause. The rules below are fixed before any row exists.
+
+- A task that passes fewer repeats under a rescue arm than under `baseline` vetoes that arm's setting as a default.
+- `rescue-effort-first`: a run whose ladder raises effort twice on one episode is a defect. So is a critical task that raises effort before the model moves.
+- `rescue-consult-priced`: a run that consults again after an episode's consult recurred is a defect.
+- `rescue-packet-fork`: a fork whose usage shows no cache read vetoes the gate's cost assumption until it is fixed.
+- `rescue-lifecycle-suggest`: a suggestion while a check fails or a review is pending is a defect.
+- A consult outcome of `unverified` on a run the hidden tests reject counts against no arm, but the report must show it.
+
+These rows count toward no claim, and they prove no saving. 4 tasks make this a pilot.

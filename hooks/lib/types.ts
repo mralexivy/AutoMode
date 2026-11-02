@@ -100,6 +100,18 @@ export interface LadderState {
   reviewerBlockers: number
   fired: string[]                 // causes already acted on
   floor?: { family: Family; effort: Effort; band: number; because: string; command?: string } // holds until a check passes
+  episodes?: Record<string, Episode> // one per failure the ladder works on (lib/rescue.ts); absent in older tasks
+}
+
+// One failure episode: what the ladder already spent on it.
+export interface Episode {
+  base: string
+  raised: number           // strong-evidence effort raises spent in this episode
+  consulted: boolean
+  switched: boolean
+  openedAt: number
+  closedAt?: number
+  consultAt?: number
 }
 
 export interface DiscoveryRecord {

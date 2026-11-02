@@ -55,6 +55,7 @@ import { currentOptions, storedOptions } from './options.ts'
 import { publish } from './ui/publish.ts'
 import type { AgentSnap, Ledger, RouterSnap } from './ui/view.ts'
 import { sid, fsRead, sessionModel, fsWrite, fsExists } from './lib/io.ts'
+import { cacheNote, planFiles } from './lib/rescue.ts'
 import { EMPTY_LEARNED, bucketOf, noteTask, opusBuckets, parseLearned, type Learned } from './lib/learn.ts'
 import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence, type DelegationMode } from './lib/delegation.ts'
 
@@ -108,7 +109,7 @@ const S = {
   lastSummary: '', resetPending: true, votes: { tier: null as Tier | null, n: 0 },
   requestsSinceSwitch: 0, verifiedSinceSwitch: false, cache: null as CacheState | null,
   lastReply: '', lastPromptText: '', turnPrompt: new Map<string, { text: string; at: number }>(),
-  workers: new Map<string, { type: string; tokens: number; stop: boolean; validate?: boolean; workflow?: boolean }>(),
+  workers: new Map<string, { type: string; tokens: number; stop: boolean; validate?: boolean; workflow?: boolean; at?: number }>(),
   lastCheck: null as null | { command: string; passed: boolean },
   editedSinceCheck: false, records: [] as unknown[], toldJudgeDown: false, taskSeq: 0,
   // Completion evidence for the task in obligationsTask (lib/completion.ts).
@@ -173,6 +174,8 @@ const S = {
   gatedReads: [] as string[], // task:path of each large read the gate has seen: the next one runs
   consulted: [] as string[], // failure fingerprints an Opus consult already answered: the next repeat switches
   consultCounts: {} as Record<string, number>, // failures of that fingerprint when the consult ran
+  consultMs: [] as number[], // how long each architect consult ran in this session, for the consult price
+  consultLog: [] as ConsultLog[], // this task's ladder consults and what came of them (lib/rescue.ts)
   resolvedCounts: {} as Record<string, number>, // policy auto: failures of that fingerprint when its command passed again
   switchesThisTask: 0,        // discretionary model switches in this task (anti-oscillation)
   dropped: {} as Partial<Record<Family, number>>, // thinking tokens dropped since each family last ran (lib/continuity.ts)
@@ -510,6 +513,7 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
     S.envelope = newEnvelope(`task-${at}-${S.taskSeq}`, `turn-${at}`, text, at, answer?.complexity ?? 'standard', risk)
     S.editLog = []
     S.consulted = []
+    S.consultLog = []
     S.consultCounts = {}
     S.resolvedCounts = {}
     S.switchesThisTask = 0
@@ -1774,6 +1778,7 @@ export async function v4TurnComplete($: EngineInterface, e: any, next: any) {
       S.envelope = { ...S.envelope, ladder: { ...l, reviewerBlockers: l.reviewerBlockers + 1 } }
       await runLadder($, await now($))
     }
+    if (w?.type === 'automode:architect' && !w.workflow) await noteConsultRun($, e, w)
     const kind = w && w.validate !== false ? WORKERS[w.type] : undefined
     if (S.cfg.debugLog) { S.records.push({ v: 1, kind: 'debug-sub-complete', agentId: e.agentId, known: !!w, type: w?.type, answerLen: String(e.answer ?? '').length, mode: S.mode, env: !!S.envelope }); await flush($) }
     if (!kind || S.mode !== 'auto' || !S.envelope) return out
@@ -1892,7 +1897,7 @@ export async function v4AgentSpawn($: EngineInterface, e: any, next: any) {
     // main session started through the Agent tool.
     const mainWorker = S.expectWorker > 0 && e.agentId === undefined
     if (mainWorker) S.expectWorker -= 1
-    S.workers.set(res.agentId, { type: e.subagentType, tokens: 0, stop: false, validate: mainWorker, workflow: !!e.workflow })
+    S.workers.set(res.agentId, { type: e.subagentType, tokens: 0, stop: false, validate: mainWorker, workflow: !!e.workflow, at: await now($) })
   }
   return res
 }
@@ -1921,6 +1926,22 @@ async function noteToolResult($: EngineInterface, e: any, out: any) {
   S.envelope = { ...S.envelope, ladder: { ...(S.envelope.ladder ?? EMPTY_LADDER), toolErrors: 0 } }
 }
 
+// A ladder consult: the episode it answers, the architect run that answered it, and its outcome once known.
+interface ConsultLog { episode: string; fingerprint?: string; at: number; agentId?: string; plan?: string[]; outcome?: string }
+
+// noteConsultRun records what an architect consult really cost and how long it ran. Its duration feeds the consult
+// price, and the files its plan names feed the influence measure.
+async function noteConsultRun($: EngineInterface, e: any, w: { at?: number }) {
+  const at = await now($)
+  const durationMs = w.at !== undefined ? Math.max(0, at - w.at) : null
+  if (durationMs !== null) S.consultMs = [...S.consultMs, durationMs].slice(-50)
+  const plan = planFiles(String(e.answer ?? ''))
+  const open = [...S.consultLog].reverse().find((c) => !c.agentId && !c.outcome)
+  if (open) S.consultLog = S.consultLog.map((c) => (c === open ? { ...c, agentId: e.agentId, plan } : c))
+  S.records.push({ v: 1, kind: 'consult-run', at, sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', agentId: e.agentId, episode: open?.episode ?? null, durationMs, usd: U.agents.get(e.agentId)?.usd ?? null, answerChars: String(e.answer ?? '').length, planFiles: plan.length, aborted: !!(e.isAborted || e.reason === 'aborted') })
+  await flush($)
+}
+
 // runLadder acts on the task's evidence once, policy auto. Weak evidence raises the effort. Strong evidence asks an Opus
 // architect first, and moves the model when the same cause comes back. A pin keeps its route, so the notice says that
 // instead of a move. Notes wait in S.ladderNote: the evidence can arrive in a subagent, which cannot act on them.
@@ -1935,12 +1956,12 @@ async function runLadder($: EngineInterface, at: number) {
   const count = esc.fingerprint ? env.failures.filter((f) => f.fingerprint === esc.fingerprint).length : 0
   const spent = { ...l, fired: [...l.fired, esc.key], raised: esc.fingerprint ? { ...l.raised, [esc.fingerprint]: count } : l.raised }
   const step = ladderStep(running, esc.level as 'weak' | 'strong', allowedFamilies(at))
-  if (!step) { S.envelope = { ...env, ladder: spent }; S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because }); return }
+  if (!step) { S.envelope = { ...env, ladder: spent }; S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because, cache: cacheNote(cacheState(), at) }); return }
   const packet = () => evidencePacket(env.spec.text.slice(0, 1500), env.acceptance.map((a) => a.text), env.failures, env.editedPaths, esc.because)
   if (step.kind === 'model' && step.family === 'opus' && !S.consulted.includes(esc.cause)) {
     S.consulted = [...S.consulted, esc.cause].slice(-20)
     S.envelope = { ...env, ladder: spent, escalations: env.escalations + 1 }
-    S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'consult-opus', via: 'architect', because: esc.because })
+    S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'consult-opus', via: 'architect', because: esc.because, cache: cacheNote(cacheState(), at) })
     await flush($)
     $.ui.toast(`AutoMode: ${esc.because}. Asking an Opus architect before moving the session.`)
     S.ladderNote = `[AutoMode: ${esc.because}. Before changing more code, call the Agent tool with subagent_type "automode:architect" (Opus, read-only) and wait for it, with this evidence:\n${packet()}\nAsk it for the cause and a fix plan. Apply its plan, then run the check again.]`
@@ -1955,7 +1976,7 @@ async function runLadder($: EngineInterface, at: number) {
   const raised = { ...env, escalations: env.escalations + 1, ladder: { ...spent, floor: { family: step.family, effort: step.effort, band: step.band, because: esc.because, ...(esc.fingerprint ? { command: env.failures[env.failures.length - 1].command } : {}) } } }
   // A defect that outlived a repair (and a consult) gets the independent review once it passes.
   S.envelope = esc.check ? withReview(raised, 'fail', false) : raised
-  S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: tier, band: step.band, route: `${step.family}/${step.effort}`, applied: `${applied.family}/${applied.effort}`, action: moved ? (step.kind === 'model' ? 'switch' : 'raise') : 'held-by-pin', via: 'switch', because: esc.because })
+  S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: tier, band: step.band, route: `${step.family}/${step.effort}`, applied: `${applied.family}/${applied.effort}`, action: moved ? (step.kind === 'model' ? 'switch' : 'raise') : 'held-by-pin', via: 'switch', because: esc.because, cache: cacheNote(cacheState(), at) })
   await flush($)
   if (!moved) {
     $.ui.toast(`AutoMode: ${esc.because}. Your choice keeps ${applied.family} ${applied.effort}.`)
@@ -2520,7 +2541,7 @@ function freshSession() {
     obligations: [], obligationsTask: null, obligationEdited: false, completionBlocks: 0, completionState: 'none' as CompletionState,
     toldJudgeDown: false, taskSeq: 0, lastOutcome: null, sessionId: 'unknown', restored: false, expectWorker: 0,
     warm: {}, turnRequests: new Map(), stayUp: 0, redoFloor: null, heldRoute: null, planMode: false, planExited: false, editLog: [],
-    learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
+    learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
     judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, judgeRiskTask: undefined,
