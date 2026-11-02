@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "rescue-final",
+  "track": "automode-system",
+  "description": "The rescue ladder with every fix from the delivery runs: today's defaults against rescue on the judge route and the Sonnet executor with rescue and a blocking gate, on tasks where checks fail mid-task. A pilot. See CANARIES.md.",
+  "arms": [
+    "auto",
+    "rescue-all",
+    "sonnet-rescue-gate"
+  ],
+  "tasks": [
+    "longctx-sqlglot-intersect-precedence-across-dialects",
+    "refactor-pymarkdown-block-level-v2",
+    "security-toughcookie-secure-cookie-origin",
+    "longctx-dnspython-edns-padding"
+  ],
+  "repeats": 3,
+  "parallel": 4,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 6,
+  "budget_usd": 90,
+  "window_usd": 150
+}
