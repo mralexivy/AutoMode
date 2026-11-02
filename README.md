@@ -222,7 +222,7 @@ Defaults live in [`config.json`](config.json). To override them, put a `config.j
 | `policy` | `auto` | The routing policy |
 | `defaultPath` | `direct` | `workflow` sends every standard task through the workflow |
 | `autoWorkflow` | `false` | `true` lets the router enter the workflow by itself. `am:run` works either way. Decision records show what entry would have done |
-| `sonnetFirst` | `true` | A T3 task whose need names Opus starts on Sonnet at high. `false` sends it straight to Opus |
+| `reachHaiku` | `true` | T0 to T2 work without critical risk can run on Haiku. `false`: Haiku needs T0 and a Haiku verdict |
 | `learning` | `true` | A kind of task that needed rescue in this project starts on Opus next time. It only raises a route |
 | `reviewPolicy` | `risk` | `always` adds an Opus review to every change |
 | `maxConcurrency` | `1` | Workstreams built at once (maximum 2) |

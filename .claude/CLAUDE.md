@@ -61,7 +61,9 @@ Effort can change per prompt while the model holds, because an effort change kee
 
 Hooks record each step as `kind: 'delegation'`, with the action `gate`, `read-again` or `extract`. The gate only saves money, so it fails open. Shadow registers no tool, because a tool definition changes the request.
 
-**How routes learn.** `lib/learn.ts` keeps a per-project memory in `learned-<hash>.json`. `noteLearned` in `v4.ts` files each task after every turn and after a correction. A task is bad when it moved up to Opus after an escalation, or when the person corrected or retried it. It is ok when a check passed. Once a bucket (tier and need) has 2 bad tasks and a 40% bad share in 30 days, `decideAuto` excludes the cheaper models for that bucket. Learning only raises a route, and a pin keeps its model. `sonnetFirst` lowers the T3 rule. Learning is what raises it again where that was wrong.
+**How Haiku is reached.** `reachHaiku`, on in `config.json`, makes Haiku eligible for T0 to T2 work without critical risk, unless the need names Opus. It also makes T2 with need=opus require Opus. Haiku solved 64 of 65 screen tasks, so a judge's "Sonnet" often overstates the need. `bench/classify-eval.mts` tests the judges and rules without running a task, and costs cents.
+
+**How routes learn.** `lib/learn.ts` keeps a per-project memory in `learned-<hash>.json`. `noteLearned` in `v4.ts` files each task after every turn and after a correction. A task is bad when it moved up to Opus after an escalation, or when the person corrected or retried it. It is ok when a check passed. Once a bucket (tier and need) has 2 bad tasks and a 40% bad share in 30 days, `decideAuto` excludes the cheaper models for that bucket. Learning only raises a route, and a pin keeps its model.
 
 **Settings precedence**, lowest first: code defaults, `config.json`, the plugin `userConfig`, then environment switches such as `AUTOMODE_ROUTER` and `AUTOMODE_POLICY`. See `lib/settings.ts`.
 

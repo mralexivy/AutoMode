@@ -28,19 +28,14 @@ test('eligibility: Haiku needs both judges; an effort verdict alone never makes 
   assert.equal(eligibilityOf('haiku', { need: v('haiku', 'low'), hm: null }).eligibility, 'ineligible', 'no AutoMode answer: no Haiku')
 })
 
-test('sonnetFirst: T3 with need=opus runs on Sonnet at high, even if its own verdict is lower', () => {
-  const input = { allowed: ['haiku', 'sonnet', 'opus'], verdicts: { sonnet: v('sonnet', 'medium'), opus: v('opus', 'high') }, need: v('opus', 'high'), hm: hmOf('T3', 'complex'), floors: { because: [] }, current: null, cost: () => 1 }
-  const on = optimizeAuto({ ...input, sonnetFirst: true })
-  assert.equal(on.best.family, 'sonnet')
-  assert.equal(on.best.effort, 'high')
-  assert.equal(optimizeAuto(input).best.family, 'opus')
-})
-
-test('sonnetFirst keeps Opus for critical work, T4 and Fable', () => {
-  const on = (need, hm, consequence) => eligibilityOf('sonnet', { need, hm, consequence, sonnetFirst: true }).eligibility
-  assert.equal(on(v('opus', 'high'), hmOf('T3', 'complex'), 'critical'), 'ineligible')
-  assert.equal(on(v('opus', 'high'), hmOf('T4')), 'ineligible')
-  assert.equal(on(v('fable', 'high'), hmOf('T1')), 'ineligible')
+test('reachHaiku: low-tier work runs on Haiku, and need=opus or critical work does not', () => {
+  const h = (need, hm, consequence) => eligibilityOf('haiku', { need, hm, consequence, reachHaiku: true }).eligibility
+  assert.equal(h(v('sonnet', 'high'), hmOf('T2')), 'eligible')
+  assert.equal(h(v('sonnet', 'high'), hmOf('T1')), 'eligible')
+  assert.equal(h(v('sonnet', 'high'), hmOf('T3')), 'ineligible')
+  assert.equal(h(v('opus', 'high'), hmOf('T1')), 'ineligible')
+  assert.equal(h(v('sonnet', 'high'), hmOf('T1'), 'critical'), 'ineligible')
+  assert.equal(eligibilityOf('sonnet', { need: v('opus', 'high'), hm: hmOf('T2'), reachHaiku: true }).eligibility, 'ineligible', 'T2 plus need=opus')
 })
 
 test('eligibility: the rule table decides Sonnet', () => {

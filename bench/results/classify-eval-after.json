@@ -1,0 +1,155 @@
+{
+  "passes": 3,
+  "total": 33,
+  "right": 20,
+  "usd": 0.0157,
+  "rows": {
+    "migration-tomli-decode-error-api": {
+      "want": "sonnet",
+      "route": {
+        "opus": 2,
+        "haiku": 1
+      },
+      "tier": {
+        "T3": 1,
+        "T2": 2
+      },
+      "need": {
+        "opus": 2,
+        "sonnet": 1
+      }
+    },
+    "longctx-sqlglot-intersect-precedence-across-dialects": {
+      "want": "opus",
+      "route": {
+        "opus": 2,
+        "sonnet": 1
+      },
+      "tier": {
+        "T3": 3
+      },
+      "need": {
+        "opus": 2,
+        "sonnet": 1
+      }
+    },
+    "feature-marked-emstrongmask-hook": {
+      "want": "sonnet",
+      "route": {
+        "sonnet": 3
+      },
+      "tier": {
+        "T3": 1,
+        "T2": 2
+      },
+      "need": {
+        "sonnet": 1,
+        "none": 2
+      }
+    },
+    "longctx-tornado-body-parse-errors": {
+      "want": "sonnet",
+      "route": {
+        "haiku": 2,
+        "sonnet": 1
+      },
+      "tier": {
+        "T2": 2,
+        "T3": 1
+      },
+      "need": {
+        "sonnet": 3
+      }
+    },
+    "migration-jsyaml-max-total-merge-keys": {
+      "want": "sonnet",
+      "route": {
+        "sonnet": 1,
+        "haiku": 2
+      },
+      "tier": {
+        "T3": 1,
+        "T2": 2
+      },
+      "need": {
+        "sonnet": 3
+      }
+    },
+    "feature-xmltodict-selective-cdata": {
+      "want": "sonnet",
+      "route": {
+        "haiku": 2,
+        "sonnet": 1
+      },
+      "tier": {
+        "T1": 3
+      },
+      "need": {
+        "sonnet": 2,
+        "none": 1
+      }
+    },
+    "trivial-bottle-if-none-match": {
+      "want": "haiku",
+      "route": {
+        "haiku": 3
+      },
+      "tier": {
+        "T1": 3
+      },
+      "need": {
+        "sonnet": 3
+      }
+    },
+    "refactor-pymarkdown-block-level": {
+      "want": "sonnet",
+      "route": {
+        "haiku": 3
+      },
+      "tier": {
+        "T2": 2,
+        "T1": 1
+      },
+      "need": {
+        "sonnet": 3
+      }
+    },
+    "trivial-cheerio-data-mixed-selection": {
+      "want": "haiku",
+      "route": {
+        "haiku": 3
+      },
+      "tier": {
+        "T1": 3
+      },
+      "need": {
+        "sonnet": 3
+      }
+    },
+    "trivial-fastxmlparser-doctype-element-keywords": {
+      "want": "haiku",
+      "route": {
+        "haiku": 3
+      },
+      "tier": {
+        "T2": 1,
+        "T1": 2
+      },
+      "need": {
+        "sonnet": 3
+      }
+    },
+    "trivial-marked-empty-code-block": {
+      "want": "haiku",
+      "route": {
+        "haiku": 3
+      },
+      "tier": {
+        "T1": 3
+      },
+      "need": {
+        "sonnet": 3
+      }
+    }
+  }
+}

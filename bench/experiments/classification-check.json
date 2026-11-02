@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "classification-check",
+  "track": "automode-system",
+  "description": "Does prompt classification pick the right model? Against fixed Sonnet high and Opus medium. A pilot. See CANARIES.md.",
+  "arms": [
+    "auto",
+    "sonnet-high",
+    "opus-medium"
+  ],
+  "tasks": [
+    "migration-tomli-decode-error-api",
+    "feature-marked-emstrongmask-hook",
+    "longctx-tornado-body-parse-errors",
+    "migration-jsyaml-max-total-merge-keys",
+    "feature-xmltodict-selective-cdata",
+    "refactor-pymarkdown-block-level",
+    "longctx-sqlglot-intersect-precedence-across-dialects"
+  ],
+  "repeats": 3,
+  "parallel": 4,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 4,
+  "budget_usd": 50,
+  "window_usd": 120
+}

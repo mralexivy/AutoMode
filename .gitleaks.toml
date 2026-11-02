@@ -9,6 +9,7 @@ useDefault = true
 description = "Fake secret-shaped values in the guardian redaction tests"
 paths = [
   '''tests/guardian-lib\.test\.mts''',
+  '''tests/guardian-lib\.test\.mjs''',
   '''tests/guardian\.test\.ts''',
 ]
 

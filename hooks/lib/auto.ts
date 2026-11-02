@@ -11,12 +11,12 @@
 //   AutoMode judge   (lib/classify.ts, contract v2) gives difficulty (tier), complexity, risk and consequence.
 //
 // Eligibility rules (explicit, no numbers, no success rates). They read `need`, the tier and the consequence:
-//   Opus required   T4, a Fable verdict, T3 plus critical, or T3 plus need=opus unless `sonnetFirst` is on. An escalation
-//                   floor also requires it, by excluding the models that cannot reach its step (AutoFloors.exclude).
-//   Haiku           Both judges must name it: need=haiku and T0. An effort verdict alone never makes Haiku eligible.
-//   Sonnet          Everything else. One judge's model name never forces Opus: T1 with need=opus runs on Sonnet. With
-//                   `sonnetFirst`, T3 with need=opus runs on Sonnet at high or above, and the ladder moves a failed
-//                   attempt to Opus. Sonnet passed the tasks that rule sent to Opus (issue #47).
+//   Opus required   T4, a Fable verdict, T3 plus critical, or T3 plus need=opus. An escalation floor also requires it, by
+//                   excluding the models that cannot reach its step (AutoFloors.exclude).
+//   Haiku           Both judges must name it: need=haiku and T0. An effort verdict alone never makes Haiku eligible. With
+//                   `reachHaiku`, Haiku also takes T0 to T2 work that a judge rates as Sonnet's or less, unless it is
+//                   critical. Haiku solved 64 of 65 screen tasks, so "Sonnet" from a judge overstates the need.
+//   Sonnet          Everything else. One judge's model name never forces Opus: T1 with need=opus runs on Sonnet.
 //   Opus            Always eligible, so a running Opus can hold. It runs only when no weaker model is eligible.
 // The effort comes from the chosen model's own verdict, within its floors. Price is only a tie-break: it decides between
 // Haiku and Sonnet when both are eligible, and never brings Opus in. resolve() then decides hold or switch with the real
@@ -58,7 +58,7 @@ export interface AutoInput {
   hm: { tier: Tier; complexity: Complexity } | null        // null: the AutoMode judge failed
   consequence?: Risk
   floors: AutoFloors
-  sonnetFirst?: boolean                                    // T3 with need=opus starts on Sonnet at high
+  reachHaiku?: boolean                                     // low-tier work without critical risk can run on Haiku
   current: { family: Family; effort: Effort } | null
   cost: (family: Family, effort: Effort) => number         // one attempt, cache-neutral (optimizer.attemptCost)
 }
@@ -73,16 +73,13 @@ export const hmModel = (t: Tier): Family => (t === 'T0' ? 'haiku' : t === 'T1' |
 export const effortlessFloor = (need: FamilyVerdict | null): number | null => (need ? RANK[need.model] : null)
 
 // effortMinFor: the quality floor for one model, with the hard-work floor for Opus on top of the caller's floors.
-function effortMinFor(family: Family, i: Pick<AutoInput, 'need' | 'hm' | 'floors' | 'sonnetFirst'>): Effort | undefined {
+function effortMinFor(family: Family, i: Pick<AutoInput, 'need' | 'hm' | 'floors'>): Effort | undefined {
   const floor = i.floors.effortMin?.[family]
   const hard = i.hm?.tier === 'T4' || effortlessFloor(i.need) === RANK.fable
-  if (family === 'opus' && hard) return maxEffort(floor ?? 'low', 'high')
-  // A task the judges rate as Opus work keeps Sonnet's best attempt.
-  if (i.sonnetFirst && family === 'sonnet' && i.hm?.tier === 'T3' && i.need?.model === 'opus') return maxEffort(floor ?? 'low', 'high')
-  return floor
+  return family === 'opus' && hard ? maxEffort(floor ?? 'low', 'high') : floor
 }
 
-type Evidence = Pick<AutoInput, 'need' | 'hm' | 'consequence' | 'sonnetFirst'>
+type Evidence = Pick<AutoInput, 'need' | 'hm' | 'consequence' | 'reachHaiku'>
 
 // opusRequired: why this task rules out every weaker model, or null.
 function opusRequired(i: Evidence): string | null {
@@ -90,7 +87,8 @@ function opusRequired(i: Evidence): string | null {
   if (tier === 'T4') return 'T4: a focused attempt already failed'
   if (i.need?.model === 'fable') return 'a fable verdict: opus carries it'
   if (tier === 'T3' && i.consequence === 'critical') return 'T3 on critical work'
-  if (tier === 'T3' && i.need?.model === 'opus' && !i.sonnetFirst) return 'T3 and the need names opus'
+  if (tier === 'T3' && i.need?.model === 'opus') return 'T3 and the need names opus'
+  if (i.reachHaiku && tier === 'T2' && i.need?.model === 'opus') return 'T2 and the need names opus'
   if (!i.hm && i.need?.model === 'opus') return 'the need names opus and the automode judge did not answer'
   return null
 }
@@ -109,6 +107,7 @@ export function eligibilityOf(family: Family, i: Evidence): { eligibility: Eligi
   if (required) return { eligibility: 'ineligible', why: [...why, required] }
   if (family === 'sonnet') return { eligibility: 'eligible', why: [...why, 'sonnet: no rule requires opus'] }
   if (!i.hm) return { eligibility: 'ineligible', why: [...why, 'haiku needs both judges; the automode judge did not answer'] }
+  if (i.reachHaiku && tierRank(i.hm.tier) <= 2 && i.need.model !== 'opus' && i.consequence !== 'critical') return { eligibility: 'eligible', why: [...why, 'haiku: low tier, no critical risk'] }
   return i.need.model === 'haiku' && i.hm.tier === 'T0' ? { eligibility: 'eligible', why: [...why, 'both judges name haiku'] } : { eligibility: 'ineligible', why: [...why, 'haiku needs both judges'] }
 }
 

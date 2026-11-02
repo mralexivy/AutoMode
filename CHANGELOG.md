@@ -4,6 +4,14 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- Classification now sends T0 to T2 work without critical risk to Haiku, and T2 work whose need names Opus to Opus. `reachHaiku: false` restores the old rules.
+
+### Removed
+
+- `sonnetFirst`, added in 0.5.0. Prompt classification picks the model, so a T3 task whose need names Opus runs on Opus again.
+
 ### Fixed
 
 - A `.sql` method in prompt text, such as `scope.expression.sql`, no longer rates a task as critical. A `.sql` file still does.
@@ -13,14 +21,11 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ### Added
 
 - Route learning. AutoMode remembers, per project, which kinds of task needed rescue. After two rescues or corrections in a kind of task, with at least 40% of its recent tasks going wrong, that kind starts on Opus. Learning only raises a route, never overrides a pin, and evidence ages out after 30 days. `learning: false` turns it off.
+- Delegated reads, off by default. With `delegation: on`, a full read of a large text file stops once and returns an outline with line numbers. The model can then read a range, read the whole file again, or call `extract`. `extract` asks Haiku one question, respects the person's Read permissions, and keeps a finding only if its quote is in the file at the cited lines. `shadow` records what the gate would do and changes nothing.
 
 ### Changed
 
 - A T3 task whose need names Opus now starts on Sonnet at high effort. Only T4, a Fable verdict, T3 on critical work or an escalation requires Opus. A failed attempt still moves to Opus through the ladder. `sonnetFirst: false` restores the old rule.
-
-### Added
-
-- Delegated reads, off by default. With `delegation: on`, a full read of a large text file stops once and returns an outline with line numbers. The model can then read a range, read the whole file again, or call `extract`. `extract` asks Haiku one question, respects the person's Read permissions, and keeps a finding only if its quote is in the file at the cited lines. `shadow` records what the gate would do and changes nothing.
 
 ## [0.4.0] - 2026-11-01
 

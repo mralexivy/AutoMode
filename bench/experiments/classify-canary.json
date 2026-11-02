@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "classify-canary",
+  "track": "automode-system",
+  "description": "Final code on tasks outside the tuning set, plus sqlglot. Counts toward no claim. See CANARIES.md.",
+  "arms": [
+    "auto"
+  ],
+  "tasks": [
+    "feature-boltons-mapping-type-fixes",
+    "feature-cheerio-sibling-links-existing-nodes",
+    "feature-commanderjs-clashing-option-flags",
+    "feature-immer-array-plugin-spread-drafts",
+    "feature-jinja-undefined-copy-pickle-state",
+    "feature-markdown-unclosed-markup-in-code-spans",
+    "refactor-jsyaml-tagname-module",
+    "security-qs-array-limit-bracket-notation",
+    "longctx-pyparsing-parse-action-indexerror",
+    "longctx-sqlglot-intersect-precedence-across-dialects"
+  ],
+  "repeats": 1,
+  "parallel": 5,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 4,
+  "budget_usd": 6,
+  "window_usd": 120
+}
