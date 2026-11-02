@@ -28,7 +28,7 @@ test('splitHeldout alternates by rank and caps each repository per set', () => {
   assert.deepEqual(splitHeldout([...same].reverse()), capped, 'the split is deterministic')
 })
 
-test('the committed split matches its rule, names real tasks, and joins no experiment', () => {
+test('the committed split matches its rule, names real tasks, and only its screen experiment names the screen half', () => {
   if (!fs.existsSync(HELDOUT)) return
   const doc = JSON.parse(fs.readFileSync(HELDOUT, 'utf8'))
   const tasks = new Map(loadTasks().map((t) => [t.id, t]))
@@ -40,6 +40,9 @@ test('the committed split matches its rule, names real tasks, and joins no exper
   assert.match(doc.date, /^\d{4}-\d{2}-\d{2}$/)
   const again = splitHeldout(ids.map((id) => ({ id, repo: tasks.get(id).repo })), doc.max_per_repo)
   assert.deepEqual({ screen: doc.screen, confirm: doc.confirm, excluded: doc.excluded }, again)
+  // The confirm half joins no experiment until its confirmation. The screen half joins only the screen it names.
   const named = namedTasks()
-  for (const id of ids) assert.ok(!named.has(id), `${id} is already in an experiment`)
+  for (const id of doc.confirm) assert.ok(!named.has(id), `${id} is held out but already in an experiment`)
+  const others = namedTasks(undefined, doc.screen_experiment ? [`${doc.screen_experiment}.json`] : [])
+  for (const id of doc.screen) assert.ok(!others.has(id), `${id} is in an experiment other than ${doc.screen_experiment}`)
 })

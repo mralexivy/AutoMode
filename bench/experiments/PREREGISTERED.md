@@ -57,6 +57,10 @@ The size of a task's gap between arms plays no part in the pick. The report stat
 
 A retry needs new tasks. Rerunning the screen on the same tasks to reach 8 is not allowed.
 
+## Screen 2
+
+`screen-2.json` applies Steps 1 to 3 unchanged to the screen half of `heldout.json`: 5 new tasks. Its one difference is prompt template `repo-change-v2`, which adds the status line that false completion needs. The confirm half joins no experiment before its confirmation. Five tasks cannot reach 8 hard ones, so this screen labels tasks for the next candidate batch and cannot start a confirmation. Commit this section before the first screen-2 run.
+
 ## Step 4: confirm once
 
 Commit the picked task list first. Then run the confirmation once.

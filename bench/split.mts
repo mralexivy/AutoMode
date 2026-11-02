@@ -14,9 +14,9 @@ export const EXPERIMENTS = path.join(ROOT, 'bench', 'experiments')
 export const HELDOUT = path.join(EXPERIMENTS, 'heldout.json')
 
 // namedTasks lists every task an experiment file names. The split file is not an experiment, so it is skipped.
-export function namedTasks(dir = EXPERIMENTS) {
+export function namedTasks(dir = EXPERIMENTS, skip: string[] = []) {
   const out = new Set<string>()
-  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json') && path.join(dir, x) !== HELDOUT)) {
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json') && path.join(dir, x) !== HELDOUT && !skip.includes(x))) {
     for (const id of JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')).tasks ?? []) out.add(id)
   }
   return out
