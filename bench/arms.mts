@@ -98,7 +98,7 @@ export interface Arm {
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
 const FAMILIES = { haiku: 'Haiku', sonnet: 'Sonnet', opus: 'Opus' }
 // The rescue settings (hooks/lib/rescue.ts) at the values that keep the ladder as it was before them.
-export const RESCUE_BASELINE: Record<string, string> = { strongStep: 'model', consult: 'always' }
+export const RESCUE_BASELINE: Record<string, string> = { strongStep: 'model', consult: 'always', packet: 'basic' }
 const automode = (config: Record<string, unknown>): Arm['plugin'] => ({ kind: 'automode', config: { router: 'v4', mode: 'auto', recordDecisions: true, policy: 'auto', ...config } })
 
 // One fixed arm per family and effort. Each pins the model by its full id, so effort is the only variable.
@@ -127,6 +127,8 @@ export const EFFORT_ARMS: Record<string, Arm> = {
   baseline: { label: 'AutoMode Auto, rescue settings at their old behavior', model: HM_MODEL, v4: true, plugin: automode({ ...RESCUE_BASELINE }) },
   'rescue-effort-first': { label: 'AutoMode Auto, effort first on strong evidence', model: HM_MODEL, v4: true, plugin: automode({ ...RESCUE_BASELINE, strongStep: 'effort-first' }) },
   'rescue-consult-priced': { label: 'AutoMode Auto, the Opus consult priced against a switch', model: HM_MODEL, v4: true, plugin: automode({ ...RESCUE_BASELINE, consult: 'priced' }) },
+  'rescue-packet-rich': { label: 'AutoMode Auto, a consult packet with sources and the diff', model: HM_MODEL, v4: true, plugin: automode({ ...RESCUE_BASELINE, packet: 'rich' }) },
+  'rescue-packet-fork': { label: 'AutoMode Auto, the rich packet and a gated same-model fork', model: HM_MODEL, v4: true, plugin: automode({ ...RESCUE_BASELINE, packet: 'fork-gated' }) },
   'executor-sonnet': { label: 'AutoMode Auto, Sonnet executor', model: HM_MODEL, v4: true, plugin: automode({ executor: 'sonnet' }) },
   // The specialized agents, asked for with the command a person uses: Haiku explorers, Opus plan and review, Sonnet build and verify.
   // `claude -p` stops background work 10 minutes after the last turn, so a workflow needs the ceiling off.

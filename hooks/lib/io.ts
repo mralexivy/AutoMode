@@ -11,3 +11,4 @@ export function fsRead($: EngineInterface, ...args: Parameters<EngineInterface['
 export function fsWrite($: EngineInterface, ...args: Parameters<EngineInterface['fs']['write']>) { return $.fs.write(...args) }
 export function sessionUsage($: EngineInterface) { return $.session.usage() }
 export function fsExists($: EngineInterface, ...args: Parameters<EngineInterface['fs']['exists']>) { return $.fs.exists(...args) }
+export function fork($: EngineInterface, ...args: Parameters<EngineInterface['model']['fork']>) { return $.model.fork(...args) }

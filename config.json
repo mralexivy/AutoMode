@@ -29,6 +29,7 @@
   "reachHaiku": true,
   "delegation": "off",
   "executor": "judge",
+  "packet": "basic",
   "consult": "always",
   "strongStep": "model",
   "subagentsEverySession": true,

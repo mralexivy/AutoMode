@@ -203,3 +203,68 @@ describe('Consult outcomes', () => {
     expect(next.context.join('\n')).not.toContain('an Opus consult ran on a failure')
   })
 })
+
+describe('Consult packet', () => {
+  const git = (argv: string[]) => ({ exitCode: 0, stdout: argv.includes('--stat') ? ' parser.go | 2 +-' : '@@ -1 +1 @@\n-a\n+b' })
+  const toConsult = async ($: any, h: any, later?: string) => {
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await h.complete($)
+    if (later) { await h.submit($, later); await h.step($, 'claude-sonnet-5-5', undefined, { turnId: 't2' }) }
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await fail($)
+    return fail($)
+  }
+  const keep = { judge: (p: string) => judge({ tier: 'T2', complexity: 'standard', newTask: !/old flag/.test(p) }) }
+
+  test('rich: the diff and each source, and no fork', async ($, on) => {
+    const h = harness(on, { ...sonnetAt('high', { packet: 'rich' }), git })
+    const out = JSON.stringify(await toConsult($, h))
+    expect(out).toContain('[git-diff]')
+    expect(out).toContain('missing_evidence')
+    expect(h.forks.length).toBe(0)
+    expect(of(h.writes, 'handoff')[0]).toMatchObject({ source: 'rich', diff: true, fork: null })
+  })
+
+  test('fork-gated: a later message is a conversational gap, so a warm fork fills it', async ($, on) => {
+    const h = harness(on, { ...sonnetAt('high', { packet: 'fork-gated' }), ...keep, git, fork: '{"constraints": ["keep the old flag name"], "unknowns": ["which dialect fails"]}' })
+    h.setPrefix(150_000)
+    const out = JSON.stringify(await toConsult($, h, 'no, keep the old flag name'))
+    expect(h.forks.length).toBe(1)
+    expect(out).toContain('keep the old flag name [conversation]')
+    expect(of(h.writes, 'handoff')[0]).toMatchObject({ source: 'fork', fork: { ran: true, ok: true, reason: 'answered' } })
+    expect(of(h.writes, 'handoff')[0].fork.usage.cacheRead).toBeGreaterThan(0)
+  })
+
+  test('fork-gated: a cold cache makes the fork too dear, so the rich packet goes alone', async ($, on) => {
+    const h = harness(on, { ...sonnetAt('high', { packet: 'fork-gated' }), ...keep, git, fork: '{"constraints": [], "unknowns": []}' })
+    h.setPrefix(150_000)
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await h.complete($)
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await fail($)
+    await h.clock.advance(2 * 3_600_000) // the cache is cold
+    await fail($)
+    expect(h.forks.length).toBe(0)
+    expect(of(h.writes, 'handoff')[0]).toMatchObject({ source: 'rich', fork: { ran: false } })
+    expect(of(h.writes, 'handoff')[0].fork.why).toContain('costs more than 25% of the consult')
+  })
+
+  test('fork-gated: nothing to fork falls back to the rich packet', async ($, on) => {
+    const h = harness(on, { ...sonnetAt('high', { packet: 'fork-gated' }), ...keep, git, fork: null })
+    h.setPrefix(150_000)
+    const out = JSON.stringify(await toConsult($, h, 'no, keep the old flag name'))
+    expect(h.forks.length).toBe(1)
+    expect(out).toContain('[git-diff]')
+    expect(of(h.writes, 'handoff')[0]).toMatchObject({ source: 'rich', fork: { ran: true, ok: false, reason: 'nothing-to-fork' } })
+  })
+
+  test('basic (the shipped value): the old packet, no handoff record', async ($, on) => {
+    const h = harness(on, { ...sonnetAt('high'), git })
+    const out = JSON.stringify(await toConsult($, h))
+    expect(out).not.toContain('[git-diff]')
+    expect(out).toContain('Files edited so far')
+    expect(of(h.writes, 'handoff')).toEqual([])
+  })
+})

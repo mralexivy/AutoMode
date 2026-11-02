@@ -6,7 +6,9 @@
   "arms": [
     "baseline",
     "rescue-effort-first",
-    "rescue-consult-priced"
+    "rescue-consult-priced",
+    "rescue-packet-rich",
+    "rescue-packet-fork"
   ],
   "tasks": [
     "longctx-sqlglot-intersect-precedence-across-dialects",

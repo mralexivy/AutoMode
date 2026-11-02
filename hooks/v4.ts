@@ -54,8 +54,9 @@ import { routerOverrides } from './lib/settings.ts'
 import { currentOptions, storedOptions } from './options.ts'
 import { publish } from './ui/publish.ts'
 import type { AgentSnap, Ledger, RouterSnap } from './ui/view.ts'
-import { sid, fsRead, sessionModel, fsWrite, fsExists } from './lib/io.ts'
-import { cacheNote, closeEpisodes, consultOutcome, durationsFrom, effortFirst, episodeBase, openEpisode, patchEpisode, influence, planFiles, priceConsult } from './lib/rescue.ts'
+import { sid, fsRead, sessionModel, fsWrite, fsExists, fork } from './lib/io.ts'
+import { FORK_PROMPT, buildHandoff, completeness, forkWorth, parseForkFacts, renderHandoff, withFork } from './lib/handoff.ts'
+import { cacheNote, closeEpisodes, consultOutcome, durationsFrom, effortFirst, episodeBase, openEpisode, patchEpisode, influence, planFiles, priceConsult, RECUR_PRIOR } from './lib/rescue.ts'
 import { EMPTY_LEARNED, bucketOf, noteTask, opusBuckets, parseLearned, type Learned } from './lib/learn.ts'
 import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence, type DelegationMode } from './lib/delegation.ts'
 
@@ -89,6 +90,8 @@ const V4_DEFAULTS = {
   strongStep: 'model' as 'model' | 'effort-first',
   // Policy auto: `priced` asks the architect only when that costs less than moving the session (lib/rescue.ts priceConsult).
   consult: 'always' as 'always' | 'priced',
+  // Policy auto: what an Opus consult gets (lib/handoff.ts). `fork-gated` adds a same-model fork only for a gap the conversation holds.
+  packet: 'basic' as 'basic' | 'rich' | 'fork-gated',
   effortJudgeTimeoutMs: JUDGE_CALL.timeoutMs,
 }
 type V4Config = typeof V4_DEFAULTS
@@ -180,6 +183,7 @@ const S = {
   consultCounts: {} as Record<string, number>, // failures of that fingerprint when the consult ran
   consultMs: [] as number[], // how long each architect consult ran in this session, for the consult price
   consultLog: [] as ConsultLog[], // this task's ladder consults and what came of them (lib/rescue.ts)
+  taskPrompts: [] as string[], // the person's messages in this task after the first, for the consult packet
   resolvedCounts: {} as Record<string, number>, // policy auto: failures of that fingerprint when its command passed again
   switchesThisTask: 0,        // discretionary model switches in this task (anti-oscillation)
   dropped: {} as Partial<Record<Family, number>>, // thinking tokens dropped since each family last ran (lib/continuity.ts)
@@ -287,7 +291,7 @@ async function readFirstPrefixes($: EngineInterface): Promise<Record<string, num
 const CHARS_PER_TOKEN = 3.5
 const PER_TOOL_TOKENS = 150 // a tool's schema beyond its name and description: an assumption the learned ratio corrects
 const PREFLIGHT_MIN_RATIOS = 3
-async function preflightRaw($: EngineInterface): Promise<number | null> {
+async function preflight($: EngineInterface): Promise<number | null> {
   try {
     const [composed, tools] = await Promise.all([$.prompt.compose(), $.tool.list()])
     const sys = composed.sections.reduce((a, s) => a + s.text.length, 0)
@@ -303,7 +307,7 @@ const FIRST_PREFIX_HEADROOM = 4_000
 // preflight scaled cautiously, the machine-wide p75, nothing.
 async function loadPrefixEstimate($: EngineInterface): Promise<number | null> {
   const { byProject: by, ratios } = await firstFile($)
-  if (!S.cache && S.preflight === undefined) S.preflight = await preflightRaw($)
+  if (!S.cache && S.preflight === undefined) S.preflight = await preflight($)
   const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor((xs.length - 1) / 2)]
   if (!S.cache && S.preflight && ratios.length >= PREFLIGHT_MIN_RATIOS) { S.prefixSource = 'preflight (calibrated)'; return Math.round(S.preflight * median(ratios)) + FIRST_PREFIX_HEADROOM }
   const own = (by[projectKey(S.cwd)] ?? []).sort((a, b) => a - b)
@@ -520,6 +524,7 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
     S.editLog = []
     S.consulted = []
     S.consultLog = []
+    S.taskPrompts = []
     S.consultCounts = {}
     S.resolvedCounts = {}
     S.switchesThisTask = 0
@@ -527,6 +532,7 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
     S.judgedThisStage = false
     reason = 'new-task'
   } else if (S.envelope) {
+    S.taskPrompts = [...S.taskPrompts, text.slice(0, 2000)].slice(-10)
     // The text and path layers run on every message: a short message or a silent judge must not skip them.
     const judged = answer ? maxRisk(answer.risk, answer.consequence ?? 'none') : 'none'
     const risk = prospectiveRisk(text, answer && judged !== 'none' ? { risk: judged, why: answer.riskWhy } : null)
@@ -1540,7 +1546,7 @@ export async function v4PromptSubmit($: EngineInterface, e: any, next: any) {
     S.toldInadequateTask = env.taskId // told once per task
     $.ui.toast(`AutoMode: no available model fully meets this task (${d.inadequate.shortfall} band short). Running ${d.inadequate.route}. Checks and review stay required.`)
   }
-  statusLine($, d.route)
+  barLine($, d.route)
   if (d.strategy === 'engineering-workflow') S.workflowPending = { taskId: env.taskId, source: d.override ? 'user' : 'auto', called: false }
   pushDecision('prompt', d, true, at, e.turnId)
   noteVerdict(d)
@@ -1550,8 +1556,8 @@ export async function v4PromptSubmit($: EngineInterface, e: any, next: any) {
 
 const INADEQUATE_REVIEW = 'no available model met the need for this task'
 
-// statusLine: the route in the status row, with plan mode and a pending review.
-function statusLine($: EngineInterface, r: Route) {
+// barLine: the route in the status row, with plan mode and a pending review.
+function barLine($: EngineInterface, r: Route) {
   $.ui.status(`AutoMode · ${r.family} ${r.effort}${S.planMode ? ' · plan' : S.policy === 'auto' && S.workStage !== 'implement' ? ` · ${S.workStage === 'plan-approved' ? 'approved' : S.workStage}` : ''}${S.envelope?.reviewRequired.value ? ' · review pending' : ''}${S.completionState === 'none' ? '' : ` · ${S.completionState.replace('_', ' ')}`}`)
 }
 
@@ -1960,6 +1966,40 @@ function settleConsults(at: number, ev: { episode?: string; switched?: boolean; 
   return changed
 }
 
+// consultPacket builds the rich packet (lib/handoff.ts): the diff from git, and a same-model fork only behind the gate.
+// Each step fails open to the deterministic packet. The record keeps the source, the size and what the fork cost.
+async function consultPacket($: EngineInterface, env: TaskEnvelope, because: string, openedAt: number, episode: string, cache: ReturnType<typeof cacheNote>, advisorUsd?: number): Promise<string> {
+  const paths = [...new Set(env.editedPaths)].slice(0, 8)
+  const diffStat = paths.length ? await git($, ['git', 'diff', '--stat', '--', ...paths]) : ''
+  const diffHunks = diffStat ? await git($, ['git', 'diff', '-U2', '--', ...paths]) : ''
+  let h = buildHandoff({ spec: env.spec.text, prompts: S.taskPrompts, acceptance: env.acceptance, failures: env.failures, edited: env.editedPaths, editsSinceOpen: S.editLog.filter((x) => x.at >= openedAt).map((x) => x.path), diffStat, diffHunks, because })
+  const gaps = completeness(h, env.editedPaths)
+  let source = 'rich'
+  let forked: Record<string, unknown> | null = null
+  if (S.cfg.packet === 'fork-gated' && S.current) {
+    const advisor = advisorUsd ?? priceConsult({ cache, remainingRequests: 0, outPerRequest: 0, packetTokens: 2_000, planTokens: 2_000, main: S.current.family, prices: prices(), durations: durationsFrom(S.consultMs), pRecur: RECUR_PRIOR }).parts.advisor
+    const worth = forkWorth({ conversational: gaps.conversational.length, prefixTokens: cache.prefixTokens, warm: cache.warm, main: S.current.family, prices: prices(), ttlMs: S.ttl, advisorUsd: advisor })
+    forked = { estimateUsd: worth.forkUsd, why: worth.why, ran: worth.run }
+    if (worth.run) {
+      // A fork always resolves (an answer, an API error, an empty reply, an abort), so it needs no timer of its own.
+      const r: any = await fork($, { prompt: FORK_PROMPT }).catch(() => null)
+      const facts = r?.isAnswered ? parseForkFacts(String(r.text)) : null
+      forked = { ...forked, ok: !!facts, reason: r?.isAnswered ? (facts ? 'answered' : 'unparsed') : (r?.reason ?? 'error'), ...(r?.usage ? { usage: usageOf(r.usage) } : {}) }
+      if (facts) { h = withFork(h, facts); source = 'fork' }
+    }
+  }
+  const text = renderHandoff(h, source === 'fork' ? gaps.gaps.filter((g) => !gaps.conversational.includes(g)) : gaps.gaps)
+  S.records.push({ v: 1, kind: 'handoff', at: await now($), sessionId: S.sessionId, taskId: env.taskId, episode, source, tokens: Math.ceil(text.length / 3.5), gaps: gaps.gaps.length, conversational: gaps.conversational.length, diff: !!diffStat, fork: forked })
+  await flush($)
+  return text
+}
+
+// git runs one read-only git command for the packet; a failure is an empty answer. The name matches guardian.ts's own
+// git helper, so the validator's calls line names it once.
+async function git($: EngineInterface, argv: string[]): Promise<string> {
+  try { const r = await $.process.run(argv, { timeoutMs: 5_000 }); return r.exitCode === 0 ? String(r.stdout ?? '') : '' } catch { return '' }
+}
+
 // The rescue settings past their old values turn on the review rule: a consult or a strong-evidence raise ran.
 const rescueReview = () => S.cfg.strongStep === 'effort-first' || S.cfg.consult === 'priced'
 
@@ -2020,7 +2060,9 @@ async function runLadder($: EngineInterface, at: number) {
     S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'consult-opus', via: 'architect', because: esc.because, cache, episode, ...why, ...estimate })
     await flush($)
     $.ui.toast(`AutoMode: ${esc.because}. Asking an Opus architect before moving the session.`)
-    S.ladderNote = `[AutoMode: ${esc.because}. Before changing more code, call the Agent tool with subagent_type "automode:architect" (Opus, read-only) and wait for it, with this evidence:\n${packet()}\nAsk it for the cause and a fix plan. Apply its plan, then run the check again.]`
+    const evidence = S.cfg.packet === 'basic' ? packet() : await consultPacket($, env, esc.because, ep.openedAt, episode, cache, price?.parts.advisor)
+    const missing = S.cfg.packet === 'basic' ? '' : ' If its answer lists missing evidence, find it, give it to the same architect, and ask once more.'
+    S.ladderNote = `[AutoMode: ${esc.because}. Before changing more code, call the Agent tool with subagent_type "automode:architect" (Opus, read-only) and wait for it, with this evidence:\n${evidence}\nAsk it for the cause and a fix plan. Apply its plan, then run the check again.${missing}]`
     return
   }
   const tier = tierOf(step.family, step.effort)
@@ -2193,7 +2235,7 @@ export async function v4Stop($: EngineInterface, e: any, next: any) {
   if (reason) S.completionBlocks += 1
   S.records.push({ v: 1, kind: 'completion', at: await now($), sessionId: S.sessionId, taskId: S.envelope.taskId, state, blocked: !!reason, obligations: publicObligations(S.obligations) })
   await flush($)
-  if (S.current) statusLine($, S.current)
+  if (S.current) barLine($, S.current)
   return reason ? { ...out, block: reason } : out
 }
 
@@ -2421,7 +2463,7 @@ async function applyPlanMode($: EngineInterface, entering: boolean, via: 'attach
     else reoptimize(trigger(trigState(), { kind: 'plan-enter' }), 'plan-enter', await now($), late.turnId)
   }
   // The status row was drawn before the signal arrived: draw it again with the new plan state and route.
-  if (late && S.pending) statusLine($, S.pending)
+  if (late && S.pending) barLine($, S.pending)
 }
 
 export async function v4Attachment($: EngineInterface, e: any, next: any) {
@@ -2610,7 +2652,7 @@ function freshSession() {
     obligations: [], obligationsTask: null, obligationEdited: false, completionBlocks: 0, completionState: 'none' as CompletionState,
     toldJudgeDown: false, taskSeq: 0, lastOutcome: null, sessionId: 'unknown', restored: false, expectWorker: 0,
     warm: {}, turnRequests: new Map(), stayUp: 0, redoFloor: null, heldRoute: null, planMode: false, planExited: false, editLog: [],
-    learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
+    learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], taskPrompts: [], resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
     judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, judgeRiskTask: undefined,

@@ -120,6 +120,18 @@
         "priced"
       ]
     },
+    "packet": {
+      "type": "string",
+      "title": "AutoMode: Consult packet",
+      "description": "default: follow config.json. basic: the consult gets the goal, the criteria, the last failure and the edited files. rich: it also gets each fact's source, the person's later messages, the diff, every failing check and what was tried. fork-gated: rich, and a same-model fork fills what only the conversation holds when that costs little next to the consult.",
+      "default": "default",
+      "options": [
+        "default",
+        "basic",
+        "rich",
+        "fork-gated"
+      ]
+    },
     "routeModels": {
       "type": "string",
       "title": "AutoMode: Route models",
