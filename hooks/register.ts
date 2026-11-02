@@ -1,4 +1,4 @@
-// Generated from hooks/ at commit d70aaaf14ce1bf5d9c6ddd0ea7442ab325c00752 by tools/release.mts. The readable source is hooks/ on the main branch.
+// Generated from hooks/ at commit 3ae315a0f7b24d231d4b417aef2fd958470744f3 by tools/release.mts. The readable source is hooks/ on the main branch.
 // hooks/lib/io.ts
 function sid($) {
   return $.session.id();
@@ -1530,16 +1530,15 @@ var effortlessFloor = (need) => need ? RANK2[need.model] : null;
 function effortMinFor(family, i) {
   const floor = i.floors.effortMin?.[family];
   const hard = i.hm?.tier === "T4" || effortlessFloor(i.need) === RANK2.fable;
-  if (family === "opus" && hard) return maxEffort(floor ?? "low", "high");
-  if (i.sonnetFirst && family === "sonnet" && i.hm?.tier === "T3" && i.need?.model === "opus") return maxEffort(floor ?? "low", "high");
-  return floor;
+  return family === "opus" && hard ? maxEffort(floor ?? "low", "high") : floor;
 }
 function opusRequired(i) {
   const tier = i.hm?.tier;
   if (tier === "T4") return "T4: a focused attempt already failed";
   if (i.need?.model === "fable") return "a fable verdict: opus carries it";
   if (tier === "T3" && i.consequence === "critical") return "T3 on critical work";
-  if (tier === "T3" && i.need?.model === "opus" && !i.sonnetFirst) return "T3 and the need names opus";
+  if (tier === "T3" && i.need?.model === "opus") return "T3 and the need names opus";
+  if (i.reachHaiku && tier === "T2" && i.need?.model === "opus") return "T2 and the need names opus";
   if (!i.hm && i.need?.model === "opus") return "the need names opus and the automode judge did not answer";
   return null;
 }
@@ -1555,6 +1554,7 @@ function eligibilityOf(family, i) {
   if (required) return { eligibility: "ineligible", why: [...why, required] };
   if (family === "sonnet") return { eligibility: "eligible", why: [...why, "sonnet: no rule requires opus"] };
   if (!i.hm) return { eligibility: "ineligible", why: [...why, "haiku needs both judges; the automode judge did not answer"] };
+  if (i.reachHaiku && tierRank(i.hm.tier) <= 2 && i.need.model !== "opus" && i.consequence !== "critical") return { eligibility: "eligible", why: [...why, "haiku: low tier, no critical risk"] };
   return i.need.model === "haiku" && i.hm.tier === "T0" ? { eligibility: "eligible", why: [...why, "both judges name haiku"] } : { eligibility: "ineligible", why: [...why, "haiku needs both judges"] };
 }
 function firstCalls(fixedFamily, running) {
@@ -1694,10 +1694,10 @@ var V4_DEFAULTS = {
   routeModels: true,
   // Completion evidence (lib/completion.ts). `report` records the state. `block` also sends the model back, once per task.
   completionGate: "report",
-  // T3 with need=opus starts on Sonnet at high (lib/auto.ts). config.json turns it on; false restores the old rule.
-  sonnetFirst: false,
   // Route learning (lib/learn.ts): repeated rescues in a kind of task start that kind on Opus, per project.
   learning: false,
+  // Low-tier work without critical risk can run on Haiku (lib/auto.ts). config.json turns it on.
+  reachHaiku: false,
   // Delegated reads (lib/delegation.ts). `shadow` records what the gate would do and changes nothing.
   delegation: "off",
   delegationGateTokens: GATE_TOKENS,
@@ -2767,7 +2767,7 @@ ${midTurnNote(runningEffort())}` : text, midTurn, attachList.length),
   }
   const consequence = env.risk.effective;
   if (!shortcut && !fallback && !hmCached && !executorOn()) {
-    const second = secondCall({ allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence, sonnetFirst: S.cfg.sonnetFirst, floors, current: null, cost: () => 0 }, anchor);
+    const second = secondCall({ allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence, reachHaiku: S.cfg.reachHaiku, floors, current: null, cost: () => 0 }, anchor);
     if (second) {
       const j2 = await effortlessJudge($, second, text, { messages, midTurnEffort: midTurn && S.current ? runningEffort() : void 0, attachments: attachList, purpose: "effortless-judge:second" });
       verdicts = { ...verdicts, [second]: j2.verdict };
@@ -2783,8 +2783,8 @@ ${midTurnNote(runningEffort())}` : text, midTurn, attachList.length),
   const kept = shortcut ? { model: td.family, effort: td.effort, why: "kept" } : null;
   const executed = kept ? null : executorInput(verdicts, floors, td && !boundary && !S.compactedPending && cacheFresh(at2) ? td : null);
   if (executed) steps.push(`executor: sonnet ${executed.verdicts.sonnet.effort}`);
-  const choice = kept ? optimizeAuto({ allowed, verdicts: { [kept.model]: kept }, need: kept, hm: null, floors: { ...floors, fixedFamily: allowed.includes(td.family) ? td.family : void 0 }, current: current2, cost }) : optimizeAuto({ allowed, ...executed ?? { verdicts, floors }, need, hm, consequence, sonnetFirst: S.cfg.sonnetFirst, current: current2, cost });
-  const shadow = executed ? optimizeAuto({ allowed, verdicts, need, hm, consequence, sonnetFirst: S.cfg.sonnetFirst, floors, current: current2, cost }).best : null;
+  const choice = kept ? optimizeAuto({ allowed, verdicts: { [kept.model]: kept }, need: kept, hm: null, floors: { ...floors, fixedFamily: allowed.includes(td.family) ? td.family : void 0 }, current: current2, cost }) : optimizeAuto({ allowed, ...executed ?? { verdicts, floors }, need, hm, consequence, reachHaiku: S.cfg.reachHaiku, current: current2, cost });
+  const shadow = executed ? optimizeAuto({ allowed, verdicts, need, hm, consequence, reachHaiku: S.cfg.reachHaiku, floors, current: current2, cost }).best : null;
   steps.push(`optimizer: ${choice.rule} -> ${choice.best.family}/${choice.best.effort}`);
   const own = S.current ? choice.candidates.find((c) => c.family === S.current.family) : void 0;
   const ownVerdict = S.current ? verdicts[S.current.family] : null;
@@ -2903,7 +2903,7 @@ function reoptimizeAuto(t, event, at2, turnId, reset = false) {
   const td = S.taskDecision && S.taskDecision.taskId === env.taskId ? S.taskDecision : null;
   const executed = executorInput(S.lastAuto.verdicts, baseFloors, !reset && td && cacheFresh(at2) ? td : null);
   const floors = executed?.floors ?? baseFloors;
-  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, sonnetFirst: S.cfg.sonnetFirst, floors, current: current2, cost: autoCost(complexity, at2) });
+  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, floors, current: current2, cost: autoCost(complexity, at2) });
   let floor = mq.tier;
   if (t.mandatory) {
     const lift = tierOf(choice.best.family, choice.best.effort);
@@ -2960,7 +2960,7 @@ ${note}`;
   const verdicts = Object.fromEntries(families.map((f, i) => [f, first[i].verdict]));
   const need = verdicts[anchor] ?? S.lastAuto.need;
   const hmNow = hmj.answer ? { tier: hmj.answer.tier, complexity: hmj.answer.complexity } : S.lastAuto.hm;
-  const second = routeModels ? secondCall({ allowed, verdicts, need, hm: hmNow, consequence: env.risk.effective, sonnetFirst: S.cfg.sonnetFirst, floors: { because: [] }, current: null, cost: () => 0 }, anchor) : null;
+  const second = routeModels ? secondCall({ allowed, verdicts, need, hm: hmNow, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, floors: { because: [] }, current: null, cost: () => 0 }, anchor) : null;
   if (second) verdicts[second] = (await effortlessJudge($, second, prompt, { messages, purpose: `effortless-judge:${event}:second` })).verdict;
   for (const f of [...families, second].filter(Boolean)) if (!verdicts[f] && S.lastAuto.verdicts[f]) verdicts[f] = S.lastAuto.verdicts[f];
   S.lastAuto = { verdicts, need, hm: hmNow, taskId: env.taskId };
