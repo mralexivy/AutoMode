@@ -1,19 +1,25 @@
 #!/usr/bin/env node
 // Summarizes bench/results/*.jsonl into markdown. Every number comes from the raw rows.
-// Usage: node bench/report.mts [--manifest out.json] [results.jsonl ...] > summary.md
+// Usage: node bench/report.mts [--manifest out.json] [--outcomes matrix.json] [--reference arm] [results.jsonl ...] > summary.md
 import fs from 'node:fs'
 import path from 'node:path'
 import { ARMS } from './arms.mts'
 import { isDone, isResult } from './lib/outcome.mts'
 import { safetySummary } from './safety/evaluate.mts'
 import { buildManifest } from './lib/manifest.mts'
+import { outcomeJson, outcomeReport, REFERENCE_ARM, renderOutcomes } from './lib/outcomes.mts'
+import { loadTasks } from './lib/task-repo.mts'
 import { bootstrapCI, discordant, holm, mcnemarExact, pairedDelta, paretoFrontier, routeSummary, routingRegret, type ArmOutcome } from './lib/stats.mts'
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 const argv = process.argv.slice(2)
-const mi = argv.indexOf('--manifest')
-const manifestFile = mi >= 0 ? argv[mi + 1] : null
-const named = argv.filter((_, i) => mi < 0 || (i !== mi && i !== mi + 1))
+// Each option takes one value. Every other argument is a results file.
+const valued = ['--manifest', '--outcomes', '--reference']
+const optionOf = (name: string) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : null }
+const manifestFile = optionOf('--manifest')
+const outcomesFile = optionOf('--outcomes')
+const referenceArm = optionOf('--reference') ?? REFERENCE_ARM
+const named = argv.filter((_, i) => !valued.includes(argv[i]) && !valued.includes(argv[i - 1]))
 const files = named.length ? named
   // ledger.jsonl is the spend ledger, not run results. Grade files sit beside their results and are read below.
   : fs.readdirSync(path.join(REPO, 'bench', 'results')).filter((f) => f.endsWith('.jsonl') && f !== 'ledger.jsonl' && !/\.(grades|disputes)\.jsonl$/.test(f)).map((f) => path.join(REPO, 'bench', 'results', f))
@@ -182,7 +188,12 @@ for (const a of armIds.filter((x) => ARMS[x].plugin)) {
   for (const [k, v] of Object.entries(by)) out.push(`| ${ARMS[a].label} | ${k} | ${v.calls} | ${v.output.toLocaleString('en-US')} | ${usd(v.usd)} |`)
 }
 
+// The outcome matrix applies the same filter as `valid`, and counts the rows it leaves out.
+const outcomes = outcomeReport({ rows, tasks: Object.fromEntries(loadTasks().map((t) => [t.id, t])), reference: referenceArm })
+out.push(...renderOutcomes(outcomes))
+
 const caveats = armIds.filter((a) => ARMS[a].caveat).map((a) => `- ${ARMS[a].label}: ${ARMS[a].caveat}`)
 if (caveats.length) out.push('\n### Arm caveats\n\n' + caveats.join('\n'))
 console.log(out.join('\n'))
+if (outcomesFile) fs.writeFileSync(outcomesFile, JSON.stringify(outcomeJson(outcomes), null, 2) + '\n')
 if (manifestFile) fs.writeFileSync(manifestFile, JSON.stringify(buildManifest(files), null, 2) + '\n')

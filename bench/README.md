@@ -54,6 +54,15 @@ The first 12 tasks do not separate the arms, because every arm passes them. [`ex
 
 An experiment names its tasks, so a new task file never joins an older study.
 
+## Outcome matrix and benchmark health
+
+`report.mts` ends with three sections from `lib/outcomes.mts`. `node bench/outcomes.mts results.jsonl --out matrix.json` prints the same sections, and `report.mts --outcomes matrix.json` writes the same file. The file holds ids, hashes, verdicts and costs, never reply text.
+
+- **Outcome matrix.** A cell is one task and one arm under one identity: model, policy, spec hash, environment, grader and harness SHA. Repeats share a cell. Two identities are never pooled. They show as a conflict, and the signals read the larger cell. A cell that never ran is missing, not zero. Each cell has an exact Clopper-Pearson interval over its repeats.
+- **Health signals.** Three signals, never combined. Difficulty is the pass rate of a reference arm, `sonnet-high` by default (`--reference`). Outcome discrimination means the arms' per-task majority verdicts differ. A tie is not solved. Economic discrimination means two arms share a verdict, but one costs at least `COST_RATIO` (1.5×) the other per accepted run. Set-level numbers count tasks, never repeats. The report names `FOCUS_TASK` on all three.
+- **Health warning.** Under 20% of comparable tasks with outcome discrimination, the report warns. The warning is a heuristic, not a release gate.
+- **False completion rate.** Explicit completion claims that failed acceptance, divided by explicit claims with a valid grade. The claim is the boolean `completion.claimed`. No row has it yet: the completion gate writes its records to the plugin's records, not to the row. A row without it is N/A, and the report prints the N/A count.
+
 ## Run the neutral track
 
 This needs Docker and each vendor's API key. It spends real money, and a plan does not cover it.
