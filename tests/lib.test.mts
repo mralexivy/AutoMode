@@ -1094,3 +1094,10 @@ test('a critical word with no hard evidence keeps the routing floor, and buys no
   assert.equal(r.level, 'elevated')
   assert.equal(r.routing, 'critical')
 })
+
+test('a method chain is not a file path', () => {
+  assert.deepEqual(pathsIn('update scope.expression.sql to quote names'), [])
+  assert.deepEqual(pathsIn('call node.sql() twice'), [])
+  assert.deepEqual(pathsIn('edit schema.sql and db/migrate/001.sql'), ['schema.sql', 'db/migrate/001.sql'])
+  assert.deepEqual(pathsIn('edit auth.middleware.ts'), ['auth.middleware.ts'])
+})
