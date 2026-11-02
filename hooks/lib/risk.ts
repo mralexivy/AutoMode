@@ -18,7 +18,12 @@ export const RISK_PATHS: { reason: string; level: Risk; path: RegExp }[] = [
 // pathsIn extracts file-like paths from text: tokens with a slash or a file extension.
 export function pathsIn(text: string): string[] {
   const out = new Set<string>()
-  for (const m of text.matchAll(/[\w./-]*[\w-]+\.(go|ts|tsx|js|mjs|py|rb|java|kt|rs|sql|proto|ya?ml|json|tf|sh)\b|(?:[\w-]+\/)+[\w.-]+/g)) out.add(m[0])
+  for (const m of text.matchAll(/[\w./-]*[\w-]+\.(go|ts|tsx|js|mjs|py|rb|java|kt|rs|sql|proto|ya?ml|json|tf|sh)\b|(?:[\w-]+\/)+[\w.-]+/g)) {
+    // `scope.expression.sql` or `node.sql()` is a method, not a file. Only `.sql` gets this: `auth.middleware.ts` is a file.
+    const after = text[(m.index ?? 0) + m[0].length]
+    if (m[0].endsWith('.sql') && !m[0].includes('/') && (after === '(' || m[0].split('.').length > 2)) continue
+    out.add(m[0])
+  }
   return [...out]
 }
 
