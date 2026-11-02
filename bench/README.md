@@ -33,6 +33,8 @@ Runs use your signed-in plan. An API key in your shell does not reach them, unle
 
 Stage C ran 12 tasks, 4 arms and 3 repeats on code from before the routing redesign. All 144 runs passed, so these tasks cannot separate the arms. They show cost only. `bench/results/stage-c-post49.jsonl` holds 21 partial rows on code from after #49. `bench/results/session-switch.jsonl` holds 12 mid-session runs on one task. In `bench/results/stage-agents.jsonl`, six rows were cut off by the print-mode wait ceiling, so leave them out of any comparison.
 
+Screen 2 (`bench/results/screen-2.md`) ran the screen half of the 10 new candidates: 25 runs on fixed arms, $6.39 API-equivalent. Sonnet high passed 10 of 10 and Sonnet medium 15 of 15. That labels all 5 tasks easy and none hard, so the stop rule fired again and no confirmation ran. Outcome discrimination is 0 of 5, and the health warning fires. On cost, 3 of 5 tasks separate the arms. It is the first run on `repo-change-v2`: 25 of 25 runs claimed done, and all 25 passed, so false completion is 0 of 25. Its rows never count toward a claim.
+
 This is a pilot. It supports no saving claim.
 
 ## What keeps a run honest
