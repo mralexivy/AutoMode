@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { ARMS, RESCUE_BASELINE } from './arms.mts'
+import { workspaceEnv } from './runners/claude-code.mts'
 
 const config = (id: string) => (ARMS[id].plugin as { config: Record<string, unknown> }).config
 
@@ -19,4 +23,12 @@ test('rescue arms: baseline is explicit, and each arm changes one setting', () =
 test('rescue-all changes every rescue setting', () => {
   const c = config('rescue-all')
   for (const [k, v] of Object.entries(RESCUE_BASELINE)) assert.notEqual(c[k], v, k)
+})
+
+test('workspaceEnv: the agent gets the Python path the grader uses, and only where the task has one', () => {
+  const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-'))
+  assert.equal(workspaceEnv(ws, { A: '1' }).PYTHONPATH, undefined)
+  fs.mkdirSync(path.join(ws, '.bench-deps'))
+  assert.equal(workspaceEnv(ws, {}).PYTHONPATH, path.join(ws, '.bench-deps'))
+  assert.equal(workspaceEnv(ws, { PYTHONPATH: '/x' }).PYTHONPATH, `${path.join(ws, '.bench-deps')}${path.delimiter}/x`)
 })
