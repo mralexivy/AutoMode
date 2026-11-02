@@ -93,7 +93,8 @@ A pass permits wider opt-in use and shadow collection. Changing a default needs 
 - `rescue-effort-first`: a run whose ladder raises effort twice on one episode is a defect. So is a critical task that raises effort before the model moves.
 - `rescue-consult-priced`: a run that consults again after an episode's consult recurred is a defect.
 - `rescue-packet-fork`: a fork whose usage shows no cache read vetoes the gate's cost assumption until it is fixed.
-- `rescue-lifecycle-suggest`: a suggestion while a check fails or a review is pending is a defect.
 - A consult outcome of `unverified` on a run the hidden tests reject counts against no arm, but the report must show it.
 
 These rows count toward no claim, and they prove no saving. 4 tasks make this a pilot.
+
+The guardian's `expected` lifecycle estimate has no arm. It is recorded in shadow on every run, and it can drive an offer only after a replay of these records shows it ranks keep and compact better than the guardian's own costs.
