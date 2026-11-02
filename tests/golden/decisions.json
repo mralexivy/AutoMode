@@ -1,5 +1,5 @@
 {
-  "about": "Golden decisions for the joint model x effort optimizer and the switch check. Inputs are judge verdicts plus a cache state; the expected route follows from the ASSUMED capability bands and retry rates in hooks/lib/optimizer.ts and the measured token priors. They pin behavior, they do not prove quality. A change to the assumptions that moves a case must update the case on purpose. Revised 2026-10-21 for adequacy bands; the judge's effort hint no longer raises difficulty.",
+  "about": "Golden decisions for the joint model x effort optimizer and the switch check. Inputs are judge verdicts plus a cache state; the expected route follows from the ASSUMED capability bands and retry rates in hooks/lib/optimizer.ts and the measured token priors. They pin behavior, they do not prove quality. A change to the assumptions that moves a case must update the case on purpose. Revised 2026-10-21 for adequacy bands; the judge's effort hint no longer raises difficulty. The auto cases run the pure policy-auto route (hooks/lib/auto-route.ts) on inputs that tests/auto-route-fixture.mts builds from each case. Each one pins the route, its owner, the switch gate and any consult or fallback.",
   "optimizer": [
     {
       "name": "lookup at session start: Haiku medium (Haiku low is only 'likely' adequate, and its retry costs more)",
@@ -306,5 +306,30 @@
       "mandatory": true,
       "expect": "switch"
     }
+  ],
+  "auto": [
+    {"name":"first prompt, simple task: sonnet at its own verdict","given":{"judge":{"tier":"T1","complexity":"standard"},"verdicts":{"sonnet":["sonnet","low"]}},"expect":{"route":"sonnet/low","owner":"judge"}},
+    {"name":"hard first prompt: the need names opus and opus answers","given":{"judge":{"tier":"T3","complexity":"complex"},"verdicts":{"sonnet":["opus","high"],"opus":["opus","medium"]},"second":"opus"},"expect":{"route":"opus/medium","owner":"judge"}},
+    {"name":"T3 that sonnet does: no automatic opus","given":{"judge":{"tier":"T3","complexity":"complex"},"verdicts":{"sonnet":["sonnet","high"]}},"expect":{"route":"sonnet/high","owner":"judge"}},
+    {"name":"critical consequence: opus low runs at medium","given":{"judge":{"tier":"T3","complexity":"complex"},"risk":"critical","verdicts":{"sonnet":["opus","high"],"opus":["opus","low"]},"second":"opus"},"expect":{"route":"opus/medium","owner":"judge"}},
+    {"name":"critical consequence, sonnet does it: sonnet at least high","given":{"judge":{"tier":"T2","complexity":"standard"},"risk":"critical","verdicts":{"sonnet":["sonnet","medium"]}},"expect":{"route":"sonnet/high","owner":"quality-escalation"}},
+    {"name":"a lookup both judges call haiku","given":{"judge":{"tier":"T0","complexity":"trivial"},"verdicts":{"sonnet":["haiku","low"],"haiku":["haiku","low"]},"second":"haiku"},"expect":{"route":"haiku/low","owner":"judge"}},
+    {"name":"haiku out: the lookup stays on sonnet","given":{"judge":{"tier":"T0","complexity":"trivial"},"allowed":["sonnet","opus"],"verdicts":{"sonnet":["haiku","low"]}},"expect":{"route":"sonnet/low","owner":"judge"}},
+    {"name":"warm sonnet, opus asked for once: the vote gate holds","given":{"judge":{"tier":"T3","complexity":"complex"},"current":"sonnet/medium","prefix":120000,"boundary":false,"verdicts":{"sonnet":["opus","high"],"opus":["opus","high"]}},"expect":{"route":"sonnet/high","owner":"cache-policy","gate":"votes"}},
+    {"name":"warm sonnet, T4: the move is at once","given":{"judge":{"tier":"T4","complexity":"complex"},"current":"sonnet/medium","prefix":120000,"boundary":false,"verdicts":{"sonnet":["sonnet","low"],"opus":["opus","medium"]}},"expect":{"route":"opus/high","owner":"quality-escalation"}},
+    {"name":"first prompt, the effort judge fails: the AutoMode judge T3 lifts the app model to opus","given":{"judge":{"tier":"T3","complexity":"complex"},"verdicts":{"sonnet":null}},"expect":{"route":"opus/medium","owner":"fallback","fallback":true}},
+    {"name":"first prompt, both judges fail: the app model","given":{"judge":null,"verdicts":{"sonnet":null}},"expect":{"route":"sonnet/medium","owner":"fallback","fallback":true}},
+    {"name":"the AutoMode judge fails mid-session: the model stays","given":{"judge":null,"current":"opus/high","boundary":false,"verdicts":{"sonnet":["sonnet","medium"],"opus":["opus","medium"]}},"expect":{"route":"opus/medium","owner":"fallback","fallback":true}},
+    {"name":"the own verdict fails, the need answered: the rules decide","given":{"judge":{"tier":"T2","complexity":"standard"},"current":"opus/high","boundary":false,"verdicts":{"sonnet":["sonnet","medium"],"opus":null}},"expect":{"route":"opus/high","owner":"cache-policy","gate":"dwell"}},
+    {"name":"the need fails, the running model answered: no switch","given":{"judge":{"tier":"T2","complexity":"standard"},"current":"opus/high","boundary":false,"verdicts":{"sonnet":null,"opus":["opus","medium"]}},"expect":{"route":"opus/medium","owner":"cache-policy","gate":"dwell","fallback":true}},
+    {"name":"low judge confidence never downgrades","given":{"judge":{"tier":"T0","complexity":"trivial","confidence":0.2},"current":"opus/high","verdicts":{"sonnet":["haiku","low"],"opus":["haiku","low"]}},"expect":{"route":"opus/low","owner":"judge"}},
+    {"name":"a model command fixes the model","given":{"judge":{"tier":"T3","complexity":"complex"},"fixedFamily":"opus","command":"am:opus","verdicts":{"opus":["opus","high"]}},"expect":{"route":"opus/high","owner":"user-override"}},
+    {"name":"an effort command on the running model","given":{"judge":{"tier":"T1","complexity":"standard"},"current":"sonnet/medium","boundary":false,"fixedFamily":"sonnet","fixedEffort":"high","command":"am:high","verdicts":{"sonnet":["sonnet","medium"]}},"expect":{"route":"sonnet/high","owner":"user-override"}},
+    {"name":"a short go-ahead to an opus decision waits for the vote gate on warm sonnet","given":{"judge":null,"current":"sonnet/high","boundary":false,"shortcut":"opus/high","verdicts":{}},"expect":{"route":"sonnet/high","owner":"cache-policy","gate":"votes"}},
+    {"name":"a ladder step sets the floor","given":{"judge":{"tier":"T2","complexity":"standard"},"current":"sonnet/high","boundary":false,"ladder":"sonnet/xhigh","verdicts":{"sonnet":["sonnet","high"]}},"expect":{"route":"sonnet/xhigh","owner":"judge"}},
+    {"name":"a redo keeps the model","given":{"judge":{"tier":"T1","complexity":"standard"},"current":"opus/high","boundary":false,"stayUp":3,"verdicts":{"sonnet":["sonnet","low"],"opus":["opus","low"]}},"expect":{"route":"opus/low","owner":"judge"}},
+    {"name":"the executor runs sonnet and keeps opus as the shadow","given":{"judge":{"tier":"T3","complexity":"complex"},"executor":true,"verdicts":{"sonnet":["opus","high"]}},"expect":{"route":"sonnet/high","owner":"judge"}},
+    {"name":"a challenge to hard work on a warm sonnet session","given":{"judge":{"tier":"T3","complexity":"complex"},"stage":"reconsider","current":"sonnet/high","prefix":120000,"boundary":false,"taskDecision":"sonnet/high","verdicts":{"sonnet":["opus","high"],"opus":["opus","high"]}},"expect":{"route":"sonnet/high","owner":"quality-escalation","gate":"votes","consult":"consult"}},
+    {"name":"a learned bucket starts on opus","given":{"judge":{"tier":"T2","complexity":"standard"},"learned":["T2/sonnet"],"verdicts":{"sonnet":["sonnet","high"]}},"expect":{"route":"opus/high","owner":"judge"}}
   ]
 }

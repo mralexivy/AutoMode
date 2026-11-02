@@ -5,6 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { optimizeAuto, type AutoFloors, type AutoInput, type FamilyVerdict } from '../hooks/lib/auto.ts'
+import { autoFloors } from '../hooks/lib/auto-route.ts'
 import { BAND_OF } from '../hooks/lib/bands.ts'
 import { attemptCost, DEFAULT_PRIORS, TASK_STEPS } from '../hooks/lib/optimizer.ts'
 import { ANTHROPIC } from '../hooks/lib/prices.ts'
@@ -33,10 +34,9 @@ function costFor(complexity: Complexity) {
   }
 }
 
-// The consequence floors autoFloors (v4.ts) sets; tests/auto.test.ts checks that path end to end.
+// The consequence floors, from the same autoFloors the router runs. No ladder step, challenge or redo applies here.
 function floorsFor(consequence: Risk, complexity: Complexity): AutoFloors {
-  if (consequence !== 'critical' || complexity === 'trivial') return { because: [] }
-  return { effortMin: { sonnet: 'high', opus: 'medium' }, exclude: { haiku: 'critical' }, because: ['critical'] }
+  return autoFloors({ taskId: 't', risk: consequence, riskReasons: [], ladderFloor: null, taskDecision: null, stayUp: 0, currentFamily: null }, complexity, ['haiku', 'sonnet', 'opus']).floors
 }
 
 const verdict = (model: ModelKey, effort: Effort): FamilyVerdict => ({ model, effort, why: '' })
