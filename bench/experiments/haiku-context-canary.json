@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "id": "haiku-context-canary",
+  "track": "automode-system",
+  "description": "Does a task stay on Haiku past 80k tokens? Counts toward no claim. See CANARIES.md.",
+  "arms": [
+    "auto"
+  ],
+  "tasks": [
+    "feature-markdown-unclosed-markup-in-code-spans"
+  ],
+  "repeats": 3,
+  "parallel": 3,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 1,
+  "budget_usd": 3,
+  "window_usd": 120
+}

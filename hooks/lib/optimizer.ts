@@ -213,7 +213,7 @@ export function optimize(d: Demand, x: CostInput, k: Constraints = {}): Choice {
     const expectedUsd = cost.usd + mid(retry) * redo(cost.usd, stronger?.cost)
     const lo = short.usd + retry.lo * redo(short.usd, stronger?.short)
     const hi = long.usd + retry.hi * redo(long.usd, stronger?.long)
-    const tooLong = c.family === 'haiku' && x.cache.prefixTokens > (k.haikuMaxContext ?? 80_000)
+    const tooLong = c.family === 'haiku' && x.cache.prefixTokens > (k.haikuMaxContext ?? 150_000)
     const floorOk = mid(c.cap) >= (k.minCap ?? 0)
     const feasible = ok.includes(a) && floorOk && !tooLong
     const why = feasible ? `${a} for need ${req.toFixed(2)}` : tooLong ? 'context too long for Haiku' : !floorOk ? `below the floor ${k.minCap}` : `${a} for need ${req.toFixed(2)}; acceptable: ${ok.join(', ')}`
