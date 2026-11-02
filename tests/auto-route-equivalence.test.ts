@@ -75,7 +75,8 @@ describe('Policy auto records stay the same', () => {
       const h = harness(on, { sessionId: id, ...c.setup })
       if (c.prefix) h.setPrefix(c.prefix)
       await c.run($, h)
-      const got = JSON.parse(JSON.stringify(records(h.writes)).replaceAll(id, 'SESSION'))
+      // The route fingerprint hashes source code, so a refactor that keeps every route still changes it.
+      const got = JSON.parse(JSON.stringify(records(h.writes)).replaceAll(id, 'SESSION').replace(/"fingerprint":"[^"]*"/g, '"fingerprint":"FP"'))
       if (SNAPSHOT === null) console.log(`AUTO-ROUTE-SNAPSHOT ${JSON.stringify([c.name, got])}`)
       else expect(got).toEqual((SNAPSHOT as Record<string, unknown[]>)[c.name])
     })

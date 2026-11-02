@@ -209,6 +209,195 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T3",
+       "complexity": "complex",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "opus",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       },
+       "opus": {
+        "model": "opus",
+        "effort": "medium",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "second": "opus",
+      "complexity": "complex",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.016464079999999996,
+         "medium": 0.02143257,
+         "high": 0.025527684,
+         "xhigh": 0.02896827,
+         "max": 0.04398443199999999
+        },
+        "sonnet": {
+         "low": 0.24067920000000007,
+         "medium": 0.3406909,
+         "high": 0.43113755999999986,
+         "xhigh": 0.4984031,
+         "max": 0.5718136800000001
+        },
+        "opus": {
+         "low": 0.4962192000000001,
+         "medium": 0.7112042000000001,
+         "high": 0.9075141599999996,
+         "xhigh": 1.051951,
+         "max": 1.2129892799999997
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 50,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "opus/medium",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -561,6 +750,198 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T3",
+       "complexity": "complex",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       },
+       "opus": {
+        "model": "opus",
+        "effort": "low",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "second": "opus",
+      "complexity": "complex",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "critical",
+       "riskReasons": [
+        "changes money",
+        "judge: payment path"
+       ],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.016464079999999996,
+         "medium": 0.02143257,
+         "high": 0.025527684,
+         "xhigh": 0.02896827,
+         "max": 0.04398443199999999
+        },
+        "sonnet": {
+         "low": 0.24067920000000007,
+         "medium": 0.3406909,
+         "high": 0.43113755999999986,
+         "xhigh": 0.4984031,
+         "max": 0.5718136800000001
+        },
+        "opus": {
+         "low": 0.4962192000000001,
+         "medium": 0.7112042000000001,
+         "high": 0.9075141599999996,
+         "xhigh": 1.051951,
+         "max": 1.2129892799999997
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 45,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "opus/medium",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -864,6 +1245,188 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T1",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "low",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.004817940000000001,
+         "medium": 0.006250650000000001,
+         "high": 0.0077983164000000015,
+         "xhigh": 0.00797699,
+         "max": 0.009618216
+        },
+        "sonnet": {
+         "low": 0.0714926,
+         "medium": 0.1013505,
+         "high": 0.134790796,
+         "xhigh": 0.14100870000000001,
+         "max": 0.17721704
+        },
+        "opus": {
+         "low": 0.1473916,
+         "medium": 0.211557,
+         "high": 0.28370165599999997,
+         "xhigh": 0.297591,
+         "max": 0.3758958399999999
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 46,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/low",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -1206,6 +1769,195 @@ export const SNAPSHOT: unknown = {
      "stageChanged"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T0",
+       "complexity": "trivial",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "haiku",
+        "effort": "low",
+        "why": "x",
+        "sure": 0.9
+       },
+       "haiku": {
+        "model": "haiku",
+        "effort": "low",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "second": "haiku",
+      "complexity": "trivial",
+      "stage": "lookup",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.0018914940000000003,
+         "medium": 0.0020304700000000004,
+         "high": 0.0021555484000000003,
+         "xhigh": 0.00220419,
+         "max": 0.0034866660000000002
+        },
+        "sonnet": {
+         "low": 0.028191260000000003,
+         "medium": 0.033143900000000004,
+         "high": 0.037601276,
+         "xhigh": 0.0393347,
+         "max": 0.06488754000000001
+        },
+        "opus": {
+         "low": 0.05811916,
+         "medium": 0.0691822,
+         "high": 0.079138936,
+         "xhigh": 0.083011,
+         "max": 0.13762883999999997
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 41,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "haiku/low",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/low",
@@ -1511,6 +2263,188 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T1",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "medium",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.004817940000000001,
+         "medium": 0.006250650000000001,
+         "high": 0.0077983164000000015,
+         "xhigh": 0.00797699,
+         "max": 0.009618216
+        },
+        "sonnet": {
+         "low": 0.0714926,
+         "medium": 0.1013505,
+         "high": 0.134790796,
+         "xhigh": 0.14100870000000001,
+         "max": 0.17721704
+        },
+        "opus": {
+         "low": 0.1473916,
+         "medium": 0.211557,
+         "high": 0.28370165599999997,
+         "xhigh": 0.297591,
+         "max": 0.3758958399999999
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 33,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/medium",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -1878,6 +2812,218 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T3",
+       "complexity": "complex",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "opus",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       },
+       "opus": {
+        "model": "opus",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "second": "opus",
+      "complexity": "complex",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-2",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": {
+        "taskId": "task-1000000-1",
+        "family": "sonnet",
+        "effort": "medium"
+       },
+       "stayUp": 0,
+       "currentFamily": "sonnet"
+      },
+      "current": {
+       "route": {
+        "tier": "T1",
+        "family": "sonnet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+       },
+       "running": "medium"
+      },
+      "usable": {
+       "tier": "T1",
+       "family": "sonnet",
+       "model": "claude-sonnet-5-5",
+       "effort": "medium"
+      },
+      "appEffort": "medium",
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": "T1",
+       "n": 1
+      },
+      "switching": {
+       "cache": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prefixTokens": 120000,
+        "lastRequestAt": 1000000,
+        "ttlMs": 3600000,
+        "effortSharesCache": true,
+        "outputTokens": 300
+       },
+       "reset": false,
+       "requestsSinceSwitch": 1,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {
+        "sonnet": 120000
+       },
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.12712039999999997,
+         "medium": 0.16036285000000003,
+         "high": 0.18643841999999997,
+         "xhigh": 0.20924135,
+         "max": 0.2268543600000001
+        },
+        "sonnet": {
+         "low": 0.33027920000000005,
+         "medium": 0.4470909,
+         "high": 0.5487375600000001,
+         "xhigh": 0.6272031000000001,
+         "max": 0.70621368
+        },
+        "opus": {
+         "low": 0.6754191999999999,
+         "medium": 0.9240042,
+         "high": 1.14271416,
+         "xhigh": 1.309551,
+         "max": 1.4817892799999997
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "lastWorkBand": 1,
+       "consulted": [],
+       "packetTokens": 39,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/high",
+      "owner": "cache-policy",
+      "gate": "votes"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -2146,6 +3292,208 @@ export const SNAPSHOT: unknown = {
     ],
     "required": [],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": true,
+      "kept": {
+       "family": "opus",
+       "effort": "high"
+      },
+      "judge": null,
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {},
+      "complexity": "complex",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": false,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-2",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": {
+        "taskId": "task-1000000-2",
+        "family": "opus",
+        "effort": "high"
+       },
+       "stayUp": 0,
+       "currentFamily": "sonnet"
+      },
+      "current": {
+       "route": {
+        "tier": "T2",
+        "family": "sonnet",
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+       },
+       "running": "high"
+      },
+      "usable": {
+       "tier": "T2",
+       "family": "sonnet",
+       "model": "claude-sonnet-5-5",
+       "effort": "high"
+      },
+      "appEffort": "medium",
+      "executor": {
+       "on": false,
+       "taskRoute": {
+        "taskId": "task-1000000-2",
+        "family": "opus",
+        "effort": "high"
+       }
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": "T3",
+       "n": 1
+      },
+      "switching": {
+       "cache": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high",
+        "prefixTokens": 120000,
+        "lastRequestAt": 1000000,
+        "ttlMs": 3600000,
+        "effortSharesCache": true,
+        "outputTokens": 300
+       },
+       "reset": false,
+       "requestsSinceSwitch": 2,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {
+        "sonnet": 120000
+       },
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": {
+         "from": "sonnet",
+         "to": "opus",
+         "usd": 0
+        }
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.12712039999999997,
+         "medium": 0.16036285000000003,
+         "high": 0.18643841999999997,
+         "xhigh": 0.20924135,
+         "max": 0.2268543600000001
+        },
+        "sonnet": {
+         "low": 0.33027920000000005,
+         "medium": 0.4470909,
+         "high": 0.5487375600000001,
+         "xhigh": 0.6272031000000001,
+         "max": 0.70621368
+        },
+        "opus": {
+         "low": 0.6754191999999999,
+         "medium": 0.9240042,
+         "high": 1.14271416,
+         "xhigh": 1.309551,
+         "max": 1.4817892799999997
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "lastWorkBand": 3,
+       "consulted": [],
+       "packetTokens": 34,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "opus/high",
+      "owner": "continuation"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "opus/high",
@@ -2437,6 +3785,188 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T1",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "medium",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.004817940000000001,
+         "medium": 0.006250650000000001,
+         "high": 0.0077983164000000015,
+         "xhigh": 0.00797699,
+         "max": 0.009618216
+        },
+        "sonnet": {
+         "low": 0.0714926,
+         "medium": 0.1013505,
+         "high": 0.134790796,
+         "xhigh": 0.14100870000000001,
+         "max": 0.17721704
+        },
+        "opus": {
+         "low": 0.1473916,
+         "medium": 0.211557,
+         "high": 0.28370165599999997,
+         "xhigh": 0.297591,
+         "max": 0.3758958399999999
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 33,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/medium",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -2794,6 +4324,217 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T4",
+       "complexity": "complex",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "low",
+        "why": "x",
+        "sure": 0.9
+       },
+       "opus": {
+        "model": "opus",
+        "effort": "medium",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "second": "opus",
+      "complexity": "complex",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-2",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": {
+        "taskId": "task-1000000-1",
+        "family": "sonnet",
+        "effort": "medium"
+       },
+       "stayUp": 0,
+       "currentFamily": "sonnet"
+      },
+      "current": {
+       "route": {
+        "tier": "T1",
+        "family": "sonnet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+       },
+       "running": "medium"
+      },
+      "usable": {
+       "tier": "T1",
+       "family": "sonnet",
+       "model": "claude-sonnet-5-5",
+       "effort": "medium"
+      },
+      "appEffort": "medium",
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": "T1",
+       "n": 1
+      },
+      "switching": {
+       "cache": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prefixTokens": 120000,
+        "lastRequestAt": 1000000,
+        "ttlMs": 3600000,
+        "effortSharesCache": true,
+        "outputTokens": 300
+       },
+       "reset": false,
+       "requestsSinceSwitch": 1,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {
+        "sonnet": 120000
+       },
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.12712039999999997,
+         "medium": 0.16036285000000003,
+         "high": 0.18643841999999997,
+         "xhigh": 0.20924135,
+         "max": 0.2268543600000001
+        },
+        "sonnet": {
+         "low": 0.33027920000000005,
+         "medium": 0.4470909,
+         "high": 0.5487375600000001,
+         "xhigh": 0.6272031000000001,
+         "max": 0.70621368
+        },
+        "opus": {
+         "low": 0.6754191999999999,
+         "medium": 0.9240042,
+         "high": 1.14271416,
+         "xhigh": 1.309551,
+         "max": 1.4817892799999997
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "lastWorkBand": 1,
+       "consulted": [],
+       "packetTokens": 40,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "opus/high",
+      "owner": "quality-escalation"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -3110,6 +4851,184 @@ export const SNAPSHOT: unknown = {
     ],
     "fallback": "judge failed with no previous decision: the app effort within the floors; the effortless judge failed: the AutoMode judge decides (T3: opus)",
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T3",
+       "complexity": "complex",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": null
+      },
+      "complexity": "complex",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.016464079999999996,
+         "medium": 0.02143257,
+         "high": 0.025527684,
+         "xhigh": 0.02896827,
+         "max": 0.04398443199999999
+        },
+        "sonnet": {
+         "low": 0.24067920000000007,
+         "medium": 0.3406909,
+         "high": 0.43113755999999986,
+         "xhigh": 0.4984031,
+         "max": 0.5718136800000001
+        },
+        "opus": {
+         "low": 0.4962192000000001,
+         "medium": 0.7112042000000001,
+         "high": 0.9075141599999996,
+         "xhigh": 1.051951,
+         "max": 1.2129892799999997
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 45,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "opus/medium",
+      "owner": "fallback",
+      "fallback": true
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "opus/medium",
@@ -3386,6 +5305,183 @@ export const SNAPSHOT: unknown = {
     ],
     "fallback": "automode judge failed on the first prompt: the app model",
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": null,
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "medium",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "elevated",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.004817940000000001,
+         "medium": 0.006250650000000001,
+         "high": 0.0077983164000000015,
+         "xhigh": 0.00797699,
+         "max": 0.009618216
+        },
+        "sonnet": {
+         "low": 0.0714926,
+         "medium": 0.1013505,
+         "high": 0.134790796,
+         "xhigh": 0.14100870000000001,
+         "max": 0.17721704
+        },
+        "opus": {
+         "low": 0.1473916,
+         "medium": 0.211557,
+         "high": 0.28370165599999997,
+         "xhigh": 0.297591,
+         "max": 0.3758958399999999
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 36,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/medium",
+      "owner": "fallback",
+      "fallback": true
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "sonnet/medium",
@@ -3647,6 +5743,178 @@ export const SNAPSHOT: unknown = {
     ],
     "fallback": "judge failed with no previous decision: the app effort within the floors",
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": null,
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": null
+      },
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "elevated",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.004817940000000001,
+         "medium": 0.006250650000000001,
+         "high": 0.0077983164000000015,
+         "xhigh": 0.00797699,
+         "max": 0.009618216
+        },
+        "sonnet": {
+         "low": 0.0714926,
+         "medium": 0.1013505,
+         "high": 0.134790796,
+         "xhigh": 0.14100870000000001,
+         "max": 0.17721704
+        },
+        "opus": {
+         "low": 0.1473916,
+         "medium": 0.211557,
+         "high": 0.28370165599999997,
+         "xhigh": 0.297591,
+         "max": 0.3758958399999999
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 36,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/medium",
+      "owner": "fallback",
+      "fallback": true
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "sonnet/medium",
@@ -3927,6 +6195,188 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T2",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.004817940000000001,
+         "medium": 0.006250650000000001,
+         "high": 0.0077983164000000015,
+         "xhigh": 0.00797699,
+         "max": 0.009618216
+        },
+        "sonnet": {
+         "low": 0.0714926,
+         "medium": 0.1013505,
+         "high": 0.134790796,
+         "xhigh": 0.14100870000000001,
+         "max": 0.17721704
+        },
+        "opus": {
+         "low": 0.1473916,
+         "medium": 0.211557,
+         "high": 0.28370165599999997,
+         "xhigh": 0.297591,
+         "max": 0.3758958399999999
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 42,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/high",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -4246,6 +6696,210 @@ export const SNAPSHOT: unknown = {
     "required": [],
     "fallback": "judge failed: same task and stage, previous effort kept (upstream); the effortless judge failed; the AutoMode judge names sonnet: the sonnet model stays",
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T2",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": null
+      },
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": false,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": {
+        "taskId": "task-1000000-1",
+        "family": "sonnet",
+        "effort": "high"
+       },
+       "stayUp": 0,
+       "currentFamily": "sonnet"
+      },
+      "current": {
+       "route": {
+        "tier": "T2",
+        "family": "sonnet",
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+       },
+       "running": "high"
+      },
+      "usable": {
+       "tier": "T2",
+       "family": "sonnet",
+       "model": "claude-sonnet-5-5",
+       "effort": "high"
+      },
+      "appEffort": "medium",
+      "executor": {
+       "on": false,
+       "taskRoute": {
+        "taskId": "task-1000000-1",
+        "family": "sonnet",
+        "effort": "high"
+       }
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": "T2",
+       "n": 1
+      },
+      "switching": {
+       "cache": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high",
+        "prefixTokens": 30000,
+        "lastRequestAt": 1000000,
+        "ttlMs": 3600000,
+        "effortSharesCache": true,
+        "outputTokens": 300
+       },
+       "reset": false,
+       "requestsSinceSwitch": 1,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {
+        "sonnet": 30000
+       },
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.003117940000000001,
+         "medium": 0.004210650000000001,
+         "high": 0.005418316400000001,
+         "xhigh": 0.0055969900000000005,
+         "max": 0.006898216
+        },
+        "sonnet": {
+         "low": 0.0544926,
+         "medium": 0.0809505,
+         "high": 0.110990796,
+         "xhigh": 0.11720870000000001,
+         "max": 0.15001704000000002
+        },
+        "opus": {
+         "low": 0.11339160000000001,
+         "medium": 0.170757,
+         "high": 0.236101656,
+         "xhigh": 0.24999100000000002,
+         "max": 0.32149584
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "lastWorkBand": 2,
+       "consulted": [],
+       "packetTokens": 42,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/high",
+      "owner": "fallback",
+      "fallback": true
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "sonnet/high",
@@ -4563,6 +7217,195 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T3",
+       "complexity": "complex",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "opus",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       },
+       "opus": {
+        "model": "opus",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "second": "opus",
+      "complexity": "complex",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.016464079999999996,
+         "medium": 0.02143257,
+         "high": 0.025527684,
+         "xhigh": 0.02896827,
+         "max": 0.04398443199999999
+        },
+        "sonnet": {
+         "low": 0.24067920000000007,
+         "medium": 0.3406909,
+         "high": 0.43113755999999986,
+         "xhigh": 0.4984031,
+         "max": 0.5718136800000001
+        },
+        "opus": {
+         "low": 0.4962192000000001,
+         "medium": 0.7112042000000001,
+         "high": 0.9075141599999996,
+         "xhigh": 1.051951,
+         "max": 1.2129892799999997
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 37,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "opus/high",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -4919,6 +7762,220 @@ export const SNAPSHOT: unknown = {
      "stageChanged"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "opus",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T0",
+       "complexity": "trivial",
+       "effort": "medium",
+       "confidence": 0.2,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "haiku",
+        "effort": "low",
+        "why": "x",
+        "sure": 0.9
+       },
+       "opus": {
+        "model": "haiku",
+        "effort": "low",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "trivial",
+      "stage": "lookup",
+      "previousStage": "implement",
+      "boundary": false,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": {
+        "taskId": "task-1000000-1",
+        "family": "opus",
+        "effort": "high"
+       },
+       "stayUp": 0,
+       "currentFamily": "opus"
+      },
+      "current": {
+       "route": {
+        "tier": "T3",
+        "family": "opus",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+       },
+       "running": "high"
+      },
+      "usable": {
+       "tier": "T3",
+       "family": "opus",
+       "model": "claude-opus-5-5",
+       "effort": "high"
+      },
+      "appEffort": "medium",
+      "executor": {
+       "on": false,
+       "taskRoute": {
+        "taskId": "task-1000000-1",
+        "family": "opus",
+        "effort": "high"
+       }
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": "T3",
+       "n": 1
+      },
+      "switching": {
+       "cache": {
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "prefixTokens": 30000,
+        "lastRequestAt": 1000000,
+        "ttlMs": 3600000,
+        "effortSharesCache": true,
+        "outputTokens": 300
+       },
+       "reset": false,
+       "requestsSinceSwitch": 1,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {
+        "opus": 30000
+       },
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.001211494,
+         "medium": 0.00135047,
+         "high": 0.0014755484000000003,
+         "xhigh": 0.00152419,
+         "max": 0.002466666
+        },
+        "sonnet": {
+         "low": 0.021391260000000002,
+         "medium": 0.0263439,
+         "high": 0.030801276000000002,
+         "xhigh": 0.0325347,
+         "max": 0.05468754000000001
+        },
+        "opus": {
+         "low": 0.04451916,
+         "medium": 0.0555822,
+         "high": 0.065538936,
+         "xhigh": 0.069411,
+         "max": 0.11722883999999999
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "lastWorkBand": 3,
+       "consulted": [],
+       "packetTokens": 38,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "opus/low",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -5206,6 +8263,192 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "fixedFamily": "opus",
+      "command": {
+       "label": "am:opus"
+      },
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T3",
+       "complexity": "complex",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "opus",
+      "verdicts": {
+       "opus": {
+        "model": "opus",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "complex",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.016464079999999996,
+         "medium": 0.02143257,
+         "high": 0.025527684,
+         "xhigh": 0.02896827,
+         "max": 0.04398443199999999
+        },
+        "sonnet": {
+         "low": 0.24067920000000007,
+         "medium": 0.3406909,
+         "high": 0.43113755999999986,
+         "xhigh": 0.4984031,
+         "max": 0.5718136800000001
+        },
+        "opus": {
+         "low": 0.4962192000000001,
+         "medium": 0.7112042000000001,
+         "high": 0.9075141599999996,
+         "xhigh": 1.051951,
+         "max": 1.2129892799999997
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 41,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "opus/high",
+      "owner": "user-override"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "opus/high",
@@ -5487,6 +8730,188 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T1",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "medium",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.004817940000000001,
+         "medium": 0.006250650000000001,
+         "high": 0.0077983164000000015,
+         "xhigh": 0.00797699,
+         "max": 0.009618216
+        },
+        "sonnet": {
+         "low": 0.0714926,
+         "medium": 0.1013505,
+         "high": 0.134790796,
+         "xhigh": 0.14100870000000001,
+         "max": 0.17721704
+        },
+        "opus": {
+         "low": 0.1473916,
+         "medium": 0.211557,
+         "high": 0.28370165599999997,
+         "xhigh": 0.297591,
+         "max": 0.3758958399999999
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 29,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/medium",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -5785,6 +9210,215 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "fixedFamily": "sonnet",
+      "fixedEffort": "high",
+      "command": {
+       "label": "use"
+      },
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T1",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "medium",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-2",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": {
+        "taskId": "task-1000000-1",
+        "family": "sonnet",
+        "effort": "medium"
+       },
+       "stayUp": 0,
+       "currentFamily": "sonnet"
+      },
+      "current": {
+       "route": {
+        "tier": "T1",
+        "family": "sonnet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+       },
+       "running": "medium"
+      },
+      "usable": {
+       "tier": "T1",
+       "family": "sonnet",
+       "model": "claude-sonnet-5-5",
+       "effort": "medium"
+      },
+      "appEffort": "medium",
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": "T1",
+       "n": 1
+      },
+      "switching": {
+       "cache": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prefixTokens": 30000,
+        "lastRequestAt": 1000000,
+        "ttlMs": 3600000,
+        "effortSharesCache": true,
+        "outputTokens": 300
+       },
+       "reset": false,
+       "requestsSinceSwitch": 1,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {
+        "sonnet": 30000
+       },
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.003117940000000001,
+         "medium": 0.004210650000000001,
+         "high": 0.005418316400000001,
+         "xhigh": 0.0055969900000000005,
+         "max": 0.006898216
+        },
+        "sonnet": {
+         "low": 0.0544926,
+         "medium": 0.0809505,
+         "high": 0.110990796,
+         "xhigh": 0.11720870000000001,
+         "max": 0.15001704000000002
+        },
+        "opus": {
+         "low": 0.11339160000000001,
+         "medium": 0.170757,
+         "high": 0.236101656,
+         "xhigh": 0.24999100000000002,
+         "max": 0.32149584
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "lastWorkBand": 1,
+       "consulted": [],
+       "packetTokens": 48,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/high",
+      "owner": "user-override"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "sonnet/high",
@@ -6067,6 +9701,188 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T2",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.004817940000000001,
+         "medium": 0.006250650000000001,
+         "high": 0.0077983164000000015,
+         "xhigh": 0.00797699,
+         "max": 0.009618216
+        },
+        "sonnet": {
+         "low": 0.0714926,
+         "medium": 0.1013505,
+         "high": 0.134790796,
+         "xhigh": 0.14100870000000001,
+         "max": 0.17721704
+        },
+        "opus": {
+         "low": 0.1473916,
+         "medium": 0.211557,
+         "high": 0.28370165599999997,
+         "xhigh": 0.297591,
+         "max": 0.3758958399999999
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 42,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/high",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -6378,6 +10194,210 @@ export const SNAPSHOT: unknown = {
      "stageChanged"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T2",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "reconsider",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-2",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": {
+        "taskId": "task-1000000-1",
+        "family": "sonnet",
+        "effort": "high"
+       },
+       "stayUp": 0,
+       "currentFamily": "sonnet"
+      },
+      "current": {
+       "route": {
+        "tier": "T2",
+        "family": "sonnet",
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+       },
+       "running": "high"
+      },
+      "usable": {
+       "tier": "T2",
+       "family": "sonnet",
+       "model": "claude-sonnet-5-5",
+       "effort": "high"
+      },
+      "appEffort": "medium",
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": "T2",
+       "n": 1
+      },
+      "switching": {
+       "cache": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high",
+        "prefixTokens": 30000,
+        "lastRequestAt": 1000000,
+        "ttlMs": 3600000,
+        "effortSharesCache": true,
+        "outputTokens": 300
+       },
+       "reset": false,
+       "requestsSinceSwitch": 1,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {
+        "sonnet": 30000
+       },
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.003117940000000001,
+         "medium": 0.004210650000000001,
+         "high": 0.005418316400000001,
+         "xhigh": 0.0055969900000000005,
+         "max": 0.006898216
+        },
+        "sonnet": {
+         "low": 0.0544926,
+         "medium": 0.0809505,
+         "high": 0.110990796,
+         "xhigh": 0.11720870000000001,
+         "max": 0.15001704000000002
+        },
+        "opus": {
+         "low": 0.11339160000000001,
+         "medium": 0.170757,
+         "high": 0.236101656,
+         "xhigh": 0.24999100000000002,
+         "max": 0.32149584
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "lastWorkBand": 2,
+       "consulted": [],
+       "packetTokens": 40,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/high",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -6689,6 +10709,210 @@ export const SNAPSHOT: unknown = {
      "stageChanged"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T2",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "reconsider",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-3",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": {
+        "taskId": "task-1000000-1",
+        "family": "sonnet",
+        "effort": "high"
+       },
+       "stayUp": 0,
+       "currentFamily": "sonnet"
+      },
+      "current": {
+       "route": {
+        "tier": "T2",
+        "family": "sonnet",
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+       },
+       "running": "high"
+      },
+      "usable": {
+       "tier": "T2",
+       "family": "sonnet",
+       "model": "claude-sonnet-5-5",
+       "effort": "high"
+      },
+      "appEffort": "medium",
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": "T2",
+       "n": 2
+      },
+      "switching": {
+       "cache": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high",
+        "prefixTokens": 30000,
+        "lastRequestAt": 1000000,
+        "ttlMs": 3600000,
+        "effortSharesCache": true,
+        "outputTokens": 300
+       },
+       "reset": false,
+       "requestsSinceSwitch": 2,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {
+        "sonnet": 30000
+       },
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.003117940000000001,
+         "medium": 0.004210650000000001,
+         "high": 0.005418316400000001,
+         "xhigh": 0.0055969900000000005,
+         "max": 0.006898216
+        },
+        "sonnet": {
+         "low": 0.0544926,
+         "medium": 0.0809505,
+         "high": 0.110990796,
+         "xhigh": 0.11720870000000001,
+         "max": 0.15001704000000002
+        },
+        "opus": {
+         "low": 0.11339160000000001,
+         "medium": 0.170757,
+         "high": 0.236101656,
+         "xhigh": 0.24999100000000002,
+         "max": 0.32149584
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "lastWorkBand": 2,
+       "consulted": [],
+       "packetTokens": 34,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/high",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -6994,6 +11218,188 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T2",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.004817940000000001,
+         "medium": 0.006250650000000001,
+         "high": 0.0077983164000000015,
+         "xhigh": 0.00797699,
+         "max": 0.009618216
+        },
+        "sonnet": {
+         "low": 0.0714926,
+         "medium": 0.1013505,
+         "high": 0.134790796,
+         "xhigh": 0.14100870000000001,
+         "max": 0.17721704
+        },
+        "opus": {
+         "low": 0.1473916,
+         "medium": 0.211557,
+         "high": 0.28370165599999997,
+         "xhigh": 0.297591,
+         "max": 0.3758958399999999
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 39,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/high",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -7350,6 +11756,222 @@ export const SNAPSHOT: unknown = {
      "stageChanged"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T2",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "debug",
+      "previousStage": "implement",
+      "boundary": false,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": {
+        "family": "sonnet",
+        "effort": "xhigh",
+        "band": 2.5,
+        "because": "the same check failed after an edit (676c95d9)",
+        "command": "go test ./..."
+       },
+       "taskDecision": {
+        "taskId": "task-1000000-1",
+        "family": "sonnet",
+        "effort": "high"
+       },
+       "stayUp": 0,
+       "currentFamily": "sonnet"
+      },
+      "current": {
+       "route": {
+        "tier": "T2",
+        "family": "sonnet",
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+       },
+       "running": "high"
+      },
+      "usable": {
+       "tier": "T2",
+       "family": "sonnet",
+       "model": "claude-sonnet-5-5",
+       "effort": "high"
+      },
+      "appEffort": "medium",
+      "executor": {
+       "on": false,
+       "taskRoute": {
+        "taskId": "task-1000000-1",
+        "family": "sonnet",
+        "effort": "high"
+       }
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": "T2",
+       "n": 1
+      },
+      "switching": {
+       "cache": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high",
+        "prefixTokens": 30000,
+        "lastRequestAt": 1000000,
+        "ttlMs": 3600000,
+        "effortSharesCache": true,
+        "outputTokens": 300
+       },
+       "reset": false,
+       "requestsSinceSwitch": 1,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {
+        "sonnet": 30000
+       },
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.003117940000000001,
+         "medium": 0.004210650000000001,
+         "high": 0.005418316400000001,
+         "xhigh": 0.0055969900000000005,
+         "max": 0.006898216
+        },
+        "sonnet": {
+         "low": 0.0544926,
+         "medium": 0.0809505,
+         "high": 0.110990796,
+         "xhigh": 0.11720870000000001,
+         "max": 0.15001704000000002
+        },
+        "opus": {
+         "low": 0.11339160000000001,
+         "medium": 0.170757,
+         "high": 0.236101656,
+         "xhigh": 0.24999100000000002,
+         "max": 0.32149584
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "lastWorkBand": 2,
+       "consulted": [
+        "676c95d9"
+       ],
+       "packetTokens": 40,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/xhigh",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -7653,6 +12275,188 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T3",
+       "complexity": "complex",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "complex",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.016464079999999996,
+         "medium": 0.02143257,
+         "high": 0.025527684,
+         "xhigh": 0.02896827,
+         "max": 0.04398443199999999
+        },
+        "sonnet": {
+         "low": 0.24067920000000007,
+         "medium": 0.3406909,
+         "high": 0.43113755999999986,
+         "xhigh": 0.4984031,
+         "max": 0.5718136800000001
+        },
+        "opus": {
+         "low": 0.4962192000000001,
+         "medium": 0.7112042000000001,
+         "high": 0.9075141599999996,
+         "xhigh": 1.051951,
+         "max": 1.2129892799999997
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 41,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/high",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -8008,6 +12812,223 @@ export const SNAPSHOT: unknown = {
      "stageChanged"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T3",
+       "complexity": "complex",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "opus",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       },
+       "opus": {
+        "model": "opus",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "second": "opus",
+      "complexity": "complex",
+      "stage": "reconsider",
+      "previousStage": "implement",
+      "boundary": false,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": {
+        "taskId": "task-1000000-1",
+        "family": "sonnet",
+        "effort": "high"
+       },
+       "stayUp": 0,
+       "currentFamily": "sonnet"
+      },
+      "current": {
+       "route": {
+        "tier": "T2",
+        "family": "sonnet",
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+       },
+       "running": "high"
+      },
+      "usable": {
+       "tier": "T2",
+       "family": "sonnet",
+       "model": "claude-sonnet-5-5",
+       "effort": "high"
+      },
+      "appEffort": "medium",
+      "executor": {
+       "on": false,
+       "taskRoute": {
+        "taskId": "task-1000000-1",
+        "family": "sonnet",
+        "effort": "high"
+       }
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": "T2",
+       "n": 1
+      },
+      "switching": {
+       "cache": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high",
+        "prefixTokens": 120000,
+        "lastRequestAt": 1000000,
+        "ttlMs": 3600000,
+        "effortSharesCache": true,
+        "outputTokens": 300
+       },
+       "reset": false,
+       "requestsSinceSwitch": 1,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {
+        "sonnet": 120000
+       },
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.12712039999999997,
+         "medium": 0.16036285000000003,
+         "high": 0.18643841999999997,
+         "xhigh": 0.20924135,
+         "max": 0.2268543600000001
+        },
+        "sonnet": {
+         "low": 0.33027920000000005,
+         "medium": 0.4470909,
+         "high": 0.5487375600000001,
+         "xhigh": 0.6272031000000001,
+         "max": 0.70621368
+        },
+        "opus": {
+         "low": 0.6754191999999999,
+         "medium": 0.9240042,
+         "high": 1.14271416,
+         "xhigh": 1.309551,
+         "max": 1.4817892799999997
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "lastWorkBand": 3,
+       "consulted": [],
+       "packetTokens": 48,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/high",
+      "owner": "quality-escalation",
+      "gate": "votes",
+      "consult": "consult"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -8312,6 +13333,188 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T3",
+       "complexity": "complex",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "opus",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "complex",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": true,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.016464079999999996,
+         "medium": 0.02143257,
+         "high": 0.025527684,
+         "xhigh": 0.02896827,
+         "max": 0.04398443199999999
+        },
+        "sonnet": {
+         "low": 0.24067920000000007,
+         "medium": 0.3406909,
+         "high": 0.43113755999999986,
+         "xhigh": 0.4984031,
+         "max": 0.5718136800000001
+        },
+        "opus": {
+         "low": 0.4962192000000001,
+         "medium": 0.7112042000000001,
+         "high": 0.9075141599999996,
+         "xhigh": 1.051951,
+         "max": 1.2129892799999997
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 36,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/high",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": true,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "sonnet/high",
@@ -8541,6 +13744,204 @@ export const SNAPSHOT: unknown = {
     ],
     "required": [],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": true,
+      "kept": {
+       "family": "sonnet",
+       "effort": "high"
+      },
+      "judge": null,
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {},
+      "complexity": "complex",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": false,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": {
+        "taskId": "task-1000000-1",
+        "family": "sonnet",
+        "effort": "high"
+       },
+       "stayUp": 0,
+       "currentFamily": "sonnet"
+      },
+      "current": {
+       "route": {
+        "tier": "T2",
+        "family": "sonnet",
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+       },
+       "running": "high"
+      },
+      "usable": {
+       "tier": "T2",
+       "family": "sonnet",
+       "model": "claude-sonnet-5-5",
+       "effort": "high"
+      },
+      "appEffort": "medium",
+      "executor": {
+       "on": true,
+       "taskRoute": {
+        "taskId": "task-1000000-1",
+        "family": "sonnet",
+        "effort": "high"
+       }
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": false,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": "T2",
+       "n": 1
+      },
+      "switching": {
+       "cache": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high",
+        "prefixTokens": 30000,
+        "lastRequestAt": 1000000,
+        "ttlMs": 3600000,
+        "effortSharesCache": true,
+        "outputTokens": 300
+       },
+       "reset": false,
+       "requestsSinceSwitch": 1,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {
+        "sonnet": 30000
+       },
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.011024080000000004,
+         "medium": 0.014972570000000003,
+         "high": 0.018387684,
+         "xhigh": 0.021148270000000004,
+         "max": 0.023770871999999995
+        },
+        "sonnet": {
+         "low": 0.1862792,
+         "medium": 0.2760909,
+         "high": 0.35973756000000007,
+         "xhigh": 0.42020310000000005,
+         "max": 0.4902136800000001
+        },
+        "opus": {
+         "low": 0.3874192000000001,
+         "medium": 0.5820042,
+         "high": 0.7647141599999999,
+         "xhigh": 0.8955510000000001,
+         "max": 1.0497892800000002
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "lastWorkBand": 3,
+       "consulted": [],
+       "packetTokens": 32,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/high",
+      "owner": "continuation"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": true,
+       "learning": false,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "sonnet/high",
@@ -8820,6 +14221,188 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T2",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-1",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": null,
+       "stayUp": 0,
+       "currentFamily": null
+      },
+      "current": null,
+      "usable": null,
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": true,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": null,
+       "n": 0
+      },
+      "switching": {
+       "cache": {
+        "model": null,
+        "effort": null,
+        "prefixTokens": 0,
+        "lastRequestAt": null,
+        "ttlMs": 3600000,
+        "effortSharesCache": true
+       },
+       "reset": true,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {},
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.004817940000000001,
+         "medium": 0.006250650000000001,
+         "high": 0.0077983164000000015,
+         "xhigh": 0.00797699,
+         "max": 0.009618216
+        },
+        "sonnet": {
+         "low": 0.0714926,
+         "medium": 0.1013505,
+         "high": 0.134790796,
+         "xhigh": 0.14100870000000001,
+         "max": 0.17721704
+        },
+        "opus": {
+         "low": 0.1473916,
+         "medium": 0.211557,
+         "high": 0.28370165599999997,
+         "xhigh": 0.297591,
+         "max": 0.3758958399999999
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "consulted": [],
+       "packetTokens": 42,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/high",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": true,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -9131,6 +14714,210 @@ export const SNAPSHOT: unknown = {
      "stageChanged"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T2",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "reconsider",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-2",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": {
+        "taskId": "task-1000000-1",
+        "family": "sonnet",
+        "effort": "high"
+       },
+       "stayUp": 0,
+       "currentFamily": "sonnet"
+      },
+      "current": {
+       "route": {
+        "tier": "T2",
+        "family": "sonnet",
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+       },
+       "running": "high"
+      },
+      "usable": {
+       "tier": "T2",
+       "family": "sonnet",
+       "model": "claude-sonnet-5-5",
+       "effort": "high"
+      },
+      "appEffort": "medium",
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": true,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": "T2",
+       "n": 1
+      },
+      "switching": {
+       "cache": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high",
+        "prefixTokens": 30000,
+        "lastRequestAt": 1000000,
+        "ttlMs": 3600000,
+        "effortSharesCache": true,
+        "outputTokens": 300
+       },
+       "reset": false,
+       "requestsSinceSwitch": 1,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {
+        "sonnet": 30000
+       },
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.003117940000000001,
+         "medium": 0.004210650000000001,
+         "high": 0.005418316400000001,
+         "xhigh": 0.0055969900000000005,
+         "max": 0.006898216
+        },
+        "sonnet": {
+         "low": 0.0544926,
+         "medium": 0.0809505,
+         "high": 0.110990796,
+         "xhigh": 0.11720870000000001,
+         "max": 0.15001704000000002
+        },
+        "opus": {
+         "low": 0.11339160000000001,
+         "medium": 0.170757,
+         "high": 0.236101656,
+         "xhigh": 0.24999100000000002,
+         "max": 0.32149584
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "lastWorkBand": 2,
+       "consulted": [],
+       "packetTokens": 40,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/high",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": true,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -9442,6 +15229,210 @@ export const SNAPSHOT: unknown = {
      "stageChanged"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T2",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "reconsider",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-3",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": {
+        "taskId": "task-1000000-1",
+        "family": "sonnet",
+        "effort": "high"
+       },
+       "stayUp": 0,
+       "currentFamily": "sonnet"
+      },
+      "current": {
+       "route": {
+        "tier": "T2",
+        "family": "sonnet",
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+       },
+       "running": "high"
+      },
+      "usable": {
+       "tier": "T2",
+       "family": "sonnet",
+       "model": "claude-sonnet-5-5",
+       "effort": "high"
+      },
+      "appEffort": "medium",
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": true,
+       "opusBuckets": []
+      },
+      "votes": {
+       "tier": "T2",
+       "n": 2
+      },
+      "switching": {
+       "cache": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high",
+        "prefixTokens": 30000,
+        "lastRequestAt": 1000000,
+        "ttlMs": 3600000,
+        "effortSharesCache": true,
+        "outputTokens": 300
+       },
+       "reset": false,
+       "requestsSinceSwitch": 2,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {
+        "sonnet": 30000
+       },
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.003117940000000001,
+         "medium": 0.004210650000000001,
+         "high": 0.005418316400000001,
+         "xhigh": 0.0055969900000000005,
+         "max": 0.006898216
+        },
+        "sonnet": {
+         "low": 0.0544926,
+         "medium": 0.0809505,
+         "high": 0.110990796,
+         "xhigh": 0.11720870000000001,
+         "max": 0.15001704000000002
+        },
+        "opus": {
+         "low": 0.11339160000000001,
+         "medium": 0.170757,
+         "high": 0.236101656,
+         "xhigh": 0.24999100000000002,
+         "max": 0.32149584
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "lastWorkBand": 2,
+       "consulted": [],
+       "packetTokens": 44,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "sonnet/high",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": true,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -9808,6 +15799,219 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T2",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       },
+       "opus": {
+        "model": "sonnet",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "second": "opus",
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-4",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": {
+        "taskId": "task-1000000-3",
+        "family": "sonnet",
+        "effort": "high"
+       },
+       "stayUp": 4,
+       "currentFamily": "sonnet"
+      },
+      "current": {
+       "route": {
+        "tier": "T2",
+        "family": "sonnet",
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+       },
+       "running": "high"
+      },
+      "usable": {
+       "tier": "T2",
+       "family": "sonnet",
+       "model": "claude-sonnet-5-5",
+       "effort": "high"
+      },
+      "appEffort": "medium",
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": true,
+       "opusBuckets": [
+        "T2/sonnet"
+       ]
+      },
+      "votes": {
+       "tier": "T2",
+       "n": 3
+      },
+      "switching": {
+       "cache": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high",
+        "prefixTokens": 30000,
+        "lastRequestAt": 1000000,
+        "ttlMs": 3600000,
+        "effortSharesCache": true,
+        "outputTokens": 300
+       },
+       "reset": false,
+       "requestsSinceSwitch": 3,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": false,
+        "opus": false
+       },
+       "warmPrefix": {
+        "sonnet": 30000
+       },
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {},
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.003117940000000001,
+         "medium": 0.004210650000000001,
+         "high": 0.005418316400000001,
+         "xhigh": 0.0055969900000000005,
+         "max": 0.006898216
+        },
+        "sonnet": {
+         "low": 0.0544926,
+         "medium": 0.0809505,
+         "high": 0.110990796,
+         "xhigh": 0.11720870000000001,
+         "max": 0.15001704000000002
+        },
+        "opus": {
+         "low": 0.11339160000000001,
+         "medium": 0.170757,
+         "high": 0.236101656,
+         "xhigh": 0.24999100000000002,
+         "max": 0.32149584
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "lastWorkBand": 2,
+       "consulted": [],
+       "packetTokens": 37,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "opus/high",
+      "owner": "quality-escalation"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": true,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",
@@ -10169,6 +16373,222 @@ export const SNAPSHOT: unknown = {
      "newTask"
     ],
     "routeModels": true,
+    "replay": {
+     "input": {
+      "schemaVersion": 1,
+      "now": 1000000,
+      "allowed": [
+       "haiku",
+       "sonnet",
+       "opus"
+      ],
+      "appFamily": "sonnet",
+      "shortcut": false,
+      "kept": null,
+      "judge": {
+       "tier": "T2",
+       "complexity": "standard",
+       "effort": "medium",
+       "confidence": 0.9,
+       "why": "feature"
+      },
+      "judgeCached": false,
+      "anchor": "sonnet",
+      "verdicts": {
+       "sonnet": {
+        "model": "sonnet",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       },
+       "opus": {
+        "model": "sonnet",
+        "effort": "high",
+        "why": "x",
+        "sure": 0.9
+       }
+      },
+      "complexity": "standard",
+      "stage": "implement",
+      "previousStage": "implement",
+      "boundary": true,
+      "riskChanged": false,
+      "planBoundary": false,
+      "planExited": false,
+      "floor": {
+       "taskId": "task-1000000-5",
+       "risk": "none",
+       "riskReasons": [],
+       "ladderFloor": null,
+       "taskDecision": {
+        "taskId": "task-1000000-4",
+        "family": "opus",
+        "effort": "high"
+       },
+       "stayUp": 3,
+       "currentFamily": "opus"
+      },
+      "current": {
+       "route": {
+        "tier": "T3",
+        "family": "opus",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+       },
+       "running": "high"
+      },
+      "usable": {
+       "tier": "T3",
+       "family": "opus",
+       "model": "claude-opus-5-5",
+       "effort": "high"
+      },
+      "appEffort": "medium",
+      "executor": {
+       "on": false,
+       "taskRoute": null
+      },
+      "reachHaiku": false,
+      "learned": {
+       "on": true,
+       "opusBuckets": [
+        "T2/sonnet"
+       ]
+      },
+      "votes": {
+       "tier": "T3",
+       "n": 1
+      },
+      "switching": {
+       "cache": {
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "prefixTokens": 30000,
+        "lastRequestAt": 1000000,
+        "ttlMs": 3600000,
+        "effortSharesCache": true,
+        "outputTokens": 300
+       },
+       "reset": false,
+       "requestsSinceSwitch": 0,
+       "verifiedSinceSwitch": false,
+       "switchesThisTask": 0,
+       "warm": {
+        "haiku": false,
+        "sonnet": true,
+        "opus": false
+       },
+       "warmPrefix": {
+        "sonnet": 30000,
+        "opus": 30000
+       },
+       "continuity": {
+        "provider": "anthropic",
+        "compacted": false,
+        "dropped": {
+         "haiku": 300,
+         "sonnet": 300
+        },
+        "rent": null
+       }
+      },
+      "economics": {
+       "attempt": {
+        "haiku": {
+         "low": 0.003117940000000001,
+         "medium": 0.004210650000000001,
+         "high": 0.005418316400000001,
+         "xhigh": 0.0055969900000000005,
+         "max": 0.006898216
+        },
+        "sonnet": {
+         "low": 0.0544926,
+         "medium": 0.0809505,
+         "high": 0.110990796,
+         "xhigh": 0.11720870000000001,
+         "max": 0.15001704000000002
+        },
+        "opus": {
+         "low": 0.11339160000000001,
+         "medium": 0.170757,
+         "high": 0.236101656,
+         "xhigh": 0.24999100000000002,
+         "max": 0.32149584
+        }
+       },
+       "outputPerStep": {
+        "haiku": 344,
+        "sonnet": 616,
+        "opus": 688
+       },
+       "effortOutput": {
+        "low": 0.6,
+        "medium": 1,
+        "high": 1.36,
+        "xhigh": 1.5,
+        "max": 1.8
+       },
+       "effortSteps": {
+        "low": 0.85,
+        "medium": 1,
+        "high": 1.1,
+        "xhigh": 1.2,
+        "max": 1.25
+       },
+       "prices": {
+        "provider": "anthropic",
+        "source": "platform.claude.com pricing (Opus 5.5, Sonnet 5.5, Haiku 5.5 list prices)",
+        "checkedAt": "2026-10-17",
+        "rates": {
+         "opus": {
+          "input": 4,
+          "output": 20,
+          "cacheReadX": 0.05
+         },
+         "sonnet": {
+          "input": 2,
+          "output": 10,
+          "cacheReadX": 0.05
+         },
+         "haiku": {
+          "input": 0.1,
+          "output": 0.5,
+          "cacheReadX": 0.1,
+          "longContext": {
+           "above": 100000,
+           "multiplier": 5
+          }
+         }
+        }
+       },
+       "calibrated": false
+      },
+      "consult": {
+       "lastWorkBand": 2,
+       "consulted": [],
+       "packetTokens": 42,
+       "ttlMs": 3600000
+      },
+      "policy": {
+       "lowConfidence": 0.3
+      }
+     },
+     "outcome": {
+      "route": "opus/high",
+      "owner": "judge"
+     },
+     "provenance": {
+      "schema": 1,
+      "fingerprint": "FP",
+      "priceBook": "anthropic 2026-10-17",
+      "flags": {
+       "executor": false,
+       "learning": true,
+       "reachHaiku": false,
+       "routeModels": true
+      }
+     }
+    },
     "candidates": [
      {
       "route": "haiku/medium",

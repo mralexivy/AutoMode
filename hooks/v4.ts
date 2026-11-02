@@ -47,7 +47,7 @@ import { effortFor, helperEffort, takesEffort, looksLikeRedo, midTurnNote, REDO_
 import { effortSharesCache, modeOf, providerOf, thinkingRisk, ttlMs, type ProviderEnv } from './lib/mode.ts'
 import { bounded, helperFloor, helperQuestion, JUDGE_CALL, JUDGE_SYSTEM as EFFORTLESS_SYSTEM, keepsEffort, parseVerdict } from './lib/effortless.ts'
 import { contextOf, judgeInputFor, NEED_ANCHOR } from './lib/effortless-adapt.ts'
-import { AUTO_ROUTE_SCHEMA, LOW_CONFIDENCE, autoFloors, costOf, escalationStep, executorInput, planAuto, routeAuto, type AutoRouteInput, type FloorFacts, type Verdicts } from './lib/auto-route.ts'
+import { AUTO_ROUTE_SCHEMA, LOW_CONFIDENCE, autoFloors, costOf, escalationStep, executorInput, planAuto, replayOf, routeAuto, type AutoRouteInput, type RouteReplay, type FloorFacts, type Verdicts } from './lib/auto-route.ts'
 import { decisionRequired, firstCalls, legalEffort, optimizeAuto, ownEffort, runningRuledOut, secondCall, shortcutApplies, type AutoChoice, type FamilyVerdict } from './lib/auto.ts'
 import { COMPACT_SYSTEM, transcriptOf } from './lib/compact.ts'
 import { routerOverrides } from './lib/settings.ts'
@@ -699,6 +699,7 @@ interface AutoRecord {
   required: string[]              // why a new decision was required (step 4)
   fallback?: string               // a judge failed: what was used instead
   routeModels: boolean
+  replay?: RouteReplay            // the route input and outcome, for bench/route-replay.mts
 }
 
 // Anthropic defaults (effort docs, 2026-10): what a model runs at when nothing is set. The judge's "Current" line for
@@ -854,9 +855,9 @@ function allowedAuto(at: number): Family[] {
   return ok.length ? ok : ['sonnet']
 }
 
-function autoRecord(choice: AutoChoice, verdicts: AutoRecord['verdicts'], hm: AutoRecord['hm'], steps: string[], required: string[], fallback: string | undefined, need: NeedRecord): AutoRecord {
+function autoRecord(choice: AutoChoice, verdicts: AutoRecord['verdicts'], hm: AutoRecord['hm'], steps: string[], required: string[], fallback: string | undefined, need: NeedRecord, replay?: RouteReplay): AutoRecord {
   return {
-    verdicts, need, hm, rule: choice.rule, steps, required, ...(fallback ? { fallback } : {}), routeModels: (S.cfg as any).routeModels !== false,
+    verdicts, need, hm, rule: choice.rule, steps, required, ...(fallback ? { fallback } : {}), routeModels: (S.cfg as any).routeModels !== false, ...(replay ? { replay } : {}),
     candidates: choice.candidates.map((c) => ({ route: `${c.family}/${c.effort}`, ...(c.verdictEffort ? { verdict: c.verdictEffort } : {}), eligibility: c.eligibility, usd: round6(Number.isFinite(c.attemptUsd) ? c.attemptUsd : -1), why: c.why.slice(0, 6) })),
   }
 }
@@ -994,7 +995,8 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
     judgeInfo = { ...judgeInfo!, called: true, ms: (judgeInfo?.ms ?? 0) + j2.ms, usd: round6((judgeInfo?.usd ?? 0) + (j2.usd ?? 0)) }
   }
 
-  const r = routeAuto(inputFor(verdicts, second ?? undefined))
+  const routeInput = inputFor(verdicts, second ?? undefined)
+  const r = routeAuto(routeInput)
   steps.push(...r.reasons)
   const { choice, shadow, own, need, kept, fallback, ownFallback } = r
   verdicts = r.verdicts
@@ -1045,7 +1047,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
     ...(shadow ? { shadowRoute: `${shadow.family}/${shadow.effort}` } : {}),
     ...(S.inadequate ? { inadequate: S.inadequate } : {}),
     routing: { cheapestAdequate: `${choice.best.family}/${choice.best.effort}`, chosen: `${routed.family}/${routed.effort}`, overRouted: routed.family !== choice.best.family || routed.effort !== choice.best.effort ? ((choice.candidates.find((c) => c.family === routed.family)?.attemptUsd ?? 0) > choice.best.attemptUsd || EFFORTS.indexOf(routed.effort) > EFFORTS.indexOf(choice.best.effort) ? routed.owner : null) : null, underRouted: own && S.current && routed.family === S.current.family && own.eligibility !== 'eligible' && own.eligibility !== 'needs-verdict' ? routed.owner : null },
-    auto: autoRecord(choice, verdictRec, hm ? { ...hm, ok: true, cached: hmCached } : shortcut ? null : { tier: '-', complexity: '-', ok: false, cached: false }, steps, required.why, fallback ?? ownFallback, needRecord(anchor, shortcut ? kept : askedNeed)),
+    auto: autoRecord(choice, verdictRec, hm ? { ...hm, ok: true, cached: hmCached } : shortcut ? null : { tier: '-', complexity: '-', ok: false, cached: false }, steps, required.why, fallback ?? ownFallback, needRecord(anchor, shortcut ? kept : askedNeed), replayOf(routeInput, r, `${prices().provider} ${prices().checkedAt}`, { executor: executorOn(), learning: !!S.cfg.learning, reachHaiku: !!S.cfg.reachHaiku, routeModels: (S.cfg as any).routeModels !== false })),
   }
 }
 

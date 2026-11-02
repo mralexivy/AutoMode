@@ -1,14 +1,14 @@
-// Replays the routing decision offline on verdicts from bench/judge-panel.mts. It composes the same pure steps as
-// decideAuto in hooks/v4.ts: the shortcut, the consequence floor, fallbacks, the second call and optimizeAuto. The
-// session is cold, so the switch check never holds a model. Labels score effort only, so this says nothing about
-// task quality.
+// Replays the routing decision offline on verdicts from bench/judge-panel.mts. The shortcut runs as in decideAuto;
+// everything after it is the router's own routeAuto (hooks/lib/auto-route.ts) on a synthetic session from
+// bench/lib/route-input.mts. The session is cold, so the switch check never holds a model. Labels score effort only,
+// so this says nothing about task quality.
 import { keepsEffort, type Effort } from '../../hooks/lib/effortless.ts'
-import { fallbackEffort, fallbackModel, optimizeAuto, secondCall, shortcutApplies, type AutoFloors, type FamilyVerdict } from '../../hooks/lib/auto.ts'
-import { attemptCost, DEFAULT_PRIORS, TASK_STEPS } from '../../hooks/lib/optimizer.ts'
-import { ANTHROPIC } from '../../hooks/lib/prices.ts'
+import { shortcutApplies, type FamilyVerdict } from '../../hooks/lib/auto.ts'
+import { planAuto, routeAuto } from '../../hooks/lib/auto-route.ts'
+import { synthInput } from './route-input.mts'
 import { prospectiveRisk } from '../../hooks/lib/risk.ts'
 import { transitionOf } from '../../hooks/lib/transition.ts'
-import type { Complexity, Family, Risk } from '../../hooks/lib/types.ts'
+import type { Complexity, Family, Risk, Tier } from '../../hooks/lib/types.ts'
 import { maxRisk } from '../../hooks/lib/types.ts'
 
 export interface PanelRow { pass: number; id: string; slot: string; parsed: boolean; model?: string; effort?: Effort; sure?: number; tier?: string; complexity?: Complexity; risk?: Risk; consequence?: Risk; confidence?: number }
@@ -17,9 +17,7 @@ export type Slots = Map<string, PanelRow>
 export interface Rule { input: 'closing' | 'plain' | 'plain-then-closing'; effortOf?: (c: LabeledCase, s: Slots, family: Family, verdict: FamilyVerdict) => Effort }
 export interface Route { family: Family | null; effort: Effort | null; source: string }
 
-const LOW_CONFIDENCE = 0.3 // v4.ts LOW_CONFIDENCE
 const lastReplyOf = (context: string) => (context.split('\nassistant: ').pop() ?? '').replace(/^assistant: /, '')
-const COST = { cache: { model: null, effort: null, prefixTokens: 20_000, lastRequestAt: null, ttlMs: 300_000, effortSharesCache: true }, warm: {}, now: 0, prices: ANTHROPIC, priors: DEFAULT_PRIORS, neutral: true }
 
 // upstreamRoute is what upstream answers: a kept pair for a short follow-up, else its one verdict about the running model.
 export function upstreamRoute(c: LabeledCase, s: Slots): Route {
@@ -43,38 +41,16 @@ export function automodeRoute(c: LabeledCase, s: Slots, rule: Rule): Route {
   const approves = transitionOf(c.message, lastReplyOf(ctx)).kind === 'begin-approved'
   if (shortcutApplies(follow, c.message, { required: false }) && !approves) return { ...current, source: 'kept' }
   const j = s.get('automode')
-  const hm = j?.parsed ? { tier: j.tier as 'T0', complexity: j.complexity ?? 'standard' as Complexity } : null
+  const judge = j?.parsed ? { tier: j.tier as Tier, complexity: j.complexity ?? 'standard' as Complexity, effort: j.effort, confidence: j.confidence } : null
   const assessed = prospectiveRisk(c.message, j?.parsed ? { risk: maxRisk(j.risk ?? 'none', j.consequence ?? 'none'), why: '' } : null)
   const risk = assessed.routing ?? assessed.level
-  const complexity: Complexity = hm?.complexity ?? 'standard'
-  const floors: AutoFloors = { effortMin: {}, exclude: {}, because: [] }
-  if (risk === 'critical' && complexity !== 'trivial') { floors.exclude!.haiku = 'critical'; floors.effortMin = { sonnet: 'high', opus: 'medium' } }
-  const anchor = c.current.model
-  // A9: the need is asked with a fixed Sonnet anchor, so it does not depend on the starting model.
-  const need = verdictFor(s, 'sonnet', rule)
-  let verdicts: Partial<Record<Family, FamilyVerdict | null>> = { [anchor]: verdictFor(s, anchor, rule) }
-  let source = 'judge'
-  const allowed: Family[] = ['haiku', 'sonnet', 'opus']
-  if (!verdicts[anchor]) {
-    const fb = fallbackEffort({ sameTask: !!ctx, sameStage: true, riskChanged: false, planBoundary: false, previous: current, previousAdequate: true, appEffort: undefined, escalation: null, effortMin: floors.effortMin?.[anchor] })
-    verdicts = { [anchor]: { model: anchor, effort: fb.effort, why: 'fallback' } }
-    floors.fixedFamily = anchor
-    source = 'fallback'
-    if (j?.parsed) {
-      const fm = fallbackModel(anchor, { tier: j.tier as 'T0', effort: j.effort, confidence: j.confidence }, allowed, risk, LOW_CONFIDENCE)
-      if (fm.family !== anchor) { floors.fixedFamily = fm.family; verdicts[fm.family] = { model: fm.family, effort: fm.effort ?? 'high', why: 'fallback' } }
-    }
-  } else if (!hm) { floors.fixedFamily = anchor; source = 'fallback' }
-  if (hm && (j?.confidence ?? 1) < LOW_CONFIDENCE && !floors.fixedFamily) {
-    const rank: Record<Family, number> = { haiku: 0, sonnet: 1, opus: 2 }
-    for (const f of allowed) if (rank[f] < rank[anchor]) floors.exclude![f] = 'low confidence'
-  }
-  const cost = (family: Family, effort: Effort) => attemptCost({ family, effort, cap: { lo: 0, hi: 0 } } as never, { steps: TASK_STEPS[complexity] }, COST as never).usd
-  if (source === 'judge') {
-    const second = secondCall({ allowed, verdicts, need, hm, consequence: risk, floors, current: null, cost: () => 0 }, anchor)
-    if (second) verdicts[second] = verdictFor(s, second, rule)
-  }
-  if (rule.effortOf) for (const [f, v] of Object.entries(verdicts)) if (v) verdicts[f as Family] = { ...v, effort: rule.effortOf(c, s, f as Family, v) }
-  const choice = optimizeAuto({ allowed, verdicts, need, hm, consequence: risk, floors, current, cost })
-  return { family: choice.best.family, effort: choice.best.effort, source }
+  // As the router: call 1 asks the fixed Sonnet anchor (A9) and the running model.
+  const adjust = (f: Family, v: FamilyVerdict | null) => (v && rule.effortOf ? { ...v, effort: rule.effortOf(c, s, f, v) } : v)
+  const verdicts: Partial<Record<Family, FamilyVerdict | null>> = {}
+  for (const f of new Set<Family>(['sonnet', c.current.model])) verdicts[f] = adjust(f, verdictFor(s, f, rule))
+  const facts = { judge, verdicts, risk, current, hold: false, boundary: !ctx, appFamily: c.current.model }
+  const second = planAuto(synthInput(facts)).secondJudge
+  if (second) verdicts[second] = adjust(second, verdictFor(s, second, rule))
+  const r = routeAuto(synthInput({ ...facts, verdicts, ...(second ? { second } : {}) }))
+  return { family: r.route.family, effort: r.route.effort, source: r.fallback ? 'fallback' : 'judge' }
 }

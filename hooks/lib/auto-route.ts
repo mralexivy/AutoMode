@@ -15,14 +15,15 @@ import type { JudgeAnswer } from './classify.ts'
 import type { PriceRow } from './prices.ts'
 import type { Rent } from './rent.ts'
 import { BAND_OF, TIER_BAND } from './bands.ts'
-import { DEFAULT_PARAMS, remainingFor, type SwitchInput } from './policy.ts'
+import { DEFAULT_PARAMS, remainingFor, switchCheck, type SwitchInput } from './policy.ts'
 import { resolve } from './authority.ts'
 import { consultOrSwitch } from './strategy.ts'
 import { executorEffort } from './executor.ts'
 import { TASK_STEPS, tierOf } from './optimizer.ts'
 import { maxEffort } from './effort.ts'
 import { bucketOf } from './learn.ts'
-import { fallbackEffort, fallbackModel, optimizeAuto, ownEffort, runningRuledOut, secondCall, type AutoChoice, type AutoFloors, type FamilyVerdict } from './auto.ts'
+import { fnv1a } from './failures.ts'
+import { eligibilityOf, fallbackEffort, fallbackModel, optimizeAuto, ownEffort, runningRuledOut, secondCall, type AutoChoice, type AutoFloors, type FamilyVerdict } from './auto.ts'
 
 export const AUTO_ROUTE_SCHEMA = 1
 // jev-router config.mjs THRESHOLDS.minConfidence (commit 38da6b8)
@@ -336,4 +337,29 @@ export function routeAuto(i: AutoRouteInput): AutoRouteResult {
     }
   }
   return { ...plan, tier, reasons, need, kept, choice, shadow, own, votes, resolved, route, lastWorkBand, consult }
+}
+
+// RouteOutcome: the observable part of a route. bench/route-replay.mts compares it between a record and a replay.
+export interface RouteOutcome { route: string; owner: string; gate?: string; consult?: 'consult' | 'switch'; fallback?: boolean }
+export const outcomeOf = (r: AutoRouteResult): RouteOutcome => ({ route: `${r.route.family}/${r.route.effort}`, owner: r.route.owner, ...(r.resolved.check?.gate ? { gate: r.resolved.check.gate } : {}), ...(r.consult ? { consult: r.consult.choice } : {}), ...(r.fallback ? { fallback: true } : {}) })
+
+// RouteReplay: what a decision record keeps so the route can run again. No prompt text is in it.
+export interface RouteReplay {
+  input: AutoRouteInput
+  outcome: RouteOutcome
+  provenance: { schema: number; fingerprint: string; priceBook: string; flags: Record<string, boolean> }
+}
+
+// routeFingerprint hashes the source of the functions the route runs. Pure lib files ship unbundled, so a release and
+// its checkout give the same value. It covers code only: a changed constant, such as DEFAULT_PARAMS, keeps the value.
+let fingerprint: string | undefined
+export function routeFingerprint(): string {
+  fingerprint ??= fnv1a([routeAuto, planAuto, autoFloors, executorInput, escalationStep, optimizeAuto, eligibilityOf, secondCall, fallbackEffort, fallbackModel, ownEffort, runningRuledOut, resolve, switchCheck, consultOrSwitch, executorEffort].map((f) => f.toString()).join('\n'))
+  return fingerprint
+}
+
+// replayOf: the replay block of a decision record. The input is copied, so a later change to session state never
+// reaches a record that waits to be written.
+export function replayOf(input: AutoRouteInput, result: AutoRouteResult, priceBook: string, flags: Record<string, boolean>): RouteReplay {
+  return { input: JSON.parse(JSON.stringify(input)), outcome: outcomeOf(result), provenance: { schema: AUTO_ROUTE_SCHEMA, fingerprint: routeFingerprint(), priceBook, flags } }
 }
