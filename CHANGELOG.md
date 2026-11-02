@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-02
+
 ### Changed
 
 - Classification now sends T0 to T2 work without critical risk to Haiku, and T2 work whose need names Opus to Opus. `reachHaiku: false` restores the old rules.
