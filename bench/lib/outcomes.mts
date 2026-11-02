@@ -261,16 +261,19 @@ export function setSignals(m: Matrix, perTask: TaskSignals[], { reference = REFE
 
 // --- False completion --------------------------------------------------------------------------------------------
 
-// The claim field. No writer sets it yet: the completion gate (hooks/lib/completion.ts) writes its records to the
-// plugin's records/*.jsonl, not to the result row. A row must carry `completion.claimed` as a boolean to count.
+// The claim field. bench/lib/run-one.mts sets it from the final message's status line when the prompt template asks for
+// one (repo-change-v2, bench/lib/claim.mts). A row must carry `completion.claimed` as a boolean to count. Rows from a
+// template that never asked count as no field; a row whose agent gave no status line counts as ambiguous.
 export const CLAIM_FIELD = 'completion.claimed'
 
-export interface FalseCompletion { rows: number; claims_graded: number; false_claims: number; rate: number | null; no_claim: number; na_no_field: number; na_ambiguous: number; na_ungraded: number }
+export interface FalseCompletion { rows: number; claims_graded: number; false_claims: number; rate: number | null; no_claim: number; na_no_field: number; na_ambiguous: number; na_ungraded: number; gate_verified: number; gate_verified_failed: number }
 
 export function falseCompletion(rows: any[]): FalseCompletion {
-  const out: FalseCompletion = { rows: rows.length, claims_graded: 0, false_claims: 0, rate: null, no_claim: 0, na_no_field: 0, na_ambiguous: 0, na_ungraded: 0 }
+  const out: FalseCompletion = { rows: rows.length, claims_graded: 0, false_claims: 0, rate: null, no_claim: 0, na_no_field: 0, na_ambiguous: 0, na_ungraded: 0, gate_verified: 0, gate_verified_failed: 0 }
   for (const r of rows) {
-    if (!r || typeof r !== 'object' || !('completion' in r) || r.completion == null) { out.na_no_field++; continue }
+    // The completion gate's own verdict, apart from the claim: how often "verified" meets failing hidden tests.
+    if (r?.completion?.gate_state === 'verified' && isResult(r) && !tainted(r) && typeof r.accepted === 'boolean') { out.gate_verified++; if (!r.accepted) out.gate_verified_failed++ }
+    if (!r || typeof r !== 'object' || !('completion' in r) || r.completion == null || r.completion.claim_asked === false) { out.na_no_field++; continue }
     const claimed = r.completion.claimed
     if (typeof claimed !== 'boolean') { out.na_ambiguous++; continue }
     if (!claimed) { out.no_claim++; continue }
@@ -352,5 +355,6 @@ export function renderOutcomes(r: OutcomeReport, focusId = FOCUS_TASK): string[]
   out.push(`Rate = runs that explicitly claimed completion and failed acceptance ÷ runs that explicitly claimed completion and have a valid grade. The claim field is \`${CLAIM_FIELD}\`, a boolean. A row without it is N/A, never a success or a failure.\n`)
   out.push(`- Rate: ${f.rate === null ? 'n/a' : `${f.false_claims}/${f.claims_graded} (${pct(f.rate)})`}.`)
   out.push(`- N/A: ${f.na_no_field + f.na_ambiguous + f.na_ungraded} of ${f.rows} rows. No claim field: ${f.na_no_field}. Ambiguous field: ${f.na_ambiguous}. Claim without a valid grade: ${f.na_ungraded}. Explicitly no claim: ${f.no_claim}.`)
+  out.push(`- Completion gate: ${f.gate_verified ? `${f.gate_verified_failed} of ${f.gate_verified} graded runs it called verified failed the hidden tests` : 'no graded run with a gate verdict of verified'}.`)
   return out
 }

@@ -14,6 +14,7 @@ import { COST_BASIS, RESULT_SCHEMA, estimatedUsd, harnessInfo, pricingSnapshot }
 import { configDir, runEvidence, sessionFiles } from './run-evidence.mts'
 import { observedFrom, safetyVerdict } from '../safety/evaluate.mts'
 import { SCENARIOS } from '../safety/scenarios.mts'
+import { completionField } from './claim.mts'
 import { excludePaths, taskRepo, type Task } from './task-repo.mts'
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..')
@@ -85,6 +86,15 @@ export function v4JudgeCost(sessionId: string | null | undefined) {
     workers: rows.filter((r) => r.kind === 'worker' || r.kind === 'agent').map((r) => ({ agent: r.agent ?? r.type, status: r.status, tokens: r.tokens })),
     escalations: rows.filter((r) => r.kind === 'escalation').length,
   }
+}
+
+// completionGate reads the plugin's last completion record for one session: the gate's verdict when the agent stopped.
+export function completionGate(sessionId: string | null | undefined): { state: string; blocked: boolean } | null {
+  if (!sessionId) return null
+  const file = path.join(configDir(), 'plugins', 'data', 'automode', 'records', `${sessionId}.jsonl`)
+  if (!fs.existsSync(file)) return null
+  const last = jsonLines(file).filter((r) => r.kind === 'completion' && r.sessionId === sessionId).pop()
+  return last ? { state: String(last.state), blocked: !!last.blocked } : null
 }
 
 function usageTrace(sessionId: string | null | undefined) {
@@ -223,7 +233,8 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
       ...(safety ? { safety } : {}), ...(task.longctx_tier ? { longctx_tier: task.longctx_tier } : {}),
       // A test command that never returned gave no verdict, so the row is an error and not a rejection.
       ...(acc.status === null ? { harness_error: 'accept command did not finish' } : {}),
-      accepted: acc.status === 0, accept_exit: acc.status, accept_tail: (acc.stdout + acc.stderr).split('\n').filter(Boolean).slice(-8),
+      accepted: acc.status === 0, accept_exit: acc.status,
+      completion: completionField(template.text, res.finalStatus, ARMS[armId].v4 ? completionGate(res.sessionId) : null), accept_tail: (acc.stdout + acc.stderr).split('\n').filter(Boolean).slice(-8),
       model_usage: res.modelUsage,
       diff_shortstat: change.shortstat,
       diff_chars: change.diff.length,

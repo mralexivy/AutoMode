@@ -145,7 +145,7 @@ test('false completion counts only explicit claims with a valid grade', () => {
     { ...row('t', 'a', 8, false, { completion: { claimed: true } }), accepted: null },
   ]
   const f = falseCompletion(rows)
-  assert.deepEqual(f, { rows: 8, claims_graded: 2, false_claims: 1, rate: 0.5, no_claim: 1, na_no_field: 1, na_ambiguous: 2, na_ungraded: 2 })
+  assert.deepEqual(f, { rows: 8, claims_graded: 2, false_claims: 1, rate: 0.5, no_claim: 1, na_no_field: 1, na_ambiguous: 2, na_ungraded: 2, gate_verified: 0, gate_verified_failed: 0 })
   const none = falseCompletion([row('t', 'a', 1, false), row('t', 'a', 2, true)])
   assert.equal(none.rate, null, 'no claim field anywhere is N/A, never a rate of zero')
   assert.equal(none.na_no_field, 2)
@@ -156,4 +156,17 @@ test('the matrix JSON holds no reply text', () => {
   assert.doesNotMatch(json, /"text":/)
   const parsed = JSON.parse(json)
   assert.equal(parsed.entries.find((e) => e.task_id === 'alone' && e.arm === 'b').status, 'missing')
+})
+
+test('a template that never asked is no field; the gate verdict counts apart from the claim', () => {
+  const rows = [
+    row('t', 'a', 1, false, { completion: { claim_asked: false, gate_state: 'verified', gate_blocked: false } }),
+    row('t', 'a', 2, true, { completion: { claim_asked: true, claimed: true, gate_state: 'verified', gate_blocked: false } }),
+    row('t', 'a', 3, false, { completion: { claim_asked: true } }),
+  ]
+  const f = falseCompletion(rows)
+  assert.equal(f.na_no_field, 1)
+  assert.equal(f.na_ambiguous, 1)
+  assert.equal(f.claims_graded, 1)
+  assert.deepEqual([f.gate_verified, f.gate_verified_failed], [2, 1])
 })
