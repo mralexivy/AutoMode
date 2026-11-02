@@ -131,6 +131,8 @@ export const EFFORT_ARMS: Record<string, Arm> = {
   'rescue-packet-fork': { label: 'AutoMode Auto, the rich packet and a gated same-model fork', model: HM_MODEL, v4: true, plugin: automode({ ...RESCUE_BASELINE, packet: 'fork-gated' }) },
   // Every rescue setting at once: a run of this arm shows whether they combine without a regression, not which one helped.
   'rescue-all': { label: 'AutoMode Auto, every rescue setting on', model: HM_MODEL, v4: true, plugin: automode({ strongStep: 'effort-first', consult: 'priced', packet: 'fork-gated' }) },
+  // The money thesis: Sonnet runs the task and the cache-aware ladder rescues it, against starting hard work on Opus.
+  'sonnet-rescue': { label: 'AutoMode Auto, Sonnet executor with every rescue setting on', model: HM_MODEL, v4: true, plugin: automode({ executor: 'sonnet', strongStep: 'effort-first', consult: 'priced', packet: 'fork-gated' }) },
   'executor-sonnet': { label: 'AutoMode Auto, Sonnet executor', model: HM_MODEL, v4: true, plugin: automode({ executor: 'sonnet' }) },
   // The specialized agents, asked for with the command a person uses: Haiku explorers, Opus plan and review, Sonnet build and verify.
   // `claude -p` stops background work 10 minutes after the last turn, so a workflow needs the ceiling off.
