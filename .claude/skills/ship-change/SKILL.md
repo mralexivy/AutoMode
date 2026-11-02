@@ -31,7 +31,9 @@ gh issue create --title "<short title>" --label <bug|enhancement> --body-file <f
 
 ## 3. Branch
 
-Make one branch per task, not one per step. Never split a task so that its code lands first and its tests or benchmark follow.
+Make one branch per task, not one per step. A task is one entity, even when its plan has phases, milestones or numbered parts. Those parts are commits on the task's branch and sections of its one PR. Never open a branch, issue or PR per phase, and never split a task so that its code lands first and its tests or benchmark follow.
+
+When you plan a task, write the plan as one branch and one PR with ordered commits. Do not write it as "PR 1, PR 2, ...".
 
 Use `<type>/<short-name>`. The type is `feature`, `fix`, `docs`, `chore`, `refactor`, `test` or `bench`. Keep the name to two or three words, in lowercase, with hyphens.
 
@@ -43,7 +45,7 @@ Always pass `--name`. Without it, the branch takes the whole issue title, and `g
 
 ## 4. Work
 
-- Keep to one task.
+- Keep to one task, and keep all of it here. Commit each phase of the plan on this branch as it is done.
 - Add or update a test for each behavior change.
 - Put the benchmark for the task on this branch, with the code it measures.
 - If you change a shipped path, add a line under `[Unreleased]` in `CHANGELOG.md`. Shipped paths are `agents/`, `commands/`, `hooks/`, `output-styles/`, `scripts/`, `types/`, `workflows/`, `config.json` and `.claude-plugin/plugin.json`.

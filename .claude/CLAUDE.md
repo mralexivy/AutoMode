@@ -93,5 +93,5 @@ Hooks record each step as `kind: 'delegation'`, with the action `gate`, `read-ag
 - Do not change `version` in `.claude-plugin/plugin.json`. The release PR raises it, and also updates the README. Add a line under `[Unreleased]` in `CHANGELOG.md` when you change a shipped path.
 - CI rejects personal absolute paths anywhere in the repository, and a `"text":` field in `bench/results/*.json`. Never save model reply text or real session transcripts.
 - Do not claim a cost saving without a repeatable benchmark run. Under 30 tasks, a run is a pilot. See `bench/README.md`.
-- Add or update a test with every behavior change. Keep one task per pull request.
+- Add or update a test with every behavior change. Keep one task per pull request. A plan with phases is still one task: its phases are commits on one branch, never separate pull requests.
 - Write comments and docs in short sentences, in active voice, with one idea per sentence.
