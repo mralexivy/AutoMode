@@ -1,0 +1,23 @@
+{
+  "rule": "Sort candidate ids by the SHA-256 of the id, ascending. Walk the list. A task at an even position (0, 2, 4, ...) goes to screen, at an odd position to confirm. If that set already holds 3 tasks from the same repository, the task goes to the other set. If both sets are full for that repository, the task is excluded.",
+  "max_per_repo": 3,
+  "date": "2026-11-02",
+  "git_sha": "2e6f6b2b199aa607d64236b5c91f182486483da1",
+  "candidates": 10,
+  "screen": [
+    "security-jinja-sandbox-indirect-str-format",
+    "longctx-lark-parse-text-slice",
+    "security-werkzeug-multipart-part-limit",
+    "feature-acorn-await-in-class-field-initializers",
+    "feature-jinja-namespace-tuple-assignment"
+  ],
+  "confirm": [
+    "feature-pyflakes-unused-global-nonlocal",
+    "longctx-mathjs-nullish-coalescing-operator",
+    "feature-acorn-using-in-switch-case-and-for",
+    "security-mathjs-array-property-and-index-escape",
+    "longctx-acorn-commonjs-source-type"
+  ],
+  "excluded": [],
+  "screen_experiment": "screen-2"
+}

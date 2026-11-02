@@ -16,7 +16,7 @@
 // for a user-installed plugin (cc-plugin-sec-default). an external signals writer writes plan mode and compactions to
 // a signals file; syncSignals reads it. Only the Haiku summary stays lost.
 import type { EngineInterface } from 'claude-code'
-import type { CacheState, Complexity, EffectiveRoute, Effort, Family, Floor, Mode, Owner, Risk, Route, Strategy, TaskEnvelope, Tier, TokenUsage } from './lib/types.ts'
+import type { CacheState, Complexity, EffectiveRoute, Effort, Family, Mode, Owner, Risk, Route, Strategy, TaskEnvelope, Tier, TokenUsage } from './lib/types.ts'
 import { EFFORTS, maxRisk, tierRank } from './lib/types.ts'
 import { ANTHROPIC, familyOf, rowFor, usageUsd } from './lib/prices.ts'
 import { isTask, JUDGE_SYSTEM, JUDGE_SYSTEM_V3, JUDGE_SYSTEM_V4, judgePrompt, parseJudge, parseOverride, type JudgeAnswer } from './lib/classify.ts'
@@ -26,14 +26,13 @@ import { stageOf, type Stage } from './lib/stage.ts'
 import { BAND_OF, bandOf, demandBand, ladderStep, nextEffort, TIER_BAND } from './lib/bands.ts'
 import { DEFAULT_LARGE, interfaceChanges, observedRisk, prospectiveRisk, reviewerFamily } from './lib/risk.ts'
 import { textConsequence } from './lib/consequence.ts'
-import { DEFAULT_PARAMS, remainingFor } from './lib/policy.ts'
+import { DEFAULT_PARAMS } from './lib/policy.ts'
 import { continuity, noteDrop, observedDrop } from './lib/continuity.ts'
 import { accrueRent, type Rent } from './lib/rent.ts'
 import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, summaryOf, withReview } from './lib/envelope.ts'
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
-import { executorEffort } from './lib/executor.ts'
 import { checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, reviewerBlocked, scopeGrew, withPipefail } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
 import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
@@ -44,18 +43,19 @@ import { adequacy, attemptCost, CAPABILITY, DEFAULT_PRIORS, demandOf, FLOOR_CAPA
 import { trigger, type Trigger } from './lib/triggers.ts'
 import { workflowArgs } from './lib/stages.ts'
 import { subagentEffort, subagentRoute } from './lib/subagents.ts'
-import { effortFor, helperEffort, takesEffort, looksLikeRedo, maxEffort, midTurnNote, REDO_STAY_PROMPTS, thinkingOf } from './lib/effort.ts'
+import { effortFor, helperEffort, takesEffort, looksLikeRedo, midTurnNote, REDO_STAY_PROMPTS, thinkingOf } from './lib/effort.ts'
 import { effortSharesCache, modeOf, providerOf, thinkingRisk, ttlMs, type ProviderEnv } from './lib/mode.ts'
 import { bounded, helperFloor, helperQuestion, JUDGE_CALL, JUDGE_SYSTEM as EFFORTLESS_SYSTEM, keepsEffort, parseVerdict } from './lib/effortless.ts'
 import { contextOf, judgeInputFor, NEED_ANCHOR } from './lib/effortless-adapt.ts'
-import { decisionRequired, fallbackEffort, fallbackModel, firstCalls, legalEffort, optimizeAuto, ownEffort, runningRuledOut, secondCall, shortcutApplies, type AutoChoice, type AutoFloors, type FamilyVerdict } from './lib/auto.ts'
+import { AUTO_ROUTE_SCHEMA, LOW_CONFIDENCE, autoFloors, costOf, escalationStep, executorInput, planAuto, replayOf, routeAuto, type AutoRouteInput, type RouteReplay, type FloorFacts, type Verdicts } from './lib/auto-route.ts'
+import { decisionRequired, firstCalls, legalEffort, optimizeAuto, ownEffort, runningRuledOut, secondCall, shortcutApplies, type AutoChoice, type FamilyVerdict } from './lib/auto.ts'
 import { COMPACT_SYSTEM, transcriptOf } from './lib/compact.ts'
 import { routerOverrides } from './lib/settings.ts'
 import { currentOptions, storedOptions } from './options.ts'
 import { publish } from './ui/publish.ts'
 import type { AgentSnap, Ledger, RouterSnap } from './ui/view.ts'
 import { sid, fsRead, sessionModel, fsWrite, fsExists } from './lib/io.ts'
-import { EMPTY_LEARNED, bucketOf, noteTask, opusBuckets, opusFirst, parseLearned, type Learned } from './lib/learn.ts'
+import { EMPTY_LEARNED, bucketOf, noteTask, opusBuckets, parseLearned, type Learned } from './lib/learn.ts'
 import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence, type DelegationMode } from './lib/delegation.ts'
 
 const V4_DEFAULTS = {
@@ -699,13 +699,13 @@ interface AutoRecord {
   required: string[]              // why a new decision was required (step 4)
   fallback?: string               // a judge failed: what was used instead
   routeModels: boolean
+  replay?: RouteReplay            // the route input and outcome, for bench/route-replay.mts
 }
 
 // Anthropic defaults (effort docs, 2026-10): what a model runs at when nothing is set. The judge's "Current" line for
 // a model that is not running names this, so each verdict is relative to that model as it would start.
 const DEFAULT_EFFORT: Record<Family, Effort> = { haiku: 'medium', sonnet: 'high', opus: 'medium' }
 const JUDGE_RETRY_MODEL = 'haiku' // upstream askHaiku's second attempt
-const LOW_CONFIDENCE = 0.3 // jev-router config.mjs THRESHOLDS.minConfidence (commit 38da6b8)
 // Judge breaker, adapted from claude-router lib/classifier-client.mjs (commit 168334f, MIT, Alexei Ledenev):
 // FAILURES_TO_PAUSE = 3, PAUSE_MS = 60_000; one success resets it. Per judge kind, so a failing effortless judge does
 // not pause the AutoMode judge. While paused, the router uses its fallbacks at once: no call, no wait, no cost.
@@ -769,76 +769,22 @@ async function effortlessJudge($: EngineInterface, family: Family, prompt: strin
 }
 
 const normalizeText = (t: string) => t.trim().toLowerCase().replace(/\s+/g, ' ')
-const CHEAPER: Record<Family, Family[]> = { haiku: [], sonnet: ['haiku'], opus: ['haiku', 'sonnet'] }
-
-// escalationStep: the floor the ladder set for this task, until a check passes.
-function escalationStep(env: TaskEnvelope, allowed: Family[]): { family: Family; effort: Effort; band: number; because: string } | null {
-  const floor = env.ladder?.floor
-  return floor && (!allowed.length || allowed.includes(floor.family)) ? floor : null
-}
-
-// autoFloors: the mandatory-quality step as constraints on the candidates, and the same as a tier floor for resolve().
-function autoFloors(env: TaskEnvelope, complexity: Complexity, allowed: Family[], stage?: Stage): { floors: AutoFloors; tier: Floor; escalated: { family: Family; effort: Effort } | null } {
-  const effortMin: Partial<Record<Family, Effort>> = {}
-  const exclude: Partial<Record<Family, string>> = {}
-  const because: string[] = []
-  let tier: Floor = { tier: 'T0', because: [] }
-  // Consequence: critical work that is not trivial gets at least Sonnet high, the v4 implementer floor, or Opus medium, its band.
-  if (env.risk.effective === 'critical' && complexity !== 'trivial') {
-    const why = `critical consequence: ${env.risk.prospective.reasons.slice(0, 2).join('; ') || 'observed'}`
-    exclude.haiku = why
-    effortMin.sonnet = 'high'
-    effortMin.opus = 'medium'
-    because.push(why)
-    tier = { tier: 'T2', because: [why] }
-  }
-  // Defect escalation: one step up from the running route; every model must reach that step or it is out.
-  const step = escalationStep(env, allowed)
-  if (step) {
-    for (const f of ['haiku', 'sonnet', 'opus'] as Family[]) {
-      const e = EFFORTS.find((x) => BAND_OF[f][x] >= step.band)
-      if (!e) exclude[f] = step.because
-      else effortMin[f] = maxEffort(effortMin[f] ?? 'low', e)
-    }
-    because.push(step.because)
-    const t = tierOf(step.family, step.effort)
-    if (tierRank(t) >= tierRank(tier.tier)) tier = { tier: t, effort: step.effort, band: step.band, because: [step.because] }
-  }
-  // A challenge to finished work ("are you sure", "you missed") keeps at least the configuration of the work it
-  // challenges (v4.1, kept as a floor: upstream only asks its judge to). A model that cannot reach it is out.
-  const td = S.taskDecision && S.taskDecision.taskId === env.taskId ? S.taskDecision : null
-  if (stage === 'reconsider' && td) {
-    const band = BAND_OF[td.family][td.effort]
-    const why = `a challenge keeps the work's ${td.family} ${td.effort}`
-    for (const f of ['haiku', 'sonnet', 'opus'] as Family[]) {
-      const e = EFFORTS.find((x) => BAND_OF[f][x] >= band)
-      if (!e) exclude[f] ??= why
-      else effortMin[f] = maxEffort(effortMin[f] ?? 'low', e)
-    }
-    because.push(why)
-  }
-  // Upstream redo: after a "that's wrong" the next prompts stay on the chat's model, never a cheaper one.
-  if (S.stayUp > 0 && S.current) for (const f of CHEAPER[S.current.family]) exclude[f] ??= `a redo keeps the model for ${S.stayUp} more prompts`
-  return { floors: { effortMin, exclude, because }, tier, escalated: step ? { family: step.family, effort: step.effort } : null }
+// floorFacts: what autoFloors (lib/auto-route.ts) reads about the task and the session.
+function floorFacts(env: TaskEnvelope): FloorFacts {
+  return { taskId: env.taskId, risk: env.risk.effective, riskReasons: env.risk.prospective.reasons, ladderFloor: env.ladder?.floor ?? null, taskDecision: S.taskDecision ?? null, stayUp: S.stayUp, currentFamily: S.current?.family ?? null }
 }
 
 const executorOn = () => S.cfg.executor === 'sonnet' && (S.cfg as any).routeModels !== false
 const cacheFresh = (at: number) => !!S.cache?.lastRequestAt && at - S.cache.lastRequestAt <= S.ttl
 
-// executorInput: the optimizer's input under the Sonnet executor, or null where it does not apply. A fixed model (a pin,
-// routeModels false, a failed judge) stays fixed. A floor that rules Sonnet out, such as an escalation, reaches Opus the
-// usual way. taskRoute is the task's last route while its cache is warm.
-function executorInput(verdicts: Partial<Record<Family, FamilyVerdict | null>>, floors: AutoFloors, taskRoute: { family: Family; effort: Effort } | null) {
-  if (!executorOn() || floors.fixedFamily || floors.exclude?.sonnet) return null
-  const effort = executorEffort(verdicts.sonnet?.effort, taskRoute?.family === 'sonnet' ? taskRoute.effort : undefined)
-  return { verdicts: { ...verdicts, sonnet: { model: 'sonnet' as const, effort, why: 'executor' } }, floors: { ...floors, fixedFamily: 'sonnet' as const } }
-}
-
-// autoCost: one attempt of this task on a configuration, cache-neutral, from the token priors (labeled estimates).
-function autoCost(complexity: Complexity, at: number) {
+// attemptTable: one attempt of this task on each configuration, cache-neutral, from the token priors (labeled
+// estimates). A configuration with no finite price is null, so the table stays plain data.
+function attemptTable(complexity: Complexity, at: number): AutoRouteInput['economics']['attempt'] {
   const x = { cache: routingCache(), warm: S.warm, now: at, prices: prices(), priors: S.priors, neutral: true }
-  return (family: Family, effort: Effort) => attemptCost({ family, effort, cap: { lo: 0, hi: 0 } }, { steps: TASK_STEPS[complexity] }, x).usd
+  const cell = (family: Family, effort: Effort) => { const usd = attemptCost({ family, effort, cap: { lo: 0, hi: 0 } }, { steps: TASK_STEPS[complexity] }, x).usd; return Number.isFinite(usd) ? usd : null }
+  return Object.fromEntries((['haiku', 'sonnet', 'opus'] as Family[]).map((f) => [f, Object.fromEntries(EFFORTS.map((e) => [e, cell(f, e)]))])) as AutoRouteInput['economics']['attempt']
 }
+const autoCost = (complexity: Complexity, at: number) => costOf(attemptTable(complexity, at))
 
 const appFamily = (): Family => familyOf(S.appModel ?? '') ?? familyOf(S.sessionModel ?? '') ?? familyOf(S.current?.model ?? '') ?? 'sonnet'
 
@@ -909,9 +855,9 @@ function allowedAuto(at: number): Family[] {
   return ok.length ? ok : ['sonnet']
 }
 
-function autoRecord(choice: AutoChoice, verdicts: AutoRecord['verdicts'], hm: AutoRecord['hm'], steps: string[], required: string[], fallback: string | undefined, need: NeedRecord): AutoRecord {
+function autoRecord(choice: AutoChoice, verdicts: AutoRecord['verdicts'], hm: AutoRecord['hm'], steps: string[], required: string[], fallback: string | undefined, need: NeedRecord, replay?: RouteReplay): AutoRecord {
   return {
-    verdicts, need, hm, rule: choice.rule, steps, required, ...(fallback ? { fallback } : {}), routeModels: (S.cfg as any).routeModels !== false,
+    verdicts, need, hm, rule: choice.rule, steps, required, ...(fallback ? { fallback } : {}), routeModels: (S.cfg as any).routeModels !== false, ...(replay ? { replay } : {}),
     candidates: choice.candidates.map((c) => ({ route: `${c.family}/${c.effort}`, ...(c.verdictEffort ? { verdict: c.verdictEffort } : {}), eligibility: c.eligibility, usd: round6(Number.isFinite(c.attemptUsd) ? c.attemptUsd : -1), why: c.why.slice(0, 6) })),
   }
 }
@@ -940,7 +886,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   if (!routeModels) steps.push('routeModels false: the app model is kept')
   if (override?.tier || override?.effort) steps.push(`command: ${fixedFamily ?? 'model by policy'}${fixedEffort ? ` at ${fixedEffort}` : ''}`)
   // Step 4 (before judging): transitions known without a judge.
-  const pendingEscalation = S.envelope ? escalationStep(S.envelope, allowed) : null
+  const pendingEscalation = S.envelope ? escalationStep(S.envelope.ladder?.floor ?? null, allowed) : null
   const belowFloor = !!pendingEscalation && !!S.current && bandOf(S.current.family, runningEffort()!) < pendingEscalation.band
   const req = decisionRequired({ planEntered: S.planMode && !S.decidedPlanMode, planExited: S.planExited, escalation: belowFloor, command: !!override, compacted: S.compactedPending })
   // Step 5: the upstream shortcut, only with nothing required and for the same unfinished task.
@@ -1007,137 +953,63 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   const previousStage = S.workStage
   S.workStage = stage
 
-  // Step 3: mandatory quality, as constraints.
-  const mq = autoFloors(env, complexity, allowed, stage)
-  if (mq.floors.because.length) steps.push(`floors: ${mq.floors.because.join('; ')}`)
-  const floors: AutoFloors = { ...mq.floors, ...(fixedFamily ? { fixedFamily } : {}), ...(fixedEffort ? { fixedEffort } : {}) }
-
-  // Judge failures, state-aware. A failed verdict for the running model is replaced from the fallback table, so a
-  // failed call never moves the session to another model. A failed AutoMode judge keeps the model as well.
-  let fallback: string | undefined
-  let ownFallback: string | undefined // only the running model's effort failed: the need still decides the model
+  // Steps 3 to 6 are the pure route in lib/auto-route.ts. This function gathers its facts and applies its effects.
   const hm = answer ? { tier: answer.tier, complexity: answer.complexity } : null
-  if (!shortcut) {
-    if (S.current && !verdicts[S.current.family] && (!fixedFamily || fixedFamily === S.current.family)) {
-      const fb = fallbackEffort({ sameTask: !boundary, sameStage: stage === previousStage, riskChanged, planBoundary: req.why.includes('planExited') || req.why.includes('planEntered'), previous: { family: S.current.family, effort: runningEffort()! }, previousAdequate: true, appEffort: S.appEffort, escalation: mq.escalated, effortMin: mq.floors.effortMin?.[S.current.family] })
-      verdicts = { ...verdicts, [S.current.family]: { model: S.current.family, effort: fb.effort, why: 'fallback' } }
-      verdictRec[S.current.family] = { model: S.current.family, effort: fb.effort, why: '', ok: false, cached: false, fallback: fb.source }
-      if (askedNeed) { ownFallback = fb.source; steps.push(`own verdict failed: ${fb.source}`) }
-      else fallback = fb.source
-    }
-    // The need failed and the running model answered: nothing here can move the session.
-    if (S.current && !askedNeed && !fixedFamily && !fallback) fallback = 'the need call failed: no model switch'
-    if (!S.current && !Object.values(verdicts).some(Boolean)) {
-      // No verdict at all on a first prompt: the app model (if available), never a model taken from the tier name.
-      const f = fixedFamily ?? (allowed.includes(appFamily()) ? appFamily() : allowed[allowed.length - 1])
-      const fb = fallbackEffort({ sameTask: false, sameStage: false, riskChanged: false, planBoundary: false, previous: null, previousAdequate: false, appEffort: S.appEffort, escalation: null, effortMin: mq.floors.effortMin?.[f] })
-      verdicts = { [f]: { model: f, effort: fb.effort, why: 'fallback' } }
-      floors.fixedFamily = f
-      fallback = fb.source
-    }
-    if ((!answer || fallback) && S.current && !fixedFamily && allowed.includes(S.current.family)) { floors.fixedFamily = S.current.family; fallback = fallback ?? 'automode judge failed: no model switch' }
-    if (!answer && !S.current && !fixedFamily && !floors.fixedFamily) { floors.fixedFamily = allowed.includes(appFamily()) ? appFamily() : allowed[allowed.length - 1]; fallback = fallback ?? 'automode judge failed on the first prompt: the app model' }
-    // The effortless judge failed and the AutoMode judge answered: its model name is a minimum (fallbackModel).
-    if (fallback && answer && floors.fixedFamily && !fixedFamily && !executorOn()) {
-      const fm = fallbackModel(floors.fixedFamily, { tier: answer.tier, effort: answer.effort, confidence: answer.confidence }, allowed, env.risk.effective, LOW_CONFIDENCE)
-      if (fm.family !== floors.fixedFamily) {
-        floors.fixedFamily = fm.family
-        verdicts = { ...verdicts, [fm.family]: { model: fm.family, effort: maxEffort(fm.effort ?? 'high', mq.floors.effortMin?.[fm.family] ?? 'low'), why: 'fallback' } }
-        verdictRec[fm.family] = { model: fm.family, effort: verdicts[fm.family]!.effort, why: '', ok: false, cached: false, fallback: fm.why }
-      }
-      fallback = `${fallback}; ${fm.why}`
-    }
-    if (fallback) { method = 'fallback'; steps.push(`fallback: ${fallback}`) }
-    if (fallback && !S.toldJudgeDown && S.mode === 'auto') { S.toldJudgeDown = true; $.ui.toast('AutoMode: a judge did not answer, so routing keeps the current model until it does.') }
-  }
-
-  // Uncertainty never buys a cheaper model (jev-router policy.mjs `low-confidence-no-downgrade`, threshold 0.3 as
-  // there): a low-confidence AutoMode verdict rules out every model cheaper than the running one.
-  if (answer && S.current && answer.confidence < LOW_CONFIDENCE && !floors.fixedFamily) {
-    const rankF: Record<Family, number> = { haiku: 0, sonnet: 1, opus: 2 }
-    for (const f of ['haiku', 'sonnet', 'opus'] as Family[]) if (rankF[f] < rankF[S.current.family]) floors.exclude = { ...(floors.exclude ?? {}), [f]: `low judge confidence (${answer.confidence}): no downgrade` }
-    steps.push('low confidence: no downgrade (jev-router)')
-  }
-
-  // What this project taught: this kind of task kept needing rescue, so it starts on Opus. Learning only raises a route.
-  const taught = S.cfg.learning && answer && askedNeed && !floors.fixedFamily && allowed.includes('opus') ? bucketOf(answer.tier, askedNeed.model) : null
-  if (taught && opusFirst(S.learned, taught, at)) {
-    floors.exclude = { ...(floors.exclude ?? {}), haiku: `learned: ${taught} needed rescue in this project`, sonnet: `learned: ${taught} needed rescue in this project` }
-    steps.push(`learned: ${taught} starts on opus`)
-    if (S.learnedTold !== env.taskId) { S.learnedTold = env.taskId; S.records.push({ v: 1, kind: 'learned', at, sessionId: S.sessionId, taskId: env.taskId, bucket: taught }); $.ui.toast(`AutoMode: tasks like this needed Opus here before, so this one starts on Opus.`) }
-  }
-
-  // Call 2, only when needed: one effortless call about the model that could win (cheaper than the anchor and
-  // eligible, or the anchor is out). Its effort is valid for that model only.
-  const consequence = env.risk.effective
-  if (!shortcut && !fallback && !hmCached && !executorOn()) {
-    const second = secondCall({ allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence, reachHaiku: S.cfg.reachHaiku, floors, current: null, cost: () => 0 }, anchor)
-    if (second) {
-      const j2 = await effortlessJudge($, second, text, { messages, midTurnEffort: midTurn && S.current ? runningEffort() : undefined, attachments: attachList, purpose: 'effortless-judge:second' })
-      verdicts = { ...verdicts, [second]: j2.verdict }
-      verdictRec[second] = j2.verdict ? { ...j2.verdict, ms: j2.ms, usd: round6(j2.usd ?? 0), ok: true, cached: false } : { model: '-', effort: '-', why: '', ms: j2.ms, ok: false, cached: false }
-      judgeInfo = { ...judgeInfo!, called: true, ms: (judgeInfo?.ms ?? 0) + j2.ms, usd: round6((judgeInfo?.usd ?? 0) + (j2.usd ?? 0)) }
-      steps.push(`second effortless call: ${second}${j2.verdict ? ` -> ${j2.verdict.model}/${j2.verdict.effort}` : ' failed'}`)
-    }
-  }
-  if (cacheKey && answer && Object.values(verdicts).every(Boolean) && !fallback && !ownFallback) S.verdictCache = Object.fromEntries([...Object.entries(S.verdictCache).slice(-40), [cacheKey, { verdicts, answer }]])
-
-  // Step 6: the joint optimizer, or the shortcut's kept decision.
-  const cost = autoCost(complexity, at)
-  const current = S.current ? { family: S.current.family, effort: runningEffort()! } : null
-  // After a failed judge the model is fixed, and its fallback verdict stands in for later triggers.
-  const need = askedNeed ?? (floors.fixedFamily ? verdicts[floors.fixedFamily] ?? null : null)
-  const kept: FamilyVerdict | null = shortcut ? { model: td!.family, effort: td!.effort, why: 'kept' } : null
-  // Under the executor, the judges' verdicts stay as the shadow route. Only the effort reaches the choice.
-  const executed = kept ? null : executorInput(verdicts, floors, td && !boundary && !S.compactedPending && cacheFresh(at) ? td : null)
-  if (executed) steps.push(`executor: sonnet ${executed.verdicts.sonnet!.effort}`)
-  const choice: AutoChoice = kept
-    ? optimizeAuto({ allowed, verdicts: { [kept.model]: kept }, need: kept, hm: null, floors: { ...floors, fixedFamily: allowed.includes(td!.family) ? td!.family : undefined }, current, cost })
-    : optimizeAuto({ allowed, ...(executed ?? { verdicts, floors }), need, hm, consequence, reachHaiku: S.cfg.reachHaiku, current, cost })
-  const shadow = executed ? optimizeAuto({ allowed, verdicts, need, hm, consequence, reachHaiku: S.cfg.reachHaiku, floors, current, cost }).best : null
-  steps.push(`optimizer: ${choice.rule} -> ${choice.best.family}/${choice.best.effort}`)
-  const own = S.current ? choice.candidates.find((c) => c.family === S.current!.family) : undefined
-  // A hold keeps the model, never its old effort: the held model runs at its own verdict for this prompt (or its
-  // fallback verdict), within its floors. Found in tests: a failed judge on a new task held Opus at the previous xhigh.
-  const ownVerdict = S.current ? verdicts[S.current.family] : null
-  const heldEffort = ownEffort(own) ?? (S.current && ownVerdict ? maxEffort(ownVerdict.effort, mq.floors.effortMin?.[S.current.family] ?? 'low') : undefined)
-  const currentInadequate = runningRuledOut(S.current?.family, choice, floors, hm)
-  const candidate = { tier: tierOf(choice.best.family, choice.best.effort), source: (shortcut ? 'continuation' : fallback ? 'fallback' : 'judge') as 'judge' | 'continuation' | 'fallback', confidence: answer?.confidence ?? 0.5, reason: `${shortcut ? 'short go-ahead keeps the task' : answer?.why || 'judges'}; ${choice.best.family} ${choice.best.effort} ${choice.best.eligibility}${choice.inadequate ? ' (inadequate)' : ''}` }
-  S.votes = S.votes.tier === candidate.tier ? { tier: candidate.tier, n: S.votes.n + 1 } : { tier: candidate.tier, n: 1 }
-  if (currentInadequate && S.current && tierRank(tierOf(choice.best.family, choice.best.effort)) > tierRank(mq.tier.tier))
-    mq.tier = { tier: tierOf(choice.best.family, choice.best.effort), effort: choice.best.effort, because: [`${S.current.family} ${runningEffort()} is ruled out for this task (${own!.eligibility})`] }
-  const commandRoute = override?.tier || override?.effort ? { tier: tierOf(choice.best.family, choice.best.effort), effort: choice.best.effort, reason: `user: ${text.trim().split(/\s/)[0]}` } : undefined
-  const route = resolve({
-    override: commandRoute, floor: mq.tier, candidate, effortHint: choice.best.effort, heldEffort, ...(currentInadequate ? { currentInadequate } : {}), effortCost, current: usableCurrent(at),
-    switchInput: {
-      cache: cacheState(), now: at, votes: S.votes.n, requestsSinceSwitch: S.requestsSinceSwitch, verifiedSinceSwitch: S.verifiedSinceSwitch,
-      sameTask: !boundary && !S.planExited, risk: env.risk.effective, expectedOutputTokens: S.priors.outputPerStep[S.current?.family ?? 'sonnet'],
-      prices: prices(), params: { ...DEFAULT_PARAMS, calibrated: S.priors.basis === 'calibrated' },
-      requestsInPrompt: 0, newTaskSteps: boundary ? TASK_STEPS[complexity] : undefined, remainingTable: remainingTable(), switchesThisTask: S.switchesThisTask,
-      targetWarm: warmFor(choice.best.family, at), targetWarmPrefix: S.warm[choice.best.family]?.prefixTokens, resetPrefixTokens: S.compactedAt ? S.basePrefix : undefined,
-      ...continuityInput(S.compactedPending),
+  const packet = `Goal: ${env.spec.text.slice(0, 1500)}\n\nThe person now asks: ${text.slice(0, 600)}\n\nAcceptance: ${env.acceptance.map((a) => a.text).join('; ').slice(0, 400) || 'none stated'}\n\nFiles edited so far: ${env.editedPaths.slice(0, 30).join(', ') || 'none'}`
+  const inputFor = (v: Verdicts, second?: Family): AutoRouteInput => ({
+    schemaVersion: AUTO_ROUTE_SCHEMA, now: at, allowed, appFamily: appFamily(),
+    ...(fixedFamily ? { fixedFamily } : {}), ...(fixedEffort ? { fixedEffort } : {}),
+    ...(override?.tier || override?.effort ? { command: { label: text.trim().split(/\s/)[0] } } : {}),
+    shortcut, kept: shortcut ? { family: td!.family, effort: td!.effort } : null,
+    judge: answer ? { tier: answer.tier, complexity: answer.complexity, effort: answer.effort, confidence: answer.confidence, why: answer.why } : null,
+    judgeCached: hmCached, anchor, verdicts: v, ...(second ? { second } : {}),
+    complexity, stage, previousStage, boundary, riskChanged, planBoundary: req.why.includes('planExited') || req.why.includes('planEntered'), planExited: S.planExited,
+    floor: floorFacts(env), current: S.current ? { route: S.current, running: runningEffort()! } : null, usable: usableCurrent(at), appEffort: S.appEffort,
+    executor: { on: executorOn(), taskRoute: td && !boundary && !S.compactedPending && cacheFresh(at) ? td : null },
+    reachHaiku: S.cfg.reachHaiku, learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning ? opusBuckets(S.learned, at) : [] },
+    votes: S.votes,
+    switching: {
+      cache: cacheState(), reset: S.resetPending, requestsSinceSwitch: S.requestsSinceSwitch, verifiedSinceSwitch: S.verifiedSinceSwitch, switchesThisTask: S.switchesThisTask, remainingTable: remainingTable(),
+      warm: { haiku: warmFor('haiku', at), sonnet: warmFor('sonnet', at), opus: warmFor('opus', at) },
+      warmPrefix: { haiku: S.warm.haiku?.prefixTokens, sonnet: S.warm.sonnet?.prefixTokens, opus: S.warm.opus?.prefixTokens },
+      resetPrefixTokens: S.compactedAt ? S.basePrefix : undefined, continuity: continuityInput(S.compactedPending),
     },
-  }, S.resetPending)
-  steps.push(`authority: ${route.owner} ${route.family}/${route.effort}${route.check?.gate ? ` (${route.check.gate})` : ''}`)
-  S.planExited = false
+    economics: { attempt: attemptTable(complexity, at), outputPerStep: S.priors.outputPerStep, effortOutput: S.priors.effortOutput, effortSteps: DEFAULT_PRIORS.effortSteps, prices: prices(), calibrated: S.priors.basis === 'calibrated' },
+    consult: { lastWorkBand: S.lastWorkBand, consulted: S.consulted, packetTokens: Math.ceil(packet.length / 3.5), ttlMs: S.ttl },
+    policy: { lowConfidence: LOW_CONFIDENCE },
+  })
 
-  // A challenge to finished hard work on a warm cheaper session: a scoped Opus consult instead of a switch (kept from v4.1).
-  // The rules name Opus even when the gate holds the switch: the consult is how the reasoning arrives now.
+  // The plan: floors, judge-failure fallbacks, and whether a second effortless call can change the route.
+  const plan = planAuto(inputFor(verdicts))
+  for (const n of plan.notes) verdictRec[n.family] = { model: n.family, effort: n.effort, why: '', ok: false, cached: false, fallback: n.fallback }
+  if (plan.fallback) method = 'fallback'
+  if (plan.fallback && !S.toldJudgeDown && S.mode === 'auto') { S.toldJudgeDown = true; $.ui.toast('AutoMode: a judge did not answer, so routing keeps the current model until it does.') }
+  if (plan.learnedBucket && S.learnedTold !== env.taskId) { S.learnedTold = env.taskId; S.records.push({ v: 1, kind: 'learned', at, sessionId: S.sessionId, taskId: env.taskId, bucket: plan.learnedBucket }); $.ui.toast(`AutoMode: tasks like this needed Opus here before, so this one starts on Opus.`) }
+
+  // Call 2, only when needed: one effortless call about the model that could win. Its effort is valid for that model only.
+  const second = plan.secondJudge
+  if (second) {
+    const j2 = await effortlessJudge($, second, text, { messages, midTurnEffort: midTurn && S.current ? runningEffort() : undefined, attachments: attachList, purpose: 'effortless-judge:second' })
+    verdicts = { ...verdicts, [second]: j2.verdict }
+    verdictRec[second] = j2.verdict ? { ...j2.verdict, ms: j2.ms, usd: round6(j2.usd ?? 0), ok: true, cached: false } : { model: '-', effort: '-', why: '', ms: j2.ms, ok: false, cached: false }
+    judgeInfo = { ...judgeInfo!, called: true, ms: (judgeInfo?.ms ?? 0) + j2.ms, usd: round6((judgeInfo?.usd ?? 0) + (j2.usd ?? 0)) }
+  }
+
+  const routeInput = inputFor(verdicts, second ?? undefined)
+  const r = routeAuto(routeInput)
+  steps.push(...r.reasons)
+  const { choice, shadow, own, need, kept, fallback, ownFallback } = r
+  verdicts = r.verdicts
+  if (cacheKey && answer && Object.values(verdicts).every(Boolean) && !fallback && !ownFallback) S.verdictCache = Object.fromEntries([...Object.entries(S.verdictCache).slice(-40), [cacheKey, { verdicts, answer }]])
+  S.votes = r.votes
+  S.planExited = false
+  if (hm) S.lastWorkBand = r.lastWorkBand
   let consult: string | undefined
-  let routed = route
-  if (hm) S.lastWorkBand = stage === 'reconsider' ? S.lastWorkBand : TIER_BAND[hm.tier]
-  const consultKey = `stage:${env.taskId}:${S.lastWorkBand ?? 0}`
-  if (stage === 'reconsider' && S.current && S.current.family !== 'opus' && (route.family === 'opus' || choice.best.family === 'opus') && cacheState().prefixTokens >= DEFAULT_PARAMS.smallContext && !S.consulted.includes(consultKey)) {
-    const packet = `Goal: ${env.spec.text.slice(0, 1500)}\n\nThe person now asks: ${text.slice(0, 600)}\n\nAcceptance: ${env.acceptance.map((a) => a.text).join('; ').slice(0, 400) || 'none stated'}\n\nFiles edited so far: ${env.editedPaths.slice(0, 30).join(', ') || 'none'}`
-    const c = consultOrSwitch({ prefixTokens: cacheState().prefixTokens, remainingRequests: remainingFor({ requestsInPrompt: 0, remainingTable: remainingTable() }).median, outPerRequest: S.priors.outputPerStep.opus, packetTokens: Math.ceil(packet.length / 3.5), planTokens: 2_000, main: S.current.family, ttlMs: S.ttl, prices: prices() })
+  const routed = r.route
+  if (r.consult) {
+    const c = r.consult
     S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, floor: null, action: c.choice === 'consult' ? 'consult-opus' : 'switch', via: c.choice === 'consult' ? 'architect' : 'switch', because: 'challenge to finished hard work', estimate: { consultUsd: round6(c.consultUsd), switchUsd: round6(c.switchUsd), basis: S.priors.basis } })
-    if (c.choice === 'consult') {
-      S.consulted = [...S.consulted, consultKey].slice(-20)
-      const ownEffort = own?.effort ?? S.current.effort
-      routed = { ...S.current, tier: tierOf(S.current.family, ownEffort), effort: ownEffort, owner: 'quality-escalation', reason: `consult Opus instead of a switch: ${c.why}`, floor: mq.tier, candidate: route.candidate, overridden: [...route.overridden, { owner: route.owner, reason: 'opus switch replaced by a consult' }] }
-      consult = packet
-      steps.push('consult: Opus architect instead of a switch')
-    }
+    if (c.choice === 'consult') { S.consulted = [...S.consulted, c.key].slice(-20); consult = packet }
   }
 
   // The unfinished task's decision, for a later "continue". Closing remarks and repository steps do not replace it.
@@ -1160,7 +1032,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   const needBand = hm ? TIER_BAND[hm.tier] : 0
   // The limit is state: a judged prompt sets or clears it, a kept follow-up keeps it (and its label and review).
   if (!shortcut) S.inadequate = choice.inadequate && routed.owner !== 'user-override' ? { need: needBand, shortfall: Math.max(0, needBand - BAND_OF[routed.family][routed.effort]), route: `${routed.family}/${routed.effort}` } : null
-  const legacy = S.lastDemand && answer ? pick('legacy', S.lastDemand, { tier: mq.tier.tier }, at) : null
+  const legacy = S.lastDemand && answer ? pick('legacy', S.lastDemand, { tier: r.tier.tier }, at) : null
   const mainUsd = choice.candidates.find((c) => c.family === routed.family)?.attemptUsd
   return {
     route: routed, strategy: chosen, strategyChoice: strategy, method, judge: judgeInfo, answer, newTask: boundary, contextNote: injected, optimizer: null, redo,
@@ -1175,7 +1047,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
     ...(shadow ? { shadowRoute: `${shadow.family}/${shadow.effort}` } : {}),
     ...(S.inadequate ? { inadequate: S.inadequate } : {}),
     routing: { cheapestAdequate: `${choice.best.family}/${choice.best.effort}`, chosen: `${routed.family}/${routed.effort}`, overRouted: routed.family !== choice.best.family || routed.effort !== choice.best.effort ? ((choice.candidates.find((c) => c.family === routed.family)?.attemptUsd ?? 0) > choice.best.attemptUsd || EFFORTS.indexOf(routed.effort) > EFFORTS.indexOf(choice.best.effort) ? routed.owner : null) : null, underRouted: own && S.current && routed.family === S.current.family && own.eligibility !== 'eligible' && own.eligibility !== 'needs-verdict' ? routed.owner : null },
-    auto: autoRecord(choice, verdictRec, hm ? { ...hm, ok: true, cached: hmCached } : shortcut ? null : { tier: '-', complexity: '-', ok: false, cached: false }, steps, required.why, fallback ?? ownFallback, needRecord(anchor, shortcut ? kept : askedNeed)),
+    auto: autoRecord(choice, verdictRec, hm ? { ...hm, ok: true, cached: hmCached } : shortcut ? null : { tier: '-', complexity: '-', ok: false, cached: false }, steps, required.why, fallback ?? ownFallback, needRecord(anchor, shortcut ? kept : askedNeed), replayOf(routeInput, r, `${prices().provider} ${prices().checkedAt}`, { executor: executorOn(), learning: !!S.cfg.learning, reachHaiku: !!S.cfg.reachHaiku, routeModels: (S.cfg as any).routeModels !== false })),
   }
 }
 
@@ -1186,12 +1058,12 @@ function reoptimizeAuto(t: Trigger, event: string, at: number, turnId: string | 
   const env = S.envelope
   const complexity = S.lastAuto.hm?.complexity ?? env.complexity
   const allowed = allowedAuto(at)
-  const mq = autoFloors(env, complexity, allowed, S.workStage)
+  const mq = autoFloors(floorFacts(env), complexity, allowed, S.workStage)
   const routeModels = (S.cfg as any).routeModels !== false
   const current = S.current ? { family: S.current.family, effort: runningEffort()! } : null
   const baseFloors = { ...mq.floors, ...(!routeModels ? { fixedFamily: appFamily() } : {}) }
   const td = S.taskDecision && S.taskDecision.taskId === env.taskId ? S.taskDecision : null
-  const executed = executorInput(S.lastAuto.verdicts, baseFloors, !reset && td && cacheFresh(at) ? td : null)
+  const executed = executorInput(executorOn(), S.lastAuto.verdicts, baseFloors, !reset && td && cacheFresh(at) ? td : null)
   const floors = executed?.floors ?? baseFloors
   const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, floors, current, cost: autoCost(complexity, at) })
   let floor = mq.tier

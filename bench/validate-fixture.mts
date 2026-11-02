@@ -3,6 +3,7 @@
 // A task is a valid benchmark fixture when its hidden tests fail at the base commit and pass at the reference commit,
 // run with the task's own `accept` command. Those tests become the hidden acceptance tests. No model call, no spend.
 // It also checks the task file itself (bench/lib/task-repo.mts `problems`). Network: it clones the task's public repository.
+// bench/fixture-check.mts imports the workspace helpers below, so both tools build the same workspace.
 import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -15,31 +16,41 @@ const si = argv.indexOf('--scratch')
 const scratch = si >= 0 ? argv[si + 1] : path.join(os.tmpdir(), 'am-bench-validate')
 const wanted = argv.filter((a, i) => !a.startsWith('--') && (si < 0 || i !== si + 1))
 const git = (args: string[], cwd?: string) => execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 1e8 })
-const accepts = (task: Task, cwd: string) => spawnSync('sh', ['-c', task.accept], { cwd, encoding: 'utf8', timeout: 10 * 60_000 }).status === 0
 
-export function validate(task: Task) {
+// runAccept runs the task's accept command. A run past the time limit has a null status, so it never counts as a pass.
+export const runAccept = (task: Task, cwd: string, timeoutMs = 10 * 60_000) =>
+  spawnSync('sh', ['-c', task.accept], { cwd, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 1e9 })
+const accepts = (task: Task, cwd: string) => runAccept(task, cwd).status === 0
+
+// freshWorkspace builds the workspace a real run gets, so a task that needs git history fails here and not in a paid run.
+export function freshWorkspace(task: Task, cache: string, commit: string, w: string) {
+  removeTree(w)
+  prepareWorkspace(cache, commit, w)
+  if (task.setup) {
+    const s = spawnSync('sh', ['-c', task.setup], { cwd: w, encoding: 'utf8', timeout: 10 * 60_000, maxBuffer: 1e9 })
+    if (s.status !== 0) throw new Error(`setup failed at ${commit.slice(0, 8)}`)
+  }
+}
+
+// writeHiddenTests copies the hidden tests from the reference commit, as the grader does after a run.
+export function writeHiddenTests(task: Task, cache: string, w: string) {
+  for (const t of task.hidden_tests) {
+    fs.mkdirSync(path.dirname(path.join(w, t)), { recursive: true })
+    fs.writeFileSync(path.join(w, t), git(['show', `${task.reference}:${t}`], cache))
+  }
+}
+
+export function validate(task: Task, dir = scratch) {
   const bad = problems(task)
   if (bad.length) return { id: task.id, valid: false, problems: bad }
   const cache = taskRepo(task)
-  const w = path.join(scratch, task.id)
-  fs.mkdirSync(scratch, { recursive: true })
-  // The same workspace a real run gets, so a task that needs git history fails here and not in a paid run.
-  const fresh = (commit: string) => {
-    removeTree(w)
-    prepareWorkspace(cache, commit, w)
-    if (task.setup) {
-      const s = spawnSync('sh', ['-c', task.setup], { cwd: w, encoding: 'utf8', timeout: 10 * 60_000 })
-      if (s.status !== 0) throw new Error(`setup failed at ${commit.slice(0, 8)}`)
-    }
-  }
+  const w = path.join(dir, task.id)
+  fs.mkdirSync(dir, { recursive: true })
   try {
-    fresh(task.base)
-    for (const t of task.hidden_tests) {
-      fs.mkdirSync(path.dirname(path.join(w, t)), { recursive: true })
-      fs.writeFileSync(path.join(w, t), git(['show', `${task.reference}:${t}`], cache))
-    }
+    freshWorkspace(task, cache, task.base, w)
+    writeHiddenTests(task, cache, w)
     const atBase = accepts(task, w)
-    fresh(task.reference)
+    freshWorkspace(task, cache, task.reference, w)
     const atReference = accepts(task, w)
     return { id: task.id, base_with_hidden: atBase ? 'pass' : 'fail', reference: atReference ? 'pass' : 'fail', valid: !atBase && atReference }
   } catch (e) {

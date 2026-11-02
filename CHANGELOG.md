@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- Policy-auto decision records carry the route input and its outcome in `auto.replay`. `bench/route-replay.mts` replays them at no cost: exactly, or under another policy. Records still hold no prompt text.
+
 ## [0.6.1] - 2026-11-02
 
 ### Fixed

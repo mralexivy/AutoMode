@@ -2,7 +2,9 @@
 
 A task is one JSON file in this folder. See [`bench/README.md`](../README.md) for how the benchmark works. The runner (`node bench/run.mts`), the grader (`bench/grade.mts`) and the fixture check (`node bench/validate-fixture.mts`) read every `*.json` file here.
 
-This folder holds 76 tasks. The first 12 are the dev set, two per cohort. Every arm passed all 12, so they never count as proof. The other 64 are candidates for the task screen: 54 new tasks from 29 repositories, and 10 `-v2` tasks. A candidate has no hard or easy label until the screen gives it one. See [`bench/experiments/PREREGISTERED.md`](../experiments/PREREGISTERED.md). More tasks are the most useful contribution to AutoMode, because results under 30 tasks are a pilot.
+This folder holds 86 tasks. The first 12 are the dev set, two per cohort. Every arm passed all 12, so they never count as proof. The other 64 are candidates for the task screen: 54 new tasks from 29 repositories, and 10 `-v2` tasks. A candidate has no hard or easy label until the screen gives it one.
+
+The screen of 2026-10-31 found 1 hard task, so a retry needs new tasks. 10 more candidates were added after it, from 6 repositories. Each passed `bench/fixture-check.mts` with a kill rate above 0. No experiment names them yet. `bench/experiments/heldout.json` splits them into a screen set and a confirm set. See [`bench/experiments/PREREGISTERED.md`](../experiments/PREREGISTERED.md). More tasks are the most useful contribution to AutoMode, because results under 30 tasks are a pilot.
 
 A `-v2` task is an existing task with its location hints removed, its `accept` widened, or both. It keeps the same commits. A study runs one version of a task, never both.
 
@@ -55,5 +57,13 @@ node bench/validate-fixture.mts your-task-id
 ```
 
 The check validates the task file, clones the repository into `bench/.cache/` (ignored by git), and runs `accept` at `base` and at `reference` in the same kind of workspace a real run gets: the tree at that commit, with no project history. It makes no model call and costs nothing. A valid task prints `"valid":true`.
+
+```bash
+node bench/fixture-check.mts your-task-id
+```
+
+This runs the same check, then a hunk mutation check. It applies the reference with one code hunk left out and runs `accept`. A killed hunk makes `accept` fail. A task where no hunk is killed is `weak`: its tests may not pin the change. It tests at most 12 hunks, at most 300 seconds each, and prints a kill rate and the share of changed code files with a killed hunk. Add only tasks with a kill rate above 0.
+
+`node bench/split.mts` assigns new candidates to a `screen` set or a `confirm` set by a fixed hash rule, and writes `bench/experiments/heldout.json`. Run it once, before any screen run.
 
 Then open a pull request. Do not add anything from a private repository, and do not add real chat history to a task.

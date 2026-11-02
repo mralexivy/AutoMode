@@ -2,6 +2,7 @@
 import { spawn } from 'node:child_process'
 import { armInvocation } from '../arms.mts'
 import { classifyRun } from '../lib/outcome.mts'
+import { claimOf } from '../lib/claim.mts'
 import type { AgentRun, AgentRunner, RunRequest } from './runner.mts'
 
 function runClaude(args: string[], env: NodeJS.ProcessEnv, cwd: string, timeoutMs: number) {
@@ -35,7 +36,7 @@ export const claudeCodeRunner: AgentRunner = {
     const j = res.json || {}
     return {
       runner: 'claude-code', exitReason: classifyRun(res), exitCode: res.code, signal: res.signal, isError: j.is_error ?? null, turns: j.num_turns ?? null,
-      costUsd: j.total_cost_usd ?? null, sessionId: j.session_id ?? null, modelMs: j.duration_api_ms ?? null, wallS: res.wall_s, stderrTail: res.stderr_tail,
+      costUsd: j.total_cost_usd ?? null, sessionId: j.session_id ?? null, modelMs: j.duration_api_ms ?? null, wallS: res.wall_s, stderrTail: res.stderr_tail, finalStatus: claimOf(j.result),
       modelUsage: j.modelUsage ? Object.fromEntries(Object.entries<any>(j.modelUsage).map(([m, u]) => [m, {
         input: u.inputTokens ?? null, output: u.outputTokens ?? null, cache_read: u.cacheReadInputTokens ?? null,
         cache_write: u.cacheCreationInputTokens ?? null, cost_usd: u.costUSD ?? null }])) : null,

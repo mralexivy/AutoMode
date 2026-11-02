@@ -1,0 +1,18 @@
+{
+  "id": "security-mathjs-array-property-and-index-escape",
+  "cohort": "security",
+  "repo": "https://github.com/josdejong/mathjs",
+  "license": "Apache-2.0",
+  "base": "f7c10b1bc1324a25d117b668ea9a9c0232e2068e",
+  "reference": "0aee2f61866e35ffa0aef915221cdf6b026ffdd4",
+  "task": "Two ways remain to run arbitrary JavaScript through math.evaluate. Close both.\n\n1. Expressions can set any property on a raw JavaScript array, for example array.map = f(callback) = ..., because the property guard treats arrays like plain objects. With a raw array taken from reviver(...).toJSON() this reaches Function.constructor. Evaluating such an exploit must fail with an error matching No access to property \"map\".\n\n2. Matrix get accepts any object as its index. An expression such as m = matrix(); func = m.get({\"length\":1,\"reduce\":f(callback,a)=callback(cos,\"constructor\")}) reaches the constructor. This must throw Error: Array expected for index.\n\nThe property guard in src/utils/customs.js must split into two exported checks, and the tests import both:\n\n- isSafeObjectProperty(object, prop): false unless object is a plain object. Then false for any name found on Object.prototype, such as __proto__, constructor, or constructor spelled with unicode escapes. True for other names, own or inherited, including length, name and names that do not exist.\n- isSafeArrayProperty(array, prop): false unless array is an Array. Then true only for a number, a string of digits such as '24', or 'length'. False for everything else, such as 'foo', 'sort', '__proto__' and 'constructor'.\n\ngetSafeProperty and setSafeProperty are exported too, and allow a property when either check passes:\n\n- getSafeProperty on [3, 2, 1] returns 3 for length. For an own property foo it throws No access to property. For sort it throws Error: Cannot access method \"sort\" as a property. For __proto__ and constructor it throws No access to property, naming the property.\n- getSafeProperty on null or undefined throws a TypeError: Cannot access property \"<prop>\": object is null (or undefined).\n- setSafeProperty sets foo and '42' on a plain object, and throws No access to property \"constructor\" for constructor. On an array it sets 0, '1', '2' and length, and throws No access to property \"map\" for map.\n\nThe index guard: the array get helper in src/utils/array.js (exported as get) throws Error: Array expected for index when the index is not an Array, for example { length: 1, reduce: () => {} } or a Date. DenseMatrix.get throws the same. SparseMatrix.get throws an error matching Array expected.\n\nThe older Object.assign exploit, {}.constructor.assign(cos.constructor, {binding: cos.bind}) and so on, must now fail with an error matching No access to property \"constructor.\n\nEverything else must keep working.",
+  "hidden_tests": [
+    "test/unit-tests/expression/security.test.js",
+    "test/unit-tests/type/matrix/DenseMatrix.test.js",
+    "test/unit-tests/type/matrix/SparseMatrix.test.js",
+    "test/unit-tests/utils/array.test.js",
+    "test/unit-tests/utils/customs.test.js"
+  ],
+  "accept": "npx mocha test/unit-tests",
+  "setup": "npm ci --ignore-scripts --no-audit --no-fund"
+}

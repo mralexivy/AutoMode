@@ -9,9 +9,10 @@
 // but no effortless verdicts, so --rejudge asks Haiku 5.5 once per prompt and model (upstream JUDGE_SYSTEM, the adapted
 // input with the recorded running model as Current and the transcript's previous turn as context) and caches each
 // answer in bench/results/trace-verdicts.json. Without a verdict a prompt shows "needs a verdict"; nothing is guessed.
-// The auto route then comes from the same code the router runs: optimizeAuto for the joint choice, resolve() with the
-// recorded cache state for the hold-or-switch check, and the resolution steps for overrides and the short-message
-// shortcut. Escalation floors are not replayed (the defect history is not in the decision record).
+// The auto route then comes from the router's own routeAuto (hooks/lib/auto-route.ts) on a synthetic session with the
+// recorded cache state. The short-message shortcut runs first, as in decideAuto. Escalation floors are not replayed
+// (the defect history is not in the decision record). For records that carry auto.replay, bench/route-replay.mts
+// replays the exact input instead.
 //
 // Costs come in three views that are never added or mixed:
 //   measured    what the sessions spent, from the usage the API reported (records).
@@ -31,7 +32,9 @@ import { DEFAULT_LADDER, resolve } from '../hooks/lib/authority.ts'
 import { DEFAULT_PARAMS } from '../hooks/lib/policy.ts'
 import { JUDGE_SYSTEM, keepsEffort, parseVerdict } from '../hooks/lib/effortless.ts'
 import { judgeInputFor } from '../hooks/lib/effortless-adapt.ts'
-import { fallbackModel, firstCalls, optimizeAuto, ownEffort, runningRuledOut, secondCall, shortcutApplies } from '../hooks/lib/auto.ts'
+import { firstCalls, shortcutApplies } from '../hooks/lib/auto.ts'
+import { planAuto, routeAuto } from '../hooks/lib/auto-route.ts'
+import { synthInput } from './lib/route-input.mts'
 import { stageOfText } from './calibrate.mts'
 import { haikuCall } from './lib/haiku-call.mts'
 import { total } from './lib/ledger.mts'
@@ -158,44 +161,30 @@ for (const [id, rs] of bySession) {
         // A cached verdict asked with a different Current line than the router now sends (A7: a cold cache names the
         // default effort) is stale: the row is unknown until it is asked again.
         const staleInput = current?.family === f && !d.cache?.warm && current.effort !== DEFAULT_EFFORT[f] && !rejudgedNow.has(key)
-        verdicts[f] = staleInput ? undefined : cache[key] ?? null
+        // A verdict never asked stays undefined; a cached null is a judge call that failed.
+        verdicts[f] = staleInput || !(key in cache) ? undefined : cache[key]
         if (staleInput) staleRows.add(`${id}|${d.at}`)
       }
-      let fixedFallback = null
       legacyNow = null
       for (const f of families) askFor(f)
-      if (verdicts[anchor] === undefined) { missing += 1; after = { ...actual, why: 'unknown: the cached verdict was asked with a different Current line (A7); needs --rejudge' } }
-      // As the router: a failed anchor call is a fallback (the anchor model at the previous or app effort), with no second call.
-      const anchorFailed = !verdicts[anchor]
-      if (anchorFailed && cache[`${id}|${d.at}|${anchor}`] !== undefined) {
-        // As the router: the model stays unless the AutoMode judge names a stronger one (fallbackModel).
-        const fm = fallbackModel(anchor, hm ? { tier: hm.tier, effort: dm?.hmEffort, confidence: dm?.confidence } : null, allowed, d.risk?.effective, 0.3)
-        verdicts[anchor] = undefined
-        verdicts[fm.family] = { model: fm.family, effort: fm.family === anchor ? (current?.family === anchor ? current.effort : 'medium') : (fm.effort ?? (fm.family === 'haiku' ? 'medium' : 'high')), why: fm.family === anchor ? 'fallback' : 'fallback; the recorded decision has no AutoMode effort: the model default assumed' }
-        fixedFallback = fm.family
+      if (verdicts[anchor] === undefined) { missing += 1; after = { ...actual, why: staleRows.has(`${id}|${d.at}`) ? 'unknown: the cached verdict was asked with a different Current line (A7); needs --rejudge' : 'needs a verdict (run with --rejudge)' } }
+      // The rest is the router's own routeAuto on a synthetic session (bench/lib/route-input.mts): the recorded cache
+      // state and risk, one vote, no escalation history. A failed verdict is null and takes the router's fallback; a
+      // verdict never asked is left out.
+      const known = () => Object.fromEntries(Object.entries(verdicts).filter(([, v]) => v !== undefined))
+      const facts = {
+        judge: hm ? { tier: hm.tier, complexity: hm.complexity, effort: dm?.hmEffort, confidence: dm?.confidence } : null, risk: d.risk?.effective ?? 'none',
+        current, warm: !!d.cache?.warm, prefix, at: d.at, ttlMs: HOUR, allowed, boundary: !current, remainingTable: REMAINING,
+        ...(fixedFamily ? { fixedFamily } : {}), ...(ov?.effort ? { fixedEffort: ov.effort } : {}), ...(ov?.tier || ov?.effort ? { command: 'user command' } : {}),
       }
-      const floorsPre = { because: [], ...(d.risk?.effective === 'critical' && hm?.complexity !== 'trivial' ? { exclude: { haiku: 'critical' }, effortMin: { sonnet: 'high' } } : {}) }
-      const need = verdicts[anchor] ?? null
-      const second = fixedFamily || anchorFailed ? null : secondCall({ allowed, verdicts, need, hm, consequence: d.risk?.effective, floors: floorsPre, current: null, cost: () => 0 }, anchor)
+      const second = after ? null : planAuto(synthInput({ ...facts, verdicts: known() })).secondJudge
       if (second) askFor(second)
       calls += families.length + (second ? 1 : 0)
       if (after) { /* unknown, set above */ }
-      else if (!Object.values(verdicts).some(Boolean)) { missing += 1; after = { ...actual, owner: actual.owner, why: 'needs a verdict (run with --rejudge)' } }
       else {
         const x = { cache: { model: null, effort: null, prefixTokens: prefix, lastRequestAt: null, ttlMs: HOUR, effortSharesCache: true }, warm: {}, now: 0, prices: ANTHROPIC, priors: DEFAULT_PRIORS, neutral: true }
-        const cost = (family, effort) => attemptCost({ family, effort, cap: { lo: 0, hi: 0 } }, { steps: TASK_STEPS[hm?.complexity ?? 'standard'] }, x).usd
-        const floors = { because: [], ...(fixedFallback ? { fixedFamily: fixedFallback } : {}), ...(d.risk?.effective === 'critical' && hm?.complexity !== 'trivial' ? { exclude: { haiku: 'critical' }, effortMin: { sonnet: 'high' } } : {}), ...(fixedFamily ? { fixedFamily } : {}), ...(ov?.effort ? { fixedEffort: ov.effort } : {}) }
-        const choice = optimizeAuto({ allowed, verdicts, need: need ?? (fixedFallback ? verdicts[fixedFallback] : null), hm, consequence: d.risk?.effective, floors, current, cost })
-        const own = current ? choice.candidates.find((c) => c.family === current.family) : null
-        const currentInadequate = runningRuledOut(current?.family, choice, floors, hm)
         const warm = !!d.cache?.warm
-        const route = current ? resolve({
-          ...(ov?.tier || ov?.effort ? { override: { tier: tierOf(choice.best.family, choice.best.effort), effort: choice.best.effort, reason: 'user command' } } : {}),
-          floor: { tier: 'T0', because: [] }, candidate: { tier: tierOf(choice.best.family, choice.best.effort), source: 'judge', confidence: 0.9, reason: choice.rule },
-          effortHint: choice.best.effort, heldEffort: ownEffort(own), ...(currentInadequate ? { currentInadequate } : {}), current: { tier: tierOf(current.family, current.effort), family: current.family, model: DEFAULT_LADDER.models[current.family], effort: current.effort },
-          switchInput: { cache: { model: DEFAULT_LADDER.models[current.family], effort: current.effort, prefixTokens: prefix, lastRequestAt: warm ? d.at : null, ttlMs: HOUR, effortSharesCache: true }, now: d.at, votes: 1, requestsSinceSwitch: 5, verifiedSinceSwitch: false, sameTask: true, risk: d.risk?.effective ?? 'none', expectedOutputTokens: DEFAULT_PRIORS.outputPerStep[current.family], prices: ANTHROPIC, params: DEFAULT_PARAMS, requestsInPrompt: 0, remainingTable: REMAINING, switchesThisTask: 0, targetWarm: false },
-        }) : null
-        const fam = route?.family ?? choice.best.family, eff = route?.effort ?? choice.best.effort
+        const r = routeAuto(synthInput({ ...facts, verdicts: known(), ...(second ? { second } : {}) }))
         // Today's legacy policy on the SAME state, guards and cache: the fair comparison (the "ran" column predates v4.1).
         if (dm && hm) {
           const demand = demandOf({ tier: hm.tier, complexity: hm.complexity, risk: 'none', consequence: d.risk?.effective ?? 'none', confidence: dm.confidence }, !!dm.planning, dm.failures ?? 0)
@@ -208,7 +197,7 @@ for (const [id, rs] of bySession) {
           }) : null
           legacyNow = { family: routeL?.family ?? optL.best.family, effort: routeL?.effort ?? optL.best.effort }
         }
-        after = { family: fam, effort: eff, owner: route?.owner ?? 'judge', why: `${choice.rule}${route?.check?.gate ? `; ${route.owner} (${route.check.gate})` : ''}; verdicts ${Object.entries(verdicts).map(([f, v]) => `${f}:${v ? `${v.model}/${v.effort}` : '-'}`).join(' ')}` }
+        after = { family: r.route.family, effort: r.route.effort, owner: r.route.owner, why: `${r.choice.rule}${r.resolved.check?.gate ? `; ${r.route.owner} (${r.resolved.check.gate})` : ''}; verdicts ${Object.entries(verdicts).map(([f, v]) => `${f}:${v ? `${v.model}/${v.effort}` : '-'}`).join(' ')}` }
       }
     }
     if (actual.owner === 'user-override' && !ov) after = { ...after, why: `${after.why}; the legacy run took this text as an override, auto does not` }

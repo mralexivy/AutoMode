@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-02T11:27:14.454Z",
+  "files": [
+    {
+      "name": "screen-2.jsonl",
+      "sha256": "429f299a16083743243d646c3dfa16e3421daf19c8701007be2eff2b4097be0d",
+      "rows": 25
+    }
+  ],
+  "experiments": [
+    "screen-2"
+  ],
+  "harness_revisions": [
+    "91b9eaf47c89d85245a8e6f018e0f727930052bd"
+  ],
+  "spec_hashes": 10,
+  "pricing_snapshots": [
+    "2026-10-17"
+  ],
+  "cost_basis": [
+    "api-list-equivalent"
+  ]
+}

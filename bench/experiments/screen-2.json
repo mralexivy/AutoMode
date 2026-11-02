@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "screen-2",
+  "track": "automode-system",
+  "description": "Second task screen, on the screen half of heldout.json. Fixed arms only. Its rows never count toward a claim. Steps 1 to 3 of PREREGISTERED.md apply unchanged.",
+  "arms": [
+    "sonnet-medium",
+    "sonnet-high",
+    "opus-medium"
+  ],
+  "repeats": 3,
+  "parallel": 1,
+  "prompt_template": "repo-change-v2",
+  "run_cap_usd": 6,
+  "budget_usd": 60,
+  "window_usd": 120,
+  "tasks": [
+    "security-jinja-sandbox-indirect-str-format",
+    "longctx-lark-parse-text-slice",
+    "security-werkzeug-multipart-part-limit",
+    "feature-acorn-await-in-class-field-initializers",
+    "feature-jinja-namespace-tuple-assignment"
+  ]
+}

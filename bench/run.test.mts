@@ -19,6 +19,9 @@ import { buildManifest, verifyManifest } from './lib/manifest.mts'
 import { aggregate, countsOnly } from './lib/panel.mts'
 import { bootstrapCI, discordant, holm, mcnemarExact, pairedDelta, paretoFrontier, routeSummary, routingRegret } from './lib/stats.mts'
 
+// heldout.json is the held-out split from bench/split.mts, not an experiment. bench/split.test.mts checks it.
+const isExperimentFile = (f: string) => f.endsWith('.json') && f !== 'heldout.json'
+
 const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'am-bench-test-'))
 const SOURCE = path.join(ROOT, 'source')
 const LOG = path.join(ROOT, 'claude-args.json')
@@ -259,7 +262,7 @@ test('arm controls map to documented flags and variables', () => {
 })
 
 test('every experiment file loads, and a bad one names its fault', () => {
-  for (const f of fs.readdirSync('bench/experiments').filter((x) => x.endsWith('.json'))) assert.ok(loadExperiment(path.join('bench/experiments', f), Object.keys(ARMS)).arms.length, f)
+  for (const f of fs.readdirSync('bench/experiments').filter(isExperimentFile)) assert.ok(loadExperiment(path.join('bench/experiments', f), Object.keys(ARMS)).arms.length, f)
   assert.deepEqual(experimentProblems({ schema_version: 1, id: 'x', track: 'automode-system', arms: ['nope'], repeats: 1, prompt_template: 't' }, []), ['unknown arm nope'])
   assert.ok(experimentProblems({}, []).length >= 4)
 })
@@ -495,7 +498,7 @@ test('the task screen runs fixed arms only, over tasks that exist, and never an 
 test('every experiment names its tasks, so a new task file never joins an older study', () => {
   const dir = path.join('bench', 'experiments')
   const ids = new Set(loadTasks().map((x) => x.id))
-  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+  for (const f of fs.readdirSync(dir).filter(isExperimentFile)) {
     const e = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
     assert.ok(Array.isArray(e.tasks) && e.tasks.length, f)
     for (const id of e.tasks) assert.ok(ids.has(id), `${f}: ${id}`)

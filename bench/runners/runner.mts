@@ -28,6 +28,8 @@ export interface AgentRun {
   // What ran, for a runner with no transcript to read. The Claude Code runner leaves this null.
   evidence?: unknown
   toolSchemaSha256?: string | null
+  // The final message's explicit claim (bench/lib/claim.mts): true for done, false for not done, null for no status line.
+  finalStatus?: boolean | null
 }
 
 export interface AgentRunner {

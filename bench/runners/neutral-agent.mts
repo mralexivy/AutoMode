@@ -10,6 +10,7 @@ import { ProviderError, type CanonicalCompletion, type CanonicalMessage, type Pr
 import { adapterFor } from '../providers/registry.mts'
 import { runTool, toolSchemaSha256, TOOLS } from './canonical-tools.mts'
 import type { AgentRun, AgentRunner, RunRequest } from './runner.mts'
+import { claimOf } from '../lib/claim.mts'
 import { dockerAvailable, dockerSandbox, imagePinned, type Sandbox } from './sandbox.mts'
 
 const SYSTEM_FILE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'prompts', 'neutral-system-v1.md')
@@ -58,11 +59,12 @@ export function neutralRunner(o: NeutralOptions = {}): AgentRunner {
       const totals = { input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0 }
       const models = new Set<string>()
       let cost: number | null = 0, modelMs = 0, turns = 0, peak = 0, exitReason: ExitReason = 'agent_error', stopped = 'turn limit', retries = 0
+      let lastText: string | null = null
 
       const finish = (): AgentRun => {
         return {
           runner: 'neutral-agent', exitReason, exitCode: null, signal: null, isError: exitReason !== 'done', turns, costUsd: cost, sessionId: null, modelMs: Math.round(modelMs), modelUsage: null,
-          wallS: Math.round((performance.now() - started) / 1000), stderrTail: exitReason === 'done' ? [] : [stopped], toolSchemaSha256: toolSchemaSha256(),
+          wallS: Math.round((performance.now() - started) / 1000), stderrTail: exitReason === 'done' ? [] : [stopped], toolSchemaSha256: toolSchemaSha256(), finalStatus: claimOf(lastText),
           evidence: {
             effective_models: [...models].sort(), effective_efforts: arm.effort && arm.effort !== 'default' ? [arm.effort] : [], requests: { [arm.model]: turns }, compactions: 0, peak_prompt_tokens: peak,
             tokens: { input: totals.input, output: totals.output, thinking: totals.reasoning, cacheRead: totals.cacheRead, cacheWrite5m: totals.cacheWrite, cacheWrite1h: 0 }, by_model: {},
@@ -100,6 +102,7 @@ export function neutralRunner(o: NeutralOptions = {}): AgentRunner {
         peak = Math.max(peak, u.inputTokens ?? 0)
         modelCalls.push({ ms: Math.round(ms), usage: u, native_usage: reply.nativeUsage, usd })
         messages.push({ role: 'assistant', text: reply.text, toolCalls: reply.toolCalls, native: reply.native })
+        lastText = reply.text
         log({ turn: turns, text: reply.text, toolCalls: reply.toolCalls, stop: reply.stop })
 
         if (reply.stop === 'refused') { stopped = 'refused'; return finish() }
