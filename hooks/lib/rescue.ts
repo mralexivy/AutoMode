@@ -12,6 +12,7 @@
 import type { Escalation } from './failures.ts'
 import type { PriceRow } from './prices.ts'
 import { cacheWriteX, rateAt } from './prices.ts'
+import { DEFAULT_STRATEGY } from './strategy.ts'
 import type { CacheState, Episode, Family, LadderState } from './types.ts'
 
 const M = 1e6
@@ -105,7 +106,7 @@ export interface ConsultPriceInput {
   outPerRequest: number
   packetTokens: number
   planTokens: number
-  setupTokens: number
+  setupTokens?: number
   main: Family
   prices: PriceRow
   durations: Durations
@@ -142,8 +143,9 @@ export function priceConsult(i: ConsultPriceInput, rules: { recurredBefore: bool
   const back = (pReturn * P * m.input * x) / M
   const switchUsd = rebuild + onOpus + back
   const stay = (R * (P * m.input * m.cacheReadX + i.outPerRequest * m.output)) / M
-  const oc = rateAt(i.prices.rates.opus, i.setupTokens + i.packetTokens)
-  const advisor = ((i.setupTokens + i.packetTokens) * oc.input * 1.25 + i.planTokens * oc.output) / M
+  const setup = i.setupTokens ?? DEFAULT_STRATEGY.workerSetupTokens.opus
+  const oc = rateAt(i.prices.rates.opus, setup + i.packetTokens)
+  const advisor = ((setup + i.packetTokens) * oc.input * 1.25 + i.planTokens * oc.output) / M
   const planBack = (i.planTokens * m.input * x) / M
   const ret = (P * m.input * Math.max(0, x - m.cacheReadX)) / M
   const expire = pExpire * ret

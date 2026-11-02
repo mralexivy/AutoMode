@@ -109,6 +109,17 @@
         "effort-first"
       ]
     },
+    "consult": {
+      "type": "string",
+      "title": "AutoMode: Opus consult",
+      "description": "default: follow config.json. always: the first strong failure on the way to Opus asks a read-only Opus architect before the session moves. priced: it asks only when the consult, with its retries and the cache it may lose, costs less than moving the session.",
+      "default": "default",
+      "options": [
+        "default",
+        "always",
+        "priced"
+      ]
+    },
     "routeModels": {
       "type": "string",
       "title": "AutoMode: Route models",

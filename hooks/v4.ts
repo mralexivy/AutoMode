@@ -55,7 +55,7 @@ import { currentOptions, storedOptions } from './options.ts'
 import { publish } from './ui/publish.ts'
 import type { AgentSnap, Ledger, RouterSnap } from './ui/view.ts'
 import { sid, fsRead, sessionModel, fsWrite, fsExists } from './lib/io.ts'
-import { cacheNote, closeEpisodes, effortFirst, episodeBase, openEpisode, patchEpisode, planFiles } from './lib/rescue.ts'
+import { cacheNote, closeEpisodes, durationsFrom, effortFirst, episodeBase, openEpisode, patchEpisode, planFiles, priceConsult } from './lib/rescue.ts'
 import { EMPTY_LEARNED, bucketOf, noteTask, opusBuckets, parseLearned, type Learned } from './lib/learn.ts'
 import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence, type DelegationMode } from './lib/delegation.ts'
 
@@ -87,6 +87,8 @@ const V4_DEFAULTS = {
   executor: 'judge' as 'judge' | 'sonnet',
   // Policy auto: `effort-first` raises effort once per failure episode on strong evidence before the model moves (lib/rescue.ts).
   strongStep: 'model' as 'model' | 'effort-first',
+  // Policy auto: `priced` asks the architect only when that costs less than moving the session (lib/rescue.ts priceConsult).
+  consult: 'always' as 'always' | 'priced',
   effortJudgeTimeoutMs: JUDGE_CALL.timeoutMs,
 }
 type V4Config = typeof V4_DEFAULTS
@@ -1976,11 +1978,18 @@ async function runLadder($: EngineInterface, at: number) {
   const packet = () => evidencePacket(env.spec.text.slice(0, 1500), env.acceptance.map((a) => a.text), env.failures, env.editedPaths, esc.because)
   // Under effort-first the episode, not the cause, remembers the consult: a new failure of the same kind gets its own.
   const consultedBefore = S.cfg.strongStep === 'effort-first' ? ep.consulted : S.consulted.includes(esc.cause)
-  if (step.kind === 'model' && step.family === 'opus' && !consultedBefore) {
+  const toOpus = step.kind === 'model' && step.family === 'opus' && !consultedBefore
+  // consult: priced weighs the consult, its retries and the cache it may lose against moving the session. Quality rules
+  // run first: a floor that already needs Opus moves the session.
+  const price = toOpus && S.cfg.consult === 'priced'
+    ? priceConsult({ cache, remainingRequests: S.priors.remainingRequests, outPerRequest: S.priors.outputPerStep.opus, packetTokens: Math.ceil(packet().length / 3.5), planTokens: 2_000, main: S.current.family, prices: prices(), durations: durationsFrom(S.consultMs) }, { recurredBefore: ep.consulted, floorRequiresSwitch: (l.floor?.band ?? -1) >= step.band })
+    : null
+  const estimate = price ? { estimate: { consultUsd: price.consultUsd, switchUsd: price.switchUsd, parts: price.parts, pExpire: price.pExpire, pRecur: price.pRecur, basis: { ...price.basis, priors: S.priors.basis }, why: price.why } } : {}
+  if (toOpus && (!price || price.choice === 'consult')) {
     S.consulted = [...S.consulted, esc.cause].slice(-20)
     S.consultLog = [...S.consultLog, { episode, ...(esc.fingerprint ? { fingerprint: esc.fingerprint } : {}), at }]
     S.envelope = { ...env, ladder: { ...spent, episodes: patchEpisode(episodes, episode, { consulted: true, consultAt: at }) }, escalations: env.escalations + 1 }
-    S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'consult-opus', via: 'architect', because: esc.because, cache, episode, ...why })
+    S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'consult-opus', via: 'architect', because: esc.because, cache, episode, ...why, ...estimate })
     await flush($)
     $.ui.toast(`AutoMode: ${esc.because}. Asking an Opus architect before moving the session.`)
     S.ladderNote = `[AutoMode: ${esc.because}. Before changing more code, call the Agent tool with subagent_type "automode:architect" (Opus, read-only) and wait for it, with this evidence:\n${packet()}\nAsk it for the cause and a fix plan. Apply its plan, then run the check again.]`
@@ -1996,7 +2005,7 @@ async function runLadder($: EngineInterface, at: number) {
   const raised = { ...env, escalations: env.escalations + 1, ladder: { ...spent, ...(moving ? { episodes: patchEpisode(episodes, episode, { switched: true }) } : {}), floor: { family: step.family, effort: step.effort, band: step.band, because: esc.because, ...(esc.fingerprint ? { command: env.failures[env.failures.length - 1].command } : {}) } } }
   // A defect that outlived a repair (and a consult) gets the independent review once it passes.
   S.envelope = esc.check ? withReview(raised, 'fail', false) : raised
-  S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: tier, band: step.band, route: `${step.family}/${step.effort}`, applied: `${applied.family}/${applied.effort}`, action: moved ? (step.kind === 'model' ? 'switch' : 'raise') : 'held-by-pin', via: 'switch', because: esc.because, cache, episode, ...why })
+  S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: tier, band: step.band, route: `${step.family}/${step.effort}`, applied: `${applied.family}/${applied.effort}`, action: moved ? (step.kind === 'model' ? 'switch' : 'raise') : 'held-by-pin', via: 'switch', because: esc.because, cache, episode, ...why, ...estimate })
   await flush($)
   if (!moved) {
     $.ui.toast(`AutoMode: ${esc.because}. Your choice keeps ${applied.family} ${applied.effort}.`)
@@ -2005,10 +2014,11 @@ async function runLadder($: EngineInterface, at: number) {
   }
   const moveTo = `${applied.tier} (${applied.family} ${applied.effort})`
   $.ui.toast(`AutoMode: ${esc.because}. Moving to ${moveTo}.`)
+  const priced = price ? ` A consult would not pay here: ${price.why}.` : ''
   const consulted = consultedBefore ? ' An Opus consult on this already ran; the session itself now moves to the stronger model.' : ''
   const effortNote = strongRaise ? ' Effort rises first on the same model, so its cache stays warm. If this failure comes back, an Opus consult and then the stronger model follow.' : ''
   const review = esc.check ? ' When the check passes, the independent review (automode:reviewer) is required before you call it done.' : ''
-  S.ladderNote = `[AutoMode: escalated to ${moveTo} after ${esc.because}.${effortNote}${consulted}${review}]${step.kind === 'model' ? `\n\nEvidence for the next step:\n${packet()}` : ''}`
+  S.ladderNote = `[AutoMode: escalated to ${moveTo} after ${esc.because}.${effortNote}${priced}${consulted}${review}]${step.kind === 'model' ? `\n\nEvidence for the next step:\n${packet()}` : ''}`
 }
 
 async function guarded($: EngineInterface, e: any, next: any) {

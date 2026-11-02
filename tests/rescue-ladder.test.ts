@@ -95,3 +95,43 @@ describe('Effort first on strong evidence', () => {
     expect(of(h.writes, 'escalation').map((x) => x.action)).toEqual(['raise', 'consult-opus'])
   })
 })
+
+describe('Priced consult', () => {
+  const toStrong = async ($: any, h: any) => {
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await fail($) // weak: effort to xhigh
+    return fail($) // strong: the Opus-bound step
+  }
+
+  test('a small prefix moves the session, and the record says why', async ($, on) => {
+    const h = harness(on, sonnetAt('high', { consult: 'priced' }))
+    h.setPrefix(4_000)
+    const out = await toStrong($, h)
+    expect(JSON.stringify(out)).not.toContain('automode:architect')
+    expect(JSON.stringify(out)).toContain('A consult would not pay here')
+    const last = of(h.writes, 'escalation').at(-1)!
+    expect(last).toMatchObject({ action: 'switch' })
+    expect(last.estimate.consultUsd).toBeGreaterThan(last.estimate.switchUsd)
+  })
+
+  test('a large warm prefix still consults, with its estimate on the record', async ($, on) => {
+    const h = harness(on, sonnetAt('high', { consult: 'priced' }))
+    h.setPrefix(400_000)
+    const out = await toStrong($, h)
+    expect(JSON.stringify(out)).toContain('automode:architect')
+    const last = of(h.writes, 'escalation').at(-1)!
+    expect(last).toMatchObject({ action: 'consult-opus' })
+    expect(last.estimate.consultUsd).toBeLessThan(last.estimate.switchUsd)
+    expect(last.estimate.basis.durations).toBe('prior')
+  })
+
+  test('always (the shipped value) consults whatever the prefix, with no estimate', async ($, on) => {
+    const h = harness(on, sonnetAt('high'))
+    h.setPrefix(4_000)
+    const out = await toStrong($, h)
+    expect(JSON.stringify(out)).toContain('automode:architect')
+    expect(of(h.writes, 'escalation').at(-1)!.estimate).toBeUndefined()
+  })
+})

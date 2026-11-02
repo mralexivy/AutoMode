@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { cacheNote, closeEpisodes, effortFirst, episodeBase, influence, openEpisode, planFiles } from '../hooks/lib/rescue.ts'
+import { CONSULT_MS_PRIOR, cacheNote, closeEpisodes, durationsFrom, effortFirst, episodeBase, expireChance, influence, openEpisode, planFiles, priceConsult } from '../hooks/lib/rescue.ts'
 import { EMPTY_LADDER } from '../hooks/lib/failures.ts'
 
 test('cacheNote: what is left of a warm cache, and a cold one', () => {
@@ -50,4 +50,48 @@ test('effortFirst: once per episode, never on critical work or under a floor tha
   assert.equal(effortFirst({ ...x, critical: true }).use, false)
   assert.equal(effortFirst({ ...x, floorBand: 3 }).use, false)
   assert.equal(effortFirst({ ...x, floorBand: 2 }).use, true)
+})
+
+const prices = { provider: 'anthropic', source: 's', checkedAt: 'd', rates: { opus: { input: 4, output: 20, cacheReadX: 0.05 }, sonnet: { input: 2, output: 10, cacheReadX: 0.05 }, haiku: { input: 0.1, output: 0.5, cacheReadX: 0.1 } } }
+const note = (prefixTokens: number, ttlMs: number, sinceRefreshMs: number) => ({ prefixTokens, sinceRefreshMs, ttlMs, warm: sinceRefreshMs <= ttlMs, remainingMs: Math.max(0, ttlMs - sinceRefreshMs) })
+const input = (o: Record<string, unknown> = {}) => ({ cache: note(150_000, 3_600_000, 0), remainingRequests: 10, outPerRequest: 2_000, packetTokens: 2_000, planTokens: 2_000, setupTokens: 18_000, main: 'sonnet' as const, prices, durations: CONSULT_MS_PRIOR, ...o })
+
+test('expireChance: what is left of the cache against the consult durations', () => {
+  assert.equal(expireChance(0, CONSULT_MS_PRIOR), 1)
+  assert.equal(expireChance(60_000, CONSULT_MS_PRIOR), 0.75)
+  assert.equal(expireChance(120_000, CONSULT_MS_PRIOR), 0.5)
+  assert.equal(expireChance(3_000_000, CONSULT_MS_PRIOR), 0)
+  // A 5-minute cache refreshed 4 minutes ago has 1 minute left: a 2-minute consult likely outlives it.
+  const p = priceConsult(input({ cache: note(150_000, 300_000, 240_000) }))
+  assert.equal(p.pExpire, 0.75)
+})
+
+test('priceConsult: a warm 150k prefix with 10 requests left consults', () => {
+  const p = priceConsult(input())
+  assert.equal(p.choice, 'consult')
+  // switch: rebuild 150k on Opus at the 1h write (1.2) + 10 requests on Opus (0.7) + half a rebuild back on Sonnet (0.3)
+  assert.equal(p.switchUsd, 2.2)
+  // consult: stay 0.35 + advisor 0.14 + plan back 0.008 + verify 0.035 + half the switch on a recurrence 1.1
+  assert.equal(p.consultUsd, 1.633)
+  assert.equal(p.pExpire, 0)
+  assert.equal(p.basis.durations, 'prior')
+})
+
+test('priceConsult: a small prefix with few requests left switches', () => {
+  const p = priceConsult(input({ cache: note(10_000, 300_000, 0), remainingRequests: 2 }))
+  assert.equal(p.choice, 'switch')
+  assert.ok(p.consultUsd > p.switchUsd)
+})
+
+test('priceConsult: the quality rules run before the prices', () => {
+  assert.match(priceConsult(input(), { recurredBefore: true, floorRequiresSwitch: false }).why, /did not fix it/)
+  assert.match(priceConsult(input(), { recurredBefore: false, floorRequiresSwitch: true }).why, /floor/)
+  assert.equal(priceConsult(input({ pRecur: 0.8 })).choice, 'switch')
+  assert.equal(priceConsult(input({ pRecur: 0.8 })).basis.recur, 'measured')
+})
+
+test('durationsFrom: measured quantiles from 10 samples, the prior before', () => {
+  assert.equal(durationsFrom([1, 2, 3, 4, 5, 6, 7, 8, 9]).basis, 'prior')
+  const d = durationsFrom([10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
+  assert.deepEqual(d, { p25: 30, p50: 50, p90: 90, basis: 'measured' })
 })
