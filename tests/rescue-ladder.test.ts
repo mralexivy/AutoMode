@@ -1,5 +1,5 @@
 // The rescue ladder end to end in the mocked engine (policy auto): its records, the settings that change its order, and
-// what each consult came to. Every setting at its shipped value keeps the ladder as it was, and tests/overrides.test.ts
+// what each consult came to. Every setting at its code default keeps the ladder as it was (config.json ships the rescue values), and tests/overrides.test.ts
 // still pins that order.
 import { describe, expect, test } from 'claude-code/testing'
 import { harness, judge, perModel, records } from './harness.ts'
@@ -56,7 +56,7 @@ describe('Effort first on strong evidence', () => {
     expect(esc[0].effortFirst).toContain('effort first')
   })
 
-  test('model (the shipped value): the same regression consults at once', async ($, on) => {
+  test('model (the code default): the same regression consults at once', async ($, on) => {
     let passing = true
     const h = harness(on, { ...sonnetAt('high'), bash: () => (passing ? { result: 'ok', isError: false, text: '' } : { result: 'Error: Exit code 1\n--- FAIL: TestX (0.00s)\nFAIL', isError: true, text: '' }) })
     await h.submit($, 'fix the failing parser test')
@@ -127,7 +127,7 @@ describe('Priced consult', () => {
     expect(last.estimate.basis.durations).toBe('prior')
   })
 
-  test('always (the shipped value) consults whatever the prefix, with no estimate', async ($, on) => {
+  test('always (the code default) consults whatever the prefix, with no estimate', async ($, on) => {
     const h = harness(on, sonnetAt('high'))
     h.setPrefix(4_000)
     const out = await toStrong($, h)
@@ -184,7 +184,7 @@ describe('Consult outcomes', () => {
     expect(of(h.writes, 'consult-outcome').map((x) => x.outcome)).toEqual(['unverified'])
   })
 
-  test('under a rescue setting a consult requires the review; under the shipped values it does not', async ($, on) => {
+  test('under a rescue setting a consult requires the review; under the code defaults it does not', async ($, on) => {
     const { h: make } = setup({ consult: 'priced' })
     const h = make(on)
     h.setPrefix(400_000)
@@ -194,7 +194,7 @@ describe('Consult outcomes', () => {
     expect(next.context.join('\n')).toContain('an Opus consult ran on a failure')
   })
 
-  test('the shipped values add no review reason for a consult', async ($, on) => {
+  test('the code defaults add no review reason for a consult', async ($, on) => {
     const { h: make } = setup()
     const h = make(on)
     await toConsult($, h)
@@ -260,7 +260,7 @@ describe('Consult packet', () => {
     expect(of(h.writes, 'handoff')[0]).toMatchObject({ source: 'rich', fork: { ran: true, ok: false, reason: 'nothing-to-fork' } })
   })
 
-  test('basic (the shipped value): the old packet, no handoff record', async ($, on) => {
+  test('basic (the code default): the old packet, no handoff record', async ($, on) => {
     const h = harness(on, { ...sonnetAt('high'), git })
     const out = JSON.stringify(await toConsult($, h))
     expect(out).not.toContain('[git-diff]')
@@ -292,7 +292,7 @@ describe('Fork diagnosis rung', () => {
     expect(of(h.writes, 'escalation').map((x) => x.action)).toEqual(['raise', 'fork-diagnose', 'consult-opus', 'switch'])
   })
 
-  test('off (the shipped value): no fork rung', async ($, on) => {
+  test('off (the code default): no fork rung', async ($, on) => {
     const h = harness(on, sonnetAt('high'))
     await h.submit($, 'fix the failing parser test')
     await h.step($)
@@ -327,7 +327,7 @@ describe('Failed stops climb the ladder', () => {
     expect(of(h.writes, 'escalation').map((x) => [x.action, x.because])).toEqual([['raise', why], ['fork-diagnose', why], ['consult-opus', why], ['switch', why]])
   })
 
-  test('the shipped gate (report) never blocks, so a failed stop stays a record', async ($, on) => {
+  test('the code-default gate (report) never blocks, so a failed stop stays a record', async ($, on) => {
     const h = harness(on, sonnetAt('high'))
     await h.submit($, 'fix the failing parser test')
     await h.step($)

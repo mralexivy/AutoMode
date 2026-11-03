@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- The rescue ladder ships on: `strongStep: effort-first`, `consult: priced`, `packet: fork-gated` and `forkRung: on`. In a 4-task pilot it cost the same per accepted run as the old defaults ($1.58 against $1.54) and passed sqlglot 3 of 4 times, against 0 of 6. See `bench/results/rescue-2026-11-03.md`. Each setting keeps its old value as an option.
+
 ### Fixed
 
 - The escalation ladder now sees edits made through Bash (`sed -i`, a heredoc that writes a file, a redirect, `git apply`). It keys a check on its check commands alone, not the whole Bash line. Before, a session that edited and tested in one call got a new failure each time and never escalated.
@@ -13,10 +17,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ### Added
 
 - Escalation records carry the cache state: prefix size, time since the last refresh, and what is left of its lifetime. Each architect consult writes a `consult-run` record with its measured duration and cost. A `baseline` bench arm pins every rescue setting at its old value.
-- `strongStep: effort-first` raises effort on the running model once per failure episode, on strong evidence, before the Opus consult and the switch. Critical-risk work and a floor that needs the model skip it. The shipped value `model` keeps the old order. Arm: `rescue-effort-first`.
-- `consult: priced` asks the Opus architect only when that costs less than moving the session. The price counts what is left of the cache lifetime against how long a consult runs, one verify request, and the chance the failure comes back and still needs the switch. Quality rules come first. Unmeasured inputs are labeled priors, and each escalation record carries the estimate. The shipped value `always` keeps the old behavior. Arm: `rescue-consult-priced`.
+- `strongStep: effort-first` raises effort on the running model once per failure episode, on strong evidence, before the Opus consult and the switch. Critical-risk work and a floor that needs the model skip it. The value `model` keeps the old order. Arm: `rescue-effort-first`.
+- `consult: priced` asks the Opus architect only when that costs less than moving the session. The price counts what is left of the cache lifetime against how long a consult runs, one verify request, and the chance the failure comes back and still needs the switch. Quality rules come first. Unmeasured inputs are labeled priors, and each escalation record carries the estimate. The value `always` keeps the old behavior. Arm: `rescue-consult-priced`.
 - Each ladder consult gets an outcome record: `verified_resolved`, `recurred`, `escalated`, `unverified` or `abandoned`. A passing check alone is not a fix. It also needs the reviewer's approval or a verified completion gate. The record also says whether the edits after the consult followed the architect's plan. The bar shows an open consult. Under a rescue setting, a consult or a strong-evidence raise also requires the independent review.
-- `packet: rich` gives the Opus consult a packet where each fact names its source. It holds the person's later messages, the diff from git, every failing check with a 40-line tail, and what was tried. `packet: fork-gated` adds a same-model `$.model.fork` only for a gap the conversation could fill, and only while the fork costs under a quarter of the consult. Its record keeps the measured cache read. The shipped value `basic` keeps the old packet. Arms: `rescue-packet-rich`, `rescue-packet-fork`.
+- `packet: rich` gives the Opus consult a packet where each fact names its source. It holds the person's later messages, the diff from git, every failing check with a 40-line tail, and what was tried. `packet: fork-gated` adds a same-model `$.model.fork` only for a gap the conversation could fill, and only while the fork costs under a quarter of the consult. Its record keeps the measured cache read. The value `basic` keeps the old packet. Arms: `rescue-packet-rich`, `rescue-packet-fork`.
 - The guardian's lifecycle record carries `expected`: a fuller compaction model, recorded in shadow. It adds context regrowth, the chance the cache expires before the next request, and the cost of re-reading a detail the summary drops. It changes no offer.
 - `forkRung: on` adds a rung before the Opus consult. The main model starts a `fork` agent, which shares the conversation and its warm cache, to diagnose the failure without editing. A `fork-run` record measures its cost and how much of its first request the cache served. Arm: `rescue-fork`.
 - Under a rescue setting with `completionGate: block`, a stop on a failing check is strong evidence for the ladder. Each such stop, up to four (effort, fork, consult, switch), is sent back with the next rung in the block message.
