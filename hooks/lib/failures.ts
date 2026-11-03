@@ -49,6 +49,16 @@ export const checkKey = (command: string): string => {
   return (full ?? (checks.length ? checks.join(' && ') : command.trim())).slice(0, 200)
 }
 
+// failKey: the key a failed run is filed under. When the check's own summary shows a clean pass, the exit code
+// came from a command beside it, so the failure is that line's, not the suite's. Found live: `pytest -q tests | tail;
+// python3 -m doctest x.py` printed `100 passed`, and old doctests failing read as a regression of the suite.
+const SUITE_PASSED = /^=*\s*\d+ passed(?:, \d+ (?:skipped|deselected|warnings?|xfailed|xpassed))*(?: in [\d.]+s)?\s*=*$|^OK(?: \(skipped=\d+\))?$|^Tests:\s+(?:\d+ skipped, )?\d+ passed, \d+ total$|^ℹ fail 0$/m
+export function failKey(command: string, output: string): string {
+  const key = checkKey(command)
+  if (tools(command).length < 2 || !SUITE_PASSED.test(output) || FAILURE_MARKERS.test(output)) return key
+  return command.replace(/\s+/g, ' ').trim().slice(0, 200)
+}
+
 // writesFiles: the command changes files in the workspace. Models edit through Bash as often as through Edit: sed -i,
 // a Python heredoc that opens a file to write, a redirect, tee, git apply. A write under /tmp or to /dev/null is not
 // an edit of the work.

@@ -2,7 +2,7 @@
 // weak and strong evidence, and regressions.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { EMPTY_LADDER, checkKey, checkPassed, masked, escalation, failingTests, failureOf, isCheck, isRevert, notRun, regression, workLost, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
+import { EMPTY_LADDER, failKey, checkKey, checkPassed, masked, escalation, failingTests, failureOf, isCheck, isRevert, notRun, regression, workLost, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
 import { simpleCommands, tools, unwrapped } from '../hooks/lib/shell.ts'
 
 const CHECKS = [
@@ -222,4 +222,13 @@ test('a check that never ran is not a pass', () => {
   assert.equal(notRun('sh: 1: pytest: not found'), true)
   assert.equal(notRun('12 passed in 0.4s'), false)
   assert.equal(checkPassed('(pytest | tail); echo "exit=$?"', 0, false, '12 passed in 0.4s\nexit=0'), true)
+})
+
+test('a clean suite beside a failing command is not the suite failing', () => {
+  // Found live: pytest printed 100 passed, and the old doctests run after it set the exit code.
+  const cmd = 'python3 -m pytest -q tests 2>&1 | tail -30; echo ---; python3 -m doctest -v xmltodict.py 2>&1 | tail -3'
+  assert.equal(checkKey(cmd), 'pytest -q tests')
+  assert.notEqual(failKey(cmd, '....\n100 passed in 0.24s\n---\n5 passed and 5 failed.\n***Test Failed*** 5 failures.'), checkKey(cmd))
+  assert.equal(failKey(cmd, '2 failed, 98 passed in 0.3s\nFAILED tests/t.py::test_a'), checkKey(cmd))
+  assert.equal(failKey('pytest -q', '100 passed in 0.2s'), 'pytest -q')
 })

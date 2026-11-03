@@ -33,7 +33,7 @@ import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, requireReview, summaryOf, withReview } from './lib/envelope.ts'
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
-import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, notRun, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
+import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failKey, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, notRun, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
 import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
 import { guardTool, READ_ONLY_AGENTS, subagentBlocked } from './lib/guard.ts'
@@ -2400,7 +2400,7 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
       S.verifiedAfterPlan = true
       if (tr.action === 'reoptimize') reoptimize(tr, 'check-pass', at, undefined)
     } else {
-      const f = failureOf(key, exitCode || 1, text.slice(-8000), at, S.editedSinceCheck)
+      const f = failureOf(failKey(command, text), exitCode || 1, text.slice(-8000), at, S.editedSinceCheck)
       if (f) {
         S.envelope = { ...S.envelope, failures: [...S.envelope.failures, f].slice(-20), verified: false }
         if (S.policy === 'auto') await runLadder($, at)

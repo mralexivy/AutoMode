@@ -6,6 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Fixed
 
+- A failing line whose test runner printed a clean pass is filed under the whole line, not as a failure of the suite. On xmltodict, `pytest | tail; python3 -m doctest x.py` printed `100 passed`, and old doctests failing read as a test regression, which moved Haiku to Sonnet.
 - A check that never started, such as `command not found: python`, is no longer a passed check. A trailing `; echo "exit=$?"` now counts as a masked exit code. In the benchmark, such a run counted as a pass on marshmallow and started a re-route.
 - A file named `schema` is a database schema only as `db/schema*`, `schema.prisma` or `schema.rb`. Editing marshmallow's `schema.py` had made the task critical and moved it from Haiku to Sonnet after its fix was done.
 - The completion gate no longer reads a described result as a printable example. "x must be a separate list equal to ['foo']" had made every check that named x a contradiction, and the gate blocked a finished jinja task, which then bought a fork and an Opus consult.
