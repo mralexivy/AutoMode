@@ -40,6 +40,7 @@ function literal(s: string): boolean {
 // Plain words before the example: "Fix parse so parse('a') ...". An example starts at a symbol or an upper-case keyword.
 const LEAD_WORDS = /^(?:[A-Za-z]*[a-z][A-Za-z]*\s+)+(?=\S*[^A-Za-z\s]|[A-Z]{2,})/
 
+const PROSE = /^(?:[A-Za-z]*[a-z][A-Za-z]*\s+){2,}/
 const inputOf = (before: string) => tidy((before.split(/:\s+/).pop() ?? before).replace(LEAD_IN, '').replace(LEAD_WORDS, ''))
 const obligation = (kind: Obligation['kind'], input?: string, expected?: string): Obligation =>
   ({ id: fnv1a(`${kind}|${input ?? ''}|${expected ?? ''}`), kind, ...(input ? { input } : {}), ...(expected ? { expected } : {}), status: 'open' })
@@ -54,7 +55,10 @@ function exampleIn(sentence: string): Obligation | null {
   if (!m) return null
   const input = inputOf(sentence.slice(0, m.index))
   const expected = tidy(sentence.slice(m.index! + m[0].length))
-  // A literal input can state a bare value: foo(1) returns 2.
+  // A literal input can state a bare value: foo(1) returns 2. An expected value that opens with prose describes the
+  // result, and no program prints it: "x must be a separate list equal to ['foo']" had every check that named x read
+  // as a contradiction, and the gate blocked a finished task (jinja, in the benchmark).
+  if (PROSE.test(expected)) return null
   return input && expected && literal(input) && (literal(expected) || !/\s/.test(expected)) ? obligation('example', input, expected) : null
 }
 

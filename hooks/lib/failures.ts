@@ -305,7 +305,8 @@ export function evidencePacket(goal: string, acceptance: string[], history: Fail
 // Check commands and their exit codes. A pipe without pipefail reports the last command's exit code, so
 // `go test | head` exits 0 when tests fail; `|| true` and `; true` mask failures outright.
 export const hasPipe = (cmd: string) => /(^|[^|])\|(?!\|)/.test(cmd)
-export const masked = (cmd: string) => /\|\|\s*(true|:)\b|;\s*true\s*$|\bexit 0\s*$/.test(cmd)
+// A trailing `; echo "exit=$?"` reports the code as text, and the command itself then exits 0.
+export const masked = (cmd: string) => /\|\|\s*(true|:)\b|;\s*true\s*$|\bexit 0\s*$|;\s*echo\b[^;|&]*\$\?[^;|&]*$/.test(cmd)
 // withPipefail makes a piped check report its real exit code. Only for checks: the command's output stays
 // the same; only a failure now also shows as a nonzero exit.
 export function withPipefail(cmd: string): string | null {
@@ -318,7 +319,11 @@ export const FAILURE_MARKERS = /^FAIL: \S+ \(|^FAILED \((failures|errors)=\d+|^-
 
 // checkPassed: a reliable exit code decides; a masked or unreliable one falls back to the runner's own
 // summary lines. Never "passed" on missing evidence: an error result is a failure.
+// notRun: the check never started, so it is neither a pass nor a failure of the work. Found live: `(python -m pytest |
+// tail); echo "exit=$?"` printed `command not found: python`, exited 0, and counted as a passed check.
+export const notRun = (text: string) => /\bcommand not found\b|^\S+: (\d+: )?\S+: not found$/m.test(text)
+
 export function checkPassed(cmd: string, exitCode: number, isError: boolean, text: string): boolean {
-  if (isError || exitCode !== 0) return false
+  if (isError || exitCode !== 0 || notRun(text)) return false
   return exitReliable(cmd) ? true : !FAILURE_MARKERS.test(text)
 }

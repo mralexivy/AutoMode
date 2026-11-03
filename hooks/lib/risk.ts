@@ -9,7 +9,9 @@ import { assess, textConsequence } from './consequence.ts'
 // Consequential surfaces, matched against file paths (named in the task or edited).
 export const RISK_PATHS: { reason: string; level: Risk; path: RegExp }[] = [
   { reason: 'auth or credentials code', level: 'critical', path: /(^|\/)(auth|oauth|login|session|credential|secret|crypto|permission|rbac|acl|sso|saml|jwt)[\w-]*(\/|\.[a-z]+$)/i },
-  { reason: 'migration or schema', level: 'critical', path: /(^|\/)(migrations?|schema|db\/migrate|flyway|alembic|liquibase)(\/|\.[a-z]+$)|\.sql$/i },
+  // A database schema, not any file named schema: marshmallow's schema.py is its core module, and the bare word sent a
+  // routine fix there to critical and to Sonnet in the benchmark.
+  { reason: 'migration or schema', level: 'critical', path: /(^|\/)(migrations?|db\/migrate|flyway|alembic|liquibase)(\/|\.[a-z]+$)|(^|\/)db\/schema\b|(^|\/)schema\.(prisma|rb)$|\.sql$/i },
   { reason: 'public API or wire format', level: 'critical', path: /(^|\/)(api|proto|openapi|swagger|graphql)(\/|\.[a-z]+$)|\.proto$|openapi\.(ya?ml|json)$/i },
   { reason: 'payments or personal data', level: 'critical', path: /(^|\/)(payments?|billing|invoices?|pii|gdpr)[\w-]*(\/|\.[a-z]+$)/i },
   { reason: 'deployment config', level: 'elevated', path: /(^|\/)(helm|k8s|kubernetes|terraform|deploy|\.gitlab-ci\.yml|\.github\/workflows|Dockerfile)/i },

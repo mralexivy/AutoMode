@@ -10,7 +10,7 @@ import { ANTHROPIC, rateAt, usageUsd, rowFor } from '../hooks/lib/prices.ts'
 import { parseOverride, parseJudge, FOLLOW_UP, isTask, namedEffort, typedText, judgePrompt, stripInjected } from '../hooks/lib/classify.ts'
 import { transitionOf } from '../hooks/lib/transition.ts'
 import { classifyError, sanitizeDetail, UNCLASSIFIED } from '../hooks/lib/errors.ts'
-import { prospectiveRisk, observedRisk, reviewNeeded, pathsIn } from '../hooks/lib/risk.ts'
+import { prospectiveRisk, observedRisk, reviewNeeded, pathsIn, pathRisk } from '../hooks/lib/risk.ts'
 import { boundaryOf, lowPenaltyPoint, lowPointUsd, returnCostUsd, switchCheck, switchCostUsd, transitionUsd, DEFAULT_PARAMS } from '../hooks/lib/policy.ts'
 import { addedSince, continuity, noteDrop, observedDrop } from '../hooks/lib/continuity.ts'
 import { accrueRent, rentShare } from '../hooks/lib/rent.ts'
@@ -1108,4 +1108,10 @@ test('reviewerFamily on evidence: Opus only when the diff itself is critical', a
   assert.equal(reviewerFamily(['verification fail', 'large change'], true), 'sonnet')
   assert.equal(reviewerFamily(['observed critical: secrets'], true), 'opus')
   assert.equal(reviewerFamily(['prospective critical: changes auth']), 'opus', 'the old rule without the flag')
+})
+
+test('a file named schema is not a database schema', () => {
+  // marshmallow's schema.py is its core module; the bare word sent a routine fix to critical in the benchmark.
+  assert.equal(pathRisk(['src/marshmallow/schema.py']).level, 'none')
+  for (const p of ['db/schema.rb', 'prisma/schema.prisma', 'schema.sql', 'migrations/0001_init.py', 'db/migrate/001.rb']) assert.equal(pathRisk([p]).level, 'critical', p)
 })

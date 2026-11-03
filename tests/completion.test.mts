@@ -158,3 +158,11 @@ test('a record holds no text from the request', () => {
   assert.equal(JSON.stringify(pub).includes('secret'), false)
   assert.deepEqual(Object.keys(pub).sort(), ['id', 'kind', 'status'])
 })
+
+test('a described result is a requirement, not a printable example', () => {
+  // Found live: every check that named _undefined_obj read as a contradiction, and the gate blocked a finished task.
+  const os = extractObligations("copy.deepcopy(undef)._undefined_obj must be a separate list equal to ['foo'].")
+  assert.deepEqual(os.map((o) => o.kind), ['semantic'])
+  // A stated value still makes an example.
+  assert.deepEqual(extractObligations("parse('a') must return ['a'].").map((o) => [o.kind, o.expected]), [['example', "['a']"]])
+})

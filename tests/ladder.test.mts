@@ -2,7 +2,7 @@
 // weak and strong evidence, and regressions.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { EMPTY_LADDER, checkKey, checkPassed, escalation, failingTests, failureOf, isCheck, isRevert, regression, workLost, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
+import { EMPTY_LADDER, checkKey, checkPassed, masked, escalation, failingTests, failureOf, isCheck, isRevert, notRun, regression, workLost, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
 import { simpleCommands, tools, unwrapped } from '../hooks/lib/shell.ts'
 
 const CHECKS = [
@@ -212,4 +212,14 @@ test('workLost reads the tree after a revert command', () => {
   assert.equal(workLost(['## main\n M a.ts\n', '## main\n?? new.ts\n']), false)
   assert.equal(workLost(['## main\n M a.ts\n', '## main\n']), true) // one edited file lost its change
   assert.equal(workLost(['']), true) // a failed git call keeps the old behavior
+})
+
+test('a check that never ran is not a pass', () => {
+  // Found live: zsh printed `command not found: python`, and the trailing echo made the command exit 0.
+  const cmd = '(python -m pytest tests -q 2>&1 | tail -25); echo "exit=$?"'
+  assert.equal(masked(cmd), true)
+  assert.equal(checkPassed(cmd, 0, false, '(eval):1: command not found: python\nexit=127'), false)
+  assert.equal(notRun('sh: 1: pytest: not found'), true)
+  assert.equal(notRun('12 passed in 0.4s'), false)
+  assert.equal(checkPassed('(pytest | tail); echo "exit=$?"', 0, false, '12 passed in 0.4s\nexit=0'), true)
 })

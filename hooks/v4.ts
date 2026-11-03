@@ -33,7 +33,7 @@ import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, requireReview, summaryOf, withReview } from './lib/envelope.ts'
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
-import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
+import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, notRun, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
 import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
 import { guardTool, READ_ONLY_AGENTS, subagentBlocked } from './lib/guard.ts'
@@ -2376,6 +2376,8 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
       S.records.push({ v: 1, kind: 'debug-bash', keys: Object.keys(out), resultType: typeof out.result, resultKeys: r && typeof r === 'object' ? Object.keys(r) : null, isError: out.isError, sample: JSON.stringify(out.result ?? out.text ?? '').slice(0, 300) })
     }
     const text = resultText(out)
+    // A check that never started tells nothing about the work: no pass, no failure, and the edits stay unchecked.
+    if (notRun(text)) return out
     const exit = text.match(/Exit code (\d+)/)
     const exitCode = exit ? Number(exit[1]) : out.isError === true ? 1 : 0
     // A reliable exit code decides; a masked one falls back to the runner's own summary lines.
