@@ -1910,8 +1910,11 @@ export async function v4AgentSpawn($: EngineInterface, e: any, next: any) {
     return res
   }
   // A worker keeps the guards below, so a route changes only its model.
-  // A judge's word alone buys a Sonnet review (lib/risk.ts reviewerFamily). The workflow picks its own reviewers.
-  const sonnetReview = e.subagentType === 'automode:reviewer' && !e.model && !e.workflow && S.envelope?.reviewRequired.value && reviewerFamily(S.envelope.reviewRequired.because, S.cfg.opusStart === 'evidence') === 'sonnet'
+  // A judge's word alone buys a Sonnet review (lib/risk.ts reviewerFamily). The workflow picks its own reviewers. Under
+  // evidence routing the rule holds for a review the model asks for on its own, too: the agent's own default is Opus,
+  // and on cachetools such a review cost $0.46 of a $1.21 run.
+  const evidence = S.cfg.opusStart === 'evidence'
+  const sonnetReview = e.subagentType === 'automode:reviewer' && !e.model && !e.workflow && (evidence || S.envelope?.reviewRequired.value) && reviewerFamily(S.envelope?.reviewRequired.because ?? [], evidence) === 'sonnet'
   const model = sr?.model ?? (sonnetReview ? 'sonnet' : e.model)
   const hp = S.policy === 'auto' ? await helperPick($, e, model) : null
   const res = await next(sr || sonnetReview ? { ...e, model } : e)

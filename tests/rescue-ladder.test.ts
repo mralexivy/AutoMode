@@ -376,6 +376,14 @@ describe('Haiku first, escalate on evidence', () => {
     expect(next.context.join('\n')).not.toContain('Independent review required')
   })
 
+  test('a review the model asks for on its own runs on Sonnet', async ($, on) => {
+    const h = harness(on, haiku)
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await $.agent.spawn({ subagentType: 'automode:reviewer', prompt: 'review', description: 'review', parentModel: 'claude-haiku-5-5', fork: false, background: false, tool_use_id: 'r' } as never)
+    expect(h.spawned.at(-1)).toEqual({ subagentType: 'automode:reviewer', model: 'sonnet' })
+  })
+
   test('the old rule (opusStart judge): the first repeat on Haiku moves the model', async ($, on) => {
     const h = harness(on, { ...haiku, config: { reachHaiku: true } })
     await h.submit($, 'fix the failing parser test')
