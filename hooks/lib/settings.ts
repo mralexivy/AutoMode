@@ -19,6 +19,10 @@ export const FIELDS = {
   completionGate: { title: 'Completion gate', options: ['default', 'off', 'report', 'block'], default: 'default', applies: 'next prompt', section: 'router' },
   learning: { title: 'Route learning', options: ONOFF, default: 'default', applies: 'next prompt', section: 'router' },
   delegation: { title: 'Delegated reads', options: ['default', 'off', 'shadow', 'on'], default: 'default', applies: 'next prompt', section: 'router' },
+  strongStep: { title: 'Strong evidence step', options: ['default', 'model', 'effort-first'], default: 'default', applies: 'next prompt', section: 'router' },
+  consult: { title: 'Opus consult', options: ['default', 'always', 'priced'], default: 'default', applies: 'next prompt', section: 'router' },
+  packet: { title: 'Consult packet', options: ['default', 'basic', 'rich', 'fork-gated'], default: 'default', applies: 'next prompt', section: 'router' },
+  forkRung: { title: 'Fork diagnosis rung', options: ['default', 'off', 'on'], default: 'default', applies: 'next prompt', section: 'router' },
   executor: { title: 'Executor', options: ['default', 'judge', 'sonnet'], default: 'default', applies: 'next prompt', section: 'router' },
   subagentsEverySession: { title: 'Subagents in every session', options: ONOFF, default: 'default', applies: 'next prompt', section: 'subagents' },
   guardianMode: { title: 'Guardian', options: ['default', 'off', 'observe', 'recommend', 'assist', 'auto'], default: 'default', applies: 'next prompt', section: 'guardian' },
@@ -66,6 +70,14 @@ export function routerOverrides(options: Options, stored: Options = {}): Record<
   if (delegation !== 'default') out.delegation = delegation
   const executor = valueOf('executor', options, stored)
   if (executor !== 'default') out.executor = executor
+  const forkRung = valueOf('forkRung', options, stored)
+  if (forkRung !== 'default') out.forkRung = forkRung
+  const packet = valueOf('packet', options, stored)
+  if (packet !== 'default') out.packet = packet
+  const consult = valueOf('consult', options, stored)
+  if (consult !== 'default') out.consult = consult
+  const strongStep = valueOf('strongStep', options, stored)
+  if (strongStep !== 'default') out.strongStep = strongStep
   const sub = bool(valueOf('subagentsEverySession', options, stored))
   if (sub !== undefined) out.subagentsEverySession = sub
   return out

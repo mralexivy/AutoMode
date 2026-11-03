@@ -175,6 +175,8 @@ describe('Guardian: lifecycle and handoff', () => {
     expect(h.suggestions).toEqual(['/clear'])
     expect(h.toasts.some((t: string) => /fresh session saves/.test(t))).toBe(true)
     expect(guardianRecords(h.writes).find((x) => x.event === 'lifecycle')?.action).toBe('clear')
+    // The fuller cost model rides along in shadow: recorded, labeled a prior, and not the decision.
+    expect(guardianRecords(h.writes).find((x) => x.event === 'lifecycle')?.expected).toMatchObject({ basis: 'prior' })
   })
 
   test('with no chance of a cold return the warm context continues, and nothing is offered', async ($, on) => {

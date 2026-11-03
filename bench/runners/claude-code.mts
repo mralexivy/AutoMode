@@ -1,5 +1,7 @@
 // The agent as users run it: `claude -p`, with the arm's flags. This is the only runner of the AutoMode system track.
 import { spawn } from 'node:child_process'
+import fs from 'node:fs'
+import path from 'node:path'
 import { armInvocation } from '../arms.mts'
 import { classifyRun } from '../lib/outcome.mts'
 import { claimOf } from '../lib/claim.mts'
@@ -27,12 +29,22 @@ function runClaude(args: string[], env: NodeJS.ProcessEnv, cwd: string, timeoutM
   })
 }
 
+// workspaceEnv gives the agent the Python path the grader uses. A task's setup installs its dependencies into
+// .bench-deps and its `accept` runs with PYTHONPATH=.bench-deps. Without the same path the agent's own test runs fail on
+// imports, so it never sees the real failures (rescue-delivery, pymarkdown: 87 import errors hid 2 failing tests). The
+// same for every arm, and it reveals nothing hidden.
+export function workspaceEnv(workspace: string, env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const deps = path.join(workspace, '.bench-deps')
+  if (!fs.existsSync(deps)) return env
+  return { ...env, PYTHONPATH: env.PYTHONPATH ? `${deps}${path.delimiter}${env.PYTHONPATH}` : deps }
+}
+
 export const claudeCodeRunner: AgentRunner = {
   id: 'claude-code',
   async run(req: RunRequest): Promise<AgentRun> {
     const { args, env } = armInvocation(req.armId, req.dir, req.prompt)
     if (req.runCap) args.push('--max-budget-usd', String(req.runCap))
-    const res = await runClaude(args, env, req.workspace, req.timeoutMs)
+    const res = await runClaude(args, workspaceEnv(req.workspace, env), req.workspace, req.timeoutMs)
     const j = res.json || {}
     return {
       runner: 'claude-code', exitReason: classifyRun(res), exitCode: res.code, signal: res.signal, isError: j.is_error ?? null, turns: j.num_turns ?? null,

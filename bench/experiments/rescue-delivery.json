@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "rescue-delivery",
+  "track": "automode-system",
+  "description": "Does the cache-aware rescue ladder keep the pass rate and cut cost on tasks where checks fail mid-task? Today's defaults, rescue on the judge route, the Sonnet executor, and the Sonnet executor with rescue. A pilot. See CANARIES.md.",
+  "arms": [
+    "auto",
+    "rescue-all",
+    "executor-sonnet",
+    "sonnet-rescue"
+  ],
+  "tasks": [
+    "longctx-sqlglot-intersect-precedence-across-dialects",
+    "refactor-pymarkdown-block-level-v2",
+    "security-toughcookie-secure-cookie-origin",
+    "longctx-dnspython-edns-padding"
+  ],
+  "repeats": 2,
+  "parallel": 4,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 6,
+  "budget_usd": 120,
+  "window_usd": 150
+}

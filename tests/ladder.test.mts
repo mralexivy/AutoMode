@@ -2,7 +2,7 @@
 // weak and strong evidence, and regressions.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { EMPTY_LADDER, escalation, failureOf, isCheck, isRevert, regression, reviewerBlocked, scopeGrew } from '../hooks/lib/failures.ts'
+import { EMPTY_LADDER, checkKey, checkPassed, escalation, failingTests, failureOf, isCheck, isRevert, regression, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
 import { simpleCommands, tools, unwrapped } from '../hooks/lib/shell.ts'
 
 const CHECKS = [
@@ -144,4 +144,56 @@ test('signals: reverts, reviewer verdicts and scope', () => {
   assert.equal(scopeGrew(['a', 'b', 'c', 'z'], new Set(['z']), 4, 8), false)
   assert.equal(scopeGrew(['a', 'b', 'c', 'd'], new Set(), 4, 8), false, 'no discovery data: only a large change counts')
   assert.equal(scopeGrew(Array.from({ length: 9 }, (_, i) => `f${i}`), new Set(), 4, 8), true)
+})
+
+test('python unittest: failed tests are a defect even with an environment-looking line after them', () => {
+  // rescue-delivery, sqlglot: the runner printed FAILED (failures=3), then a version helper printed "No module named".
+  const out = "FAIL: test_x (tests.test_parser.TestParser.test_x)\nAssertionError: 1 != 2\n----\nRan 1542 tests in 76.997s\n\nFAILED (failures=3, errors=1, skipped=2)\nsqlglotc: failed to determine the sqlglot version to pin: No module named 'setuptools_scm'"
+  const f = failureOf('python3 -m unittest discover -s tests -t .', 1, out, 1, true)!
+  assert.equal(f.class, 'defect')
+  assert.deepEqual(f.tests, ['tests.test_parser.TestParser.test_x'])
+  assert.deepEqual(failingTests('ERROR: test_y (tests.test_a.T)\n'), ['tests.test_a.T.test_y'])
+  // A test that raised, with the same stray line, is a defect too (rescue-delivery, sqlglot, second run).
+  assert.equal(failureOf('python3 -m unittest discover', 1, "Ran 1542 tests in 77.6s\n\nFAILED (errors=1, skipped=2)\nsqlglotc: failed to determine the sqlglot version to pin: No module named 'setuptools_scm'", 1, true)!.class, 'defect')
+  // Errors alone from a missing module are still the environment.
+  assert.equal(failureOf('python3 -m unittest', 1, "ERROR: test_a (tests.test_x.T.test_a)\nModuleNotFoundError: No module named 'yaml'\nFAILED (errors=4)", 1, true)!.class, 'environment')
+  // A masked unittest run is read from its own summary line.
+  assert.equal(checkPassed('python3 -m unittest 2>&1 | tail -5', 0, false, 'Ran 3 tests\n\nFAILED (failures=1)'), false)
+})
+
+test('checkKey: the check commands alone, so edits and wrappers beside them do not make a new failure', () => {
+  assert.equal(checkKey('PYTHONPATH=.:.bench-deps timeout 900 python3 -m unittest discover -s tests -t . 2>&1 | tail -80'), 'unittest discover -s tests -t .')
+  assert.equal(checkKey("export PYTHONPATH=.; sed -i '' 's/a/b/' p.py; python3 -m unittest discover -s tests -t . 2>&1 | tail -5"), 'unittest discover -s tests -t .')
+  assert.equal(checkKey('go test ./...'), 'go test ./...')
+})
+
+test('writesFiles: edits through Bash count, reads and scratch writes do not', () => {
+  for (const c of ["sed -i '' 's/a/b/' x.py", "python3 - <<'EOF'\nopen('a.py', 'w').write(s)\nEOF", "cat >> tests/t.py <<'E'\nx\nE", 'git apply fix.diff', 'echo x > src/a.ts'])
+    assert.equal(writesFiles(c), true, c)
+  for (const c of ['git diff > /tmp/x.diff', 'python3 -m unittest 2>&1 | tail -3', 'grep -n foo a.py', 'echo hi > /dev/null', "python3 - <<'EOF'\nprint(1)\nEOF"])
+    assert.equal(writesFiles(c), false, c)
+})
+
+test('escalation: the same check failing 3 times after edits, each time in a new way, is a repeat of the check', () => {
+  const f = (at: number, fp: string) => ({ fingerprint: fp, class: 'defect' as const, command: 'unittest discover', exitCode: 1, at, editedSince: true, evidence: fp })
+  const s = { ...EMPTY_LADDER, effortCapped: false }
+  assert.equal(escalation([f(1, 'a'), f(2, 'b')], s).level, 'none')
+  const third = escalation([f(1, 'a'), f(2, 'b'), f(3, 'c')], s)
+  assert.equal(third.level, 'weak')
+  assert.match(third.fingerprint!, /^cmd:/)
+  assert.equal(third.count, 3)
+  // After that raise, a fourth failure of the check is strong.
+  const raised = { ...s, fired: [third.key], raised: { [third.fingerprint!]: 3 } }
+  assert.equal(escalation([f(1, 'a'), f(2, 'b'), f(3, 'c'), f(4, 'd')], raised).level, 'strong')
+  // A pass of the check in between starts the count again: the failure after it is a regression, not a third try.
+  assert.doesNotMatch(escalation([f(1, 'a'), f(2, 'b'), f(4, 'c')], { ...s, passed: { 'unittest discover': 3 } }).because, /times after edits/)
+})
+
+test('escalation: a stop the gate sent back on a failing check is strong evidence, once per stop', () => {
+  const s = { ...EMPTY_LADDER, effortCapped: false, stops: 1 }
+  const e = escalation([], s)
+  assert.equal(e.level, 'strong')
+  assert.equal(e.cause, 'stop')
+  assert.equal(escalation([], { ...s, fired: [e.key] }).level, 'none')
+  assert.equal(escalation([], { ...s, fired: [e.key], stops: 2 }).level, 'strong')
 })

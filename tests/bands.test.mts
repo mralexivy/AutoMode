@@ -45,3 +45,11 @@ test('demandBand records every raise, and an unsure judge raises hard work only 
   assert.equal(demandBand({ tier: 'T4', unsure: true, failures: 3 }).band, 5, 'the band stops at the max band')
   assert.equal(tierOf('opus', 'low'), 'T3', 'a tier label names the model family; effort sits beside it')
 })
+
+test('ladderStep: effortFirst takes the effort rung on strong evidence while one is left', () => {
+  const both: ('sonnet' | 'opus')[] = ['sonnet', 'opus']
+  assert.deepEqual(ladderStep({ family: 'sonnet', effort: 'high' }, 'strong', both, { effortFirst: true }), { family: 'sonnet', effort: 'xhigh', band: 2.5, kind: 'effort' })
+  assert.deepEqual(ladderStep({ family: 'sonnet', effort: 'xhigh' }, 'strong', both, { effortFirst: true }), { family: 'opus', effort: 'high', band: 3, kind: 'model' })
+  assert.deepEqual(ladderStep({ family: 'opus', effort: 'high' }, 'strong', both, { effortFirst: true }), { family: 'opus', effort: 'xhigh', band: 4, kind: 'effort' })
+  assert.deepEqual(ladderStep({ family: 'sonnet', effort: 'high' }, 'strong', both, {}), { family: 'opus', effort: 'high', band: 3, kind: 'model' })
+})

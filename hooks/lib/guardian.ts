@@ -266,6 +266,35 @@ export function lifecycle(i: LifecycleInput, c: GuardianConfig): LifecycleDecisi
   return { action: 'continue', costs, why: 'continuing is the cheapest option' }
 }
 
+// PRIORS for expectedLifecycle, labeled as assumptions until replay calibrates them: tokens each later request adds,
+// the chance a summary drops a detail the task needs, and what that detail costs to read again.
+export const LIFECYCLE_PRIORS = { regrowthTokens: 3_000, pLoss: 0.2, basis: 'prior' as const }
+export interface ExpectedLifecycle { keep: number; compact: number; delta: number; parts: { firstKeep: number; laterKeep: number; summarize: number; firstCompact: number; laterCompact: number; recovery: number }; basis: 'prior' }
+
+// expectedLifecycle is the fuller model the guardian's offer does not use yet: ΔC = E[keep] − E[compact] over the
+// horizon. It adds context regrowth on both sides, the expiry chance on the first request, and a recovery term for a
+// detail the summary loses. It is recorded beside the guardian's own decision and changes nothing, so replay can test
+// it before it decides anything. Regrowth is paid on both sides: it moves both totals and leaves ΔC as it is.
+export function expectedLifecycle(i: LifecycleInput, c: GuardianConfig, p: { regrowthTokens: number; pLoss: number } = LIFECYCLE_PRIORS): ExpectedLifecycle {
+  const r = ANTHROPIC.rates[i.family]
+  const inp = r.input / 1e6, read = inp * r.cacheReadX, write = inp * cacheWriteX(i.ttlMs)
+  const cold = i.idleMs > i.ttlMs
+  const pCold = cold ? 1 : (i.pCold ?? 0)
+  const n = Math.max(1, i.horizon)
+  const later = (base: number) => { let t = 0; for (let k = 1; k < n; k++) t += (base + k * p.regrowthTokens) * read + p.regrowthTokens * write; return t }
+  const firstKeep = (1 - pCold) * i.contextTokens * read + pCold * i.contextTokens * write
+  const laterKeep = later(i.contextTokens)
+  const summarize = (cold ? i.contextTokens * write : i.contextTokens * read) + c.summaryTokens * r.output / 1e6
+  const compacted = i.baseTokens + c.summaryTokens + Math.max(0, i.contextTokens - i.staleTokens - i.baseTokens) * 0.25
+  const firstCompact = compacted * write
+  const laterCompact = later(compacted)
+  const recovery = p.pLoss * c.rebuildTokens * (write + Math.max(0, n - 2) * read)
+  const keep = firstKeep + laterKeep
+  const compact = summarize + firstCompact + laterCompact + recovery
+  const r6 = (v: number) => Math.round(v * 1e6) / 1e6
+  return { keep: r6(keep), compact: r6(compact), delta: r6(keep - compact), parts: { firstKeep: r6(firstKeep), laterKeep: r6(laterKeep), summarize: r6(summarize), firstCompact: r6(firstCompact), laterCompact: r6(laterCompact), recovery: r6(recovery) }, basis: 'prior' }
+}
+
 // shouldOffer: a declined offer is not repeated on every turn end. The same action comes back only when the context has
 // grown by a quarter since it was last offered, or the cache is known to be cold. (Session ae9c951f: 18 compaction offers
 // in a row would have netted -$1.63 in the replay; most came from one long session at a steady size.)

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "rescue-gate",
+  "track": "automode-system",
+  "description": "Does a blocking completion gate turn a single failed check into a repeat the rescue ladder can act on? The Sonnet executor with rescue and the gate, on the tasks that failed without an escalation. A pilot. See CANARIES.md.",
+  "arms": [
+    "sonnet-rescue-gate"
+  ],
+  "tasks": [
+    "longctx-sqlglot-intersect-precedence-across-dialects",
+    "refactor-pymarkdown-block-level-v2",
+    "security-toughcookie-secure-cookie-origin",
+    "longctx-dnspython-edns-padding"
+  ],
+  "repeats": 2,
+  "parallel": 4,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 6,
+  "budget_usd": 40,
+  "window_usd": 150
+}

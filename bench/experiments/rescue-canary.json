@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "rescue-canary",
+  "track": "automode-system",
+  "description": "Does each rescue setting keep the pass rate of the baseline ladder? Counts toward no claim. See CANARIES.md.",
+  "arms": [
+    "baseline",
+    "rescue-effort-first",
+    "rescue-consult-priced",
+    "rescue-packet-rich",
+    "rescue-packet-fork",
+    "rescue-all"
+  ],
+  "tasks": [
+    "longctx-sqlglot-intersect-precedence-across-dialects",
+    "longctx-tornado-body-parse-errors",
+    "migration-jsyaml-max-total-merge-keys",
+    "refactor-pymarkdown-block-level"
+  ],
+  "repeats": 2,
+  "parallel": 1,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 4,
+  "budget_usd": 80,
+  "window_usd": 120
+}

@@ -29,6 +29,10 @@
   "reachHaiku": true,
   "delegation": "off",
   "executor": "judge",
+  "forkRung": "on",
+  "packet": "fork-gated",
+  "consult": "priced",
+  "strongStep": "effort-first",
   "subagentsEverySession": true,
   "guardian": {
     "mode": "auto",

@@ -170,7 +170,7 @@ export function buildView(r: RouterSnap, g: GuardSnap, u: UsageSnap, now: number
 
   const owner = r.requested?.owner ?? ''
   const hold = routes && /cache/.test(owner + ' ' + (r.requested?.reason ?? '')) && !/escalat/.test(owner) ? 'held: cache warm' : null
-  const escalation = routes && /quality-escalation|escalat/.test(owner) ? `↑ ${r.requested?.reason || 'quality floor'}` : routes && r.inadequate ? `↑ needs more than ${r.inadequate.route}` : null
+  const escalation = routes && /quality-escalation|escalat/.test(owner) ? `↑ ${r.requested?.reason || 'quality floor'}` : routes && r.inadequate ? `↑ needs more than ${r.inadequate.route}` : routes && r.consult?.state === 'open' ? '↑ asking an Opus architect' : null
 
   const percent = u.percent ?? (u.contextTokens !== null && u.window ? Math.round((u.contextTokens / u.window) * 100) : null)
   const context: View['context'] = { percent, tokens: u.contextTokens, window: u.window, level: percent === null ? 'ok' : percent >= CONTEXT_FULL ? 'full' : percent >= CONTEXT_HIGH ? 'high' : 'ok' }

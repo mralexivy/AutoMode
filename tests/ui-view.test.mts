@@ -199,3 +199,10 @@ test('metrics the person switched off are not shown', () => {
   const keys = barSegments(v, 200, NOW, METRICS.filter((m) => m !== 'cost' && m !== 'cache')).map((s) => s.key)
   assert.ok(!keys.includes('cost') && !keys.includes('cache'))
 })
+
+test('an open ladder consult shows on the escalation line, and a settled one does not', () => {
+  const at = (state) => buildView(router({ consult: { episode: 'check:abc#0', state } }), guard(), usage(), NOW).escalation
+  assert.equal(at('open'), '↑ asking an Opus architect')
+  assert.equal(at('verified_resolved'), null)
+  assert.equal(buildView(router(), guard(), usage(), NOW).escalation, null)
+})

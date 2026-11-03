@@ -36,6 +36,29 @@ const NOT_A_RUN = /\s(--version|--help|-h|--collect-only)(\s|$)/
 
 export const isCheck = (command: string) => tools(command).some((t) => CHECK_COMMAND.test(t) && !NOT_A_RUN.test(t))
 
+// checkKey names a check by the check commands alone: wrappers, env prefixes and redirects gone, and the edits or
+// greps run beside it left out. A model that edits and tests in one Bash call writes a new line every time, and the
+// whole line as the key made each run of the same failing check look new to the ladder (rescue-gate, sqlglot: 9
+// failures, 9 keys, no escalation).
+export const checkKey = (command: string): string => {
+  const checks = tools(command).filter((t) => CHECK_COMMAND.test(t) && !NOT_A_RUN.test(t)).map((t) => t.replace(/\s+\d*>>?\s*(&\d|\S+)/g, '').replace(/\s+/g, ' ').trim())
+  return (checks.length ? checks.join(' && ') : command.trim()).slice(0, 200)
+}
+
+// writesFiles: the command changes files in the workspace. Models edit through Bash as often as through Edit: sed -i,
+// a Python heredoc that opens a file to write, a redirect, tee, git apply. A write under /tmp or to /dev/null is not
+// an edit of the work.
+const SCRATCH = /^(?:\/tmp\/|\/dev\/|\/private\/tmp\/|\$TMPDIR)/
+const WRITE_TOOL = /^(?:sed\s+(?:-[a-zA-Z]*i|--in-place)|perl\s+-[a-zA-Z]*i|tee\b|git\s+(?:apply|am|cherry-pick|merge)\b|patch\b|truncate\b|mv\b|cp\b|rm\b)/
+export function writesFiles(command: string): boolean {
+  if (/\bpython[\d.]*\s+-?\s*<<[\s\S]*?(?:open\([^)]*['"](?:w|a|r\+)|\.write_text\(|\.write\()/.test(command)) return true
+  for (const t of tools(command)) {
+    if (WRITE_TOOL.test(t)) return true
+    for (const m of t.matchAll(/(?:^|[^>&\d])>>?\s*([^\s&|;]+)/g)) if (!SCRATCH.test(m[1]) && !/^&/.test(m[1])) return true
+  }
+  return false
+}
+
 const ENVIRONMENT = [
   /command not found/i, /no such file or directory.*(bin|exec)/i, /\bENOENT\b.*spawn/i, /cannot find module ['"][^.'"/]/i,
   /module not found: .*['"][^.'"/]/i, /no module named/i, /could not resolve host|getaddrinfo|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|network is unreachable/i,
@@ -72,7 +95,17 @@ export function fnv1a(s: string): string {
   return h.toString(16).padStart(8, '0')
 }
 
+// The runner itself says tests failed. That is a defect whatever else the output prints: a stray "No module named"
+// from a version helper after "FAILED (failures=3)" hid sqlglot's failures from the ladder (rescue-delivery,
+// 2026-11-02). TESTS_FAILED is an assertion failure, a defect outright. TESTS_ERRORED is a test that raised: a defect
+// unless the output holds an import traceback line, the sign of a missing module in the tests themselves.
+const TESTS_FAILED = /^FAIL: \S+ \(|^FAILED \(failures=[1-9]|^--- FAIL: |^\s*\d+ failed\b|^Tests?:\s+\d+ failed|^FAILED \S+::|^\s*AssertionError\b/m
+const TESTS_ERRORED = /^ERROR: \S+ \(|^FAILED \(errors=[1-9]|^\s*\d+ errors?\b.* in [\d.]+s/m
+const IMPORT_TRACEBACK = /^\s*(?:E\s+)?(?:ModuleNotFoundError|ImportError)\b/m
+
 export function classify(output: string): FailureRecord['class'] {
+  if (TESTS_FAILED.test(output)) return 'defect'
+  if (TESTS_ERRORED.test(output) && !IMPORT_TRACEBACK.test(output)) return 'defect'
   if (ENVIRONMENT.some((r) => r.test(output))) return 'environment'
   if (DEFECT.some((r) => r.test(output))) return 'defect'
   return 'unknown'
@@ -95,6 +128,7 @@ export function failingTests(norm: string): string[] {
   for (const m of norm.matchAll(/^\s*--- FAIL: (\S+)/gm)) out.add(m[1])
   for (const m of norm.matchAll(/^FAIL\s+(\S+\.(?:test|spec)\.[jt]sx?)/gm)) out.add(m[1])
   for (const m of norm.matchAll(/^FAILED (\S+::\S+)/gm)) out.add(m[1])
+  for (const m of norm.matchAll(/^(?:FAIL|ERROR): (\S+) \(([^)\s]+)\)/gm)) out.add(m[2].endsWith(`.${m[1]}`) ? m[2] : `${m[2]}.${m[1]}`) // python unittest, 3.11 and older
   for (const m of norm.matchAll(/^not ok \d+ - (.+)$/gm)) out.add(m[1].trim())
   for (const m of norm.matchAll(/error (TS\d+)/g)) out.add(m[1])
   return [...out].sort().slice(0, 20)
@@ -143,12 +177,13 @@ export interface LadderSignals {
   scopeGrew: boolean
   reverts: number
   reviewerBlockers: number
+  stops?: number                             // stops the gate sent back on a failing check
   effortCapped: boolean                      // the running model has no effort step left
   fired: string[]
 }
 export type EscalationLevel = 'none' | 'weak' | 'strong'
 // cause: what a consult answers, so one cause gets one consult. check: a failing check is the evidence.
-export interface Escalation { level: EscalationLevel; because: string; key: string; cause: string; check: boolean; fingerprint?: string }
+export interface Escalation { level: EscalationLevel; because: string; key: string; cause: string; check: boolean; fingerprint?: string; count?: number }
 
 const NO_ESCALATION: Escalation = { level: 'none', because: '', key: '', cause: '', check: false }
 const COMPILE_ERROR = /\berror TS\d+|\bSyntaxError\b|cannot find symbol|\bundefined: \w|error\[E\d+\]|declared and not used|compilation (failed|error)/i
@@ -184,6 +219,9 @@ export function escalation(history: FailureRecord[], s: LadderSignals): Escalati
     ({ level, because, key, cause, check: !!f, ...(f ? { fingerprint: f.fingerprint } : {}) })
   if (s.reviewerBlockers > 0 && open(`reviewer:${s.reviewerBlockers}`)) return pick('strong', 'the reviewer found a blocker', `reviewer:${s.reviewerBlockers}`, 'reviewer')
   if (s.reverts > 0 && open(`revert:${s.reverts}`)) return pick('strong', 'the task reverted its own work', `revert:${s.reverts}`, 'revert')
+  // Stopping with the last check failing is strong evidence however the checks before it were split up: the agent
+  // narrowed to subsets that pass while the full run still fails (rescue-gate, sqlglot).
+  if ((s.stops ?? 0) > 0 && open(`stop:${s.stops}`)) return pick('strong', 'the session tried to stop with its last check failing', `stop:${s.stops}`, 'stop')
   const last = history[history.length - 1]
   if (last && !resolved(last, s.passed)) {
     const fp = last.fingerprint
@@ -196,6 +234,21 @@ export function escalation(history: FailureRecord[], s: LadderSignals): Escalati
       if (s.raised[fp] !== undefined) { if (count > s.raised[fp] && open(again)) return pick('strong', `the same check failed after an effort raise (${fp})`, again, fp, last) }
       else if (s.effortCapped) { if (open(again)) return pick('strong', `the same check failed at the top effort (${fp})`, again, fp, last) }
       else if (open(`repeat:${fp}`)) return pick('weak', `the same check failed after an edit (${fp})`, `repeat:${fp}`, fp, last)
+    }
+    // The same check failing in a new way each time, after each edit, is not converging either: 3 such failures since
+    // its last pass count as a repeat of the check (rescue-gate, sqlglot: one check failed 4 times after edits, each
+    // with other tests, and the ladder never acted). The check's own id stands in for the fingerprint.
+    if (!repeats && last.editedSince) {
+      const tries = history.filter((f) => f.command === last.command && !resolved(f, s.passed) && f.editedSince && f.class !== 'environment' && f.class !== 'flaky').length
+      if (tries >= 3) {
+        const cid = `cmd:${fnv1a(last.command)}`
+        const again = `repeat:${cid}:${tries}`
+        const f = { ...last, fingerprint: cid }
+        const at = (level: EscalationLevel, because: string, key: string) => ({ ...pick(level, because, key, cid, f), count: tries })
+        if (s.raised[cid] !== undefined) { if (tries > s.raised[cid] && open(again)) return at('strong', `the same check kept failing after an effort raise (${last.command.slice(0, 60)})`, again) }
+        else if (s.effortCapped) { if (open(again)) return at('strong', `the same check kept failing at the top effort (${last.command.slice(0, 60)})`, again) }
+        else if (open(`repeat:${cid}`)) return at('weak', `the same check failed ${tries} times after edits (${last.command.slice(0, 60)})`, `repeat:${cid}`)
+      }
     }
   }
   if (s.toolErrors >= 3 && open('tools')) return pick('weak', `${s.toolErrors} tool errors in a row`, 'tools', 'tools')
@@ -246,7 +299,7 @@ export function withPipefail(cmd: string): string | null {
 }
 export const exitReliable = (cmd: string) => !masked(cmd) && (!hasPipe(cmd) || /pipefail/.test(cmd))
 // Structural failure markers, line-anchored: a test runner's own summary lines, not any "FAIL" in a log.
-export const FAILURE_MARKERS = /^--- FAIL: \S+|^FAIL\t\S+|^FAIL$|^\s*\d+ (failed|failing)\b|^Tests?:\s+\d+ failed|^not ok \d+ |^FAILED \S+::|error TS\d+:|^\s*AssertionError\b/m
+export const FAILURE_MARKERS = /^FAIL: \S+ \(|^FAILED \((failures|errors)=\d+|^--- FAIL: \S+|^FAIL\t\S+|^FAIL$|^\s*\d+ (failed|failing)\b|^Tests?:\s+\d+ failed|^not ok \d+ |^FAILED \S+::|error TS\d+:|^\s*AssertionError\b/m
 
 // checkPassed: a reliable exit code decides; a masked or unreliable one falls back to the runner's own
 // summary lines. Never "passed" on missing evidence: an error result is a failure.

@@ -16,7 +16,7 @@
 // "guardian": { "mode": "off" }, read again at every prompt. The rest of AutoMode is unaffected.
 import type { EngineInterface } from 'claude-code'
 import {
-  GUARDIAN_DEFAULTS, newTurn, observeTool, observeOutcome, observeRequest, assess, noteFor, safeToAbort, lifecycle,
+  GUARDIAN_DEFAULTS, newTurn, observeTool, observeOutcome, observeRequest, assess, noteFor, safeToAbort, lifecycle, expectedLifecycle,
   reduceOutput, reduceMcp, reducible, validateCheckpoint, checkpointSum, handoffText, scrub, modeOf, shouldOffer, atLeast, buildCheckpoint,
   verifyRestore, restrictionsIn, sealCheckpoint, openCheckpoint, failedOutput, type GuardianConfig, type TurnState, type Checkpoint,
 } from './lib/guardian.ts'
@@ -506,8 +506,10 @@ async function afterTurn($: EngineInterface, e: any) {
   G.contextTokens = u.tokens || G.contextTokens
   const nextStep = String(e.answer ?? '').replace(/\s+/g, ' ').slice(-400) || 'continue from the last step'
   if (G.contextTokens >= G.cfg.minContextTokens) {
-    const d = lifecycle({ family: familyOf(G.model) ?? 'opus', contextTokens: G.contextTokens, baseTokens: G.baseTokens || 40_000, staleTokens: Math.max(0, Math.min(G.taskStartTokens, G.contextTokens) - (G.baseTokens || 40_000)), idleMs: 0, pCold: G.cfg.coldReturnRate, ttlMs: 3_600_000, horizon: G.cfg.horizon, taskClosed: G.closed, openFailures: Object.keys(t.failures).length }, G.cfg)
-    await record($, { event: 'lifecycle', action: d.action, why: d.why, costs: d.costs, contextTokens: G.contextTokens })
+    const li = { family: familyOf(G.model) ?? 'opus', contextTokens: G.contextTokens, baseTokens: G.baseTokens || 40_000, staleTokens: Math.max(0, Math.min(G.taskStartTokens, G.contextTokens) - (G.baseTokens || 40_000)), idleMs: 0, pCold: G.cfg.coldReturnRate, ttlMs: 3_600_000, horizon: G.cfg.horizon, taskClosed: G.closed, openFailures: Object.keys(t.failures).length } as const
+    const d = lifecycle(li, G.cfg)
+    // `expected` is the fuller cost model, recorded in shadow beside the decision it does not make (lib/guardian.ts).
+    await record($, { event: 'lifecycle', action: d.action, why: d.why, costs: d.costs, contextTokens: G.contextTokens, expected: expectedLifecycle(li, G.cfg) })
     if (d.action !== 'continue') {
       const cp = await writeCheckpoint($, G.closed ? 'closed' : 'open', nextStep)
       // A clear drops the conversation, so it needs a valid checkpoint to hand over. A compaction keeps a summary in the

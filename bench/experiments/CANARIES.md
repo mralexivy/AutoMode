@@ -84,3 +84,17 @@ A pass allows a release. It proves no general saving.
 ## What a pass allows
 
 A pass permits wider opt-in use and shadow collection. Changing a default needs new tasks with real outcome data, and it is a separate decision.
+
+## Rescue canary
+
+`rescue-canary.json` runs `baseline`, each rescue arm and `rescue-all` on 4 tasks where a check fails mid-task, 2 repeats each, 56 runs in all. Spend is capped at $80. Each rescue arm changes one setting from `baseline`, so a difference has one cause. `rescue-all` changes them all, and it shows only whether they combine without a regression. The rules below are fixed before any row exists.
+
+- A task that passes fewer repeats under a rescue arm than under `baseline` vetoes that arm's setting as a default.
+- `rescue-effort-first`: a run whose ladder raises effort twice on one episode is a defect. So is a critical task that raises effort before the model moves.
+- `rescue-consult-priced`: a run that consults again after an episode's consult recurred is a defect.
+- `rescue-packet-fork`: a fork whose usage shows no cache read vetoes the gate's cost assumption until it is fixed.
+- A consult outcome of `unverified` on a run the hidden tests reject counts against no arm, but the report must show it.
+
+These rows count toward no claim, and they prove no saving. 4 tasks make this a pilot.
+
+The guardian's `expected` lifecycle estimate has no arm. It is recorded in shadow on every run, and it can drive an offer only after a replay of these records shows it ranks keep and compact better than the guardian's own costs.
