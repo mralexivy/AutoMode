@@ -6,6 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Fixed
 
+- A stop with no edit since the last stop rung no longer climbs the ladder. The model has checked again and contests the failure, so a pricier model would only read the same evidence. On dnspython, three stops in 29 seconds bought a fork, an Opus consult and an Opus switch, on a network test that failed before any change: $1.51, against $0.45 for Sonnet high.
 - A check run in a copy under `/tmp` is no check of the work. On tomlkit, the model copied its new tests next to the original code to show that they fail there, and that read as a regression, which moved Haiku to Sonnet. A test the task added or edited never joins the stash baseline, so it cannot excuse its own later failures.
 - The completion gate reads a stated example written as code whole. It split on `: ` and `, ` inside brackets and quotes, so qs's `qs.parse({ a: arr, 'a[]': 'y' })` became the input `y' })`. A trailing ", and arr must stay ..." clause also became part of the expected value. Every check that named the input then read as a contradiction, and the gate climbed to an Opus consult: $1.99, against $0.16 for Sonnet high.
 - A test that fails on the stashed original code is the repository's own failure. A later run that fails only on such tests no longer fails the completion gate or climbs the ladder, unless the task names the test or asks to fix failing tests. On pyjwt, a TLS test failed on the untouched code, and AutoMode climbed to Opus on it: $1.55, against $0.32 for Sonnet high.

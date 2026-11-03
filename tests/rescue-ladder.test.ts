@@ -305,7 +305,7 @@ describe('Fork diagnosis rung', () => {
 describe('Failed stops climb the ladder', () => {
   const chain = { completionGate: 'block', strongStep: 'effort-first', consult: 'priced', forkRung: 'on' }
 
-  test('each failed stop is a rung, carried in the block itself, up to the switch', async ($, on) => {
+  test('a failed stop after new work is a rung, carried in the block, and the rescue reaches the switch', async ($, on) => {
     const h = harness(on, sonnetAt('high', chain))
     h.setPrefix(400_000)
     await h.submit($, 'fix the failing parser test')
@@ -314,17 +314,16 @@ describe('Failed stops climb the ladder', () => {
     await $.tool.call({ tool: 'Bash', command: "sed -i '' 's/a/b/' parser.go" })
     await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
     expect(of(h.writes, 'escalation')).toEqual([])
+    // Each rung follows work. A stop with no edit since the last rung contests the failure and stands.
+    const redo = () => $.tool.call({ tool: 'Bash', command: "sed -i '' 's/b/c/' parser.go && go test ./..." })
     const first = await $.classic.Stop({ stop_hook_active: false })
     expect(first.block).toContain('Effort rises first')
-    const second = await $.classic.Stop({ stop_hook_active: true })
-    expect(second.block).toContain('subagent_type "fork"')
-    const third = await $.classic.Stop({ stop_hook_active: true })
-    expect(third.block).toContain('automode:architect')
-    const fourth = await $.classic.Stop({ stop_hook_active: true })
-    expect(fourth.block).toContain('escalated to T3 (opus high)')
     expect((await $.classic.Stop({ stop_hook_active: true })).block).toBeUndefined()
-    const why = 'the session tried to stop with its last check failing'
-    expect(of(h.writes, 'escalation').map((x) => [x.action, x.because])).toEqual([['raise', why], ['fork-diagnose', why], ['consult-opus', why], ['switch', why]])
+    const blocks: string[] = []
+    for (let i = 0; i < 4; i++) { await redo(); blocks.push(String((await $.classic.Stop({ stop_hook_active: true })).block ?? '')) }
+    expect(blocks.join('\n')).toContain('automode:architect')
+    expect(of(h.writes, 'escalation').map((x) => x.action).at(-1)).toBe('switch')
+    expect(of(h.writes, 'completion').filter((c) => c.contested).length).toBe(1)
   })
 
   test('the code-default gate (report) never blocks, so a failed stop stays a record', async ($, on) => {
@@ -348,9 +347,10 @@ describe('A failed stop joins the failing check', () => {
     await fail($) // weak: effort
     await fail($) // strong: the episode's one effort raise
     expect((await $.classic.Stop({ stop_hook_active: false })).block).toContain('subagent_type "fork"')
-    expect((await $.classic.Stop({ stop_hook_active: true })).block).toContain('automode:architect')
+    // No edit since that rung: the stop stands, and the episode keeps its one fork.
+    expect((await $.classic.Stop({ stop_hook_active: true })).block).toBeUndefined()
     const esc = of(h.writes, 'escalation')
-    expect(esc.map((x) => x.action)).toEqual(['raise', 'raise', 'fork-diagnose', 'consult-opus'])
+    expect(esc.map((x) => x.action)).toEqual(['raise', 'raise', 'fork-diagnose'])
     expect(new Set(esc.map((x) => x.episode)).size).toBe(1)
   })
 })
@@ -374,6 +374,25 @@ describe('Haiku first, escalate on evidence', () => {
     expect(of(h.writes, 'escalation').filter((x) => x.action !== 'none').map((x) => [x.action, x.because])).toEqual([['switch', 'the session tried to stop with its last check failing']])
     const next = await h.submit($, 'keep going')
     expect(next.context.join('\n')).not.toContain('Independent review required')
+  })
+
+  test('a stop with no edit since the last rung contests the failure: the stop stands and no rung is bought', async ($, on) => {
+    // Found live: dnspython stopped three times in 29 s with no edit, on a test that failed before any change, and each
+    // stop bought a pricier rung: fork, Opus consult, Opus switch.
+    const h = harness(on, haiku)
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await $.tool.call({ tool: 'Edit', file_path: 'parser.go', old_string: 'a', new_string: 'b' })
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await fail($)
+    expect((await $.classic.Stop({ stop_hook_active: false })).block).toContain('escalated to')
+    const rungs = () => of(h.writes, 'escalation').filter((x) => x.action !== 'none').length
+    const after = rungs()
+    expect((await $.classic.Stop({ stop_hook_active: true })).block).toBeUndefined()
+    expect(rungs()).toBe(after)
+    // Work after the rung earns the next one.
+    await fail($) // an edit, then the check fails again
+    expect((await $.classic.Stop({ stop_hook_active: true })).block).toBeDefined()
   })
 
   test('a review the model asks for on its own runs on Sonnet', async ($, on) => {

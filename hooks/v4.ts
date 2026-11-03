@@ -171,6 +171,8 @@ const S = {
   unroutable: false,          // the app's model is not one this router runs: requests pass through unrewritten
   appPlan: false,             // plan mode at the last main request: leaving it changes the app's model too
   ladderNote: null as string | null, // an escalation note for the next main tool result or prompt
+  stopMark: null as number | null, // editsSeen at the last stop rung (v4Stop)
+  editsSeen: 0, // every edit-tool edit the session saw; it only counts up (Bash writes are bashEdits)
   judgeRiskTask: undefined as string | undefined, // the task whose risk a failed judge raised, until a judge answers
   toldPolicy: false,
   judgeBreaker: {} as Partial<Record<'effortless' | 'automode', { failures: number; until: number }>>,
@@ -2268,6 +2270,7 @@ function syncObligations() {
   S.obligationEdited = false
   S.completionBlocks = 0
   S.completionState = 'none'
+  S.stopMark = null
 }
 
 // v4Stop: the model is about to finish. Hooks beneath decide first, and a block of theirs stands. Only the mode `auto`
@@ -2290,14 +2293,21 @@ export async function v4Stop($: EngineInterface, e: any, next: any) {
   const blocks = ladderStops ? Math.max(0, S.completionBlocks - (MAX_LADDER_STOPS - 1)) : S.completionBlocks
   let reason = blockReason(state, S.obligations, { gate, stopHookActive: e.stop_hook_active === true && !ladderStops, blocks, backgroundWork: Array.isArray(e.background_tasks) ? e.background_tasks.length : 0 })
   if (reason) S.completionBlocks += 1
+  // A stop with no edit since the last stop rung contests the failure: the model checked again and says the work holds.
+  // A pricier model would read the same evidence, so the stop stands. Found live: dnspython and sqlglot each bought a
+  // consult and an Opus switch within seconds, with no edit between, on a test that failed before any change.
+  const edits = S.editsSeen + S.bashEdits
+  const contested = ladderStops && S.stopMark !== null && edits === S.stopMark
+  if (contested) reason = null
   if (reason && ladderStops && S.policy === 'auto') {
+    S.stopMark = edits
     // The stop goes to the ladder as strong evidence, and its next step rides in the block itself.
     const l = S.envelope.ladder ?? EMPTY_LADDER
     S.envelope = { ...S.envelope, ladder: { ...l, stops: (l.stops ?? 0) + 1 } }
     await runLadder($, await now($))
     if (S.ladderNote) { reason = `${reason}\n\n${S.ladderNote}`; S.ladderNote = null; S.newInput = true }
   }
-  S.records.push({ v: 1, kind: 'completion', at: await now($), sessionId: S.sessionId, taskId: S.envelope.taskId, state, blocked: !!reason, obligations: publicObligations(S.obligations) })
+  S.records.push({ v: 1, kind: 'completion', at: await now($), sessionId: S.sessionId, taskId: S.envelope.taskId, state, blocked: !!reason, ...(contested ? { contested: true } : {}), obligations: publicObligations(S.obligations) })
   await flush($)
   if (S.current) barLine($, S.current)
   return reason ? { ...out, block: reason } : out
@@ -2346,6 +2356,7 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
       S.editedSinceCheck = true
       if (gateOn()) { syncObligations(); S.obligations = reopen(S.obligations); S.obligationEdited = true }
       S.editLog = [...S.editLog, { path: p, at: await now($) }].slice(-200)
+      S.editsSeen += 1
       const edited = [...new Set([...S.envelope.editedPaths, p])]
       const lines = (S.envelope.changedLines ?? 0) + changedLines(e.tool, input)
       const ifaces = (S.envelope.interfacesChanged ?? 0) + interfacesOf(e.tool, input)
@@ -2741,7 +2752,7 @@ function freshSession() {
     learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], taskPrompts: [], forkRuns: new Map(), bashEdits: 0, baseline: [], resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
-    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, judgeRiskTask: undefined,
+    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, stopMark: null, editsSeen: 0, judgeRiskTask: undefined,
     preflight: undefined, breakers: {}, lastNoResponse: null, failures: [], pendingErrors: [], signalErrorAt: 0, signalMode: '', compactionPricedAt: 0, haikuOutUntilCompaction: false, lastWorkBand: undefined, effortUnsupported: false, thinkingRisk: false, toldErrorClass: '', toldBreaker: false, firstPrefixSaved: false, inadequate: null, toldInadequateTask: '',
   }
 }
