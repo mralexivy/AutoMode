@@ -143,6 +143,8 @@ test('admission counts money in flight, and expected cost comes from history', (
   assert.equal(expectedUsd(h, 't', 'b', 6), 2, 'the task on another arm before the arm mean')
   assert.equal(expectedUsd(h, 'v', 'a', 6), 3, 'the arm mean when the task is new')
   assert.equal(expectedUsd([], 'v', 'a', 6), 6, 'the cap when nothing is known')
+  const m = [{ task_id: 't', arm: 'cheap', cost_usd_api_equiv: 0.05, model: { requestedModel: 'haiku' } }, { task_id: 'u', arm: 'x', cost_usd_api_equiv: 2, model: { requestedModel: 'sonnet' } }]
+  assert.equal(expectedUsd(m, 't', 'new', 6, 'sonnet'), 2, 'a Haiku row never prices a Sonnet run')
   assert.equal(admit({ budget: 10, spent: 4, inFlight: 4, next: 3 }).admit, false, 'the old check saw $4 of $10 and started')
   assert.equal(admit({ budget: 10, spent: 4, inFlight: 0, next: 3 }).warn, false)
   assert.equal(admit({ budget: 10, spent: 6, inFlight: 0, next: 3 }).warn, true)
@@ -176,4 +178,40 @@ test('supervisor end to end: a limit with a reset in the past resumes and finish
   const r = spawnSync(process.execPath, ['bench/supervise.mts', '--', '--out', path.join(dir, 'r.jsonl')], { encoding: 'utf8', env: { ...process.env, SUPERVISE_RUNNER: fakeRunner, SUPERVISE_MARGIN_MS: '100' }, timeout: 60_000 })
   assert.equal(r.status, 0, r.stdout + r.stderr)
   assert.equal(fs.readFileSync(path.join(dir, 'cycles'), 'utf8'), '2')
+})
+
+test('60-slot simulation: a usage limit, a kill -9 and resumes end with 60 unique rows and nothing paid twice', async () => {
+  const dir = fresh('sim60')
+  const tdir = path.join(dir, 'tasks')
+  fs.mkdirSync(tdir)
+  const one = JSON.parse(fs.readFileSync(path.join(tasksDir, 'one.json'), 'utf8'))
+  const ids = Array.from({ length: 30 }, (_, i) => `t${String(i).padStart(2, '0')}`)
+  for (const id of ids) fs.writeFileSync(path.join(tdir, `${id}.json`), JSON.stringify({ ...one, id }))
+  const simArgs = (...more: string[]) => ['bench/run.mts', '--tasks-dir', tdir, '--arms', 'sonnet-high,sonnet-medium', '--repeats', '1', '--parallel', '1', '--window-usd', '0', '--scratch', path.join(dir, 'scratch'), '--out', path.join(dir, 'r.jsonl'), '--run-cap-usd', '3', ...more]
+  // Calls 1-12 solve, call 13 hits the limit; after that the plan is spent and FAKE_CLAUDE decides.
+  const plan = path.join(dir, 'plan.txt')
+  fs.writeFileSync(plan, [...Array(12).fill('solve'), 'quota-reset'].join('\n'))
+  const e = (mode: string, more: Record<string, string> = {}) => env(dir, mode, { FAKE_CLAUDE_PLAN: plan, ...more })
+  const first = spawnSync(process.execPath, simArgs(), { encoding: 'utf8', env: e('solve') })
+  assert.equal(first.status, 75)
+  assert.equal(rows(dir).filter((r) => r.exit_reason !== 'quota').length, 12)
+  // Resume, and kill it mid-run.
+  const child = spawn(process.execPath, simArgs(), { env: e('slow', { FAKE_CLAUDE_MS: '400' }), stdio: 'ignore' })
+  await until(() => rows(dir).filter((r) => r.exit_reason !== 'quota').length >= 20)
+  child.kill('SIGKILL')
+  await new Promise((r) => child.on('exit', r))
+  const callsAtKill = calls(dir)
+  // Resume again: everything but the one UNKNOWN slot.
+  const second = spawnSync(process.execPath, simArgs(), { encoding: 'utf8', env: e('solve') })
+  assert.equal(second.status, 0, second.stderr)
+  assert.match(second.stdout, /1 unknown \(held: --retry-unknown\)/)
+  const third = spawnSync(process.execPath, simArgs('--retry-unknown'), { encoding: 'utf8', env: e('solve') })
+  assert.equal(third.status, 0)
+  const finished = rows(dir).filter((r) => r.exit_reason === 'done')
+  assert.equal(finished.length, 60)
+  assert.equal(new Set(finished.map((r) => r.run_id)).size, 60, 'no slot finished twice')
+  // Sessions started: 60 finished + 1 cut off by the limit + at most 1 killed in flight (UNKNOWN, retried once).
+  assert.ok(calls(dir) <= 62, `sessions: ${calls(dir)}`)
+  assert.ok(calls(dir) >= callsAtKill)
+  assert.match(spawnSync(process.execPath, simArgs(), { encoding: 'utf8', env: e('solve') }).stdout, /0 to run/)
 })

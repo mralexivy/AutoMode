@@ -1,0 +1,12 @@
+{
+ "id": "security-pyjwt-key-family-validation",
+ "task_hash": "d259e69ea2982343",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-03T07:45:47.709Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

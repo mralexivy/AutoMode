@@ -1,0 +1,12 @@
+{
+ "id": "security-findmyway-absolute-form-targets",
+ "task_hash": "ebc81e9970f3cfc4",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-03T07:44:08.614Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

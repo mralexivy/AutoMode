@@ -6,13 +6,15 @@
 // run cap. These are list-price estimates. They are not a billing hard stop, and they say nothing about the plan's
 // 5-hour usage window, which `pausedFor` handles.
 
-export interface CostHistory { task_id: string; arm: string; cost_usd_api_equiv?: number | null }
+export interface CostHistory { task_id: string; arm: string; cost_usd_api_equiv?: number | null; model?: { requestedModel?: string } }
 
-// expectedUsd: the mean of earlier rows for this task and arm, else this task on any arm, else the arm, else every
-// row, else the run cap. The history is every saved results file, so a new experiment is not priced at its cap.
-export function expectedUsd(history: CostHistory[], taskId: string, arm: string, runCap: number | null): number {
+// expectedUsd: the mean of earlier rows for this task and arm, else this task on the same model, else the arm, else
+// every row on the same model, else the run cap. The history is every saved results file, so a new experiment is not
+// priced at its cap; the model tiers keep a Haiku row from pricing a Sonnet run.
+export function expectedUsd(history: CostHistory[], taskId: string, arm: string, runCap: number | null, model?: string): number {
   const costs = (rows: CostHistory[]) => rows.map((r) => r.cost_usd_api_equiv).filter((x): x is number => typeof x === 'number' && x > 0)
-  const tiers = [history.filter((r) => r.task_id === taskId && r.arm === arm), history.filter((r) => r.task_id === taskId), history.filter((r) => r.arm === arm), history]
+  const sameModel = (r: CostHistory) => !model || r.model?.requestedModel === model
+  const tiers = [history.filter((r) => r.task_id === taskId && r.arm === arm), history.filter((r) => r.task_id === taskId && sameModel(r)), history.filter((r) => r.arm === arm), history.filter(sameModel)]
   for (const t of tiers) { const c = costs(t); if (c.length) return Math.min(runCap ?? Infinity, c.reduce((a, b) => a + b, 0) / c.length) }
   return runCap ?? 1
 }

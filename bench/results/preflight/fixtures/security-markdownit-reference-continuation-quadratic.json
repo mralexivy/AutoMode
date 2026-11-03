@@ -1,0 +1,12 @@
+{
+ "id": "security-markdownit-reference-continuation-quadratic",
+ "task_hash": "31f0c5cee7f051d6",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-03T07:45:06.339Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

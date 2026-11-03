@@ -2,10 +2,11 @@
  "id": "feature-jinja-undefined-copy-pickle-state",
  "task_hash": "8a077443f596e39d",
  "machine": "14caf2f4dce9ad6e",
- "at": "2026-11-03T07:28:10.771Z",
+ "agent_env_version": 3,
+ "at": "2026-11-03T07:36:30.610Z",
  "base": "fail",
  "reference": "pass",
- "agent_env": "fail",
- "valid": false,
- "why": "the reference fails when the tests run as the agent runs them"
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
 }

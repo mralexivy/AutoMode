@@ -119,7 +119,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const views = classify(slots, out, (e.reuse_from ?? []).map((f) => path.resolve(REPO, f)))
   const count = (s: string) => views.filter((v) => v.status === s).length
   const history = savedHistory(path.dirname(out), readRows)
-  const estimate = views.filter((v) => v.status === 'new' || v.status === 'stale').reduce((a, v) => a + expectedUsd(history, v.task, v.arm, e.run_cap_usd ?? null), 0)
+  const estimate = views.filter((v) => v.status === 'new' || v.status === 'stale').reduce((a, v) => a + expectedUsd(history, v.task, v.arm, e.run_cap_usd ?? null, ARMS[v.arm].model), 0)
   check('budget', !e.budget_usd || estimate <= e.budget_usd, `${views.length} slots: ${count('done')} done, ${count('reuse')} reused, ${count('unknown')} unknown, ${count('stale')} stale, ${count('new')} new; new paid slots expected $${estimate.toFixed(2)} of $${e.budget_usd ?? '-'}`)
 
   const holder = readLock()

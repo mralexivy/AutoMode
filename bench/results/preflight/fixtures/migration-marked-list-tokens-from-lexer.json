@@ -1,0 +1,12 @@
+{
+ "id": "migration-marked-list-tokens-from-lexer",
+ "task_hash": "d5f9ca5ea708ad1b",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-03T07:43:36.358Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

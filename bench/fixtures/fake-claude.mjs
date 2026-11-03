@@ -4,7 +4,15 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 
 if (process.argv.includes('--version')) { console.log('0.0.0 (fake)'); process.exit(0) }
-const mode = process.env.FAKE_CLAUDE ?? 'solve'
+// FAKE_CLAUDE_PLAN names a file with one mode per call, in order; calls past its end use FAKE_CLAUDE. A simulation
+// uses it to put a usage limit or a slow run at an exact point in a long plan.
+const planned = (() => {
+  const f = process.env.FAKE_CLAUDE_PLAN
+  if (!f || !process.env.FAKE_CLAUDE_CALLS || process.argv.includes('--version')) return null
+  const n = fs.existsSync(process.env.FAKE_CLAUDE_CALLS) ? fs.readFileSync(process.env.FAKE_CLAUDE_CALLS, 'utf8').split('\n').filter(Boolean).length : 0
+  return fs.readFileSync(f, 'utf8').split('\n')[n]?.trim() || null
+})()
+const mode = planned ?? process.env.FAKE_CLAUDE ?? 'solve'
 // Each paid-looking call adds a line, so a test can count how many sessions the runner really started.
 if (process.env.FAKE_CLAUDE_CALLS) fs.appendFileSync(process.env.FAKE_CLAUDE_CALLS, `${mode}\n`)
 if (process.env.FAKE_CLAUDE_LOG) fs.writeFileSync(process.env.FAKE_CLAUDE_LOG, JSON.stringify({ args: process.argv.slice(2), apiKey: process.env.ANTHROPIC_API_KEY ?? null }))

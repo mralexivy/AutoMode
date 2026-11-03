@@ -1,0 +1,12 @@
+{
+ "id": "migration-cachetools-cachedmethod-instance-attributes",
+ "task_hash": "28c60975c9e32126",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-03T07:43:33.925Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

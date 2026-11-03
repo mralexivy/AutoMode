@@ -1,0 +1,12 @@
+{
+ "id": "security-yaml-recursive-merge-alias-limit",
+ "task_hash": "40f9f372b9813992",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-03T07:47:25.569Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

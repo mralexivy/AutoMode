@@ -148,7 +148,7 @@ async function worker() {
     const item = queue[0]
     const [t, a, r] = item
     const id = idOf(item)
-    const next = expectedUsd(history, t.id, a, runCap)
+    const next = expectedUsd(history, t.id, a, runCap, ARMS[a].model)
     const adm = admit({ budget, spent, inFlight: [...inFlight.values()].reduce((x, y) => x + y, 0), next })
     if (!adm.admit) { console.log(`Budget: not starting ${id}: ${adm.reason}. No new runs start.`); return }
     queue.shift()

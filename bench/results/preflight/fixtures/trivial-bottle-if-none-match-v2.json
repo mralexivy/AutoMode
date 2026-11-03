@@ -1,0 +1,12 @@
+{
+ "id": "trivial-bottle-if-none-match-v2",
+ "task_hash": "628e8c3aa0825674",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-03T07:47:35.635Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}
