@@ -31,6 +31,7 @@ export interface AgentRun {
   toolSchemaSha256?: string | null
   // The final message's explicit claim (bench/lib/claim.mts): true for done, false for not done, null for no status line.
   finalStatus?: boolean | null
+  limitMessage?: string | null // the CLI's own usage-limit line, when it stopped on one; never model text
 }
 
 export interface AgentRunner {

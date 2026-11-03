@@ -206,7 +206,7 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
       wall_s: res.wallS, session_id: res.sessionId, run_cap_usd: ctx.runCap, evidence,
     }
     // A cut-off row keeps the CLI's last lines: they may state when the limit resets (lib/admission.mts resetAt).
-    if (exit_reason === 'quota') return { ...agentHead, stderr_tail: res.stderrTail, at: new Date().toISOString() }
+    if (exit_reason === 'quota') return { ...agentHead, stderr_tail: res.stderrTail, limit_message: res.limitMessage ?? null, at: new Date().toISOString() }
 
     const change = agentChange(wt, workspaceBase, task.hidden_tests)
     const diffDir = path.join(path.dirname(ctx.out), 'diffs')

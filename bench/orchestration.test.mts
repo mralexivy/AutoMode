@@ -154,6 +154,11 @@ test('resetAt reads only a time the CLI stated, and never invents one', () => {
   const now = new Date('2026-11-03T10:00:00')
   assert.equal(resetAt('limit resets at 2026-11-03T15:00:00Z', now), '2026-11-03T15:00:00.000Z')
   assert.equal(resetAt('Claude usage limit reached', now), null)
+  // The real CLI line, from a cut-off row of 2026-11-03.
+  const real = resetAt("You've hit your session limit · resets 3:30am (Asia/Jerusalem)", now)!
+  assert.equal(new Date(real).getHours(), 3)
+  assert.equal(new Date(real).getMinutes(), 30)
+  assert.ok(Date.parse(real) > now.getTime(), 'the next 3:30am, not a past one')
   assert.equal(new Date(resetAt('Your limit resets 3pm', now)!).getHours(), 15)
 })
 
@@ -197,7 +202,8 @@ test('60-slot simulation: a usage limit, a kill -9 and resumes end with 60 uniqu
   assert.equal(rows(dir).filter((r) => r.exit_reason !== 'quota').length, 12)
   // Resume, and kill it mid-run.
   const child = spawn(process.execPath, simArgs(), { env: e('slow', { FAKE_CLAUDE_MS: '400' }), stdio: 'ignore' })
-  await until(() => rows(dir).filter((r) => r.exit_reason !== 'quota').length >= 20)
+  // Kill only while a run is in flight: its RUNNING event is the last one for its slot.
+  await until(() => rows(dir).filter((r) => r.exit_reason !== 'quota').length >= 20 && [...foldEvents(readEvents(eventsFile(path.join(dir, 'r.jsonl'))), () => true).values()].some((x) => x.state === 'RUNNING'))
   child.kill('SIGKILL')
   await new Promise((r) => child.on('exit', r))
   const callsAtKill = calls(dir)
