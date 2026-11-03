@@ -32,7 +32,7 @@ const CHECKS = [
 ]
 export const CHECK_COMMAND = new RegExp(`^(?:${CHECKS.join('|')})`)
 // A tool asked about itself runs no check.
-const NOT_A_RUN = /\s(--version|--help|-h|--collect-only)(\s|$)/
+const NOT_A_RUN = /\s(--version|--help|-h|--collect-only)(\s|$|[);&|])/
 
 export const isCheck = (command: string) => tools(command).some((t) => CHECK_COMMAND.test(t) && !NOT_A_RUN.test(t))
 
@@ -40,9 +40,13 @@ export const isCheck = (command: string) => tools(command).some((t) => CHECK_COM
 // greps run beside it left out. A model that edits and tests in one Bash call writes a new line every time, and the
 // whole line as the key made each run of the same failing check look new to the ladder (rescue-gate, sqlglot: 9
 // failures, 9 keys, no escalation).
+// A line that runs the full suite beside other checks is keyed on the full suite: that is the run the task is judged
+// by, and lint or a subset beside it must not give it a new key each time (rescue-gate fixture, 3 keys for 1 suite).
+export const FULL_SUITE = /\bunittest discover\b|^(?:go test \.\/\.\.\.|pytest(?: -\S+)*|npm (?:run )?test|cargo test|jest|vitest(?: run)?)$/
 export const checkKey = (command: string): string => {
-  const checks = tools(command).filter((t) => CHECK_COMMAND.test(t) && !NOT_A_RUN.test(t)).map((t) => t.replace(/\s+\d*>>?\s*(&\d|\S+)/g, '').replace(/\s+/g, ' ').trim())
-  return (checks.length ? checks.join(' && ') : command.trim()).slice(0, 200)
+  const checks = tools(command).filter((t) => CHECK_COMMAND.test(t) && !NOT_A_RUN.test(t)).map((t) => t.replace(/\s+\d*>>?\s*(&\d|\S+)/g, '').replace(/[()]/g, '').replace(/\s+/g, ' ').trim())
+  const full = checks.find((c) => FULL_SUITE.test(c))
+  return (full ?? (checks.length ? checks.join(' && ') : command.trim())).slice(0, 200)
 }
 
 // writesFiles: the command changes files in the workspace. Models edit through Bash as often as through Edit: sed -i,

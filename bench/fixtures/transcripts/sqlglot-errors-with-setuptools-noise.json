@@ -1,0 +1,186 @@
+{
+ "source_session": "17c99acd-e97d-441b-acfb-a7cef951c5f5",
+ "why": "7876b25: FAILED (errors=1) with the same line was still environment",
+ "events": [
+  {
+   "tool": "Bash",
+   "cmd": "grep -n \"set_operation\\|SET_OPERATIONS\\|_parse_set_operations\\|def _parse_query_modifiers\\|MODIFIERS_ATTACHED_TO_SET_OP\\|SET_OP_MODIFIERS\" sqlglot/parser.py sqlglot/parser_core.py sqlglot/generator.py sqlglot/optimizer/scope.py sqlglot/dialects/*.py | head -80; ls sqlglot",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "sed -n 6085,6200p sqlglot/parser.py; sed -n 1905,2000p sqlglot/generator.py; grep -rn \"MODIFIERS_ATTACHED_TO_SET_OP\\|SET_OP_MODIFIERS\" sqlglot --include=*.py | grep -v \"^sqlglot/parser.py:19\"",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "grep -rn \"MODIFIERS_ATTACHED_TO_SET_OP\\|SET_OP_MODIFIERS\\|SET_OP_PARENTHESIZED\\|SET_OP_LIMITS\\|SET_OPERATIONS\\b\" sqlglot | grep -v \"^sqlglot/parser.py:\\(19\\|10\\)\"; sed -n 4085,4135p sqlglot/parser.py; sed -n 4260,4295p sqlglot/parser.py; sed -n 2455,2470p sqlglot/parser.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "sed -n 4496,4560p sqlglot/parser.py; sed -n 780,860p sqlglot/optimizer/scope.py; grep -n \"class SetOperation\" -A60 sqlglot/expressions/*.py | head -120",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "cd <wt> && grep -rn \"MODIFIERS_ATTACHED_TO_SET_OP\\|SET_OP_MODIFIERS\\|SET_OP_PARENTHESIZED\\|SET_OP_LIMITS\\|SET_OPERATIONS\\b\" sqlglot | grep -v \"^sqlglot/parser.py:\\(19\\|10\\)\"; sed -n 4085,4135p sqlglot/parser.py; sed -n 4260,4295p sqlglot/parser.py; sed -n 2455,2470p sqlglot/parser.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "cd <wt> && sed -n 4496,4560p sqlglot/parser.py; sed -n 780,860p sqlglot/optimizer/scope.py; grep -n \"class SetOperation\" -A60 sqlglot/expressions/*.py | head -120",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "grep -rn \"set_operations\\|exp.Union\\b\\|exp.Intersect\\b\\|exp.Except\\b\\|\\.parse_set_operation\\|def parse_set_operation\" sqlglot --include='*.py' | grep -v \"^sqlglot/expressions/\\|optimizer/\"; grep -rn \"(Hive)\\|(Spark2)\\|(Oracle)\\|(SQLite)\" sqlglot/dialects sqlglot/parsers sqlglot/generators | head -30; sed -n 320,340p sqlglot/generators/tsql.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "grep -n \"def wrap\\b\" -A25 sqlglot/generator.py; grep -n \"def subquery_sql\" -A25 sqlglot/generator.py; grep -n \"def query_modifiers\" -A40 sqlglot/generator.py | head -70; grep -n \"isinstance(expression, exp.Subquery)\\|exp.Subquery\" sqlglot/optimizer/scope.py | head -20; python -c \"\nimport sqlglot\nfrom sqlglot import parse_one, ErrorLevel\nprint(repr(parse_one('SELECT 1 UNION', error_level=ErrorLevel.IGNORE).sql()))\nprint(parse_one('SELECT 1 UNION SELECT 2 FORMAT JSON', read='clickhouse').sql('clickhouse'))\nprint(repr(parse_one('SELECT 1 UNION SELECT 2 SETTINGS a=1', read='clickhouse')))\n\"",
+   "out": "",
+   "err": true
+  },
+  {
+   "tool": "Bash",
+   "cmd": "cd <wt> && grep -rn \"set_operations\\|exp.Union\\b\\|exp.Intersect\\b\\|exp.Except\\b\\|\\.parse_set_operation\\|def parse_set_operation\" sqlglot --include='*.py' | grep -v \"^sqlglot/expressions/\\|optimizer/\"; grep -rn \"(Hive)\\|(Spark2)\\|(Oracle)\\|(SQLite)\" sqlglot/dialects sqlglot/parsers sqlglot/generators | head -30; sed -n 320,340p sqlglot/generators/tsql.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "cd <wt> && grep -n \"def wrap\\b\" -A25 sqlglot/generator.py; grep -n \"def subquery_sql\" -A25 sqlglot/generator.py; grep -n \"def query_modifiers\" -A40 sqlglot/generator.py | head -70; grep -n \"isinstance(expression, exp.Subquery)\\|exp.Subquery\" sqlglot/optimizer/scope.py | head -20; python -c \"\nimport sqlglot\nfrom sqlglot import parse_one, ErrorLevel\nprint(repr(parse_one('SELECT 1 UNION', error_level=ErrorLevel.IGNORE).sql()))\nprint(parse_one('SELECT 1 UNION SELECT 2 FORMAT JSON', read='clickhouse').sql('clickhouse'))\nprint(repr(parse_one('SELECT 1 UNION SELECT 2 SETTINGS a=1', read='clickhouse')))\n\"",
+   "out": "",
+   "err": true
+  },
+  {
+   "tool": "Bash",
+   "cmd": "ls -a | head -30; which python3 uv; ls .venv 2>/dev/null",
+   "out": "",
+   "err": true
+  },
+  {
+   "tool": "Bash",
+   "cmd": "ls .bench-deps | head; cat > /tmp/t1.py <<'EOF'\nimport sys\nsys.path.insert(0, \".\")\nimport sqlglot\nfrom sqlglot import parse_one, ErrorLevel\nprint(repr(parse_one('SELECT 1 UNION', error_level=ErrorLevel.IGNORE).sql()))\nprint(parse_one('SELECT 1 UNION SELECT 2 FORMAT JSON', read='clickhouse').sql('clickhouse'))\nprint(repr(parse_one('SELECT 1 UNION SELECT 2 SETTINGS a=1', read='clickhouse')))\nEOF\npython3 -I /tmp/t1.py 2>&1 | head -40; python3 --version",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "cat > /tmp/t1.py <<'EOF'\nimport sys\nsys.path.insert(0, \".\")\nimport sqlglot\nfrom sqlglot import parse_one, ErrorLevel\nfor q in ['SELECT 1 UNION ALL SELECT 2 FORMAT JSON','SELECT 1 UNION ALL SELECT 2 LIMIT 1 SETTINGS a=1', 'SELECT * FROM x LIMIT 1 UNION ALL SELECT * FROM y']:\n    e = parse_one(q, read='clickhouse')\n    print(repr(e)); print(e.sql('clickhouse'))\nfrom sqlglot.optimizer.scope import build_scope\ns = build_scope(parse_one('SELECT 1 UNION (SELECT 2 INTERSECT SELECT 3)'))\nprint([x.expression.sql() for x in s.set_operation_scopes])\nEOF\npython3 -I /tmp/t1.py 2>&1 | grep -v __version__; sed -n 700,780p sqlglot/optimizer/scope.py; grep -n \"class Subquery\" -A30 sqlglot/expressions/query.py | grep -n \"unnest\\|def \" ",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "grep -n \"def after_limit_modifiers\" -A12 sqlglot/generator.py sqlglot/generators/clickhouse.py; grep -n \"QUERY_MODIFIERS = \" -A45 sqlglot/expressions/query.py | grep -n \"format\\|settings\"; sed -n 1735,1760p sqlglot/expressions/query.py; sed -n 195,210p sqlglot/optimizer/scope.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "sed -n 790,806p sqlglot/dialects/dialect.py; grep -n \"SET_OP_DISTINCT_BY_DEFAULT\" -B3 sqlglot/dialects/dialect.py | head -30; grep -n \"^class\\|^    [A-Z_]* = \" sqlglot/dialects/oracle.py sqlglot/dialects/sqlite.py sqlglot/dialects/hive.py sqlglot/dialects/spark2.py sqlglot/dialects/spark.py | head -50; grep -rn \"(Hive)\\|(Oracle)\\|(SQLite)\" sqlglot/ | head",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "python3 - <<'EOF'\nimport re\ndef sub(path, old, new, count=1):\n    s = open(path).read()\n    assert old in s, (path, old)\n    s = s.replace(old, new, count)\n    open(path, \"w\").write(s)\n\nsub(\"sqlglot/dialects/dialect.py\", '''    \"\"\"\n    Whether a set operation uses DISTINCT by default. This is `None` when either `DISTINCT` or `ALL`\n    must be explicitly specified.\n    \"\"\"\n''', '''    \"\"\"\n    Whether a set operation uses DISTINCT by default. This is `None` when either `DISTINCT` or `ALL`\n    must be explicitly specified.\n    \"\"\"\n\n    SET_OP_INTERSECT_BINDS_TIGHTER = True\n    \"\"\"\n    Whether INTERSECT has higher precedence than UNION and EXCEPT. If `False`, all set operations\n    have the same precedence and are evaluated from left to right.\n    \"\"\"\n''')\nsub(\"sqlglot/dialects/oracle.py\", \"    DISABLES_ALIAS_REF_EXPANSION = True\\n\", \"    DISABLES_ALIAS_REF_EXPANSION = True\\n    SET_OP_INTERSECT_BINDS_TIGHTER = False\\n\")\nsub(\"sqlglot/dialects/sqlite.py\", \"    CONCAT_WS_COALESCE = True\\n\", \"    CONCAT_WS_COALESCE = True\\n    SET_OP_INTERSECT_BINDS_TIGHTER = False\\n\")\nsub(\"sqlglot/dialects/hive.py\", \"    ALTER_TABLE_SUPPORTS_CASCADE = True\\n\", \"    ALTER_TABLE_SUPPORTS_CASCADE = True\\n    SET_OP_INTERSECT_BINDS_TIGHTER = False\\n\")\nsub(\"sqlglot/dialects/spark2.py\", \"    ALTER_TABLE_SUPPORTS_CASCADE = False\\n\", \"    ALTER_TABLE_SUPPORTS_CASCADE = False\\n    SET_OP_INTERSECT_BINDS_TIGHTER = True\\n\")\nEOF\ngit diff --stat; sed -n 1918,1926p sqlglot/parser.py; sed -n 262,272p sqlglot/parsers/clickhouse.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "python3 - <<'EOF'\ndef sub(path, old, new):\n    s = open(path).read()\n    assert old in s, (path, old)\n    open(path, \"w\").write(s.replace(old, new, 1))\n\nsub(\"sqlglot/parser.py\", '''    def _parse_set_operations(self, this: exp.Expr | None) -> exp.Expr | None:\n        while this:\n            setop = self.parse_set_operation(this)\n            if not setop:\n                break\n            this = setop\n\n        if isinstance(this, exp.SetOperation) and self.MODIFIERS_ATTACHED_TO_SET_OP:\n            expression = this.expression\n\n            if expression:\n                for arg in self.SET_OP_MODIFIERS:\n                    expr = expression.args.get(arg)\n                    if expr and not (arg == \"limit\" and expr.meta.get(\"top\")):\n                        expression.set(arg, None)\n                        this.set(arg, expr)\n''', '''    def _parse_set_operations(self, this: exp.Expr | None) -> exp.Expr | None:\n        chain: list[exp.SetOperation] = []\n\n        while this:\n            setop = self.parse_set_operation(this)\n            if not setop:\n                break\n            this = setop\n            chain.append(t.cast(exp.SetOperation, setop))\n\n        if not chain:\n            return this\n\n        last_operand = chain[-1].expression\n\n        if self.dialect.SET_OP_INTERSECT_BINDS_TIGHTER:\n            this = self._regroup_set_operations(chain)\n\n        if isinstance(this, exp.SetOperation):\n            if last_operand:\n                for arg in self.SET_OP_OUTER_MODIFIERS:\n                    if expr := last_operand.args.get(arg):\n                        last_operand.set(arg, None)\n                        this.set(arg, expr)\n\n                if self.MODIFIERS_ATTACHED_TO_SET_OP:\n                    for arg in self.SET_OP_MODIFIERS:\n                        expr = last_operand.args.get(arg)\n                        if expr and not (arg == \"limit\" and expr.meta.get(\"top\")):\n                            last_operand.set(arg, None)\n                            this.set(arg, expr)\n''')\n\nsub(\"sqlglot/parser.py\", '''    def _parse_expression(self) -> exp.Expr | None:\n        return self._parse_alias(self._parse_assignment())\n''', '''    def _regroup_set_operations(self, chain: list[exp.SetOperation]) -> exp.Expr:\n        \"\"\"\n        Rebuilds a left-associative chain of set operations so that INTERSECT binds tighter than\n        UNION and EXCEPT. Consecutive INTERSECTs are folded into a single left-deep term first, and\n        the terms are then combined from left to right.\n        \"\"\"\n        term: exp.Expr | None = chain[0].this\n        loose: exp.SetOperation | None = None\n\n        for node in chain:\n            operand = node.expression\n\n            if isinstance(node, exp.Intersect):\n                node.set(\"this\", term)\n                term = node\n            else:\n                node.set(\"this\", term if loose is None else loose.set(\"expression\", term) or loose)\n                loose = node\n                term = operand\n\n        if loose is None:\n            return t.cast(exp.Expr, term)\n\n        loose.set(\"expression\", term)\n        return loose\n\n    def _parse_expression(self) -> exp.Expr | None:\n        return self._parse_alias(self._parse_assignment())\n''')\n\nsub(\"sqlglot/parser.py\", '''    SET_OP_MODIFIERS: t.ClassVar = {\"order\", \"limit\", \"offset\", \"sort\", \"distribute\", \"cluster\"}\n''', '''    SET_OP_MODIFIERS: t.ClassVar = {\"order\", \"limit\", \"offset\", \"sort\", \"distribute\", \"cluster\"}\n\n    # Modifiers of the last operand that always belong to the whole set operation\n    SET_OP_OUTER_MODIFIERS: t.ClassVar[tuple[str, ...]] = ()\n''')\nsub(\"sqlglot/parsers/clickhouse.py\", \"    MODIFIERS_ATTACHED_TO_SET_OP = False\\n\", '    MODIFIERS_ATTACHED_TO_SET_OP = False\\n    SET_OP_OUTER_MODIFIERS = (\"format\", \"settings\")\\n')\nEOF\n",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "python3 - <<'EOF'\ndef sub(path, old, new):\n    s = open(path).read()\n    assert old in s, (path, old)\n    open(path, \"w\").write(s.replace(old, new, 1))\nsub(\"sqlglot/parser.py\", '''                node.set(\"this\", term if loose is None else loose.set(\"expression\", term) or loose)\n                loose = node\n''', '''                if loose is not None:\n                    loose.set(\"expression\", term)\n                    term = loose\n\n                node.set(\"this\", term)\n                loose = node\n''')\nEOF\nsed -n 6173,6215p sqlglot/parser.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "python3 - <<'EOF'\ndef sub(path, old, new):\n    s = open(path).read()\n    assert old in s, (path, old)\n    open(path, \"w\").write(s.replace(old, new, 1))\nsub(\"sqlglot/parser.py\", '''            if self._curr.token_type in (TokenType.LIMIT, TokenType.FETCH):\n                this = self._parse_query_modifiers(this)\n\n        return this\n\n    def _regroup''', '''            if self.MODIFIERS_ATTACHED_TO_SET_OP and self._curr.token_type in (\n                TokenType.LIMIT,\n                TokenType.FETCH,\n            ):\n                this = self._parse_query_modifiers(this)\n\n        return this\n\n    def _regroup''')\nEOF\ncat > /tmp/t2.py <<'EOF'\nimport sys\nsys.path.insert(0, \".\")\nfrom sqlglot import parse_one\nfor q, r in [(\"SELECT 1 UNION SELECT 2 INTERSECT SELECT 3\", \"postgres\"), (\"SELECT 1 EXCEPT SELECT 2 INTERSECT SELECT 3 INTERSECT SELECT 4 UNION SELECT 5\",\"postgres\"),(\"SELECT 1 UNION SELECT 2 INTERSECT SELECT 3 ORDER BY 1 LIMIT 10 OFFSET 2\",\"postgres\")]:\n    print(repr(parse_one(q, read=r)))\nEOF\npython3 -I /tmp/t2.py 2>&1 | grep -v __version__ | head -60",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "python3 - <<'EOF'\ndef sub(path, old, new):\n    s = open(path).read()\n    assert old in s, (path, old)\n    open(path, \"w\").write(s.replace(old, new, 1))\nsub(\"sqlglot/generator.py\", '''        sqls: list[str] = []\n        stack: list[str | exp.Expr] = [expression]\n\n        while stack:\n            node = stack.pop()\n\n            if isinstance(node, exp.SetOperation):\n                stack.append(node.expression)\n                stack.append(\n                    self.maybe_comment(\n                        self.set_operation(node), comments=node.comments, separated=True\n                    )\n                )\n                stack.append(node.this)\n            else:\n                if (\n                    not self.SET_OP_LIMITS\n                    and isinstance(node, exp.Select)\n                    and node.args.get(\"limit\")\n                ):\n                    node = node.subquery(copy=False)\n                    if not self.SET_OP_PARENTHESIZED_OPERANDS:\n                        node = exp.select(\"*\").from_(node, copy=False)\n                sqls.append(self.sql(node))\n\n        this = self.sep().join(sqls)\n        this = self.query_modifiers(expression, this)\n        return self.prepend_ctes(expression, this)\n''', '''        # Each parenthesized group of operands gets its own frame in `frames`, so that arbitrarily\n        # long and deeply nested chains are generated iteratively\n        frames: list[list[str]] = [[]]\n        stack: list[t.Any] = [expression]\n\n        while stack:\n            node = stack.pop()\n\n            if isinstance(node, str):\n                frames[-1].append(node)\n            elif node is _SET_OP_GROUP_START:\n                frames.append([])\n            elif isinstance(node, tuple):\n                group = node[0]\n                this = self.sep().join(frames.pop())\n                this = self.prepend_ctes(group, self.query_modifiers(group, this))\n                frames[-1].append(self._wrap_set_operation_group(this))\n            elif isinstance(node, exp.SetOperation):\n                operator = self.maybe_comment(\n                    self.set_operation(node), comments=node.comments, separated=True\n                )\n                stack.extend(reversed(self._set_operation_operands(node, node.expression, False)))\n                stack.append(operator)\n                stack.extend(reversed(self._set_operation_operands(node, node.this, True)))\n            else:\n                if (\n                    not self.SET_OP_LIMITS\n                    and isinstance(node, exp.Select)\n                    and node.args.get(\"limit\")\n                ):\n                    node = node.subquery(copy=False)\n                    if not self.SET_OP_PARENTHESIZED_OPERANDS:\n                        node = exp.select(\"*\").from_(node, copy=False)\n                frames[-1].append(self.sql(node))\n\n        this = self.sep().join(frames[0])\n        this = self.query_modifiers(expression, this)\n        return self.prepend_ctes(expression, this)\n\n    def _wrap_set_operation_group(self, sql: str) -> str:\n        sql = self.indent(sql, level=1, pad=0)\n        return f\"({self.sep('')}{sql}{self.seg(')', sep='')}\"\n\n    def _set_operation_operands(\n        self, parent: exp.SetOperation, operand: t.Any, is_left: bool\n    ) -> list[t.Any]:\n        \"\"\"\n        Returns the items to process for an operand of a set operation, in generation order. An\n        operand that is itself a set operation is grouped whenever dropping the grouping would\n        change how the result is read. INTERSECT binds tighter than UNION and EXCEPT in some\n        dialects but not in others, so a set operation on the left only needs to be grouped when\n        an INTERSECT would otherwise bind to just part of it.\n        \"\"\"\n        if isinstance(operand, exp.Subquery) and not self.SET_OP_PARENTHESIZED_OPERANDS:\n            inner = operand.unnest()\n\n            if isinstance(inner, exp.SetOperation):\n                if is_left and self._can_drop_set_operation_paren",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "python3 - <<'EOF'\ndef sub(path, old, new):\n    s = open(path).read()\n    assert old in s, (path, old)\n    open(path, \"w\").write(s.replace(old, new, 1))\nsub(\"sqlglot/generator.py\", '_HIGH_BYTE_RE = re.compile(r\"[\\\\x80-\\\\xff]\")\\n', '''_HIGH_BYTE_RE = re.compile(r\"[\\\\x80-\\\\xff]\")\n\n_SET_OP_GROUP_START = object()\n_SET_OP_STRUCTURE_ARGS = frozenset(\n    (\"this\", \"expression\", \"distinct\", \"by_name\", \"side\", \"kind\", \"on\")\n)\n''')\nEOF\ncat > /tmp/t3.py <<'EOF'\nimport sys\nsys.path.insert(0, \".\")\nfrom sqlglot import parse_one, ErrorLevel\ncases = [\n (\"SELECT 1 UNION SELECT 2 INTERSECT SELECT 3\",\"postgres\",None),\n (\"SELECT 1 UNION SELECT 2 INTERSECT SELECT 3\",\"spark\",None),\n (\"SELECT 1 EXCEPT SELECT 2 INTERSECT SELECT 3 INTERSECT SELECT 4 UNION SELECT 5\",\"postgres\",None),\n (\"SELECT 1 UNION SELECT 2 INTERSECT SELECT 3\",\"oracle\",None),\n (\"SELECT 1 UNION SELECT 2 INTERSECT SELECT 3\",\"sqlite\",None),\n (\"SELECT 1 UNION SELECT 2 INTERSECT SELECT 3\",\"hive\",None),\n (\"SELECT 1 UNION SELECT 2 INTERSECT SELECT 3\",\"oracle\",\"oracle\"),\n (\"SELECT 1 INTERSECT SELECT 2 INTERSECT SELECT 3 UNION SELECT 4\",\"oracle\",None),\n (\"SELECT 1 INTERSECT SELECT 2 INTERSECT SELECT 3 UNION SELECT 4\",\"postgres\",None),\n (\"SELECT 1 UNION SELECT 2 INTERSECT SELECT 3 ORDER BY 1 LIMIT 10 OFFSET 2\",\"postgres\",None),\n (\"SELECT (SELECT 1 UNION SELECT 2 INTERSECT SELECT 3 ORDER BY 1)\",\"postgres\",None),\n (\"SELECT (SELECT 1 UNION SELECT 2 INTERSECT SELECT 3 ORDER BY 1)\",\"postgres\",\"postgres\"),\n (\"SELECT 1 UNION (SELECT 2) ORDER BY 1\",\"postgres\",\"postgres\"),\n (\"SELECT 1 UNION (SELECT 2 INTERSECT SELECT 3)\",\"postgres\",\"sqlite\"),\n (\"(SELECT 1 UNION SELECT 2) INTERSECT SELECT 3\",\"postgres\",\"sqlite\"),\n (\"(SELECT 1 UNION SELECT 2) /* keep */ INTERSECT SELECT 3\",\"postgres\",\"sqlite\"),\n (\"((SELECT 1 AS x, 2 AS x UNION SELECT 3, 4)) INTERSECT SELECT 1, 2\",\"postgres\",\"sqlite\"),\n (\"(SELECT 1 UNION SELECT 2 ORDER BY 1) INTERSECT SELECT 3\",\"postgres\",\"sqlite\"),\n (\"(WITH c AS (SELECT 1) SELECT * FROM c UNION SELECT 2) INTERSECT SELECT 3\",\"postgres\",\"sqlite\"),\n (\"SELECT 1 UNION (SELECT 2 INTERSECT SELECT 3)\",\"postgres\",\"postgres\"),\n (\"(SELECT 1 UNION SELECT 2) INTERSECT SELECT 3\",\"oracle\",\"oracle\"),\n (\"(SELECT 1 UNION SELECT 2) INTERSECT SELECT 3\",\"postgres\",\"postgres\"),\n (\"SELECT 1 UNION ALL SELECT 2 INTERSECT SELECT 2 FORMAT JSON\",\"clickhouse\",\"clickhouse\"),\n (\"SELECT 1 UNION ALL SELECT 1 INTERSECT SELECT 1 LIMIT 1 SETTINGS limit = 1\",\"clickhouse\",\"clickhouse\"),\n (\"SELECT * FROM x LIMIT 1 UNION ALL SELECT * FROM y\",\"clickhouse\",\"clickhouse\"),\n]\nfor q, r, w in cases:\n    try:\n        print(f\"{r:10}->{str(w):10}\", parse_one(q, read=r).sql(w))\n    except Exception as e:\n        print(\"ERR\", q, r, w, repr(e)[:200])\nprint(repr(parse_one('SELECT 1 UNION', error_level=ErrorLevel.IGNORE).sql()))\nprint(parse_one(\"((SELECT 1 UNION SELECT 2) INTERSECT SELECT 3 UNION SELECT 4) INTERSECT SELECT 5\", read=\"oracle\").sql(pretty=True))\nsql = 'SELECT 1' + ' UNION SELECT 1 INTERSECT SELECT 1' * 200\nexp_ = 'SELECT 1'\nfor _ in range(200): exp_ = f'({exp_} UNION SELECT 1) INTERSECT SELECT 1'\nprint(parse_one(sql, read='hive').sql('postgres') == exp_)\nfrom sqlglot.optimizer.scope import build_scope\ns = build_scope(parse_one('SELECT 1 UNION (SELECT 2 INTERSECT SELECT 3)'))\nprint([x.expression.sql() for x in s.set_operation_scopes])\nprint(len(list(build_scope(parse_one('SELECT 1' + ' UNION SELECT 1 INTERSECT SELECT 1' * 1000, read='hive')).traverse())))\nEOF\npython3 -I /tmp/t3.py 2>&1 | grep -v __version__",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "cat > /tmp/t4.py <<'EOF'\nimport sys\nsys.path.insert(0, \".\")\nfrom sqlglot import parse_one\nfrom sqlglot.optimizer.scope import build_scope, traverse_scope\ne = parse_one('SELECT a FROM x UNION SELECT a FROM y INTERSECT SELECT a FROM z EXCEPT SELECT a FROM w')\nfor s in traverse_scope(e):\n    print(s.scope_type, s.expression.sql(), [c.expression.sql() for c in s.set_operation_scopes])\nfrom sqlglot.optimizer import optimize\nprint(optimize(e, schema={\"x\":{\"a\":\"int\"},\"y\":{\"a\":\"int\"},\"z\":{\"a\":\"int\"},\"w\":{\"a\":\"int\"}}).sql())\nEOF\npython3 -I /tmp/t4.py 2>&1 | grep -v __version__",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "python3 - <<'EOF'\ns = open(\"sqlglot/optimizer/scope.py\").read()\na = s.index(\"def _traverse_set_operation\")\nb = s.index(\"def _traverse_ctes\")\nnew = '''def _traverse_set_operation(scope: Scope) -> Iterator[Scope]:\n    assert isinstance(scope.expression, exp.SetOperation)\n\n    # Walks the operand tree iteratively, so that long chains don't hit the recursion limit.\n    # Each set operation is emitted after both of its operands, which are left on `operand_scopes`\n    operand_scopes: list[Scope] = []\n    stack: list[tuple[Scope, bool]] = [(scope, False)]\n\n    while stack:\n        current, operands_done = stack.pop()\n\n        if operands_done:\n            right = operand_scopes.pop()\n            left = operand_scopes.pop()\n            current.set_operation_scopes = [left, right]\n            operand_scopes.append(current)\n            yield current\n            continue\n\n        expression = current.expression\n\n        if isinstance(expression, exp.SetOperation):\n            if current is not scope:\n                yield from _traverse_ctes(current)\n\n            stack.append((current, True))\n\n            # Access the args directly instead of the left/right properties, because set operation\n            # operands aren't guaranteed to be Query nodes, e.g. in VALUES (1) UNION ALL SELECT 1\n            for operand in (expression.expression, expression.this):\n                stack.append(\n                    (\n                        current.branch(\n                            operand,\n                            outer_columns=current.outer_columns,\n                            scope_type=ScopeType.SET_OPERATION,\n                        ),\n                        False,\n                    )\n                )\n            continue\n\n        branch_scope: Scope | None = None\n        for branch_scope in _traverse_scope(current):\n            yield branch_scope\n\n        if branch_scope is None:\n            raise OptimizeError(f\"Cannot build a scope for set operation operand: {expression}\")\n\n        operand_scopes.append(branch_scope)\n\n\n'''\nopen(\"sqlglot/optimizer/scope.py\", \"w\").write(s[:a] + new + s[b:])\nEOF\npython3 -I /tmp/t4.py 2>&1 | grep -v __version__; python3 -I /tmp/t3.py 2>&1 | tail -3",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "PYTHONPATH=.:.bench-deps python3 -m unittest discover -s tests -t . 2>&1 | tail -60",
+   "out": "s...............................................\n======================================================================\nERROR: test_lazy_load (tests.dialects.test_dialect.TestDialect)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<wt>/tests/dialects/test_dialect.py\", line 149, in test_lazy_load\n    result = subprocess.run([\"python\", \"-c\", code], capture_output=True, text=True)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py\", line 505, in run\n    with Popen(*popenargs, **kwargs) as process:\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py\", line 951, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py\", line 1821, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'python'\n\n----------------------------------------------------------------------\nRan 1542 tests in 77.622s\n\nFAILED (errors=1, skipped=2)\nsqlglotc: failed to determine the sqlglot version to pin: No module named 'setuptools_scm'",
+   "err": true
+  },
+  {
+   "tool": "Bash",
+   "cmd": "grep -n \"def test_set_operation\\|def test_union\\|def test_intersect\" tests/*.py tests/dialects/test_dialect.py | head; sed -n 1,25p tests/dialects/test_dialect.py; grep -n \"def test_lazy_load\" -B3 tests/dialects/test_dialect.py; grep -n \"^from\\|^import\" tests/test_optimizer.py | head -20",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "sed -n 4040,4046p tests/dialects/test_dialect.py; grep -n \"def test_scope\\b\\|def test_traverse_scope\" tests/test_optimizer.py; grep -n \"    def validate_all\" -A5 tests/dialects/test_dialect.py | head -12",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "python3 - <<'EOF'\ndef sub(path, old, new):\n    s = open(path).read()\n    assert old in s, (path, old)\n    open(path, \"w\").write(s.replace(old, new, 1))\n\nsub(\"tests/dialects/test_dialect.py\", \"    def test_set_operation_specifiers(self):\\n\", '''    def test_set_operation_precedence(self):\n        def transpile(sql, read, write=None, **kwargs):\n            return parse_one(sql, read=read).sql(write, **kwargs)\n\n        union_intersect = \"SELECT 1 UNION SELECT 2 INTERSECT SELECT 3\"\n        for read in (\"postgres\", \"spark\"):\n            with self.subTest(read):\n                self.assertEqual(\n                    transpile(union_intersect, read),\n                    \"SELECT 1 UNION (SELECT 2 INTERSECT SELECT 3)\",\n                )\n\n        for read in (\"oracle\", \"sqlite\", \"hive\"):\n            with self.subTest(read):\n                self.assertEqual(\n                    transpile(union_intersect, read),\n                    \"(SELECT 1 UNION SELECT 2) INTERSECT SELECT 3\",\n                )\n\n        self.assertEqual(transpile(union_intersect, \"oracle\", \"oracle\"), union_intersect)\n        self.assertEqual(\n            transpile(union_intersect, \"oracle\", \"postgres\"),\n            \"(SELECT 1 UNION SELECT 2) INTERSECT SELECT 3\",\n        )\n        self.assertEqual(\n            transpile(\n                \"SELECT 1 EXCEPT SELECT 2 INTERSECT SELECT 3 INTERSECT SELECT 4 UNION SELECT 5\",\n                \"postgres\",\n            ),\n            \"SELECT 1 EXCEPT (SELECT 2 INTERSECT SELECT 3 INTERSECT SELECT 4) UNION SELECT 5\",\n        )\n\n        leading_intersects = \"SELECT 1 INTERSECT SELECT 2 INTERSECT SELECT 3 UNION SELECT 4\"\n        for read in (\"oracle\", \"postgres\"):\n            with self.subTest(read):\n                self.assertEqual(transpile(leading_intersects, read), leading_intersects)\n\n        for sql in (\n            \"SELECT 1 UNION (SELECT 2 INTERSECT SELECT 3)\",\n            \"(SELECT 1 UNION SELECT 2) INTERSECT SELECT 3\",\n            \"SELECT 1 UNION (SELECT 2) ORDER BY 1\",\n        ):\n            for dialect in (\"postgres\", \"oracle\"):\n                with self.subTest(f\"{dialect}: {sql}\"):\n                    self.assertEqual(transpile(sql, dialect, dialect), sql)\n\n    def test_set_operation_precedence_modifiers(self):\n        sql = \"SELECT 1 UNION SELECT 2 INTERSECT SELECT 3 ORDER BY 1 LIMIT 10 OFFSET 2\"\n        self.assertEqual(\n            parse_one(sql, read=\"postgres\").sql(),\n            \"SELECT 1 UNION (SELECT 2 INTERSECT SELECT 3) ORDER BY 1 NULLS LAST LIMIT 10 OFFSET 2\",\n        )\n\n        subquery = parse_one(\n            \"SELECT (SELECT 1 UNION SELECT 2 INTERSECT SELECT 3 ORDER BY 1)\", read=\"postgres\"\n        )\n        self.assertEqual(\n            subquery.sql(),\n            \"SELECT (SELECT 1 UNION (SELECT 2 INTERSECT SELECT 3) ORDER BY 1 NULLS LAST)\",\n        )\n        self.assertEqual(\n            subquery.sql(\"postgres\"),\n            \"SELECT (SELECT 1 UNION (SELECT 2 INTERSECT SELECT 3) ORDER BY 1)\",\n        )\n\n        union = parse_one(\"SELECT 1 UNION (SELECT 2) ORDER BY 1\")\n        self.assertIsInstance(union, exp.Union)\n        self.assertIsNotNone(union.args.get(\"order\"))\n        self.assertIsNone(union.expression.args.get(\"order\"))\n\n        self.validate_identity(\n            \"SELECT 1 UNION ALL SELECT 2 INTERSECT SELECT 2 FORMAT JSON\",\n            \"SELECT 1 UNION ALL (SELECT 2 INTERSECT SELECT 2) FORMAT JSON\",\n            write_sql=None,\n        ) if False else None\n        for sql, expected in (\n            (\n                \"SELECT 1 UNION ALL SELECT 2 INTERSECT SELECT 2 FORMAT JSON\",\n                \"SELECT 1 UNION ALL (SELECT 2 INTERSECT SELECT 2) FORMAT JSON\",\n            ),\n            (\n                \"SELECT 1 UNION ALL SELECT 1 INTERSECT SELECT 1 LIMIT 1 SETTINGS limit = 1\",\n                \"SELECT 1 UNION ALL (SELECT 1 INTERSECT SELECT 1 LIMIT 1) SETTINGS limit = 1\",\n            ),\n            (\n                \"SELECT * FROM x LIMIT 1 UNION ALL SELECT * FROM y\",\n                \"SELECT * FROM x LIMIT 1 ",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "python3 - <<'EOF'\ndef sub(path, old, new):\n    s = open(path).read()\n    assert old in s, (path, old)\n    open(path, \"w\").write(s.replace(old, new, 1))\nsub(\"tests/dialects/test_dialect.py\", '''        self.validate_identity(\n            \"SELECT 1 UNION ALL SELECT 2 INTERSECT SELECT 2 FORMAT JSON\",\n            \"SELECT 1 UNION ALL (SELECT 2 INTERSECT SELECT 2) FORMAT JSON\",\n            write_sql=None,\n        ) if False else None\n''', \"\")\nsub(\"tests/test_optimizer.py\", \"    def test_scope(self):\\n\", '''    def test_set_operation_precedence_scopes(self):\n        scope = build_scope(parse_one(\"SELECT 1 UNION (SELECT 2 INTERSECT SELECT 3)\"))\n        self.assertEqual(\n            [s.expression.sql() for s in scope.set_operation_scopes],\n            [\"SELECT 1\", \"SELECT 2 INTERSECT SELECT 3\"],\n        )\n\n        scope = build_scope(parse_one(\"SELECT 1 UNION SELECT 2 INTERSECT SELECT 3\"))\n        self.assertEqual(\n            [s.expression.sql() for s in scope.set_operation_scopes],\n            [\"SELECT 1\", \"SELECT 2 INTERSECT SELECT 3\"],\n        )\n        self.assertEqual(\n            [s.expression.sql() for s in scope.set_operation_scopes[1].set_operation_scopes],\n            [\"SELECT 2\", \"SELECT 3\"],\n        )\n\n        chain = parse_one(\"SELECT 1\" + \" UNION SELECT 1 INTERSECT SELECT 1\" * 1000, read=\"hive\")\n        self.assertEqual(len(list(build_scope(chain).traverse())), 4001)\n\n    def test_scope(self):\n''')\nEOF\nPYTHONPATH=.:.bench-deps python3 -m unittest tests.dialects.test_dialect tests.test_optimizer tests.test_parser tests.test_executor tests.test_lineage tests.test_transpile 2>&1 | grep -v \"__version__\" | tail -20",
+   "out": "Exit code 1\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py\", line 1821, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'python'\n\n======================================================================\nFAIL: test_set_operation_precedence_sqlite (tests.dialects.test_dialect.TestDialect) [(SELECT 1 UNION SELECT 2 ORDER BY 1) INTERSECT SELECT 3]\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<wt>/tests/dialects/test_dialect.py\", line 4160, in test_set_operation_precedence_sqlite\n    self.assertEqual(parse_one(sql, read=\"postgres\").sql(\"sqlite\"), expected)\nAssertionError: 'SELE[14 chars]ECT 1 UNION SELECT 2 ORDER BY 1 NULLS LAST) INTERSECT SELECT 3' != 'SELE[14 chars]ECT 1 UNION SELECT 2 ORDER BY 1) INTERSECT SELECT 3'\n- SELECT * FROM (SELECT 1 UNION SELECT 2 ORDER BY 1 NULLS LAST) INTERSECT SELECT 3\n?                                                  -----------\n+ SELECT * FROM (SELECT 1 UNION SELECT 2 ORDER BY 1) INTERSECT SELECT 3\n\n\n----------------------------------------------------------------------\nRan 459 tests in 67.933s\n\nFAILED (failures=1, errors=1)",
+   "err": true
+  },
+  {
+   "tool": "Bash",
+   "cmd": "sed -i 's|\"SELECT \\* FROM (SELECT 1 UNION SELECT 2 ORDER BY 1) INTERSECT SELECT 3\"|\"SELECT * FROM (SELECT 1 UNION SELECT 2 ORDER BY 1 NULLS LAST) INTERSECT SELECT 3\"|' tests/dialects/test_dialect.py && PYTHONPATH=.:.bench-deps python3 -m unittest discover -s tests -t . 2>&1 | grep -v \"__version__\" | tail -8; (ruff --version; python3 -m ruff check sqlglot tests/dialects/test_dialect.py tests/test_optimizer.py; python3 -m ruff format --check sqlglot tests) 2>&1 | tail -5; git status --short",
+   "out": "sed: 2: \"tests/dialects/test_dia ...\": undefined label 'ests/dialects/test_dialect.py'\nnote: This is an unsafe fix and may change runtime behavior\n\nFound 1648 errors.\n[*] 174 fixable with `--fix` (63 unsafe fixes available with `--fix --unsafe-fixes`).\n247 files already formatted\n M sqlglot/dialects/dialect.py\n M sqlglot/dialects/hive.py\n M sqlglot/dialects/oracle.py\n M sqlglot/dialects/spark2.py\n M sqlglot/dialects/sqlite.py\n M sqlglot/generator.py\n M sqlglot/optimizer/scope.py\n M sqlglot/parser.py\n M sqlglot/parsers/clickhouse.py\n M tests/dialects/test_dialect.py\n M tests/test_optimizer.py",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "python3 - <<'EOF'\np=\"tests/dialects/test_dialect.py\"\ns=open(p).read()\nold='\"SELECT * FROM (SELECT 1 UNION SELECT 2 ORDER BY 1) INTERSECT SELECT 3\"'\nassert old in s\nopen(p,\"w\").write(s.replace(old,'\"SELECT * FROM (SELECT 1 UNION SELECT 2 ORDER BY 1 NULLS LAST) INTERSECT SELECT 3\"'))\nEOF\nPYTHONPATH=.:.bench-deps python3 -m unittest discover -s tests -t . 2>&1 | grep -v \"__version__\" | tail -8; python3 -m ruff format --check sqlglot tests | tail -2",
+   "out": "    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'python'\n\n----------------------------------------------------------------------\nRan 1547 tests in 70.708s\n\nFAILED (errors=1, skipped=2)\nsqlglotc: failed to determine the sqlglot version to pin: No module named 'setuptools_scm'\n247 files already formatted",
+   "err": false
+  }
+ ]
+}

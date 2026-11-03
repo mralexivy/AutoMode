@@ -1,0 +1,21 @@
+{
+  "id": "rescue-ship-v1",
+  "fixed": "2026-11-03, before any rescue-confirm row exists. Thresholds never change after a row exists; a new policy gets a new id.",
+  "question": "Do the rescue defaults (arm auto) keep the pass rate of the old defaults (arm baseline) at no more than 10% higher cost per accepted task?",
+  "treatment": "auto",
+  "control": "baseline",
+  "oracle": "the task's accept command with its hidden tests: the full suite, never a subset the agent chose",
+  "cost": "list-price-equivalent USD of every paid attempt of an arm, accepted or not, interrupted included, divided by its accepted tasks",
+  "pairs": "a task counts when both arms have a valid row. A row is valid when the run finished (done, timeout or agent_error) and the grader gave a verdict.",
+  "min_valid_pairs": 25,
+  "max_pass_loss": 1,
+  "max_cost_ratio": 1.10,
+  "cost_ratio_ci_upper_for_ship": 1.30,
+  "cost_ratio_ci_lower_for_no_ship": 1.10,
+  "pass_loss_for_no_ship": 3,
+  "critical_cohorts": ["security"],
+  "max_critical_regressions": 0,
+  "max_invalid_share": 0.15,
+  "bootstrap": { "resamples": 4000, "seed": 20261103, "level": 0.90 },
+  "inconclusive_next": "independent repetitions of the discordant tasks only (one arm passes, the other fails) and of the tasks whose cost differs by more than 2x, for both arms"
+}

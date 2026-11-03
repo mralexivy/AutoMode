@@ -153,3 +153,26 @@ test('resetAt reads only a time the CLI stated, and never invents one', () => {
   assert.equal(resetAt('Claude usage limit reached', now), null)
   assert.equal(new Date(resetAt('Your limit resets 3pm', now)!).getHours(), 15)
 })
+
+test('supervisor: sleeps to a stated reset, stops on no reset or any other exit, never spins', async () => {
+  const { nextAction, MARGIN_MS, MAX_SLEEP_MS } = await import('./supervise.mts')
+  const now = Date.parse('2026-11-03T10:00:00Z')
+  assert.deepEqual(nextAction(0, null, now).act, 'done')
+  assert.equal(nextAction(2, null, now).act, 'stop', 'a gate refusal is never retried')
+  assert.equal(nextAction(4, null, now).act, 'stop', 'an integrity defect is never retried')
+  assert.match(nextAction(75, { reset_at: null }, now).why, /resume by hand/)
+  const s = nextAction(75, { reset_at: '2026-11-03T11:00:00Z' }, now)
+  assert.equal(s.act, 'sleep')
+  assert.equal(s.ms, 3_600_000 + MARGIN_MS)
+  assert.equal(nextAction(75, { reset_at: new Date(now + MAX_SLEEP_MS + 1).toISOString() }, now).act, 'stop')
+})
+
+test('supervisor end to end: a limit with a reset in the past resumes and finishes the plan', () => {
+  const dir = fresh('supervise')
+  // The first cycle hits the limit (reset already past), the second finishes: the supervisor loops once, then exits 0.
+  const fakeRunner = path.join(dir, 'runner.mjs')
+  fs.writeFileSync(fakeRunner, `import fs from 'node:fs'\nconst n = path => { try { return Number(fs.readFileSync(path, 'utf8')) } catch { return 0 } }\nconst c = '${path.join(dir, 'cycles')}'\nconst k = n(c) + 1\nfs.writeFileSync(c, String(k))\nfs.writeFileSync('${path.join(dir, 'r.status.json')}', JSON.stringify({ reset_at: new Date(Date.now() - 600000).toISOString() }))\nprocess.exit(k === 1 ? 75 : 0)\n`)
+  const r = spawnSync(process.execPath, ['bench/supervise.mts', '--', '--out', path.join(dir, 'r.jsonl')], { encoding: 'utf8', env: { ...process.env, SUPERVISE_RUNNER: fakeRunner, SUPERVISE_MARGIN_MS: '100' }, timeout: 60_000 })
+  assert.equal(r.status, 0, r.stdout + r.stderr)
+  assert.equal(fs.readFileSync(path.join(dir, 'cycles'), 'utf8'), '2')
+})

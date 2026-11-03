@@ -65,7 +65,8 @@ for (const a of arms) if (!ARMS[a]) throw new Error(`unknown arm ${a}; known: ${
 const repeats = Number(opt('repeats', 3))
 const parallelRuns = Number(opt('parallel', 1))
 const scratch = opt('scratch', path.join(os.tmpdir(), 'am-bench'))
-const out = opt('out', path.join(REPO, 'bench', 'results', 'results.jsonl'))
+// An experiment's rows go to its own file by default, so its resume, its ledger and its preflight all find them.
+const out = path.resolve(opt('out', path.join(REPO, 'bench', 'results', `${experiment?.id ?? 'results'}.jsonl`)))
 const timeoutMs = Number(opt('timeout-min', 40)) * 60_000
 const runCap = opt('run-cap-usd') ? Number(opt('run-cap-usd')) : null
 const budget = opt('budget-usd') ? Number(opt('budget-usd')) : null
