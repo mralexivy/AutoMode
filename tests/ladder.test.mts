@@ -204,7 +204,9 @@ test('escalation when patient (Haiku first): repeats alone never escalate; a reg
   assert.equal(escalation([f(1, 'a'), f(2, 'a')], capped).level, 'strong', 'impatient: the first repeat at the top effort moves the model')
   assert.notEqual(escalation([f(1, 'a'), f(2, 'a')], { ...capped, patient: true }).level, 'strong', 'patient: the write-test, fail, fix loop is not evidence')
   assert.notEqual(escalation([f(1, 'a'), f(2, 'b'), f(3, 'c')], { ...capped, patient: true }).level, 'strong')
-  assert.equal(escalation([f(5, 'a')], { ...capped, patient: true, passed: { 'vitest run': 3 } }).level, 'strong', 'a regression still escalates')
+  assert.equal(escalation([f(5, 'a', { tests: ['parses a'] })], { ...capped, patient: true, passed: { 'vitest run': 3 } }).level, 'strong', 'a regression still escalates')
+  // Found live: `npm run build; node probe.mjs` exited 1 on the probe's TypeError, and read as a test regression.
+  assert.notEqual(escalation([f(5, 'TypeError: x is undefined')], { ...capped, patient: true, passed: { 'vitest run': 3 } }).level, 'strong', 'an exit code with no failing test is not a regression')
   assert.equal(escalation([], { ...capped, patient: true, stops: 1 }).level, 'strong', 'a failed stop still escalates')
 })
 

@@ -225,6 +225,10 @@ export function regression(history: FailureRecord[], s: Pick<LadderSignals, 'pas
   const before = [...history.slice(0, -1)].reverse().find((f) => f.command === last.command)
   const compile = COMPILE_ERROR.test(last.evidence)
   const passedAt = s.passed[last.command]
+  // The output itself has to show the break: a failing test, a runner's failure line or a compile error. An exit code
+  // alone is often a probe run beside the check. In the 2026-11-03 run all three "test regressions" were that
+  // (xmltodict, cachetools, marked), and each moved Haiku to Sonnet.
+  if (!compile && !last.tests?.length && !FAILURE_MARKERS.test(last.evidence)) return null
   if (passedAt !== undefined && passedAt < last.at && (!before || passedAt > before.at)) {
     const edited = s.editedSincePass?.(passedAt) ?? []
     if (edited.length && edited.every((p) => TEST_PATH.test(p))) return null
