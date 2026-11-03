@@ -8,6 +8,7 @@
 // An obligation holds the request's own words, so it stays in memory. A record takes `publicObligations`: id, kind and
 // status, never the text.
 import { classify, fnv1a } from './failures.ts'
+import { tools } from './shell.ts'
 
 export type ObligationStatus = 'open' | 'attempted' | 'satisfied' | 'contradicted'
 export interface Obligation { id: string; kind: 'example' | 'semantic'; input?: string; expected?: string; status: ObligationStatus }
@@ -115,7 +116,10 @@ const VIEWER = /^\s*(?:cat|head|tail|less|more|grep|rg|sed|awk|ls|find|echo|prin
 // the code as it stands. Two examples can share an input and differ by dialect. A command that printed one of them says
 // nothing against the other.
 export function observeRun(obligations: Obligation[], run: CommandRun): Obligation[] {
-  if (VIEWER.test(run.command)) return obligations
+  // Only a line of viewers alone: `find . -name x; python3 check.py` runs a program, and its output counts (found live:
+  // sqlglot printed the stated result after a `find`, and the gate ignored it).
+  const parts = tools(run.command)
+  if ((parts.length ? parts : [run.command]).every((t) => VIEWER.test(t))) return obligations
   const command = flat(run.command)
   const output = flat(run.output)
   const shown = (o: Obligation) => !!o.expected && output.includes(flat(o.expected))

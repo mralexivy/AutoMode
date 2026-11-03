@@ -175,3 +175,10 @@ test('an example written as code keeps its own colons and commas', () => {
   // A prose apostrophe opens no quote.
   assert.deepEqual(extractObligations("For today's input: parse('a') must return ['a'].").map((o) => [o.input, o.expected]), [["parse('a')", "['a']"]])
 })
+
+test('a viewer first does not hide a program run after it', () => {
+  const [o] = extractObligations("parse('a') must return ['a'].")
+  const run = (command: string) => observeRun([o], { command, output: "['a']", exit: 0 })[0].status
+  assert.equal(run("find . -name '*.so' | head; python3 -c \"print(parse('a'))\""), 'satisfied')
+  assert.equal(run("cat notes.md | grep \"parse('a')\""), 'open', 'viewers alone show the request, not a result')
+})
