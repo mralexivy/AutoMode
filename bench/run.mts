@@ -163,7 +163,7 @@ async function worker() {
     // The row first, synced, then its terminal event: a crash between them leaves a row, which counts as finished.
     const fd = fs.openSync(out, 'a'); fs.writeSync(fd, JSON.stringify(row) + '\n'); fs.fsyncSync(fd); fs.closeSync(fd)
     const quota = row.exit_reason === 'quota'
-    const reset = quota ? resetAt(`${row.stderr_tail?.join('\n') ?? ''}`, new Date()) : null
+    const reset = quota ? resetAt(`${row.limit_message ?? ''}\n${row.stderr_tail?.join('\n') ?? ''}`, new Date()) : null
     const terminal = row.harness_error ? 'INVALID' : quota ? 'QUOTA_PAUSED' : row.exit_reason === 'setup_error' ? 'INVALID' : 'COMPLETED'
     appendEvent(events, { run_id: id, state: terminal, attempt, cost_usd: row.cost_usd_api_equiv ?? null, session_id: row.session_id ?? null, reset_at: reset, reason: row.harness_error ?? row.exit_reason })
     console.log(`${row.run_id}: ${row.harness_error ? 'HARNESS ERROR ' + row.harness_error : quota ? 'USAGE LIMIT, paused' : row.exit_reason === 'setup_error' ? 'SETUP FAILED' : (row.accepted ? 'accepted' : 'rejected')} ` +

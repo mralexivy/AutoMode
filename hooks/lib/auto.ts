@@ -59,6 +59,7 @@ export interface AutoInput {
   consequence?: Risk
   floors: AutoFloors
   reachHaiku?: boolean                                     // low-tier work without critical risk can run on Haiku
+  opusOnEvidence?: boolean                                 // T3 starts on Sonnet high; Opus comes from failure evidence
   current: { family: Family; effort: Effort } | null
   cost: (family: Family, effort: Effort) => number         // one attempt, cache-neutral (optimizer.attemptCost)
 }
@@ -73,19 +74,26 @@ export const hmModel = (t: Tier): Family => (t === 'T0' ? 'haiku' : t === 'T1' |
 export const effortlessFloor = (need: FamilyVerdict | null): number | null => (need ? RANK[need.model] : null)
 
 // effortMinFor: the quality floor for one model, with the hard-work floor for Opus on top of the caller's floors.
-function effortMinFor(family: Family, i: Pick<AutoInput, 'need' | 'hm' | 'floors'>): Effort | undefined {
+function effortMinFor(family: Family, i: Pick<AutoInput, 'need' | 'hm' | 'floors' | 'opusOnEvidence'>): Effort | undefined {
   const floor = i.floors.effortMin?.[family]
   const hard = i.hm?.tier === 'T4' || effortlessFloor(i.need) === RANK.fable
-  return family === 'opus' && hard ? maxEffort(floor ?? 'low', 'high') : floor
+  if (family === 'opus' && hard) return maxEffort(floor ?? 'low', 'high')
+  // T3 work that starts on Sonnet starts at high, the effort Sonnet passed it with.
+  if (family === 'sonnet' && i.opusOnEvidence && i.hm?.tier === 'T3') return maxEffort(floor ?? 'low', 'high')
+  return floor
 }
 
-type Evidence = Pick<AutoInput, 'need' | 'hm' | 'consequence' | 'reachHaiku'>
+type Evidence = Pick<AutoInput, 'need' | 'hm' | 'consequence' | 'reachHaiku' | 'opusOnEvidence'>
 
 // opusRequired: why this task rules out every weaker model, or null.
 function opusRequired(i: Evidence): string | null {
   const tier = i.hm?.tier
   if (tier === 'T4') return 'T4: a focused attempt already failed'
   if (i.need?.model === 'fable') return 'a fable verdict: opus carries it'
+  // opusOnEvidence: a judge's guess never starts Opus. In the 30-task proof run (bench/results/automode-proof-2026-11-03.md)
+  // these rules sent 15 tasks to Opus for $12.49; Sonnet high passed all 15 for $4.51. Opus now comes from the
+  // escalation ladder, on a failing check, a regression or a reviewer blocker.
+  if (i.opusOnEvidence) return null
   if (tier === 'T3' && i.consequence === 'critical') return 'T3 on critical work'
   if (tier === 'T3' && i.need?.model === 'opus') return 'T3 and the need names opus'
   if (i.reachHaiku && tier === 'T2' && i.need?.model === 'opus') return 'T2 and the need names opus'

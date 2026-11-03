@@ -22,6 +22,13 @@ const QUOTA = /usage limit|rate limit|limit reached|hit your .*limit/i
 // `claude -p` exits 0 when it stops background work at its wait ceiling, so a cut-off workflow looks finished.
 const BACKGROUND_STOPPED = /Background tasks still running .*stopping them/
 
+// limitLine keeps only the CLI's usage-limit sentence, such as "You've hit your session limit · resets 3:30am
+// (Asia/Jerusalem)", so the runner can read the reset time. It is the CLI's message, not the model's.
+export function limitLine(text: unknown): string | null {
+  const line = String(text ?? '').split('\n').find((l) => QUOTA.test(l))
+  return line ? line.trim().slice(0, 200) : null
+}
+
 export function classifyRun(res: AgentExit): ExitReason {
   if (res.timedOut || BACKGROUND_STOPPED.test(res.stderr_tail.join('\n'))) return 'timeout'
   const failed = !res.json || res.json.is_error || res.code !== 0

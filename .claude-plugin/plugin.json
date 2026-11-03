@@ -143,6 +143,17 @@
         "on"
       ]
     },
+    "opusStart": {
+      "type": "string",
+      "title": "AutoMode: Opus at the start",
+      "description": "default: follow config.json. evidence: T3 work starts on Sonnet high, and Opus comes only from failure evidence (a failing check, a regression, a reviewer blocker). judge: a T3 rating with critical risk or an Opus need starts on Opus.",
+      "default": "default",
+      "options": [
+        "default",
+        "judge",
+        "evidence"
+      ]
+    },
     "routeModels": {
       "type": "string",
       "title": "AutoMode: Route models",

@@ -74,6 +74,7 @@ export interface AutoRouteInput {
   appEffort?: Effort
   executor: { on: boolean; taskRoute: { family: Family; effort: Effort } | null }
   reachHaiku?: boolean
+  opusOnEvidence?: boolean
   learned: { on: boolean; opusBuckets: string[] }
   votes: { tier: Tier; n: number }
   switching: {
@@ -259,7 +260,7 @@ export function planAuto(i: AutoRouteInput): AutoPlan {
   // Call 2, only when needed: one effortless call about the model that could win (cheaper than the anchor and
   // eligible, or the anchor is out). Its effort is valid for that model only.
   const secondJudge = !i.shortcut && !fallback && !i.judgeCached && !i.executor.on
-    ? secondCall({ allowed: i.allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence: i.floor.risk, reachHaiku: i.reachHaiku, floors, current: null, cost: () => 0 }, i.anchor)
+    ? secondCall({ allowed: i.allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence: i.floor.risk, reachHaiku: i.reachHaiku, opusOnEvidence: i.opusOnEvidence, floors, current: null, cost: () => 0 }, i.anchor)
     : null
   return { floors, tier: mq.tier, escalated: mq.escalated, verdicts, notes, ...(fallback ? { fallback } : {}), ...(ownFallback ? { ownFallback } : {}), ...(learnedBucket ? { learnedBucket } : {}), secondJudge, reasons }
 }
@@ -290,8 +291,8 @@ export function routeAuto(i: AutoRouteInput): AutoRouteResult {
   const consequence = i.floor.risk
   const choice: AutoChoice = kept
     ? optimizeAuto({ allowed: i.allowed, verdicts: { [kept.model]: kept }, need: kept, hm: null, floors: { ...floors, fixedFamily: i.allowed.includes(i.kept!.family) ? i.kept!.family : undefined }, current, cost })
-    : optimizeAuto({ allowed: i.allowed, ...(executed ?? { verdicts, floors }), need, hm, consequence, reachHaiku: i.reachHaiku, current, cost })
-  const shadow = executed ? optimizeAuto({ allowed: i.allowed, verdicts, need, hm, consequence, reachHaiku: i.reachHaiku, floors, current, cost }).best : null
+    : optimizeAuto({ allowed: i.allowed, ...(executed ?? { verdicts, floors }), need, hm, consequence, reachHaiku: i.reachHaiku, opusOnEvidence: i.opusOnEvidence, current, cost })
+  const shadow = executed ? optimizeAuto({ allowed: i.allowed, verdicts, need, hm, consequence, reachHaiku: i.reachHaiku, opusOnEvidence: i.opusOnEvidence, floors, current, cost }).best : null
   reasons.push(`optimizer: ${choice.rule} -> ${choice.best.family}/${choice.best.effort}`)
   const own = cur ? choice.candidates.find((c) => c.family === cur.family) : undefined
   // A hold keeps the model, never its old effort: the held model runs at its own verdict for this prompt (or its

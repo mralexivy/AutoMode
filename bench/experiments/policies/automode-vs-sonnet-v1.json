@@ -1,0 +1,27 @@
+{
+  "id": "automode-vs-sonnet-v1",
+  "fixed": "2026-11-03, before any automode-proof row exists. Thresholds never change after a row exists; a new policy gets a new id.",
+  "question": "Does AutoMode (auto) pass at least as many tasks as plain Claude Code on Sonnet high? AutoMode may spend more where it buys Opus: the claim holds at no task lost net and a cost ratio of 1.5 or less, interval upper bound under 2.0.",
+  "treatment": "auto",
+  "control": "sonnet-high",
+  "oracle": "the task's accept command with its hidden tests: the full suite, never a subset the agent chose",
+  "cost": "list-price-equivalent USD of every paid attempt of an arm, accepted or not, interrupted included, divided by its accepted tasks",
+  "pairs": "a task counts when both arms have a valid row. A row is valid when the run finished (done, timeout or agent_error) and the grader gave a verdict.",
+  "min_valid_pairs": 25,
+  "max_pass_loss": 0,
+  "max_cost_ratio": 1.5,
+  "cost_ratio_ci_upper_for_ship": 2.0,
+  "cost_ratio_ci_lower_for_no_ship": 1.5,
+  "pass_loss_for_no_ship": 2,
+  "critical_cohorts": [
+    "security"
+  ],
+  "max_critical_regressions": 0,
+  "max_invalid_share": 0.15,
+  "bootstrap": {
+    "resamples": 4000,
+    "seed": 20261103,
+    "level": 0.9
+  },
+  "inconclusive_next": "independent repetitions of the discordant tasks only (one arm passes, the other fails) and of the tasks whose cost differs by more than 2x, for both arms"
+}

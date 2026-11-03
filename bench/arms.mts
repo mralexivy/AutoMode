@@ -131,7 +131,7 @@ export const EFFORT_ARMS: Record<string, Arm> = {
   'delegate-stress': { label: 'AutoMode Auto, delegated reads at a 1.5k-token gate', model: HM_MODEL, v4: true, plugin: automode({ delegation: 'on', delegationGateTokens: 1500 }) },
   // The rescue ladder's controlled reference: each rescue setting at the value that keeps the behavior before it.
   // Each rescue arm below changes one of them; `rescue-all` changes all, so each effect has its own cause.
-  baseline: { label: 'AutoMode Auto, rescue settings at their old behavior', model: HM_MODEL, v4: true, plugin: automode({ ...RESCUE_BASELINE }) },
+  baseline: { label: 'AutoMode Auto, rescue settings at their old behavior', model: HM_MODEL, v4: true, plugin: automode({ ...RESCUE_BASELINE, opusStart: 'judge' }) },
   'rescue-effort-first': { label: 'AutoMode Auto, effort first on strong evidence', model: HM_MODEL, v4: true, plugin: automode({ ...RESCUE_BASELINE, strongStep: 'effort-first' }) },
   'rescue-consult-priced': { label: 'AutoMode Auto, the Opus consult priced against a switch', model: HM_MODEL, v4: true, plugin: automode({ ...RESCUE_BASELINE, consult: 'priced' }) },
   'rescue-packet-rich': { label: 'AutoMode Auto, a consult packet with sources and the diff', model: HM_MODEL, v4: true, plugin: automode({ ...RESCUE_BASELINE, packet: 'rich' }) },

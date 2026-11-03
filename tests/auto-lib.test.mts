@@ -351,3 +351,20 @@ test('A8: the closing line comes only on the retry, after the message, and names
   assert.ok(!/haiku|sonnet|opus|low|medium|high/i.test(CLOSING_LINE))
   assert.ok(judgeInputFor('x', { family: 'sonnet', effort: 'high', messages: [], planMode: true, closing: true }).endsWith(CLOSING_LINE))
 })
+
+// opusOnEvidence (config opusStart: evidence): the 30-task proof run sent 15 tasks to Opus on a judge's guess, and Sonnet
+// high passed all 15 for a third of the cost (bench/results/automode-proof-2026-11-03.md).
+test('opusOnEvidence: T3 with critical risk or an Opus need starts on Sonnet high; T4 and Fable still need Opus', () => {
+  const pick = (over) => optimizeAuto(base({ verdicts: { sonnet: v('opus', 'high'), opus: v('opus', 'high') }, hm: hmOf('T3', 'complex'), opusOnEvidence: true, ...over })).best
+  assert.deepEqual([pick({}).family, pick({}).effort], ['sonnet', 'high'], 'T3 and the need names opus')
+  assert.equal(pick({ consequence: 'critical' }).family, 'sonnet', 'T3 on critical work')
+  assert.equal(pick({ verdicts: { sonnet: v('sonnet', 'medium') }, need: v('sonnet', 'medium') }).effort, 'high', 'T3 on Sonnet never below high')
+  assert.equal(pick({ hm: hmOf('T4', 'complex') }).family, 'opus', 'T4: a focused attempt already failed')
+  assert.equal(pick({ need: v('fable', 'high') }).family, 'opus', 'a fable verdict')
+  // The old rule, unchanged without the flag.
+  assert.equal(optimizeAuto(base({ verdicts: { sonnet: v('opus', 'high'), opus: v('opus', 'high') }, hm: hmOf('T3', 'complex') })).best.family, 'opus')
+  // An escalation floor still lifts the route: Opus comes from evidence.
+  assert.equal(pick({ floors: { because: ['repeat'], exclude: { haiku: 'x', sonnet: 'floor' } } }).family, 'opus')
+  // Haiku routing is untouched.
+  assert.equal(optimizeAuto(base({ verdicts: { sonnet: v('haiku', 'medium'), haiku: v('haiku', 'medium') }, hm: hmOf('T0', 'trivial'), opusOnEvidence: true, reachHaiku: true })).best.family, 'haiku')
+})
