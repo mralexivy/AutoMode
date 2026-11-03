@@ -297,6 +297,22 @@ describe('The ladder', () => {
     expect(JSON.stringify(out)).toContain('automode:architect')
   })
 
+  test('a revert that keeps the work is no evidence', async ($, on) => {
+    // A model proves its tests catch the bug: it checks out the old file, runs the tests, then copies its fix back.
+    let status = '## main\n M src/a.ts\n'
+    const git = (argv: string[]) => ({ exitCode: 0, stdout: argv.includes('status') ? status : '' })
+    const h = harness(on, { ...sonnetAt('high'), git, bash: () => ({ result: 'ok', isError: false, text: '' }) })
+    await h.submit($, 'fix the parser')
+    await h.step($)
+    await $.tool.call(edit())
+    const kept = await $.tool.call({ tool: 'Bash', command: 'cp src/a.ts /tmp/a.ts && git checkout -- src/a.ts && node t.js; cp /tmp/a.ts src/a.ts' })
+    expect(JSON.stringify(kept)).not.toContain('automode:architect')
+    expect(escalations(h.writes).length).toBe(0)
+    status = '## main\n'
+    const lost = await $.tool.call({ tool: 'Bash', command: 'git checkout -- src/a.ts' })
+    expect(JSON.stringify(lost)).toContain('automode:architect')
+  })
+
   test('a reviewer blocker is strong, and its note reaches the next main tool result', async ($, on) => {
     const h = harness(on, { ...sonnetAt('high'), bash: () => ({ result: 'ok', isError: false, text: '' }) })
     await h.submit($, 'fix the parser')

@@ -33,7 +33,7 @@ import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, requireReview, summaryOf, withReview } from './lib/envelope.ts'
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
-import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, reviewerBlocked, scopeGrew, withPipefail, writesFiles } from './lib/failures.ts'
+import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
 import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
 import { guardTool, READ_ONLY_AGENTS, subagentBlocked } from './lib/guard.ts'
@@ -2323,6 +2323,8 @@ async function noteCommand($: EngineInterface, command: string) {
   const op = classifyOperation(command)
   if (op) S.envelope = withReview(observe(S.envelope, { level: 'critical', reasons: [`operation: ${op.reason}${op.production ? ' in production' : ''}`], source: 'diff' }), 'none', false)
   if (S.envelope.editedPaths.length && isRevert(command)) {
+    const answers = await Promise.all(S.envelope.editedPaths.slice(0, 10).map((p) => git($, ['git', 'status', '--porcelain', '--branch', '--', p])))
+    if (!workLost(answers)) return
     const l = S.envelope.ladder ?? EMPTY_LADDER
     S.envelope = { ...S.envelope, ladder: { ...l, reverts: l.reverts + 1 } }
     await runLadder($, await now($))

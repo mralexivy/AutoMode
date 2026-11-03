@@ -271,6 +271,13 @@ export const EMPTY_LADDER: LadderState = { raised: {}, passed: {}, toolErrors: 0
 const REVERT = /^git\s+(revert\b|reset\s+--hard\b|checkout\s+(--\s|\.\s*$)|restore\b(?!.*--staged))/
 export const isRevert = (command: string) => tools(command).some((t) => REVERT.test(t))
 
+// workLost: the command's effect, read after it ran. Each answer is `git status --porcelain --branch -- <path>` for one
+// edited file. A file whose answer lists no change has lost the task's work. A revert command alone is no evidence: a
+// model checks that its new tests catch the bug with `git checkout -- f && <test>; cp fixed f`, and keeps its work
+// (found live: findmyway escalated to Sonnet on that, for $0.27 of its $0.30). An empty answer is a failed git call,
+// and it counts as lost, the behavior before this check.
+export const workLost = (answers: string[]) => answers.some((a) => !a.startsWith('##') || !a.split('\n').slice(1).some((l) => l.trim()))
+
 // reviewerBlocked: agents/reviewer.md uses `changes_required` only when a finding is a blocker.
 export const reviewerBlocked = (answer: string) => /\bchanges_required\b/.test(answer)
 

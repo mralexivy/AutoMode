@@ -2,7 +2,7 @@
 // weak and strong evidence, and regressions.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { EMPTY_LADDER, checkKey, checkPassed, escalation, failingTests, failureOf, isCheck, isRevert, regression, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
+import { EMPTY_LADDER, checkKey, checkPassed, escalation, failingTests, failureOf, isCheck, isRevert, regression, workLost, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
 import { simpleCommands, tools, unwrapped } from '../hooks/lib/shell.ts'
 
 const CHECKS = [
@@ -206,4 +206,10 @@ test('escalation when patient (Haiku first): repeats alone never escalate; a reg
   assert.notEqual(escalation([f(1, 'a'), f(2, 'b'), f(3, 'c')], { ...capped, patient: true }).level, 'strong')
   assert.equal(escalation([f(5, 'a')], { ...capped, patient: true, passed: { 'vitest run': 3 } }).level, 'strong', 'a regression still escalates')
   assert.equal(escalation([], { ...capped, patient: true, stops: 1 }).level, 'strong', 'a failed stop still escalates')
+})
+
+test('workLost reads the tree after a revert command', () => {
+  assert.equal(workLost(['## main\n M a.ts\n', '## main\n?? new.ts\n']), false)
+  assert.equal(workLost(['## main\n M a.ts\n', '## main\n']), true) // one edited file lost its change
+  assert.equal(workLost(['']), true) // a failed git call keeps the old behavior
 })

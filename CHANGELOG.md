@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Fixed
+
+- A revert command counts as escalation evidence only when an edited file has lost its change. A model that checks out the old file to prove its new tests fail, then copies its fix back, keeps its work. In the benchmark, findmyway moved from Haiku to Sonnet on exactly that, for $0.27 of its $0.30.
+
 ### Changed
 
 - Under `opusStart: evidence`, a run on Haiku keeps working through repeated check failures, the write-test, fail, fix loop. It moves to Sonnet on a regression, a revert, a reviewer blocker, or a stop with the last check failing, which is now always sent back once. An escalation no longer adds a review of its own. In the benchmark, Haiku's first repeat had counted as 'failed at the top effort' and moved immer to Sonnet, plus a review: $0.77, against $0.26 for Sonnet high.
