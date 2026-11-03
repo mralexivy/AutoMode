@@ -158,6 +158,16 @@ export function failingTests(norm: string): string[] {
   return [...out].sort().slice(0, 20)
 }
 
+// Pre-existing failures: a test that fails on the stashed original code is the repo's and not the work's. A run that fails only on those says nothing about the work. Found live: pyjwt's TLS test failed on
+// the untouched code (the model showed it with git stash), and the ladder climbed to Opus on it: $1.55 against $0.32.
+// A task that names the test, or asks to fix failing tests, is about that failure, so it still counts there.
+export const isStashRun = (command: string) => /^git\s+stash(?:\s+(?:push|save|-q|--quiet|-u|--include-untracked)\b|\s*$)/.test(tools(command)[0] ?? '')
+export function onlyPreexisting(tests: string[], baseline: string[], spec: string): boolean {
+  if (!tests.length || !tests.every((t) => baseline.includes(t))) return false
+  if (/\bfail(?:ing|s|ed)?\b[^.]{0,40}\btests?\b|\btests?\b[^.]{0,40}\bfail/i.test(spec)) return false
+  return !tests.some((t) => spec.includes(t.split(/::|\./).pop()!))
+}
+
 // markFlaky turns a recorded failure into `flaky` when the same command now passed with no edit between.
 export function markFlaky(history: FailureRecord[], command: string, passed: boolean, editedSince: boolean): FailureRecord[] {
   if (!passed || editedSince) return history

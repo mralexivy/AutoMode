@@ -6,6 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Fixed
 
+- A test that fails on the stashed original code is the repository's own failure. A later run that fails only on such tests no longer fails the completion gate or climbs the ladder, unless the task names the test or asks to fix failing tests. On pyjwt, a TLS test failed on the untouched code, and AutoMode climbed to Opus on it: $1.55, against $0.32 for Sonnet high.
 - A test regression needs evidence in the output: a failing test, a runner's failure line or a compile error. An exit code alone is often a probe script run beside the check. All three regressions the 2026-11-03 run escalated on were that, on xmltodict, cachetools and marked.
 - A test run whose only errors are a program the machine lacks, such as `python` where only `python3` exists, is no verdict on the work. It no longer fails the completion gate or climbs the ladder. On sqlglot, `test_lazy_load` failed this way before and after every edit, and AutoMode climbed four rungs to Opus on it: $2.71 of a $4.93 run that still failed.
 - Under `opusStart: evidence`, a review the model asks for on its own also runs on Sonnet, unless a critical failure was observed. The reviewer agent's own default is Opus, and on cachetools such a review cost $0.46 of a $1.21 run.

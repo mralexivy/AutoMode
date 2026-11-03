@@ -2,7 +2,7 @@
 // weak and strong evidence, and regressions.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { EMPTY_LADDER, onlyMissingTools, classify, failKey, checkKey, checkPassed, masked, escalation, failingTests, failureOf, isCheck, isRevert, notRun, regression, workLost, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
+import { EMPTY_LADDER, isStashRun, onlyPreexisting, onlyMissingTools, classify, failKey, checkKey, checkPassed, masked, escalation, failingTests, failureOf, isCheck, isRevert, notRun, regression, workLost, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
 import { simpleCommands, tools, unwrapped } from '../hooks/lib/shell.ts'
 
 const CHECKS = [
@@ -244,4 +244,17 @@ test('a test that errors on a program the machine lacks is the environment', () 
   assert.equal(classify(lazy.replace('FAILED (errors=1, skipped=2)', 'FAIL: test_x (t.T)\nFAILED (failures=1, errors=1)')), 'defect')
   // A missing data file, with a path, is the work's own error.
   assert.equal(onlyMissingTools(lazy.replace("'python'", "'tests/fixtures/a.sql'")), false)
+})
+
+test('a failure the original code already had is not the work failing', () => {
+  // Found live: pyjwt's TLS test failed on the untouched code, and the ladder climbed to Opus on it.
+  const tls = 'tests/test_jwks_client.py::TestPyJWKClient::test_get_jwt_set_sslcontext_no_ca'
+  assert.equal(onlyPreexisting([tls], [tls], 'Validate the key family in prepare_key.'), true)
+  assert.equal(onlyPreexisting([tls, 'tests/t.py::test_new'], [tls], 'Validate the key family.'), false, 'a new failure counts')
+  assert.equal(onlyPreexisting([tls], [tls], 'Fix test_get_jwt_set_sslcontext_no_ca.'), false, 'the task names the test')
+  assert.equal(onlyPreexisting([tls], [tls], 'The tests fail on CI; make them pass.'), false, 'the task is the failing tests')
+  assert.equal(onlyPreexisting([], [tls], 'x'), false, 'no failing test named: no claim')
+  assert.equal(isStashRun('git stash -q && PYTHONPATH=. pytest -q tests; git stash pop -q'), true)
+  assert.equal(isStashRun('git stash pop && pytest'), false)
+  assert.equal(isStashRun('pytest -q'), false)
 })

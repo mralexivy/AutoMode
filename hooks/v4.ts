@@ -33,7 +33,7 @@ import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, requireReview, summaryOf, withReview } from './lib/envelope.ts'
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
-import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failKey, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, notRun, onlyMissingTools, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
+import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failKey, failingTests, failureOf, failureStep, isStashRun, normalize, onlyPreexisting, fnv1a, isCheck, isRevert, markFlaky, notRun, onlyMissingTools, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
 import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
 import { guardTool, READ_ONLY_AGENTS, subagentBlocked } from './lib/guard.ts'
@@ -190,6 +190,7 @@ const S = {
   consultLog: [] as ConsultLog[], // this task's ladder consults and what came of them (lib/rescue.ts)
   taskPrompts: [] as string[], // the person's messages in this task after the first, for the consult packet
   bashEdits: 0, // edits made through Bash in this task (writesFiles): an edit for the completion gate too
+  baseline: [] as string[], // tests that failed on the stashed original code (onlyPreexisting)
   forkRuns: new Map<string, { at: number; episode: string | null; first?: { cacheRead: number; prompt: number } }>(), // fork agents the ladder asked for
   resolvedCounts: {} as Record<string, number>, // policy auto: failures of that fingerprint when its command passed again
   switchesThisTask: 0,        // discretionary model switches in this task (anti-oscillation)
@@ -533,6 +534,7 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
     S.consultLog = []
     S.taskPrompts = []
     S.bashEdits = 0
+    S.baseline = []
     S.consultCounts = {}
     S.resolvedCounts = {}
     S.switchesThisTask = 0
@@ -2389,6 +2391,12 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
     // A run that failed only on the machine (a program it lacks) is no verdict on the work. It neither fails the
     // completion gate nor counts as the last check, and the edits stay unchecked.
     if (!passed && onlyMissingTools(text)) return out
+    // The original code's own failures, from a run on the stashed original. A run before the first edit does not set
+    // them: a bug fix reproduces its own failure first. A stash run checks the original, not the work, so it is no
+    // check of the work at all.
+    const names = failingTests(normalize(text))
+    if (isStashRun(command)) { S.baseline = [...new Set([...S.baseline, ...names])].slice(0, 50); return out }
+    if (!passed && onlyPreexisting(names, S.baseline, S.envelope.spec.text)) return out
     S.lastCheck = { command, passed }
     if (passed) {
       S.envelope = { ...S.envelope, failures: markFlaky(S.envelope.failures, key, true, S.editedSinceCheck), verified: true }
@@ -2729,7 +2737,7 @@ function freshSession() {
     obligations: [], obligationsTask: null, obligationEdited: false, completionBlocks: 0, completionState: 'none' as CompletionState,
     toldJudgeDown: false, taskSeq: 0, lastOutcome: null, sessionId: 'unknown', restored: false, expectWorker: 0,
     warm: {}, turnRequests: new Map(), stayUp: 0, redoFloor: null, heldRoute: null, planMode: false, planExited: false, editLog: [],
-    learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], taskPrompts: [], forkRuns: new Map(), bashEdits: 0, resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
+    learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], taskPrompts: [], forkRuns: new Map(), bashEdits: 0, baseline: [], resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
     judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, judgeRiskTask: undefined,
