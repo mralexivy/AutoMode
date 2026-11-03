@@ -1,0 +1,11 @@
+{
+ "id": "feature-markdown-unclosed-markup-in-code-spans",
+ "task_hash": "e397cadb677f25b5",
+ "machine": "14caf2f4dce9ad6e",
+ "at": "2026-11-03T07:28:22.442Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

@@ -108,3 +108,12 @@ test('regrade: a saved diff is graded again with no model call', () => {
   assert.equal(fs.existsSync(path.join(dir, 'calls')), false, 'no model call')
   fs.rmSync(dir, { recursive: true, force: true })
 })
+
+test('agent environment: every path the accept command sets, made absolute; src layouts too (jinja, marshmallow)', async () => {
+  const { graderPaths } = await import('./runners/claude-code.mts')
+  assert.deepEqual(graderPaths('PYTHONPATH=src:.bench-deps python3 -m pytest -q tests', '/w'), { PYTHONPATH: '/w/src:/w/.bench-deps' })
+  assert.deepEqual(graderPaths('npm ci && NODE_PATH=lib FOO=1 node t.js', '/w'), { NODE_PATH: '/w/lib' })
+  assert.deepEqual(graderPaths('node t.js', '/w'), {})
+  const env = workspaceEnv('/w', { PYTHONPATH: '/x' }, 'PYTHONPATH=src python3 t.py')
+  assert.equal(env.PYTHONPATH, '/w/src:/x')
+})

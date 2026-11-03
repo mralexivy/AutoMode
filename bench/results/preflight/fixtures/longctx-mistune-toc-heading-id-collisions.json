@@ -1,0 +1,11 @@
+{
+ "id": "longctx-mistune-toc-heading-id-collisions",
+ "task_hash": "b9d7fce257a96ecd",
+ "machine": "14caf2f4dce9ad6e",
+ "at": "2026-11-03T07:30:23.996Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

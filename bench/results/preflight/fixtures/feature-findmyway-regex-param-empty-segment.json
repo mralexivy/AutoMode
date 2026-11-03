@@ -1,0 +1,11 @@
+{
+ "id": "feature-findmyway-regex-param-empty-segment",
+ "task_hash": "71a57e1b14317b5e",
+ "machine": "14caf2f4dce9ad6e",
+ "at": "2026-11-03T07:26:38.345Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

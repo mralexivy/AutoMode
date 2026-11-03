@@ -195,7 +195,7 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
       workspaceBase = sealSetup(wt)
     }
     const setupDone = elapsed()
-    const res = await runner.run({ armId, workspace: wt, dir, prompt: prompt.text, timeoutMs: task.limits?.wall_seconds ? task.limits.wall_seconds * 1000 : ctx.timeoutMs, runCap: ctx.runCap })
+    const res = await runner.run({ armId, workspace: wt, dir, prompt: prompt.text, timeoutMs: task.limits?.wall_seconds ? task.limits.wall_seconds * 1000 : ctx.timeoutMs, runCap: ctx.runCap, accept: task.accept })
     const agentDone = elapsed()
     const exit_reason = res.exitReason
     const evidence = (res.evidence as any) ?? runEvidence(res.sessionId)

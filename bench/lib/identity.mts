@@ -11,9 +11,9 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
-// Bump when the harness changes what the agent sees: its environment, workspace layout or tools. Version 2 gives the
-// agent the grader's Python path (runners/claude-code.mts workspaceEnv).
-export const AGENT_ENV_VERSION = 2
+// Bump when the harness changes what the agent sees: its environment, workspace layout or tools. Version 2 gave the
+// agent .bench-deps on its Python path; version 3 gives it every path the accept command sets (src layouts too).
+export const AGENT_ENV_VERSION = 3
 // Bump when grading changes: how the hidden tests are written in, how acceptance is decided.
 export const GRADER_VERSION = 1
 

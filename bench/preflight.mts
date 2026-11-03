@@ -21,9 +21,9 @@ import path from 'node:path'
 import { ARMS } from './arms.mts'
 import { loadExperiment } from './lib/experiment.mts'
 import { readEvents } from './lib/events.mts'
-import { expectedUsd } from './lib/admission.mts'
+import { expectedUsd, savedHistory } from './lib/admission.mts'
 import { reportPath, type CheckResult, type PreflightReport } from './lib/gate.mts'
-import { taskHash } from './lib/identity.mts'
+import { AGENT_ENV_VERSION, taskHash } from './lib/identity.mts'
 import { lockHeld, readLock } from './lib/lock.mts'
 import { classify, hashOf, readRows, slotsFor } from './lib/plan.mts'
 import { replay, toolEvents } from './lib/replay.mts'
@@ -50,10 +50,10 @@ export function machine(): string {
   return createHash('sha256').update([process.platform, process.arch, run(['python3', '--version']), run(['python3', '-m', 'pip', 'list', '--format=freeze']), run(['node', '--version']), run(['git', '--version'])].join('\n')).digest('hex').slice(0, 16)
 }
 
-export interface FixtureVerdict { id: string; task_hash: string; machine: string; at: string; base: 'pass' | 'fail' | 'error'; reference: 'pass' | 'fail' | 'error'; agent_env: 'pass' | 'fail' | 'error'; valid: boolean; why: string }
+export interface FixtureVerdict { id: string; task_hash: string; machine: string; agent_env_version: number; at: string; base: 'pass' | 'fail' | 'error'; reference: 'pass' | 'fail' | 'error'; agent_env: 'pass' | 'fail' | 'error'; valid: boolean; why: string }
 
 export function fixtureVerdict(task: Task, dir: string, host: string): FixtureVerdict {
-  const head = { id: task.id, task_hash: taskHash(task), machine: host, at: new Date().toISOString() }
+  const head = { id: task.id, task_hash: taskHash(task), machine: host, agent_env_version: AGENT_ENV_VERSION, at: new Date().toISOString() }
   const bad = problems(task, { allowLocal: process.env.BENCH_ALLOW_LOCAL === '1' })
   if (bad.length) return { ...head, base: 'error', reference: 'error', agent_env: 'error', valid: false, why: bad.join('; ') }
   const w = path.join(dir, task.id)
@@ -64,7 +64,7 @@ export function fixtureVerdict(task: Task, dir: string, host: string): FixtureVe
     const base = runAccept(task, w).status === 0 ? 'pass' : 'fail'
     freshWorkspace(task, cache, task.reference, w)
     const reference = runAccept(task, w).status === 0 ? 'pass' : 'fail'
-    const agent = spawnSync('sh', ['-c', agentCommand(task.accept)], { cwd: w, encoding: 'utf8', timeout: 10 * 60_000, maxBuffer: 1e9, env: workspaceEnv(w, process.env) })
+    const agent = spawnSync('sh', ['-c', agentCommand(task.accept)], { cwd: w, encoding: 'utf8', timeout: 10 * 60_000, maxBuffer: 1e9, env: workspaceEnv(w, process.env, task.accept) })
     const agent_env = agent.status === 0 ? 'pass' : 'fail'
     const why = base === 'pass' ? 'the hidden tests already pass at the base' : reference === 'fail' ? 'the reference fails its own accept check on this machine' : agent_env === 'fail' ? 'the reference fails when the tests run as the agent runs them' : 'ok'
     return { ...head, base, reference, agent_env, valid: why === 'ok', why }
@@ -118,7 +118,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const slots = slotsFor(tasks, e.arms, e.repeats, e.prompt_template)
   const views = classify(slots, out, (e.reuse_from ?? []).map((f) => path.resolve(REPO, f)))
   const count = (s: string) => views.filter((v) => v.status === s).length
-  const history = [...readRows(out), ...(e.reuse_from ?? []).flatMap((f) => readRows(path.resolve(REPO, f)))]
+  const history = savedHistory(path.dirname(out), readRows)
   const estimate = views.filter((v) => v.status === 'new' || v.status === 'stale').reduce((a, v) => a + expectedUsd(history, v.task, v.arm, e.run_cap_usd ?? null), 0)
   check('budget', !e.budget_usd || estimate <= e.budget_usd, `${views.length} slots: ${count('done')} done, ${count('reuse')} reused, ${count('unknown')} unknown, ${count('stale')} stale, ${count('new')} new; new paid slots expected $${estimate.toFixed(2)} of $${e.budget_usd ?? '-'}`)
 
@@ -132,7 +132,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const verdicts = tasks.map((t) => {
       const file = path.join(cacheDir, `${t.id}.json`)
       const prior = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) as FixtureVerdict : null
-      if (prior && prior.task_hash === taskHash(t) && prior.machine === host) return prior
+      // A verdict holds for one task version, one machine and one agent environment; any change checks again.
+      if (prior && prior.task_hash === taskHash(t) && prior.machine === host && prior.agent_env_version === AGENT_ENV_VERSION) return prior
       const v = fixtureVerdict(t, path.join(os.tmpdir(), 'am-preflight'), host)
       fs.writeFileSync(file, JSON.stringify(v, null, 1))
       console.log(`     ${t.id}: ${v.valid ? 'valid' : `INVALID: ${v.why}`}`)

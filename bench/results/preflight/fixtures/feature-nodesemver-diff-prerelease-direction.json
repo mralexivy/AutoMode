@@ -1,0 +1,11 @@
+{
+ "id": "feature-nodesemver-diff-prerelease-direction",
+ "task_hash": "f7a273be7efaa0bf",
+ "machine": "14caf2f4dce9ad6e",
+ "at": "2026-11-03T07:28:39.762Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

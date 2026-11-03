@@ -140,6 +140,7 @@ test('reuse: a finished row with the same run id in an earlier file is copied, n
 test('admission counts money in flight, and expected cost comes from history', () => {
   const h = [{ task_id: 't', arm: 'a', cost_usd_api_equiv: 2 }, { task_id: 'u', arm: 'a', cost_usd_api_equiv: 4 }]
   assert.equal(expectedUsd(h, 't', 'a', 6), 2)
+  assert.equal(expectedUsd(h, 't', 'b', 6), 2, 'the task on another arm before the arm mean')
   assert.equal(expectedUsd(h, 'v', 'a', 6), 3, 'the arm mean when the task is new')
   assert.equal(expectedUsd([], 'v', 'a', 6), 6, 'the cap when nothing is known')
   assert.equal(admit({ budget: 10, spent: 4, inFlight: 4, next: 3 }).admit, false, 'the old check saw $4 of $10 and started')

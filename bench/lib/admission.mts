@@ -8,14 +8,20 @@
 
 export interface CostHistory { task_id: string; arm: string; cost_usd_api_equiv?: number | null }
 
-// expectedUsd: the mean of earlier rows for this task and arm, else for the arm, else the run cap, else $1.
+// expectedUsd: the mean of earlier rows for this task and arm, else this task on any arm, else the arm, else every
+// row, else the run cap. The history is every saved results file, so a new experiment is not priced at its cap.
 export function expectedUsd(history: CostHistory[], taskId: string, arm: string, runCap: number | null): number {
-  const costs = (rows: CostHistory[]) => rows.map((r) => r.cost_usd_api_equiv).filter((x): x is number => typeof x === 'number')
-  const same = costs(history.filter((r) => r.task_id === taskId && r.arm === arm))
-  const arms = costs(history.filter((r) => r.arm === arm))
-  const pick = same.length ? same : arms
-  if (pick.length) return Math.min(runCap ?? Infinity, pick.reduce((a, b) => a + b, 0) / pick.length)
+  const costs = (rows: CostHistory[]) => rows.map((r) => r.cost_usd_api_equiv).filter((x): x is number => typeof x === 'number' && x > 0)
+  const tiers = [history.filter((r) => r.task_id === taskId && r.arm === arm), history.filter((r) => r.task_id === taskId), history.filter((r) => r.arm === arm), history]
+  for (const t of tiers) { const c = costs(t); if (c.length) return Math.min(runCap ?? Infinity, c.reduce((a, b) => a + b, 0) / c.length) }
   return runCap ?? 1
+}
+
+// savedHistory reads every results file in a folder: the rows the estimate learns from.
+export function savedHistory(dir: string, read: (f: string) => CostHistory[]): CostHistory[] {
+  const fs = process.getBuiltinModule('node:fs') as typeof import('node:fs')
+  if (!fs.existsSync(dir)) return []
+  return fs.readdirSync(dir).filter((f) => f.endsWith('.jsonl') && !/\.(grades|events)/.test(f) && f !== 'ledger.jsonl').flatMap((f) => read(`${dir}/${f}`))
 }
 
 export interface Admission { admit: boolean; warn: boolean; reason: string }

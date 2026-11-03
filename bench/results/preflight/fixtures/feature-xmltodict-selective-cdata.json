@@ -1,0 +1,11 @@
+{
+ "id": "feature-xmltodict-selective-cdata",
+ "task_hash": "3e439147f3ca5e04",
+ "machine": "14caf2f4dce9ad6e",
+ "at": "2026-11-03T07:30:21.355Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

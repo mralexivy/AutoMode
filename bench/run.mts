@@ -38,7 +38,7 @@ import { ARMS } from './arms.mts'
 import { loadExperiment } from './lib/experiment.mts'
 import { add, entries, LEDGER, total } from './lib/ledger.mts'
 import { waitMs } from './lib/pacer.mts'
-import { admit, expectedUsd, resetAt } from './lib/admission.mts'
+import { admit, expectedUsd, resetAt, savedHistory } from './lib/admission.mts'
 import { appendEvent, eventsFile, foldEvents, readEvents } from './lib/events.mts'
 import { gateProblem, isFake, planHash, readReport, reportPath } from './lib/gate.mts'
 import { acquire } from './lib/lock.mts'
@@ -123,7 +123,7 @@ const ctx: RunContext = { scratch, out, timeoutMs, runCap, experiment: experimen
 // One batch per results file, so a resume keeps counting what the earlier runs spent.
 const batch = `run:${path.basename(out)}`
 let spent = total(LEDGER, batch)
-const history = [...rows, ...reuseFrom.flatMap((f) => readRows(path.isAbsolute(f) ? f : path.join(REPO, f)))]
+const history = savedHistory(path.dirname(out), readRows)
 const queue = [...todo]
 const inFlight = new Map<string, number>()
 let stopped: null | { code: number; why: string } = null

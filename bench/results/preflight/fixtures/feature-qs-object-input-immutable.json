@@ -1,0 +1,11 @@
+{
+ "id": "feature-qs-object-input-immutable",
+ "task_hash": "42e616e37b895ead",
+ "machine": "14caf2f4dce9ad6e",
+ "at": "2026-11-03T07:29:35.401Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}
