@@ -2,7 +2,7 @@
 // weak and strong evidence, and regressions.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { EMPTY_LADDER, failKey, checkKey, checkPassed, masked, escalation, failingTests, failureOf, isCheck, isRevert, notRun, regression, workLost, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
+import { EMPTY_LADDER, onlyMissingTools, classify, failKey, checkKey, checkPassed, masked, escalation, failingTests, failureOf, isCheck, isRevert, notRun, regression, workLost, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
 import { simpleCommands, tools, unwrapped } from '../hooks/lib/shell.ts'
 
 const CHECKS = [
@@ -231,4 +231,15 @@ test('a clean suite beside a failing command is not the suite failing', () => {
   assert.notEqual(failKey(cmd, '....\n100 passed in 0.24s\n---\n5 passed and 5 failed.\n***Test Failed*** 5 failures.'), checkKey(cmd))
   assert.equal(failKey(cmd, '2 failed, 98 passed in 0.3s\nFAILED tests/t.py::test_a'), checkKey(cmd))
   assert.equal(failKey('pytest -q', '100 passed in 0.2s'), 'pytest -q')
+})
+
+test('a test that errors on a program the machine lacks is the environment', () => {
+  // Found live: sqlglot's test_lazy_load runs `python`, the machine has only python3, and the gate climbed to Opus on it.
+  const lazy = "ERROR: test_lazy_load (tests.dialects.test_dialect.TestDialect)\nTraceback (most recent call last):\nFileNotFoundError: [Errno 2] No such file or directory: 'python'\n\nRan 1548 tests in 75s\n\nFAILED (errors=1, skipped=2)"
+  assert.equal(onlyMissingTools(lazy), true)
+  assert.equal(classify(lazy), 'environment')
+  // A real assertion failure beside it is still a defect.
+  assert.equal(classify(lazy.replace('FAILED (errors=1, skipped=2)', 'FAIL: test_x (t.T)\nFAILED (failures=1, errors=1)')), 'defect')
+  // A missing data file, with a path, is the work's own error.
+  assert.equal(onlyMissingTools(lazy.replace("'python'", "'tests/fixtures/a.sql'")), false)
 })

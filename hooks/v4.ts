@@ -33,7 +33,7 @@ import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, requireReview, summaryOf, withReview } from './lib/envelope.ts'
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
-import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failKey, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, notRun, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
+import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failKey, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, notRun, onlyMissingTools, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
 import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
 import { guardTool, READ_ONLY_AGENTS, subagentBlocked } from './lib/guard.ts'
@@ -2386,6 +2386,9 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
     // A reliable exit code decides; a masked one falls back to the runner's own summary lines.
     const passed = checkPassed(command, exitCode, out.isError === true, text)
     const at = await now($)
+    // A run that failed only on the machine (a program it lacks) is no verdict on the work. It neither fails the
+    // completion gate nor counts as the last check, and the edits stay unchecked.
+    if (!passed && onlyMissingTools(text)) return out
     S.lastCheck = { command, passed }
     if (passed) {
       S.envelope = { ...S.envelope, failures: markFlaky(S.envelope.failures, key, true, S.editedSinceCheck), verified: true }

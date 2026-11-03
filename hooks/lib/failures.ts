@@ -117,9 +117,19 @@ const TESTS_FAILED = /^FAIL: \S+ \(|^FAILED \(failures=[1-9]|^--- FAIL: |^\s*\d+
 const TESTS_ERRORED = /^ERROR: \S+ \(|^FAILED \(errors=[1-9]|^\s*\d+ errors?\b.* in [\d.]+s/m
 const IMPORT_TRACEBACK = /^\s*(?:E\s+)?(?:ModuleNotFoundError|ImportError)\b/m
 
+// onlyMissingTools: every test that errored raised for a program the machine lacks, a subprocess of a bare name such
+// as `python` where only `python3` exists. That says nothing about the work. Found live: sqlglot's test_lazy_load
+// failed every full run the same way, before and after the edits, and the completion gate climbed four rungs to Opus
+// on it ($2.71 of a $4.93 run). The grader deselects that test.
+const MISSING_TOOL = /^\s*(?:E\s+)?FileNotFoundError: \[Errno 2\] No such file or directory: '[\w.+-]+'$/gm
+export function onlyMissingTools(output: string): boolean {
+  const errors = Number(output.match(/^FAILED \(errors=(\d+)/m)?.[1] ?? output.match(/^[=\s]*(?:\d+ passed, )?(\d+) errors? in [\d.]+s/m)?.[1] ?? 0)
+  return errors > 0 && (output.match(MISSING_TOOL) ?? []).length >= errors
+}
+
 export function classify(output: string): FailureRecord['class'] {
   if (TESTS_FAILED.test(output)) return 'defect'
-  if (TESTS_ERRORED.test(output) && !IMPORT_TRACEBACK.test(output)) return 'defect'
+  if (TESTS_ERRORED.test(output) && !IMPORT_TRACEBACK.test(output) && !onlyMissingTools(output)) return 'defect'
   if (ENVIRONMENT.some((r) => r.test(output))) return 'environment'
   if (DEFECT.some((r) => r.test(output))) return 'defect'
   return 'unknown'

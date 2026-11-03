@@ -26,6 +26,21 @@ describe('Completion gate', () => {
     expect(completions(h.writes).map((c) => [c.state, c.blocked])).toEqual([['failed', true], ['failed', false], ['failed', false]])
   })
 
+  test('a suite that fails only on a program the machine lacks does not fail the work', async ($, on) => {
+    // Found live: sqlglot's test_lazy_load runs `python` where only python3 exists, and every stop climbed a rung.
+    const lazy = "ERROR: test_lazy_load (tests.T)\nFileNotFoundError: [Errno 2] No such file or directory: 'python'\n\nRan 9 tests in 1s\n\nFAILED (errors=1)"
+    const h = harness(on, { policy: 'auto', config: { completionGate: 'block' }, bash: () => ({ result: `Error: Exit code 1\n${lazy}`, isError: true, text: '' }) })
+    await h.submit($, 'fix the parser')
+    await h.step($)
+    await edit($)
+    await $.tool.call({ tool: 'Bash', command: 'python3 -m unittest discover -s tests' })
+    const stop = await $.classic.Stop({ stop_hook_active: false })
+    expect(stop.block).toContain('the work is unverified')
+    expect(stop.block).not.toContain('failed')
+    expect(completions(h.writes)[0].state).toBe('unverified')
+    expect(records(h.writes).filter((x) => x.kind === 'escalation' && x.action !== 'none')).toEqual([])
+  })
+
   test('a passing check alone does not pass a stated result', async ($, on) => {
     const h = harness(on, gate('block'))
     await h.submit($, PROMPT)
