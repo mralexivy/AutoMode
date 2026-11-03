@@ -151,7 +151,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   if (!skip.has('tests')) {
     const t = spawnSync('npm', ['run', 'check'], { cwd: REPO, encoding: 'utf8', maxBuffer: 1e8 })
     const sum = (t.stdout.match(/ℹ (pass|fail) \d+/g) ?? []).join(', ')
-    check('tests', t.status === 0, t.status === 0 ? `npm run check: ${sum}` : `npm run check failed: ${sum}`)
+    const failed = [...new Set((t.stdout.match(/^✖ .+$/gm) ?? []).map((l) => l.replace(/\s*\(\d+(\.\d+)?ms\)$/, '')))].slice(0, 5)
+    check('tests', t.status === 0, t.status === 0 ? `npm run check: ${sum}` : `npm run check failed: ${sum}; ${failed.join(' | ')}`)
   }
   if (!skip.has('plugin-tests')) {
     const t = spawnSync('claude', ['plugin', 'test', '.'], { cwd: REPO, encoding: 'utf8', maxBuffer: 1e8 })
