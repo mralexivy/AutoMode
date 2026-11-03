@@ -183,6 +183,7 @@ export interface LadderSignals {
   reviewerBlockers: number
   stops?: number                             // stops the gate sent back on a failing check
   effortCapped: boolean                      // the running model has no effort step left
+  patient?: boolean                          // Haiku first: repeats alone never escalate (see escalation)
   fired: string[]
 }
 export type EscalationLevel = 'none' | 'weak' | 'strong'
@@ -236,7 +237,10 @@ export function escalation(history: FailureRecord[], s: LadderSignals): Escalati
     if (repeats) {
       const again = `repeat:${fp}:${count}`
       if (s.raised[fp] !== undefined) { if (count > s.raised[fp] && open(again)) return pick('strong', `the same check failed after an effort raise (${fp})`, again, fp, last) }
-      else if (s.effortCapped) { if (open(again)) return pick('strong', `the same check failed at the top effort (${fp})`, again, fp, last) }
+      // Haiku has no effort step, so its first repeat was 'at the top effort' and moved the task to Sonnet. That is the
+      // write-test, fail, fix loop, not evidence: fixed Haiku passed those tasks. When patient, only a regression, a
+      // revert, a reviewer blocker or a failed stop escalates.
+      else if (s.effortCapped && !s.patient) { if (open(again)) return pick('strong', `the same check failed at the top effort (${fp})`, again, fp, last) }
       else if (open(`repeat:${fp}`)) return pick('weak', `the same check failed after an edit (${fp})`, `repeat:${fp}`, fp, last)
     }
     // The same check failing in a new way each time, after each edit, is not converging either: 3 such failures since
@@ -250,7 +254,7 @@ export function escalation(history: FailureRecord[], s: LadderSignals): Escalati
         const f = { ...last, fingerprint: cid }
         const at = (level: EscalationLevel, because: string, key: string) => ({ ...pick(level, because, key, cid, f), count: tries })
         if (s.raised[cid] !== undefined) { if (tries > s.raised[cid] && open(again)) return at('strong', `the same check kept failing after an effort raise (${last.command.slice(0, 60)})`, again) }
-        else if (s.effortCapped) { if (open(again)) return at('strong', `the same check kept failing at the top effort (${last.command.slice(0, 60)})`, again) }
+        else if (s.effortCapped && !s.patient) { if (open(again)) return at('strong', `the same check kept failing at the top effort (${last.command.slice(0, 60)})`, again) }
         else if (open(`repeat:${cid}`)) return at('weak', `the same check failed ${tries} times after edits (${last.command.slice(0, 60)})`, `repeat:${cid}`)
       }
     }

@@ -2017,7 +2017,7 @@ async function git($: EngineInterface, argv: string[]): Promise<string> {
 const MAX_LADDER_STOPS = 4
 
 // The rescue settings past their old values turn on the review rule: a consult or a strong-evidence raise ran.
-const rescueReview = () => S.cfg.strongStep === 'effort-first' || S.cfg.consult === 'priced'
+const rescueReview = () => S.cfg.opusStart !== 'evidence' && (S.cfg.strongStep === 'effort-first' || S.cfg.consult === 'priced')
 
 // noteConsultRun records what an architect consult really cost and how long it ran. Its duration feeds the consult
 // price, and the files its plan names feed the influence measure.
@@ -2053,7 +2053,7 @@ async function runLadder($: EngineInterface, at: number) {
   const l = env.ladder ?? EMPTY_LADDER
   const running = { family: S.current.family, effort: runningEffort()! }
   const editedSincePass = (since: number) => [...new Set(S.editLog.filter((x) => x.at > since).map((x) => x.path))]
-  const esc = escalation(env.failures, { ...l, editedSincePass, effortCapped: !nextEffort(running.family, running.effort) })
+  const esc = escalation(env.failures, { ...l, editedSincePass, effortCapped: !nextEffort(running.family, running.effort), patient: S.cfg.opusStart === 'evidence' && running.family === 'haiku' })
   if (esc.level === 'none') return
   const count = esc.count ?? (esc.fingerprint ? env.failures.filter((f) => f.fingerprint === esc.fingerprint).length : 0)
   // One episode per failure: what the ladder spent on it, so an unrelated failure gets its own rungs (lib/rescue.ts).
@@ -2072,7 +2072,9 @@ async function runLadder($: EngineInterface, at: number) {
   const spent = { ...l, fired: [...l.fired, esc.key], raised: esc.fingerprint ? { ...l.raised, [esc.fingerprint]: count } : l.raised, episodes }
   const cache = cacheNote(cacheState(), at)
   const why = first.why ? { effortFirst: first.why } : {}
-  if (!step) { S.envelope = { ...env, ladder: spent }; if (ep.consulted || ep.forked) settleConsults(at, { episode, recurred: true }); S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because, cache, episode, ...why }); return }
+  // No step taken (Haiku has no effort rung): mark the cause spent, but record no raise. A raise that never happened must
+  // not turn the next repeat into 'failed after an effort raise', which is strong evidence.
+  if (!step) { S.envelope = { ...env, ladder: { ...spent, raised: l.raised } }; if (ep.consulted || ep.forked) settleConsults(at, { episode, recurred: true }); S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because, cache, episode, ...why }); return }
   const packet = () => evidencePacket(env.spec.text.slice(0, 1500), env.acceptance.map((a) => a.text), env.failures, env.editedPaths, esc.because)
   // Under effort-first the episode, not the cause, remembers the consult: a new failure of the same kind gets its own.
   const consultedBefore = S.cfg.strongStep === 'effort-first' ? ep.consulted : S.consulted.includes(esc.cause)
@@ -2117,7 +2119,8 @@ async function runLadder($: EngineInterface, at: number) {
   const moving = moved && step.kind === 'model'
   const raised = { ...env, escalations: env.escalations + 1, ladder: { ...spent, ...(moving ? { episodes: patchEpisode(episodes, episode, { switched: true }) } : {}), floor: { family: step.family, effort: step.effort, band: step.band, because: esc.because, ...(esc.fingerprint ? { command: env.failures[env.failures.length - 1].command } : {}) } } }
   // A defect that outlived a repair (and a consult) gets the independent review once it passes.
-  const reviewed = esc.check ? withReview(raised, 'fail', false) : raised
+  // Under evidence routing an escalation needs no review of its own: the failing check it acts on must pass again.
+  const reviewed = esc.check && S.cfg.opusStart !== 'evidence' ? withReview(raised, 'fail', false) : raised
   S.envelope = strongRaise && rescueReview() ? requireReview(reviewed, 'effort rose on strong evidence') : reviewed
   // A consulted episode that escalates again: the consult did not fix it.
   if (ep.consulted || ep.forked) settleConsults(at, { episode, ...(moving ? { switched: true } : { recurred: true }) })
@@ -2273,9 +2276,12 @@ export async function v4Stop($: EngineInterface, e: any, next: any) {
   // The gate's own evidence, the obligations met by real output, is an independent check for a consult's pass.
   if (state === 'verified' && settleConsults(await now($), { verified: true })) await flush($)
   if (state === 'none') return out
-  const gate = S.mode === 'auto' && !out?.block ? S.cfg.completionGate : 'report'
+  // Under evidence routing a stop with the last check failing is always sent back: it is the evidence that moves Haiku
+  // up, so a cheap start never ends failed without a rescue. Other states keep the configured gate.
+  const evidence = S.cfg.opusStart === 'evidence'
+  const gate = S.mode === 'auto' && !out?.block ? (evidence && state === 'failed' ? 'block' : S.cfg.completionGate) : 'report'
   // Under a rescue setting a failed stop may come back up to MAX_LADDER_STOPS times, each one a rung; else once.
-  const ladderStops = rescueReview() && state === 'failed'
+  const ladderStops = (rescueReview() || evidence) && state === 'failed'
   const blocks = ladderStops ? Math.max(0, S.completionBlocks - (MAX_LADDER_STOPS - 1)) : S.completionBlocks
   let reason = blockReason(state, S.obligations, { gate, stopHookActive: e.stop_hook_active === true && !ladderStops, blocks, backgroundWork: Array.isArray(e.background_tasks) ? e.background_tasks.length : 0 })
   if (reason) S.completionBlocks += 1

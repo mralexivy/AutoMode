@@ -197,3 +197,13 @@ test('escalation: a stop the gate sent back on a failing check is strong evidenc
   assert.equal(escalation([], { ...s, fired: [e.key] }).level, 'none')
   assert.equal(escalation([], { ...s, fired: [e.key], stops: 2 }).level, 'strong')
 })
+
+test('escalation when patient (Haiku first): repeats alone never escalate; a regression still does', () => {
+  const f = (at: number, fp: string, o: Record<string, unknown> = {}) => ({ fingerprint: fp, class: 'defect' as const, command: 'vitest run', exitCode: 1, at, editedSince: true, evidence: fp, ...o })
+  const capped = { ...EMPTY_LADDER, effortCapped: true }
+  assert.equal(escalation([f(1, 'a'), f(2, 'a')], capped).level, 'strong', 'impatient: the first repeat at the top effort moves the model')
+  assert.notEqual(escalation([f(1, 'a'), f(2, 'a')], { ...capped, patient: true }).level, 'strong', 'patient: the write-test, fail, fix loop is not evidence')
+  assert.notEqual(escalation([f(1, 'a'), f(2, 'b'), f(3, 'c')], { ...capped, patient: true }).level, 'strong')
+  assert.equal(escalation([f(5, 'a')], { ...capped, patient: true, passed: { 'vitest run': 3 } }).level, 'strong', 'a regression still escalates')
+  assert.equal(escalation([], { ...capped, patient: true, stops: 1 }).level, 'strong', 'a failed stop still escalates')
+})

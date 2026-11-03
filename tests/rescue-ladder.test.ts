@@ -354,3 +354,35 @@ describe('A failed stop joins the failing check', () => {
     expect(new Set(esc.map((x) => x.episode)).size).toBe(1)
   })
 })
+
+describe('Haiku first, escalate on evidence', () => {
+  const haiku = { policy: 'auto', config: { opusStart: 'evidence', reachHaiku: true }, judge: judge({ tier: 'T1', complexity: 'standard' }), effortJudge: perModel({ sonnet: ['sonnet', 'medium'], haiku: ['haiku', 'medium'], opus: ['opus', 'medium'] }) }
+
+  test('repeated failures keep Haiku working; a stop with the check failing is sent back and moves it to Sonnet, with no extra review', async ($, on) => {
+    const h = harness(on, haiku)
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    expect(h.steps.at(-1)?.model).toBe('claude-haiku-5-5')
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await fail($)
+    await fail($)
+    await fail($)
+    expect(of(h.writes, 'escalation').filter((x) => x.action !== 'none')).toEqual([])
+    const stop = await $.classic.Stop({ stop_hook_active: false })
+    expect(stop.block).toContain('escalated to')
+    expect(stop.block).toContain('sonnet')
+    expect(of(h.writes, 'escalation').filter((x) => x.action !== 'none').map((x) => [x.action, x.because])).toEqual([['switch', 'the session tried to stop with its last check failing']])
+    const next = await h.submit($, 'keep going')
+    expect(next.context.join('\n')).not.toContain('Independent review required')
+  })
+
+  test('the old rule (opusStart judge): the first repeat on Haiku moves the model', async ($, on) => {
+    const h = harness(on, { ...haiku, config: { reachHaiku: true } })
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await fail($)
+    await fail($)
+    expect(of(h.writes, 'escalation').some((x) => x.action === 'switch')).toBe(true)
+  })
+})

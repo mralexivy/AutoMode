@@ -6,6 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Changed
 
+- Under `opusStart: evidence`, a run on Haiku keeps working through repeated check failures, the write-test, fail, fix loop. It moves to Sonnet on a regression, a revert, a reviewer blocker, or a stop with the last check failing, which is now always sent back once. An escalation no longer adds a review of its own. In the benchmark, Haiku's first repeat had counted as 'failed at the top effort' and moved immer to Sonnet, plus a review: $0.77, against $0.26 for Sonnet high.
 - Haiku first: under `opusStart: evidence`, T0 to T3 work without critical risk can start on Haiku, whatever model a judge's need names. T3 starts at high effort. A failing check moves the task to Sonnet through the ladder. Critical-risk work stays on Sonnet high. Haiku passed 27 of the 28 proof-run tasks it has rows for, at about a tenth of Sonnet high's cost, while AutoMode had sent 25 of them to Sonnet.
 - The independent review runs on Sonnet unless the diff itself shows critical risk. Before, a prompt rating or a rescue rule bought an Opus review. In the proof run those reviews were all of AutoMode's Opus spend ($2.07 of $9.11), and none changed an outcome.
 
