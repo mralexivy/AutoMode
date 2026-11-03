@@ -161,6 +161,15 @@ export function failingTests(norm: string): string[] {
 // Pre-existing failures: a test that fails on the stashed original code is the repo's and not the work's. A run that fails only on those says nothing about the work. Found live: pyjwt's TLS test failed on
 // the untouched code (the model showed it with git stash), and the ladder climbed to Opus on it: $1.55 against $0.32.
 // A task that names the test, or asks to fix failing tests, is about that failure, so it still counts there.
+// A test the task itself added or edited is never the repository's own: on the original code it fails by design. Found
+// in review: `git stash push -- src` keeps the new tests, and they would have excused their own later failures.
+export function ownTest(test: string, edited: string[]): boolean {
+  const file = test.includes('::') ? test.split('::')[0] : test.split('.').slice(0, -2).join('/')
+  return !!file && edited.some((p) => p.endsWith(file) || p.replace(/\.py$/, '').endsWith(file))
+}
+// isScratchRun: the check runs in a copy under /tmp, not in the work. Found live: tomlkit copied its new tests next to
+// the original code in /tmp/orig_repo to show they fail there, and that read as a regression of the work.
+export const isScratchRun = (command: string) => tools(command).some((t) => /^cd\s+['"]?(?:\/tmp\/|\/private\/tmp\/|\$\{?TMPDIR)/.test(t))
 export const isStashRun = (command: string) => /^git\s+stash(?:\s+(?:push|save|-q|--quiet|-u|--include-untracked)\b|\s*$)/.test(tools(command)[0] ?? '')
 export function onlyPreexisting(tests: string[], baseline: string[], spec: string): boolean {
   if (!tests.length || !tests.every((t) => baseline.includes(t))) return false

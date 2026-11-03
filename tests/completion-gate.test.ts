@@ -56,6 +56,17 @@ describe('Completion gate', () => {
     expect(String(kept.stop.block ?? '')).not.toContain('work is failed')
   })
 
+  test('the task\'s own new test failing on the stash is no baseline: it still fails the work', async ($, on) => {
+    const out = 'FAILED tests/test_new.py::test_fix - AssertionError\n1 failed, 30 passed in 2s'
+    const h = harness(on, { policy: 'auto', config: { completionGate: 'block' }, bash: () => ({ result: `Error: Exit code 1\n${out}`, isError: true, text: '' }) })
+    await h.submit($, 'add key-family validation to the parser')
+    await h.step($)
+    await $.tool.call({ tool: 'Write', file_path: 'tests/test_new.py', content: 'def test_fix(): ...' })
+    await $.tool.call({ tool: 'Bash', command: 'git stash push -q -- src && pytest -q; git stash pop -q' })
+    await $.tool.call({ tool: 'Bash', command: 'pytest -q' })
+    expect((await $.classic.Stop({ stop_hook_active: false })).block).toContain('work is failed')
+  })
+
   test('a failing test the task names still fails the work', async ($, on) => {
     const out = 'FAILED tests/t.py::test_tls - ssl.SSLError\n1 failed, 30 passed in 2s'
     const h = harness(on, { policy: 'auto', config: { completionGate: 'block' }, bash: () => ({ result: `Error: Exit code 1\n${out}`, isError: true, text: '' }) })

@@ -2,7 +2,7 @@
 // weak and strong evidence, and regressions.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { EMPTY_LADDER, isStashRun, onlyPreexisting, onlyMissingTools, classify, failKey, checkKey, checkPassed, masked, escalation, failingTests, failureOf, isCheck, isRevert, notRun, regression, workLost, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
+import { EMPTY_LADDER, isScratchRun, ownTest, isStashRun, onlyPreexisting, onlyMissingTools, classify, failKey, checkKey, checkPassed, masked, escalation, failingTests, failureOf, isCheck, isRevert, notRun, regression, workLost, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
 import { simpleCommands, tools, unwrapped } from '../hooks/lib/shell.ts'
 
 const CHECKS = [
@@ -257,4 +257,13 @@ test('a failure the original code already had is not the work failing', () => {
   assert.equal(isStashRun('git stash -q && PYTHONPATH=. pytest -q tests; git stash pop -q'), true)
   assert.equal(isStashRun('git stash pop && pytest'), false)
   assert.equal(isStashRun('pytest -q'), false)
+})
+
+test('the task\'s own tests are never the baseline, and a run in a /tmp copy is no check of the work', () => {
+  assert.equal(ownTest('tests/test_toml_document.py::test_replace', ['/w/tests/test_toml_document.py']), true)
+  assert.equal(ownTest('tests.test_parser.TestParser.test_x', ['/w/tests/test_parser.py']), true)
+  assert.equal(ownTest('tests/test_jwks_client.py::TestPyJWKClient::test_tls', ['/w/jwt/algorithms.py']), false)
+  assert.equal(isScratchRun('rm -rf /tmp/o && cp -R tests /tmp/o/ && cd /tmp/o && python3 -m pytest -q'), true)
+  assert.equal(isScratchRun('cd "$TMPDIR/x" && pytest'), true)
+  assert.equal(isScratchRun('pytest -q > /tmp/log.txt'), false)
 })

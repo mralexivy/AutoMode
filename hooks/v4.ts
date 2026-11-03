@@ -33,7 +33,7 @@ import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, requireReview, summaryOf, withReview } from './lib/envelope.ts'
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
-import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failKey, failingTests, failureOf, failureStep, isStashRun, normalize, onlyPreexisting, fnv1a, isCheck, isRevert, markFlaky, notRun, onlyMissingTools, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
+import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failKey, failingTests, failureOf, failureStep, isScratchRun, isStashRun, normalize, onlyPreexisting, ownTest, fnv1a, isCheck, isRevert, markFlaky, notRun, onlyMissingTools, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
 import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
 import { guardTool, READ_ONLY_AGENTS, subagentBlocked } from './lib/guard.ts'
@@ -2395,7 +2395,8 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
     // them: a bug fix reproduces its own failure first. A stash run checks the original, not the work, so it is no
     // check of the work at all.
     const names = failingTests(normalize(text))
-    if (isStashRun(command)) { S.baseline = [...new Set([...S.baseline, ...names])].slice(0, 50); return out }
+    if (isStashRun(command)) { S.baseline = [...new Set([...S.baseline, ...names.filter((t) => !ownTest(t, S.envelope!.editedPaths))])].slice(0, 50); return out }
+    if (isScratchRun(command)) return out
     if (!passed && onlyPreexisting(names, S.baseline, S.envelope.spec.text)) return out
     S.lastCheck = { command, passed }
     if (passed) {
