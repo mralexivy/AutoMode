@@ -8,7 +8,7 @@ import { claudeCodeRunner } from '../runners/claude-code.mts'
 import type { AgentRunner } from '../runners/runner.mts'
 import { ANTHROPIC, usageUsd } from '../../hooks/lib/prices.ts'
 import type { ExitReason } from './outcome.mts'
-import { specHash } from './experiment.mts'
+import { AGENT_ENV_VERSION, executionKey, runId, shortHash, taskHash, type Identity } from './identity.mts'
 import { loadTemplate, renderPrompt, type Template } from './prompt.mts'
 import { COST_BASIS, RESULT_SCHEMA, estimatedUsd, harnessInfo, pricingSnapshot } from './result.mts'
 import { configDir, runEvidence, sessionFiles } from './run-evidence.mts'
@@ -34,10 +34,11 @@ export interface RunContext {
 
 // runIdFor names a run. The hash covers the arm's whole setup, the plugin code it runs, the prompt template and the
 // task's commits and commands. An arm with no plugin adds no key, so its old rows keep their ids.
+// Identity v2 (lib/identity.mts): the code part covers only the files that change behavior, and the task part covers
+// its setup too. The parts are saved in the row, so a later plan can say which part made a row stale.
 export function runIdFor(task: Task, armId: string, rep: number, template: Template) {
-  const code = armCode(armId)
-  const hash = specHash({ arm: armSpec(armId), ...(code ? { code } : {}), template: template.sha256, task: [task.base, task.reference, task.accept, task.hidden_tests, task.task] })
-  return { runId: `${task.id}__${armId}__r${rep}__${hash}`, hash }
+  const identity: Identity = { v: 2, task: taskHash(task), arm: shortHash(armSpec(armId)), code: armCode(armId), template: template.sha256, agentEnv: AGENT_ENV_VERSION, rep }
+  return { runId: runId(task.id, armId, identity), hash: executionKey(identity), identity }
 }
 
 // memoryRefs counts references to another project's auto-memory folder in the run's transcripts.
@@ -159,13 +160,13 @@ export function leakRefs(sessionId: string | null | undefined, task: Task) {
 
 export async function oneRun(task: Task, armId: string, rep: number, ctx: RunContext) {
   const template = loadTemplate(ctx.template ?? task.prompt_template ?? 'repo-change-v1')
-  const { runId, hash } = runIdFor(task, armId, rep, template)
+  const { runId, hash, identity } = runIdFor(task, armId, rep, template)
   const prompt = renderPrompt(template, task.task)
   const spec = armSpec(armId)
   const runner = (ctx.runnerFor ?? (() => claudeCodeRunner))(armId)
   const rowHead = {
     schema_version: RESULT_SCHEMA, run_id: runId, task_id: task.id, cohort: task.cohort, arm: armId, repeat: rep,
-    experiment: ctx.experiment ?? 'adhoc', spec_hash: hash, model: spec.model, alias_map: spec.alias_map, arm_env: spec.env, plugin: spec.plugin,
+    experiment: ctx.experiment ?? 'adhoc', spec_hash: hash, identity, model: spec.model, alias_map: spec.alias_map, arm_env: spec.env, plugin: spec.plugin,
     prompt: { template_id: template.id, template_sha256: template.sha256, rendered_sha256: prompt.sha256, tool_schema_sha256: null as string | null },
     task_ref: { base: task.base, reference: task.reference, dataset: task.provenance?.dataset ?? 'automode-native' },
     harness: harnessInfo(runner.id), auth: process.env.BENCH_AUTH === 'api' ? 'api' : 'subscription', cost_basis: COST_BASIS, pricing_snapshot: pricingSnapshot(),
@@ -204,7 +205,8 @@ export async function oneRun(task: Task, armId: string, rep: number, ctx: RunCon
       cost_usd_api_equiv: res.costUsd, estimated_cost_usd: res.runner === 'claude-code' ? estimatedUsd(evidence) : res.costUsd, reported_cost_usd: null as number | null,
       wall_s: res.wallS, session_id: res.sessionId, run_cap_usd: ctx.runCap, evidence,
     }
-    if (exit_reason === 'quota') return { ...agentHead, at: new Date().toISOString() }
+    // A cut-off row keeps the CLI's last lines: they may state when the limit resets (lib/admission.mts resetAt).
+    if (exit_reason === 'quota') return { ...agentHead, stderr_tail: res.stderrTail, at: new Date().toISOString() }
 
     const change = agentChange(wt, workspaceBase, task.hidden_tests)
     const diffDir = path.join(path.dirname(ctx.out), 'diffs')

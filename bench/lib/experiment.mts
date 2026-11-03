@@ -38,6 +38,8 @@ export interface ExperimentSpec {
   budget_usd?: number
   window_usd?: number
   dataset?: string
+  reuse_from?: string[] // earlier results files whose finished rows with the same run id are reused, not paid for
+  decision?: string     // the decision policy file, fixed before any row (bench/lib/decide.mts)
 }
 
 const DIR = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'experiments')
