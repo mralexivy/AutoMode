@@ -29,14 +29,29 @@ function runClaude(args: string[], env: NodeJS.ProcessEnv, cwd: string, timeoutM
   })
 }
 
-// workspaceEnv gives the agent the Python path the grader uses. A task's setup installs its dependencies into
-// .bench-deps and its `accept` runs with PYTHONPATH=.bench-deps. Without the same path the agent's own test runs fail on
-// imports, so it never sees the real failures (rescue-delivery, pymarkdown: 87 import errors hid 2 failing tests). The
-// same for every arm, and it reveals nothing hidden.
-export function workspaceEnv(workspace: string, env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+// workspaceEnv gives the agent the path settings the grader uses. A task's `accept` sets them inline, such as
+// PYTHONPATH=src:.bench-deps. Without the same paths the agent's own test runs fail on imports, so it never sees the
+// real failures (rescue-delivery, pymarkdown: 87 import errors hid 2 failing tests; the preflight then found jinja and
+// marshmallow, whose `src` layout the first fix missed). They are read from the accept command, never guessed, and
+// made absolute in the workspace. The same for every arm, and nothing hidden: the paths name the workspace only.
+const PATH_VARS = ['PYTHONPATH', 'NODE_PATH']
+export function graderPaths(accept: string | undefined, workspace: string): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const m of (accept ?? '').matchAll(/(?:^|&&|\|\||;)\s*((?:[A-Z_][A-Z0-9_]*=\S*\s+)+)/g)) {
+    for (const a of m[1].trim().split(/\s+/)) {
+      const [k, v] = [a.slice(0, a.indexOf('=')), a.slice(a.indexOf('=') + 1)]
+      if (PATH_VARS.includes(k) && !(k in out)) out[k] = v.split(':').filter(Boolean).map((p) => (path.isAbsolute(p) ? p : path.join(workspace, p))).join(path.delimiter)
+    }
+  }
+  return out
+}
+export function workspaceEnv(workspace: string, env: NodeJS.ProcessEnv, accept?: string): NodeJS.ProcessEnv {
+  const paths = graderPaths(accept, workspace)
   const deps = path.join(workspace, '.bench-deps')
-  if (!fs.existsSync(deps)) return env
-  return { ...env, PYTHONPATH: env.PYTHONPATH ? `${deps}${path.delimiter}${env.PYTHONPATH}` : deps }
+  if (!paths.PYTHONPATH && fs.existsSync(deps)) paths.PYTHONPATH = deps
+  const merged = { ...env }
+  for (const [k, v] of Object.entries(paths)) merged[k] = env[k] ? `${v}${path.delimiter}${env[k]}` : v
+  return merged
 }
 
 export const claudeCodeRunner: AgentRunner = {
@@ -44,7 +59,7 @@ export const claudeCodeRunner: AgentRunner = {
   async run(req: RunRequest): Promise<AgentRun> {
     const { args, env } = armInvocation(req.armId, req.dir, req.prompt)
     if (req.runCap) args.push('--max-budget-usd', String(req.runCap))
-    const res = await runClaude(args, workspaceEnv(req.workspace, env), req.workspace, req.timeoutMs)
+    const res = await runClaude(args, workspaceEnv(req.workspace, env, req.accept), req.workspace, req.timeoutMs)
     const j = res.json || {}
     return {
       runner: 'claude-code', exitReason: classifyRun(res), exitCode: res.code, signal: res.signal, isError: j.is_error ?? null, turns: j.num_turns ?? null,

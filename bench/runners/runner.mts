@@ -10,6 +10,7 @@ export interface RunRequest {
   prompt: string
   timeoutMs: number
   runCap: number | null
+  accept?: string // the task's accept command: the agent gets the same path settings (runners/claude-code.mts workspaceEnv)
 }
 
 export interface AgentRun {

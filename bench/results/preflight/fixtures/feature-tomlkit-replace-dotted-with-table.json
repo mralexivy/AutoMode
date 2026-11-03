@@ -1,0 +1,12 @@
+{
+ "id": "feature-tomlkit-replace-dotted-with-table",
+ "task_hash": "1189f96bb3ba1664",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-03T07:38:17.547Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

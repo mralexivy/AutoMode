@@ -1,0 +1,12 @@
+{
+ "id": "feature-sqlparse-begin-end-block-semicolons",
+ "task_hash": "5b265af741a24e98",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-03T07:38:08.327Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

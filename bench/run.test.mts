@@ -7,7 +7,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { GRADER_MODEL, grade, gradePrompt, parseGrade, referenceDiff } from './lib/grade-core.mts'
 import { chargedUsd, classifyRun, isDone, isResult } from './lib/outcome.mts'
-import { armCode, armEnv, armInvocation, armSpec, ARMS, EXCLUDED_FROM_PLUGIN, pluginCodeHash } from './arms.mts'
+import { armCode, armEnv, armInvocation, armSpec, ARMS, EXCLUDED_FROM_PLUGIN } from './arms.mts'
+import { behaviorFiles, changedFiles, compareIdentity, filesHash } from './lib/identity.mts'
 import { canonical, experimentProblems, loadExperiment, specHash } from './lib/experiment.mts'
 import { loadTemplate, renderPrompt } from './lib/prompt.mts'
 import { estimatedUsd, rowProblems } from './lib/result.mts'
@@ -23,6 +24,8 @@ import { bootstrapCI, discordant, holm, mcnemarExact, pairedDelta, paretoFrontie
 const isExperimentFile = (f: string) => f.endsWith('.json') && f !== 'heldout.json'
 
 const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'am-bench-test-'))
+// The runner takes a machine-wide lock. Tests use their own folder, so they never touch or wait on a real run's lock.
+process.env.BENCH_LOCK_DIR = path.join(ROOT, 'lock')
 const SOURCE = path.join(ROOT, 'source')
 const LOG = path.join(ROOT, 'claude-args.json')
 const HIDDEN_MARK = 'HIDDEN REFERENCE TEST'
@@ -289,18 +292,19 @@ test('the run script: a resume skips finished rows, reruns a usage limit, and th
   fs.mkdirSync(tasks, { recursive: true })
   fs.writeFileSync(path.join(tasks, 'fixture.json'), JSON.stringify(task))
   const out = path.join(dir, 'results.jsonl')
-  const cli = (mode: string, ...more: string[]) => spawnSync(process.execPath, ['bench/run.mts', '--quota-wait-min', '0', '--quota-retries', '1', '--window-usd', '0', '--tasks-dir', tasks, '--arms', 'sonnet-high,sonnet-medium', '--repeats', '1', '--parallel', '1', '--scratch', path.join(dir, 'scratch'), '--out', out, '--run-cap-usd', '3', ...more],
-    { encoding: 'utf8', env: { ...process.env, FAKE_CLAUDE: mode, BENCH_ALLOW_LOCAL: '1', BENCH_CACHE_DIR: path.join(dir, 'repos'), LEDGER_FILE: path.join(dir, 'ledger.jsonl') } })
+  const cli = (mode: string, ...more: string[]) => spawnSync(process.execPath, ['bench/run.mts', '--window-usd', '0', '--tasks-dir', tasks, '--arms', 'sonnet-high,sonnet-medium', '--repeats', '1', '--parallel', '1', '--scratch', path.join(dir, 'scratch'), '--out', out, '--run-cap-usd', '0.3', ...more],
+    { encoding: 'utf8', env: { ...process.env, FAKE_CLAUDE: mode, BENCH_ALLOW_LOCAL: '1', BENCH_CACHE_DIR: path.join(dir, 'repos'), LEDGER_FILE: path.join(dir, 'ledger.jsonl'), BENCH_LOCK_DIR: path.join(dir, 'lock') } })
   const quota = cli('quota')
-  assert.equal(quota.status, 0, quota.stderr)
-  assert.match(quota.stdout, /USAGE LIMIT, will rerun/)
-  assert.match(quota.stdout, /did not clear/)
-  const first = cli('solve', '--budget-usd', '0.25')
+  assert.equal(quota.status, 75, 'a usage limit exits 75: paused, not done')
+  assert.match(quota.stdout, /USAGE LIMIT, paused/)
+  assert.equal(quota.stdout.match(/USAGE LIMIT/g)?.length, 1, 'the pause stops new runs at once')
+  assert.equal(JSON.parse(fs.readFileSync(out.replace(/\.jsonl$/, '.status.json'), 'utf8')).state, 'quota_paused')
+  const first = cli('solve', '--budget-usd', '0.3')
   assert.match(first.stdout, /2 to run/)
-  assert.match(first.stdout, /Budget \$0.25 reached/)
-  const second = cli('solve', '--budget-usd', '0.25')
+  assert.match(first.stdout, /Budget: not starting .* over the \$0.3 budget/)
+  const second = cli('solve', '--budget-usd', '0.3')
   assert.match(second.stdout, /1 to run/)
-  assert.match(second.stdout, /Budget \$0.25 reached/, 'spend from the first run still counts')
+  assert.match(second.stdout, /Budget: not starting .* over the \$0.3 budget/, 'spend from the first run still counts')
   const third = cli('solve')
   assert.match(third.stdout, /1 to run/)
   assert.match(cli('solve').stdout, /0 to run/)
@@ -458,30 +462,32 @@ test('report: an unstratified interval sits beside the stratified one, and is wi
   assert.ok(width(cells[6]) > width(cells[5]), `${cells[5]} against ${cells[6]}`)
 })
 
-test('a run id moves with the plugin code an arm runs, and stays put for an arm with none', () => {
+test('a run id moves with the behavior files an arm runs, and not with docs, tests or the version', () => {
   const dir = fs.mkdtempSync(path.join(ROOT, 'plugin-'))
-  fs.mkdirSync(path.join(dir, 'hooks'))
-  fs.mkdirSync(path.join(dir, 'bench'))
+  for (const d of ['hooks', 'bench', '.claude-plugin']) fs.mkdirSync(path.join(dir, d))
   fs.writeFileSync(path.join(dir, 'hooks', 'a.ts'), 'one')
   fs.writeFileSync(path.join(dir, 'bench', 'b.mts'), 'one')
-  const first = pluginCodeHash(dir)
+  fs.writeFileSync(path.join(dir, 'CHANGELOG.md'), 'one')
+  fs.writeFileSync(path.join(dir, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'x', version: '1.0.0' }))
+  const first = filesHash(behaviorFiles(dir))
   fs.writeFileSync(path.join(dir, 'bench', 'b.mts'), 'two')
-  assert.equal(pluginCodeHash(dir), first, 'a file the copy leaves out changes nothing')
+  fs.writeFileSync(path.join(dir, 'CHANGELOG.md'), 'two')
+  fs.writeFileSync(path.join(dir, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'x', version: '1.0.1' }))
+  assert.equal(filesHash(behaviorFiles(dir)), first, 'the changelog, the bench and a version bump change nothing')
   fs.writeFileSync(path.join(dir, 'hooks', 'a.ts'), 'two')
-  assert.notEqual(pluginCodeHash(dir), first, 'shipped code moves the hash')
-  fs.writeFileSync(path.join(dir, 'hooks', 'a.ts'), 'one')
-  fs.renameSync(path.join(dir, 'hooks', 'a.ts'), path.join(dir, 'hooks', 'c.ts'))
-  assert.notEqual(pluginCodeHash(dir), first, 'a renamed file moves the hash')
+  assert.notEqual(filesHash(behaviorFiles(dir)), first, 'shipped code moves the hash')
+  assert.deepEqual(changedFiles(behaviorFiles(dir), { ...behaviorFiles(dir), 'hooks/a.ts': 'x' }), ['hooks/a.ts'])
 
   assert.equal(armCode('sonnet-high', dir), null)
-  assert.equal(armCode('auto', dir), pluginCodeHash(dir))
+  assert.equal(armCode('auto', dir), filesHash(behaviorFiles(dir)))
   assert.match(armCode('opus-effortless', dir), /^[0-9a-f]{40}$/)
   const task = { id: 't', cohort: 'trivial', repo: 'https://example.com/r', license: 'MIT', base: 'a'.repeat(40), reference: 'b'.repeat(40), task: 'x', hidden_tests: ['t'], accept: 'true' }
   const template = loadTemplate('repo-change-v1')
-  const plain = { arm: armSpec('sonnet-high'), template: template.sha256, task: [task.base, task.reference, task.accept, task.hidden_tests, task.task] }
-  assert.equal(runIdFor(task, 'sonnet-high', 1, template).hash, specHash(plain), 'a fixed arm keeps its old id')
-  const noCode = { ...plain, arm: armSpec('auto') }
-  assert.notEqual(runIdFor(task, 'auto', 1, template).hash, specHash(noCode), 'an AutoMode arm hashes its code')
+  const a = runIdFor(task, 'sonnet-high', 1, template)
+  assert.equal(a.identity.code, null, 'a fixed arm runs no plugin code')
+  assert.notEqual(runIdFor({ ...task, setup: 'pip install x' }, 'sonnet-high', 1, template).runId, a.runId, 'the setup is part of the task')
+  assert.notEqual(runIdFor(task, 'sonnet-high', 2, template).runId, a.runId, 'a repetition is its own run')
+  assert.deepEqual(compareIdentity(a.identity, runIdFor({ ...task, setup: 'x' }, 'sonnet-high', 1, template).identity), ['task'])
 })
 
 test('the task screen runs fixed arms only, over tasks that exist, and never an AutoMode arm', () => {

@@ -1,0 +1,12 @@
+{
+ "id": "longctx-tornado-body-parse-errors-v2",
+ "task_hash": "fa0249b1ccf431c4",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-03T07:42:52.287Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

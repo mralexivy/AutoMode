@@ -1,0 +1,12 @@
+{
+ "id": "longctx-dnspython-edns-padding",
+ "task_hash": "8d9e52eaeb8e2ed3",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-03T07:38:24.191Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

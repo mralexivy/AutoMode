@@ -1,0 +1,258 @@
+{
+ "source_session": "dbb58cfa-f094-42fe-bf88-ed15a6bec816",
+ "why": "eb50028: agent ran tests without PYTHONPATH=.bench-deps: 87 import errors",
+ "events": [
+  {
+   "tool": "Bash",
+   "cmd": "git status --short && grep -rn \"isBlockLevel\\|BLOCK_LEVEL_ELEMENTS\\|is_block_level\\|block_level_elements\" --include=*.py . | grep -v \"^./.git/\" ; grep -n \"def deprecated\" -A25 markdown/util.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "git status --short; grep -rn \"isBlockLevel\\|BLOCK_LEVEL_ELEMENTS\\|is_block_level\\|block_level_elements\" . --exclude-dir=.git | head -50; grep -n \"BLOCK_LEVEL_ELEMENTS\" -B3 -A30 markdown/util.py | head -80",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "sed -n 395,420p markdown/treeprocessors.py; echo ----; sed -n 200,270p markdown/preprocessors.py; echo ----; sed -n 80,100p markdown/postprocessors.py; echo ----; sed -n 60,95p markdown/extensions/attr_list.py; echo ----; sed -n 1,40p markdown/util.py | grep -n import; grep -n \"^class\\|^from\\|^import\" markdown/core.py markdown/preprocessors.py markdown/postprocessors.py markdown/treeprocessors.py markdown/extensions/attr_list.py | head -40",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "sed -n 38,80p markdown/core.py; echo ----; grep -n \"    def \" markdown/core.py; echo ----; sed -n 495,520p tests/test_apis.py; grep -n \"deprecat\" -i tests/*.py | head; grep -n \"^from\\|^import\" tests/test_apis.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "sed -n 96,124p markdown/util.py; echo ----; sed -n 150,156p markdown/util.py; echo ----; sed -n 20,36p markdown/core.py; grep -n \"string_type\" markdown/util.py | head -3",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "util.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "util.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "core.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "util.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "util.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "core.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "sed -n 86,96p markdown/core.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "core.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "sed -i 's/util\\.isBlockLevel(/self.md.is_block_level(/g' markdown/treeprocessors.py markdown/preprocessors.py markdown/postprocessors.py && sed -i 's/^from \\.\\.util import isBlockLevel$//' markdown/extensions/attr_list.py && sed -i 's/            if isBlockLevel(elem.tag):/            if self.md.is_block_level(elem.tag):/' markdown/extensions/attr_list.py && sed -n 20,28p markdown/extensions/attr_list.py && grep -rn \"isBlockLevel\\|is_block_level\" markdown/ ",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "core.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "cd <wt> && sed -i 's/util\\.isBlockLevel(/self.md.is_block_level(/g' markdown/treeprocessors.py markdown/preprocessors.py markdown/postprocessors.py && sed -i 's/^from \\.\\.util import isBlockLevel$//' markdown/extensions/attr_list.py && sed -i 's/            if isBlockLevel(elem.tag):/            if self.md.is_block_level(elem.tag):/' markdown/extensions/attr_list.py && sed -n 20,28p markdown/extensions/attr_list.py && grep -rn \"isBlockLevel\\|is_block_level\" markdown/ ",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "git status --short && sed -i '' 's/util\\.isBlockLevel(/self.md.is_block_level(/g' markdown/treeprocessors.py markdown/preprocessors.py markdown/postprocessors.py && sed -i '' '/^from \\.\\.util import isBlockLevel$/d' markdown/extensions/attr_list.py && sed -i '' 's/            if isBlockLevel(elem.tag):/            if self.md.is_block_level(elem.tag):/' markdown/extensions/attr_list.py && grep -rn \"isBlockLevel\\|is_block_level\" markdown/ && git diff --stat",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "sed -n 486,496p tests/test_apis.py && sed -n 520,530p tests/test_apis.py && grep -n \"^class \" tests/test_apis.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "test_apis.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "test_apis.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "test_apis.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "test_apis.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "test_apis.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "test_apis.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "test_apis.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "python3 -m unittest discover -s tests -t . 2>&1 | tail -15; echo \"== baseline:\"; git stash -q && python3 -m unittest discover -s tests -t . 2>&1 | tail -3; git stash pop -q && git status --short",
+   "out": "  File \"<wt>/markdown/core.py\", line 123, in registerExtensions\n    ext = self.build_extension(ext, configs.get(ext, {}))\n  File \"<wt>/markdown/core.py\", line 163, in build_extension\n    module = importlib.import_module(ext_name)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/importlib/__init__.py\", line 127, in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n  File \"<frozen importlib._bootstrap>\", line 1030, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1007, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 984, in _find_and_load_unlocked\nModuleNotFoundError: No module named 'tables'\n\n----------------------------------------------------------------------\nRan 438 tests in 0.256s\n\nFAILED (errors=87, skipped=71)\n== baseline:\nRan 438 tests in 0.251s\n\nFAILED (errors=87, skipped=71)\n M markdown/core.py\n M markdown/extensions/attr_list.py\n M markdown/postprocessors.py\n M markdown/preprocessors.py\n M markdown/treeprocessors.py\n M markdown/util.py\n M tests/test_apis.py",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "test_apis.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "cd <wt> && python3 -m unittest discover -s tests -t . 2>&1 | tail -15; echo \"== baseline:\"; git stash -q && python3 -m unittest discover -s tests -t . 2>&1 | tail -3; git stash pop -q && git status --short",
+   "out": "  File \"<wt>/markdown/core.py\", line 123, in registerExtensions\n    ext = self.build_extension(ext, configs.get(ext, {}))\n  File \"<wt>/markdown/core.py\", line 163, in build_extension\n    module = importlib.import_module(ext_name)\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/importlib/__init__.py\", line 127, in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n  File \"<frozen importlib._bootstrap>\", line 1030, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1007, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 984, in _find_and_load_unlocked\nModuleNotFoundError: No module named 'tables'\n\n----------------------------------------------------------------------\nRan 438 tests in 0.256s\n\nFAILED (errors=87, skipped=71)\n== baseline:\nRan 438 tests in 0.251s\n\nFAILED (errors=87, skipped=71)\n M markdown/core.py\n M markdown/extensions/attr_list.py\n M markdown/postprocessors.py\n M markdown/preprocessors.py\n M markdown/treeprocessors.py\n M markdown/util.py\n M tests/test_apis.py",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "python3 -m unittest discover -s tests -t . 2>&1 | grep \"^ERROR:\" | sed 's/(.*//' | sort | uniq -c | head; python3 -m unittest discover -s tests -t . 2>&1 | grep \"ModuleNotFound\\|ImportError\" | sort | uniq -c; python3 -m unittest tests.test_apis.TestIsBlockLevel tests.test_apis.testETreeComments -v 2>&1 | tail -20",
+   "out": "tFoundError: No module named 'fenced_code'\n   1 ModuleNotFoundError: No module named 'footnotes'\n   1 ModuleNotFoundError: No module named 'legacy_attrs'\n   2 ModuleNotFoundError: No module named 'legacy_em'\n   5 ModuleNotFoundError: No module named 'meta'\n   1 ModuleNotFoundError: No module named 'nl2br'\n   1 ModuleNotFoundError: No module named 'sane_lists'\n   2 ModuleNotFoundError: No module named 'smarty'\n   3 ModuleNotFoundError: No module named 'tables'\n  28 ModuleNotFoundError: No module named 'toc'\n   7 ModuleNotFoundError: No module named 'wikilinks'\n   1 ModuleNotFoundError: No module named 'yaml'\n    import yaml\nModuleNotFoundError: No module named 'yaml'\n\n\n======================================================================\nERROR: test_apis (unittest.loader._FailedTest)\n----------------------------------------------------------------------\nImportError: Failed to import test module: test_apis\nTraceback (most recent call last):\n  File \"/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/unittest/loader.py\", line 154, in loadTestsFromName\n    module = __import__(module_name)\n  File \"<wt>/tests/test_apis.py\", line 36, in <module>\n    import yaml\nModuleNotFoundError: No module named 'yaml'\n\n\n----------------------------------------------------------------------\nRan 2 tests in 0.000s\n\nFAILED (errors=2)",
+   "err": true
+  },
+  {
+   "tool": "Bash",
+   "cmd": "for p in python3 /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do command -v $p >/dev/null && echo \"$p: $($p -c 'import sys,importlib.util as u;print(sys.version.split()[0], bool(u.find_spec(\"yaml\")), bool(u.find_spec(\"markdown\")))' 2>&1)\"; done; ls tox.ini setup.py setup.cfg 2>/dev/null; grep -n \"test\\|unittest\" tox.ini 2>/dev/null | head",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "mkdir -p /tmp/md-test-stubs && printf 'def safe_load(*a, **k):\\n    raise NotImplementedError(\"yaml stub\")\\n' > /tmp/md-test-stubs/yaml.py && cd <wt> && PYTHONPATH=/tmp/md-test-stubs python3 -m unittest tests.test_apis.TestIsBlockLevel tests.test_apis.testETreeComments -v 2>&1 | tail -25",
+   "out": "testBlockLevelTags (tests.test_apis.TestIsBlockLevel)\nTest that known block level tags are recognized. ... ok\ntestCaseAndTrailingSlash (tests.test_apis.TestIsBlockLevel)\nTest that case is ignored and a trailing slash is stripped. ... ok\ntestInlineTags (tests.test_apis.TestIsBlockLevel)\nTest that inline tags are not block level. ... ok\ntestIsBlockLevelDeprecated (tests.test_apis.TestIsBlockLevel)\nTest that `util.isBlockLevel` still works but emits a DeprecationWarning. ... ok\ntestNonStringTags (tests.test_apis.TestIsBlockLevel)\nTest that non-string tags are not block level. ... ok\ntestPerInstanceElements (tests.test_apis.TestIsBlockLevel)\nTest that an instance can change its block level elements. ... ok\ntestCommentIsBlockLevel (tests.test_apis.testETreeComments)\nTest that an ElementTree Comment is recognized as BlockLevel. ... ok\ntestCommentIsComment (tests.test_apis.testETreeComments)\nTest that an ElementTree Comment passes the `is Comment` test. ... ok\ntestCommentPrettify (tests.test_apis.testETreeComments)\nTest that an ElementTree Comment is prettified properly. ... ok\ntestCommentSerialization (tests.test_apis.testETreeComments)\nTest that an ElementTree Comment serializes properly. ... ok\n\n----------------------------------------------------------------------\nRan 10 tests in 0.002s\n\nOK",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "cat > /tmp/md-test-stubs/render_corpus.py <<'EOF'\nimport glob, sys, markdown\nout = []\nfiles = sorted(glob.glob(sys.argv[1] + '/**/*.txt', recursive=True))\nfor f in files:\n    src = open(f, encoding='utf-8').read()\n    for exts in ([], ['attr_list'], ['def_list', 'abbr', 'fenced_code', 'tables']):\n        for fmt in ('xhtml', 'html'):\n            try:\n                html = markdown.markdown(src, extensions=exts, output_format=fmt)\n            except Exception as e:\n                html = 'EXC %s' % type(e).__name__\n            out.append('== %s %s %s\\n%s' % (f, exts, fmt, html))\nsys.stdout.write('\\n'.join(out))\nprint('\\nFILES', len(files), file=sys.stderr)\nEOF\nPYTHONPATH=/tmp/md-test-stubs:. python3 -W ignore /tmp/md-test-stubs/render_corpus.py tests > /tmp/md-test-stubs/after.txt && git stash -q && PYTHONPATH=/tmp/md-test-stubs:. python3 -W ignore /tmp/md-test-stubs/render_corpus.py tests > /tmp/md-test-stubs/before.txt; git stash pop -q && cmp /tmp/md-test-stubs/before.txt /tmp/md-test-stubs/after.txt && echo \"RENDER IDENTICAL ($(wc -c < /tmp/md-test-stubs/after.txt) bytes)\"; git status --short; grep -c \"^EXC\" /tmp/md-test-stubs/after.txt",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "grep \"^== \" /tmp/md-test-stubs/after.txt | awk '{print $0}' | grep -c \"\\[\\]\"; PYTHONPATH=/tmp/md-test-stubs:. python3 -W ignore -c \"\nimport markdown\nfor e in ([], ['attr_list'], ['def_list']):\n    try:\n        markdown.markdown('# hi {: .x}\\n\\n<div>\\nx\\n</div>', extensions=e); print(e,'ok')\n    except Exception as ex: print(e, type(ex).__name__, ex)\n\"",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "sed -i \"s/\\['attr_list'\\]/['markdown.extensions.attr_list']/; s/\\['def_list', 'abbr', 'fenced_code', 'tables'\\]/['markdown.extensions.def_list', 'markdown.extensions.abbr', 'markdown.extensions.fenced_code', 'markdown.extensions.tables']/\" /tmp/md-test-stubs/render_corpus.py && PYTHONPATH=/tmp/md-test-stubs:. python3 -W ignore /tmp/md-test-stubs/render_corpus.py tests > /tmp/md-test-stubs/after.txt && git stash -q && PYTHONPATH=/tmp/md-test-stubs:. python3 -W ignore /tmp/md-test-stubs/render_corpus.py tests > /tmp/md-test-stubs/before.txt; git stash pop -q && cmp /tmp/md-test-stubs/before.txt /tmp/md-test-stubs/after.txt && echo \"RENDER IDENTICAL ($(wc -c < /tmp/md-test-stubs/after.txt) bytes)\"; echo \"EXC before/after: $(grep -c '^EXC' /tmp/md-test-stubs/before.txt) $(grep -c '^EXC' /tmp/md-test-stubs/after.txt)\"; git status --short | wc -l",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "git stash list | wc -l && git status --short && grep -c \"is_block_level\" markdown/core.py && sed -i '' \"s/\\['attr_list'\\]/['markdown.extensions.attr_list']/; s/\\['def_list', 'abbr', 'fenced_code', 'tables'\\]/['markdown.extensions.def_list', 'markdown.extensions.abbr', 'markdown.extensions.fenced_code', 'markdown.extensions.tables']/\" /tmp/md-test-stubs/render_corpus.py && grep -c \"markdown.extensions\" /tmp/md-test-stubs/render_corpus.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "R=/tmp/md-test-stubs/render_corpus.py; PYTHONPATH=/tmp/md-test-stubs:. python3 -W ignore $R tests > /tmp/md-test-stubs/after.txt 2>/dev/null; git stash -q && PYTHONPATH=/tmp/md-test-stubs:. python3 -W ignore $R tests > /tmp/md-test-stubs/before.txt 2>/dev/null; git stash pop -q; git stash list | wc -l; git status --short | wc -l; cmp /tmp/md-test-stubs/before.txt /tmp/md-test-stubs/after.txt && echo \"RENDER IDENTICAL ($(wc -c < /tmp/md-test-stubs/after.txt) bytes)\"; echo \"EXC before=$(grep -c '^EXC' /tmp/md-test-stubs/before.txt) after=$(grep -c '^EXC' /tmp/md-test-stubs/after.txt)\"",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "export PYTHONPATH=/tmp/md-test-stubs; python3 -m unittest discover -s tests -t . 2>&1 | grep -E \"^(ERROR|FAIL):\" | sort > /tmp/md-test-stubs/after_fail.txt; python3 -m unittest discover -s tests -t . 2>&1 | tail -1; git stash -q; python3 -m unittest discover -s tests -t . 2>&1 | grep -E \"^(ERROR|FAIL):\" | sort > /tmp/md-test-stubs/before_fail.txt; python3 -m unittest discover -s tests -t . 2>&1 | tail -1; git stash pop -q; git stash list | wc -l; diff /tmp/md-test-stubs/before_fail.txt /tmp/md-test-stubs/after_fail.txt && echo \"FAILURE SETS IDENTICAL: $(wc -l < /tmp/md-test-stubs/after_fail.txt) failing\"; (python3 -m flake8 --version >/dev/null 2>&1 && python3 -m flake8 markdown tests/test_apis.py | head -20) || echo \"flake8 not installed\"; unset PYTHONPATH",
+   "out": "FAILED (errors=91, skipped=71)\nFAILED (errors=90, skipped=71)\n       0\n10a11\n> ERROR: testBrTailNoNewline (tests.test_apis.testElementTailTests)\nflake8 not installed",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "grep -n \"PrettifyTreeprocessor\\|Treeprocessor(\" tests/*.py; grep -n \"def testBrTailNoNewline\" -A12 tests/test_apis.py; PYTHONPATH=/tmp/md-test-stubs python3 -m unittest tests.test_apis.testElementTailTests 2>&1 | tail -8",
+   "out": "Exit code 1\ntests/test_apis.py:524:        pretty = markdown.treeprocessors.PrettifyTreeprocessor(markdown.Markdown())\ntests/test_apis.py:579:        self.pretty = markdown.treeprocessors.PrettifyTreeprocessor()\n581:    def testBrTailNoNewline(self):\n582-        \"\"\" Test that last <br> in tree has a new line tail \"\"\"\n583-        root = markdown.util.etree.Element('root')\n584-        br = markdown.util.etree.SubElement(root, 'br')\n585-        self.assertEqual(br.tail, None)\n586-        self.pretty.run(root)\n587-        self.assertEqual(br.tail, \"\\n\")\n588-\n589-\n590-class testSerializers(unittest.TestCase):\n591-    \"\"\" Test the html and xhtml serializers. \"\"\"\n592-\n593-    def testHtml(self):\n  File \"<wt>/markdown/treeprocessors.py\", line 409, in _prettifyETree\n    if self.md.is_block_level(elem.tag) and elem.tag not in ['code', 'pre']:\nAttributeError: 'NoneType' object has no attribute 'is_block_level'\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (errors=1)",
+   "err": true
+  },
+  {
+   "tool": "Edit",
+   "cmd": "test_apis.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "export PYTHONPATH=/tmp/md-test-stubs; python3 -m unittest discover -s tests -t . 2>&1 | grep -E \"^(ERROR|FAIL):\" | sort > /tmp/md-test-stubs/after_fail.txt; python3 -m unittest discover -s tests -t . 2>&1 | tail -1; diff /tmp/md-test-stubs/before_fail.txt /tmp/md-test-stubs/after_fail.txt && echo \"FAILURE SETS IDENTICAL: $(wc -l < /tmp/md-test-stubs/after_fail.txt) failing (all pre-existing, missing deps)\"; python3 -m unittest tests.test_apis 2>&1 | tail -1; python3 -m pyflakes --version >/dev/null 2>&1 || echo \"no pyflakes\"; python3 -m pycodestyle --version >/dev/null 2>&1 || echo \"no pycodestyle\"; unset PYTHONPATH; git diff --stat",
+   "out": "FAILED (errors=90, skipped=71)\nFAILURE SETS IDENTICAL:       90 failing (all pre-existing, missing deps)\nFAILED (errors=4)\nno pyflakes\nno pycodestyle\n markdown/core.py                 |  9 ++++++++\n markdown/extensions/attr_list.py |  3 +--\n markdown/postprocessors.py       |  2 +-\n markdown/preprocessors.py        |  6 ++---\n markdown/treeprocessors.py       |  6 ++---\n markdown/util.py                 | 17 +++++++-------\n tests/test_apis.py               | 50 +++++++++++++++++++++++++++++++++++++---\n 7 files changed, 73 insertions(+), 20 deletions(-)",
+   "err": false
+  },
+  {
+   "tool": "Edit",
+   "cmd": "test_apis.py",
+   "out": "",
+   "err": false
+  },
+  {
+   "tool": "Bash",
+   "cmd": "cd <wt> && export PYTHONPATH=/tmp/md-test-stubs; python3 -m unittest discover -s tests -t . 2>&1 | grep -E \"^(ERROR|FAIL):\" | sort > /tmp/md-test-stubs/after_fail.txt; python3 -m unittest discover -s tests -t . 2>&1 | tail -1; diff /tmp/md-test-stubs/before_fail.txt /tmp/md-test-stubs/after_fail.txt && echo \"FAILURE SETS IDENTICAL: $(wc -l < /tmp/md-test-stubs/after_fail.txt) failing (all pre-existing, missing deps)\"; python3 -m unittest tests.test_apis 2>&1 | tail -1; python3 -m pyflakes --version >/dev/null 2>&1 || echo \"no pyflakes\"; python3 -m pycodestyle --version >/dev/null 2>&1 || echo \"no pycodestyle\"; unset PYTHONPATH; git diff --stat",
+   "out": "FAILED (errors=90, skipped=71)\nFAILURE SETS IDENTICAL:       90 failing (all pre-existing, missing deps)\nFAILED (errors=4)\nno pyflakes\nno pycodestyle\n markdown/core.py                 |  9 ++++++++\n markdown/extensions/attr_list.py |  3 +--\n markdown/postprocessors.py       |  2 +-\n markdown/preprocessors.py        |  6 ++---\n markdown/treeprocessors.py       |  6 ++---\n markdown/util.py                 | 17 +++++++-------\n tests/test_apis.py               | 50 +++++++++++++++++++++++++++++++++++++---\n 7 files changed, 73 insertions(+), 20 deletions(-)",
+   "err": false
+  }
+ ]
+}

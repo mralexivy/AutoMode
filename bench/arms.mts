@@ -4,6 +4,7 @@
 // servers, the 5.5 alias pins, and the Anthropic backend.
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
+import { behaviorFiles, filesHash } from './lib/identity.mts'
 import fs from 'node:fs'
 import path from 'node:path'
 import type { ContextSpec, ModelSpec, ProviderId } from './lib/experiment.mts'
@@ -59,9 +60,15 @@ export function pluginCodeHash(root = V2_PLUGIN) {
 }
 
 // armCode names the code an arm runs besides Claude Code. A fixed arm runs none, so its run ids stay put when the mod changes.
+// armCode: what an arm runs. An AutoMode arm is keyed on its behavior files only (lib/identity.mts behaviorFiles), so a
+// docs or changelog edit keeps its rows. Cached per root: a plan asks once per slot.
+const codeCache = new Map<string, string>()
 export function armCode(armId: string, root = V2_PLUGIN) {
   const kind = ARMS[armId]?.plugin?.kind
-  return kind === 'automode' ? pluginCodeHash(root) : kind === 'effortless' ? EFFORTLESS_SHA : null
+  if (kind === 'effortless') return EFFORTLESS_SHA
+  if (kind !== 'automode') return null
+  if (!codeCache.has(root)) codeCache.set(root, filesHash(behaviorFiles(root)))
+  return codeCache.get(root)!
 }
 
 // effortlessPlugin: upstream effortless as its author ships it, at the pinned commit, fetched once into bench/.cache

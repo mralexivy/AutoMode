@@ -1,0 +1,12 @@
+{
+ "id": "feature-immer-array-plugin-spread-drafts",
+ "task_hash": "3ca8ba925ae39812",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-03T07:35:47.030Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

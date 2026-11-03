@@ -4,7 +4,17 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 
 if (process.argv.includes('--version')) { console.log('0.0.0 (fake)'); process.exit(0) }
-const mode = process.env.FAKE_CLAUDE ?? 'solve'
+// FAKE_CLAUDE_PLAN names a file with one mode per call, in order; calls past its end use FAKE_CLAUDE. A simulation
+// uses it to put a usage limit or a slow run at an exact point in a long plan.
+const planned = (() => {
+  const f = process.env.FAKE_CLAUDE_PLAN
+  if (!f || !process.env.FAKE_CLAUDE_CALLS || process.argv.includes('--version')) return null
+  const n = fs.existsSync(process.env.FAKE_CLAUDE_CALLS) ? fs.readFileSync(process.env.FAKE_CLAUDE_CALLS, 'utf8').split('\n').filter(Boolean).length : 0
+  return fs.readFileSync(f, 'utf8').split('\n')[n]?.trim() || null
+})()
+const mode = planned ?? process.env.FAKE_CLAUDE ?? 'solve'
+// Each paid-looking call adds a line, so a test can count how many sessions the runner really started.
+if (process.env.FAKE_CLAUDE_CALLS) fs.appendFileSync(process.env.FAKE_CLAUDE_CALLS, `${mode}\n`)
 if (process.env.FAKE_CLAUDE_LOG) fs.writeFileSync(process.env.FAKE_CLAUDE_LOG, JSON.stringify({ args: process.argv.slice(2), apiKey: process.env.ANTHROPIC_API_KEY ?? null }))
 // A transcript like the real one, so the run evidence has something to read.
 if (process.env.CLAUDE_CONFIG_DIR && mode !== 'grade') {
@@ -33,6 +43,15 @@ if (mode === 'grade') {
   console.error('Claude usage limit reached')
   process.exitCode = 1
   reply({ is_error: true, result: 'Claude usage limit reached', total_cost_usd: 0 })
+} else if (mode === 'quota-reset') {
+  console.error('Claude usage limit reached. Your limit resets at 2099-01-01T05:00:00Z')
+  process.exitCode = 1
+  reply({ is_error: true, result: 'Claude usage limit reached', total_cost_usd: 0 })
+} else if (mode === 'slow') {
+  // Works for FAKE_CLAUDE_MS, then solves: long enough for a test to kill the runner mid-run.
+  await new Promise((r) => setTimeout(r, Number(process.env.FAKE_CLAUDE_MS ?? 3000)))
+  solve()
+  reply({ result: 'Done.' })
 } else if (mode === 'hang') {
   setTimeout(() => {}, 60_000)
 } else if (mode === 'solve-and-commit') {

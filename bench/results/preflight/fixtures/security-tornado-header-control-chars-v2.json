@@ -1,0 +1,12 @@
+{
+ "id": "security-tornado-header-control-chars-v2",
+ "task_hash": "2e3f9b7d5b14c365",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-03T07:46:16.709Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

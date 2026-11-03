@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Fixed
+
+- A Bash line that runs the full test suite beside other checks is now keyed on the full suite. A `--version` call in parentheses no longer counts as a check run. Before, one sqlglot suite got 3 keys across its runs, so its repeats went unseen.
+
 ### Changed
 
 - The rescue ladder ships on: `strongStep: effort-first`, `consult: priced`, `packet: fork-gated` and `forkRung: on`. In a 4-task pilot it cost the same per accepted run as the old defaults ($1.58 against $1.54) and passed sqlglot 3 of 4 times, against 0 of 6. See `bench/results/rescue-2026-11-03.md`. Each setting keeps its old value as an option.
