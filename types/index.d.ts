@@ -66,6 +66,7 @@ export interface RouterSnap {
   planMode: boolean
   review: { required: boolean; because: string[] }
   lastCheck: { command: string; passed: boolean } | null
+  consult?: { episode: string; state: 'open' | 'verified_resolved' | 'recurred' | 'escalated' | 'unverified' | 'abandoned' } | null // the task's last ladder consult
   warm: Partial<Record<Family, { until: number; effort: Effort | null }>>
   ttlMs: number
   candidates: { route: string; eligibility: string; usd: number | null; why: string }[] // the last auto decision's, as recorded

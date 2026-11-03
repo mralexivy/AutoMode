@@ -4,6 +4,37 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-03
+
+### Changed
+
+- T3 work now starts on Sonnet high, not Opus (`opusStart: evidence`). Opus comes from the escalation ladder, on a failing check, a regression or a reviewer blocker. T4 and a Fable verdict still start on Opus, and Haiku routing is unchanged. In the 30-task proof run, the old rule sent 15 tasks to Opus for $12.49, and Sonnet high passed all 15 for $4.51. `opusStart: judge` restores the old rule.
+
+### Fixed
+
+- A Bash line that runs the full test suite beside other checks is now keyed on the full suite. A `--version` call in parentheses no longer counts as a check run. Before, one sqlglot suite got 3 keys across its runs, so its repeats went unseen.
+
+### Changed
+
+- The rescue ladder ships on: `strongStep: effort-first`, `consult: priced`, `packet: fork-gated` and `forkRung: on`. With these settings and `opusStart: evidence`, AutoMode passed 29 of 30 tasks at 32% lower cost than Opus medium ([report](bench/results/automode-proof-2026-11-03.md)). The ladder's effect alone, against the old defaults, is not settled: the 30-task run judged it inconclusive. Each setting keeps its old value as an option.
+
+### Fixed
+
+- The escalation ladder now sees edits made through Bash (`sed -i`, a heredoc that writes a file, a redirect, `git apply`). It keys a check on its check commands alone, not the whole Bash line. Before, a session that edited and tested in one call got a new failure each time and never escalated.
+- The same check failing 3 times after edits, each time with other tests, now counts as a repeat of the check.
+- A test run that reports failed tests now counts as a defect even when a later line looks like a missing module. Before, a stray `No module named` after `FAILED (failures=3)` filed sqlglot's real failures as environment noise, so the escalation ladder never acted on them. Python unittest's `FAIL:` and `ERROR:` lines now name the failing tests, and its `FAILED (failures=…)` summary marks a masked check as failed.
+
+### Added
+
+- Escalation records carry the cache state: prefix size, time since the last refresh, and what is left of its lifetime. Each architect consult writes a `consult-run` record with its measured duration and cost. A `baseline` bench arm pins every rescue setting at its old value.
+- `strongStep: effort-first` raises effort on the running model once per failure episode, on strong evidence, before the Opus consult and the switch. Critical-risk work and a floor that needs the model skip it. The value `model` keeps the old order. Arm: `rescue-effort-first`.
+- `consult: priced` asks the Opus architect only when that costs less than moving the session. The price counts what is left of the cache lifetime against how long a consult runs, one verify request, and the chance the failure comes back and still needs the switch. Quality rules come first. Unmeasured inputs are labeled priors, and each escalation record carries the estimate. The value `always` keeps the old behavior. Arm: `rescue-consult-priced`.
+- Each ladder consult gets an outcome record: `verified_resolved`, `recurred`, `escalated`, `unverified` or `abandoned`. A passing check alone is not a fix. It also needs the reviewer's approval or a verified completion gate. The record also says whether the edits after the consult followed the architect's plan. The bar shows an open consult. Under a rescue setting, a consult or a strong-evidence raise also requires the independent review.
+- `packet: rich` gives the Opus consult a packet where each fact names its source. It holds the person's later messages, the diff from git, every failing check with a 40-line tail, and what was tried. `packet: fork-gated` adds a same-model `$.model.fork` only for a gap the conversation could fill, and only while the fork costs under a quarter of the consult. Its record keeps the measured cache read. The value `basic` keeps the old packet. Arms: `rescue-packet-rich`, `rescue-packet-fork`.
+- The guardian's lifecycle record carries `expected`: a fuller compaction model, recorded in shadow. It adds context regrowth, the chance the cache expires before the next request, and the cost of re-reading a detail the summary drops. It changes no offer.
+- `forkRung: on` adds a rung before the Opus consult. The main model starts a `fork` agent, which shares the conversation and its warm cache, to diagnose the failure without editing. A `fork-run` record measures its cost and how much of its first request the cache served. Arm: `rescue-fork`.
+- Under a rescue setting with `completionGate: block`, a stop on a failing check is strong evidence for the ladder. Each such stop, up to four (effort, fork, consult, switch), is sent back with the next rung in the block message.
+
 ## [0.7.0] - 2026-11-02
 
 ### Added

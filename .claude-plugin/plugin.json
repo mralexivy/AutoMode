@@ -6,7 +6,7 @@
     "name": "Alex Ivy",
     "url": "https://github.com/mralexivy"
   },
-  "version": "0.7.0",
+  "version": "0.8.0",
   "license": "MIT",
   "homepage": "https://mralexivy.github.io/AutoMode/",
   "documentationUrl": "https://github.com/mralexivy/AutoMode#readme",
@@ -96,6 +96,62 @@
         "default",
         "judge",
         "sonnet"
+      ]
+    },
+    "strongStep": {
+      "type": "string",
+      "title": "AutoMode: Strong evidence step",
+      "description": "default: follow config.json. model: strong failure evidence moves to the stronger model (an Opus consult first). effort-first: it raises effort on the running model once per failure, unless a critical-risk floor needs the model.",
+      "default": "default",
+      "options": [
+        "default",
+        "model",
+        "effort-first"
+      ]
+    },
+    "consult": {
+      "type": "string",
+      "title": "AutoMode: Opus consult",
+      "description": "default: follow config.json. always: the first strong failure on the way to Opus asks a read-only Opus architect before the session moves. priced: it asks only when the consult, with its retries and the cache it may lose, costs less than moving the session.",
+      "default": "default",
+      "options": [
+        "default",
+        "always",
+        "priced"
+      ]
+    },
+    "packet": {
+      "type": "string",
+      "title": "AutoMode: Consult packet",
+      "description": "default: follow config.json. basic: the consult gets the goal, the criteria, the last failure and the edited files. rich: it also gets each fact's source, the person's later messages, the diff, every failing check and what was tried. fork-gated: rich, and a same-model fork fills what only the conversation holds when that costs little next to the consult.",
+      "default": "default",
+      "options": [
+        "default",
+        "basic",
+        "rich",
+        "fork-gated"
+      ]
+    },
+    "forkRung": {
+      "type": "string",
+      "title": "AutoMode: Fork diagnosis rung",
+      "description": "default: follow config.json. on: before the Opus consult, the main model starts a fork agent. The fork shares the conversation and its warm cache, and it diagnoses the failure without editing. A repeat after it goes on to the consult.",
+      "default": "default",
+      "options": [
+        "default",
+        "off",
+        "on"
+      ]
+    },
+    "opusStart": {
+      "type": "string",
+      "title": "AutoMode: Opus at the start",
+      "description": "default: follow config.json. evidence: T3 work starts on Sonnet high, and Opus comes only from failure evidence (a failing check, a regression, a reviewer blocker). judge: a T3 rating with critical risk or an Opus need starts on Opus.",
+      "default": "default",
+      "options": [
+        "default",
+        "judge",
+        "evidence"
       ]
     },
     "routeModels": {
