@@ -4,3 +4,5 @@ dist/
 bench/.cache/
 bench/results/ledger.jsonl
 bench/results/diffs/
+bench/results/*.events.jsonl
+bench/results/*.status.json
