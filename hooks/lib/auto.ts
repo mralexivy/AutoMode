@@ -78,8 +78,8 @@ function effortMinFor(family: Family, i: Pick<AutoInput, 'need' | 'hm' | 'floors
   const floor = i.floors.effortMin?.[family]
   const hard = i.hm?.tier === 'T4' || effortlessFloor(i.need) === RANK.fable
   if (family === 'opus' && hard) return maxEffort(floor ?? 'low', 'high')
-  // T3 work that starts on Sonnet starts at high, the effort Sonnet passed it with.
-  if (family === 'sonnet' && i.opusOnEvidence && i.hm?.tier === 'T3') return maxEffort(floor ?? 'low', 'high')
+  // T3 work that starts below Opus starts at high, the effort it passed with.
+  if (family !== 'opus' && i.opusOnEvidence && i.hm?.tier === 'T3') return maxEffort(floor ?? 'low', 'high')
   return floor
 }
 
@@ -116,6 +116,10 @@ export function eligibilityOf(family: Family, i: Evidence): { eligibility: Eligi
   if (family === 'sonnet') return { eligibility: 'eligible', why: [...why, 'sonnet: no rule requires opus'] }
   if (!i.hm) return { eligibility: 'ineligible', why: [...why, 'haiku needs both judges; the automode judge did not answer'] }
   if (i.reachHaiku && tierRank(i.hm.tier) <= 2 && i.need.model !== 'opus' && i.consequence !== 'critical') return { eligibility: 'eligible', why: [...why, 'haiku: low tier, no critical risk'] }
+  // Haiku first (with opusOnEvidence): Haiku passed 27 of the 28 proof-run tasks it has rows for, at about a tenth of
+  // Sonnet high's cost, while AutoMode sent 25 of them to Sonnet. A judge's model name never keeps work off Haiku; only
+  // T4, a Fable verdict or critical risk does. A failing check moves it to Sonnet through the ladder.
+  if (i.reachHaiku && i.opusOnEvidence && tierRank(i.hm.tier) <= 3 && i.consequence !== 'critical') return { eligibility: 'eligible', why: [...why, 'haiku first: no critical risk, failure evidence moves it up'] }
   return i.need.model === 'haiku' && i.hm.tier === 'T0' ? { eligibility: 'eligible', why: [...why, 'both judges name haiku'] } : { eligibility: 'ineligible', why: [...why, 'haiku needs both judges'] }
 }
 

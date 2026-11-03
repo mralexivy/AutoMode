@@ -368,3 +368,20 @@ test('opusOnEvidence: T3 with critical risk or an Opus need starts on Sonnet hig
   // Haiku routing is untouched.
   assert.equal(optimizeAuto(base({ verdicts: { sonnet: v('haiku', 'medium'), haiku: v('haiku', 'medium') }, hm: hmOf('T0', 'trivial'), opusOnEvidence: true, reachHaiku: true })).best.family, 'haiku')
 })
+
+// Haiku first (reachHaiku + opusOnEvidence): Haiku passed 27 of the 28 proof-run tasks it has rows for.
+test('haiku first: T0-T3 work without critical risk can start on Haiku whatever model the need names', () => {
+  const h = (need, tier, consequence) => eligibilityOf('haiku', { need, hm: hmOf(tier), consequence, reachHaiku: true, opusOnEvidence: true }).eligibility
+  assert.equal(h(v('opus', 'high'), 'T2', 'elevated'), 'eligible', 'the need named opus: still Haiku first')
+  assert.equal(h(v('sonnet', 'high'), 'T3', 'none'), 'eligible')
+  assert.equal(h(v('sonnet', 'high'), 'T3', 'critical'), 'ineligible', 'critical risk stays off Haiku')
+  assert.equal(h(v('sonnet', 'high'), 'T4', 'none'), 'ineligible', 'T4 needs Opus')
+  assert.equal(h(v('fable', 'high'), 'T2', 'none'), 'ineligible')
+  // Without opusOnEvidence the old rule holds: an Opus need keeps T2 off Haiku.
+  assert.equal(eligibilityOf('haiku', { need: v('opus', 'high'), hm: hmOf('T2'), consequence: 'elevated', reachHaiku: true }).eligibility, 'ineligible')
+  // The second judge call asks Haiku for its own effort when it can win.
+  assert.equal(secondCall(base({ verdicts: { sonnet: v('opus', 'high') }, hm: hmOf('T2'), consequence: 'elevated', reachHaiku: true, opusOnEvidence: true }), 'sonnet'), 'haiku')
+  // T3 on Haiku never starts below high.
+  const best = optimizeAuto(base({ verdicts: { sonnet: v('sonnet', 'high'), haiku: v('haiku', 'medium') }, hm: hmOf('T3', 'complex'), reachHaiku: true, opusOnEvidence: true })).best
+  assert.deepEqual([best.family, best.effort], ['haiku', 'high'])
+})

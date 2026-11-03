@@ -6,6 +6,11 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Changed
 
+- Haiku first: under `opusStart: evidence`, T0 to T3 work without critical risk can start on Haiku, whatever model a judge's need names. T3 starts at high effort. A failing check moves the task to Sonnet through the ladder. Critical-risk work stays on Sonnet high. Haiku passed 27 of the 28 proof-run tasks it has rows for, at about a tenth of Sonnet high's cost, while AutoMode had sent 25 of them to Sonnet.
+- The independent review runs on Sonnet unless the diff itself shows critical risk. Before, a prompt rating or a rescue rule bought an Opus review. In the proof run those reviews were all of AutoMode's Opus spend ($2.07 of $9.11), and none changed an outcome.
+
+### Changed
+
 - T3 work now starts on Sonnet high, not Opus (`opusStart: evidence`). Opus comes from the escalation ladder, on a failing check, a regression or a reviewer blocker. T4 and a Fable verdict still start on Opus, and Haiku routing is unchanged. In the 30-task proof run, the old rule sent 15 tasks to Opus for $12.49, and Sonnet high passed all 15 for $4.51. `opusStart: judge` restores the old rule.
 
 ### Fixed

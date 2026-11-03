@@ -1101,3 +1101,11 @@ test('a method chain is not a file path', () => {
   assert.deepEqual(pathsIn('edit schema.sql and db/migrate/001.sql'), ['schema.sql', 'db/migrate/001.sql'])
   assert.deepEqual(pathsIn('edit auth.middleware.ts'), ['auth.middleware.ts'])
 })
+
+test('reviewerFamily on evidence: Opus only when the diff itself is critical', async () => {
+  const { reviewerFamily } = await import('../hooks/lib/risk.ts')
+  assert.equal(reviewerFamily(['prospective critical: changes auth'], true), 'sonnet', 'a prompt rating buys a Sonnet review')
+  assert.equal(reviewerFamily(['verification fail', 'large change'], true), 'sonnet')
+  assert.equal(reviewerFamily(['observed critical: secrets'], true), 'opus')
+  assert.equal(reviewerFamily(['prospective critical: changes auth']), 'opus', 'the old rule without the flag')
+})

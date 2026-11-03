@@ -79,7 +79,11 @@ export function observedRisk(o: ObservedInput, large = DEFAULT_LARGE): RiskAsses
 
 // A judge's word alone buys a Sonnet review. Every other reason to review keeps the Opus reviewer.
 const JUDGE_ONLY = 'judge-only critical'
-export const reviewerFamily = (because: string[]): 'sonnet' | 'opus' => (because.length && because.every((b) => b.startsWith(JUDGE_ONLY)) ? 'sonnet' : 'opus')
+// reviewerFamily: Opus reviews only when the diff itself shows critical risk, or, under `onEvidence: false` (the old
+// rule), any reason a judge alone did not give. In the proof run every Opus review ($2.07 of $9.11) came from a prompt
+// rating or a rescue rule, and none changed an outcome: Sonnet high passed the same tasks with no review at all.
+export const reviewerFamily = (because: string[], onEvidence = false): 'sonnet' | 'opus' =>
+  onEvidence ? (because.some((b) => b.startsWith('observed critical')) ? 'opus' : 'sonnet') : (because.length && because.every((b) => b.startsWith(JUDGE_ONLY)) ? 'sonnet' : 'opus')
 
 // reviewNeeded applies the review rules: critical risk, consequential surfaces, a large change, or a
 // verification that failed or never ran. A passing test never clears rules 1, 3 or 4.

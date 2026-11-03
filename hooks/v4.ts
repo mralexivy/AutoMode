@@ -1209,7 +1209,7 @@ function routeHeader(d: Decision, env: TaskEnvelope): string {
     lines.push(`This is open-ended multi-module work. Run Workflow({ name: "${S.cfg.workflowName}", args: ${JSON.stringify(args)} }) and do not implement it yourself until it returns. Then follow its next_action: report the result, and change code only if next_action says the checks failed.`)
   }
   if (d.strategy !== 'engineering-workflow' && (env.complexity !== 'trivial' || env.risk.effective !== 'none')) lines.push('Before you call a change done, run the relevant tests or build and show that they pass.')
-  if (env.reviewRequired.value && d.strategy !== 'engineering-workflow') lines.push(`After your checks pass, call the Agent tool with subagent_type "automode:reviewer" (${reviewerFamily(env.reviewRequired.because) === 'sonnet' ? 'Sonnet' : 'Opus'}, read-only) and wait for it. Give it the original request, the acceptance criteria, each check with its output, and the changed files. Fix every blocker, run the checks again, and do not call it a second time.`)
+  if (env.reviewRequired.value && d.strategy !== 'engineering-workflow') lines.push(`After your checks pass, call the Agent tool with subagent_type "automode:reviewer" (${reviewerFamily(env.reviewRequired.because, S.cfg.opusStart === 'evidence') === 'sonnet' ? 'Sonnet' : 'Opus'}, read-only) and wait for it. Give it the original request, the acceptance criteria, each check with its output, and the changed files. Fix every blocker, run the checks again, and do not call it a second time.`)
   if (env.failures.length && failureStep(env.failures, r.tier).action === 'report') lines.push(`The last check failed for an environment reason (${env.failures[env.failures.length - 1].command}). Tell the user what is missing instead of changing code.`)
   if (failureStep(env.failures, r.tier).action === 'diagnose') lines.push(delegation('diagnose', env))
   lines.push('Commit or push only when the user asks you to.')
@@ -1911,7 +1911,7 @@ export async function v4AgentSpawn($: EngineInterface, e: any, next: any) {
   }
   // A worker keeps the guards below, so a route changes only its model.
   // A judge's word alone buys a Sonnet review (lib/risk.ts reviewerFamily). The workflow picks its own reviewers.
-  const sonnetReview = e.subagentType === 'automode:reviewer' && !e.model && !e.workflow && S.envelope?.reviewRequired.value && reviewerFamily(S.envelope.reviewRequired.because) === 'sonnet'
+  const sonnetReview = e.subagentType === 'automode:reviewer' && !e.model && !e.workflow && S.envelope?.reviewRequired.value && reviewerFamily(S.envelope.reviewRequired.because, S.cfg.opusStart === 'evidence') === 'sonnet'
   const model = sr?.model ?? (sonnetReview ? 'sonnet' : e.model)
   const hp = S.policy === 'auto' ? await helperPick($, e, model) : null
   const res = await next(sr || sonnetReview ? { ...e, model } : e)
