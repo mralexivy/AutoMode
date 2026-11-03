@@ -1,0 +1,785 @@
+{
+ "experiment": "automode-proof-v5",
+ "plan_hash": "2e1b0642c86e59bf",
+ "at": "2026-11-03T16:59:41.084Z",
+ "pass": false,
+ "checks": [
+  {
+   "name": "experiment",
+   "ok": true,
+   "detail": "30 tasks x 3 arms x 1; policy bench/experiments/policies/automode-vs-opus-v1.json",
+   "blocking": true
+  },
+  {
+   "name": "split",
+   "ok": true,
+   "detail": "no held-out task",
+   "blocking": true
+  },
+  {
+   "name": "tree",
+   "ok": true,
+   "detail": "clean at 594b09c",
+   "blocking": true
+  },
+  {
+   "name": "budget",
+   "ok": true,
+   "detail": "90 slots: 0 done, 60 reused, 0 unknown, 30 stale, 0 new; new paid slots expected $13.12 of $25",
+   "blocking": true
+  },
+  {
+   "name": "lock",
+   "ok": true,
+   "detail": "free",
+   "blocking": true
+  },
+  {
+   "name": "fixtures",
+   "ok": true,
+   "detail": "30 valid on machine 14caf2f4dce9ad6e, agent environment included",
+   "blocking": true
+  },
+  {
+   "name": "history",
+   "ok": false,
+   "detail": "988 saved sessions, 685 failed checks replayed, 401 would escalate now; misread: 29; crashed: 0",
+   "blocking": true
+  },
+  {
+   "name": "tests",
+   "ok": true,
+   "detail": "npm run check: ℹ pass 753, ℹ fail 0",
+   "blocking": true
+  },
+  {
+   "name": "plugin-tests",
+   "ok": true,
+   "detail": "472 pass, 0 fail",
+   "blocking": true
+  }
+ ],
+ "slots": [
+  {
+   "run_id": "feature-boltons-mapping-type-fixes__auto__r1__e7f0368c48390bcd",
+   "task": "feature-boltons-mapping-type-fixes",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (47b788dd3a408720) differs in: code"
+  },
+  {
+   "run_id": "feature-boltons-mapping-type-fixes__opus-medium__r1__81bd2781d29a2351",
+   "task": "feature-boltons-mapping-type-fixes",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-boltons-mapping-type-fixes__sonnet-high__r1__8179672a44ffcbcb",
+   "task": "feature-boltons-mapping-type-fixes",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-fastxmlparser-stopnode-nested-same-tag__auto__r1__50b6e7ec41abb7df",
+   "task": "feature-fastxmlparser-stopnode-nested-same-tag",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (f1994446f3518987) differs in: code"
+  },
+  {
+   "run_id": "feature-fastxmlparser-stopnode-nested-same-tag__opus-medium__r1__69ce08cc61122a59",
+   "task": "feature-fastxmlparser-stopnode-nested-same-tag",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-fastxmlparser-stopnode-nested-same-tag__sonnet-high__r1__cb46227ca882c731",
+   "task": "feature-fastxmlparser-stopnode-nested-same-tag",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-findmyway-regex-param-empty-segment__auto__r1__277097ff68240d1e",
+   "task": "feature-findmyway-regex-param-empty-segment",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (2560dede742787cd) differs in: code"
+  },
+  {
+   "run_id": "feature-findmyway-regex-param-empty-segment__opus-medium__r1__45462d91ad7e4bf2",
+   "task": "feature-findmyway-regex-param-empty-segment",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-findmyway-regex-param-empty-segment__sonnet-high__r1__6b39c68394f75d08",
+   "task": "feature-findmyway-regex-param-empty-segment",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-immer-array-plugin-spread-drafts__auto__r1__75422b2cb68b5069",
+   "task": "feature-immer-array-plugin-spread-drafts",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (d318419eb7dd2201) differs in: code"
+  },
+  {
+   "run_id": "feature-immer-array-plugin-spread-drafts__opus-medium__r1__00a4fad4a4bc3f2e",
+   "task": "feature-immer-array-plugin-spread-drafts",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-immer-array-plugin-spread-drafts__sonnet-high__r1__f907329ab49ab731",
+   "task": "feature-immer-array-plugin-spread-drafts",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-jinja-undefined-copy-pickle-state__auto__r1__5f9a1dc4c512095f",
+   "task": "feature-jinja-undefined-copy-pickle-state",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (4e7e80371e497d06) differs in: code"
+  },
+  {
+   "run_id": "feature-jinja-undefined-copy-pickle-state__opus-medium__r1__8957efe173b46a2f",
+   "task": "feature-jinja-undefined-copy-pickle-state",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-jinja-undefined-copy-pickle-state__sonnet-high__r1__61fda477c272a070",
+   "task": "feature-jinja-undefined-copy-pickle-state",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-markdown-unclosed-markup-in-code-spans__auto__r1__852e41f1102f6c6b",
+   "task": "feature-markdown-unclosed-markup-in-code-spans",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (47e8bc59866e8670) differs in: code"
+  },
+  {
+   "run_id": "feature-markdown-unclosed-markup-in-code-spans__opus-medium__r1__55b9cd4f14ecd94d",
+   "task": "feature-markdown-unclosed-markup-in-code-spans",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-markdown-unclosed-markup-in-code-spans__sonnet-high__r1__fdc518d9d7c5615a",
+   "task": "feature-markdown-unclosed-markup-in-code-spans",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__auto__r1__ce9898c3be604153",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (5061195091d433bf) differs in: code"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__opus-medium__r1__da30b30d0fcc84cd",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__sonnet-high__r1__fed39d586f934e89",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-nodesemver-diff-prerelease-direction__auto__r1__a164abfe2f87de71",
+   "task": "feature-nodesemver-diff-prerelease-direction",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (0e781bec41b59550) differs in: code"
+  },
+  {
+   "run_id": "feature-nodesemver-diff-prerelease-direction__opus-medium__r1__acbb2a09f0671ea0",
+   "task": "feature-nodesemver-diff-prerelease-direction",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-nodesemver-diff-prerelease-direction__sonnet-high__r1__ccbcd5189fa19894",
+   "task": "feature-nodesemver-diff-prerelease-direction",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-picomatch-repeated-extglob-branches__auto__r1__f0fd48c01904883d",
+   "task": "feature-picomatch-repeated-extglob-branches",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (9d1757810c1a4d03) differs in: code"
+  },
+  {
+   "run_id": "feature-picomatch-repeated-extglob-branches__opus-medium__r1__44f5453ed70efa6d",
+   "task": "feature-picomatch-repeated-extglob-branches",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-picomatch-repeated-extglob-branches__sonnet-high__r1__0b3ffe46848ccfa2",
+   "task": "feature-picomatch-repeated-extglob-branches",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__auto__r1__651c92dd86c5c728",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (5aef148f1ec2725d) differs in: code"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__opus-medium__r1__46339affba2a1ace",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__sonnet-high__r1__4bc11146f0fd59e6",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__auto__r1__3b44acfa075bb9d1",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (9b1661f86d64d69c) differs in: code"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__opus-medium__r1__c09b7011c1c044a9",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__sonnet-high__r1__369d9ce173210545",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-sqlparse-begin-end-block-semicolons__auto__r1__7092b9a590fc0cde",
+   "task": "feature-sqlparse-begin-end-block-semicolons",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (55aee730f55a322b) differs in: code"
+  },
+  {
+   "run_id": "feature-sqlparse-begin-end-block-semicolons__opus-medium__r1__0b3f0c9e8f12dc31",
+   "task": "feature-sqlparse-begin-end-block-semicolons",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-sqlparse-begin-end-block-semicolons__sonnet-high__r1__b2bd41c011c0b7e4",
+   "task": "feature-sqlparse-begin-end-block-semicolons",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__auto__r1__52eb6ec7edf80a7a",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (205ce8200843e5b4) differs in: code"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__opus-medium__r1__dc5183cb9e399446",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__sonnet-high__r1__61d5a43d9349c9d9",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-xmltodict-selective-cdata__auto__r1__805bf8b6f3aa9da4",
+   "task": "feature-xmltodict-selective-cdata",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (3a3588c554a82d8c) differs in: code"
+  },
+  {
+   "run_id": "feature-xmltodict-selective-cdata__opus-medium__r1__96ecceadaf55dd59",
+   "task": "feature-xmltodict-selective-cdata",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-xmltodict-selective-cdata__sonnet-high__r1__a0348e4342f4cecb",
+   "task": "feature-xmltodict-selective-cdata",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__auto__r1__e6815e7476705ea1",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (47adc867c582d384) differs in: code"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__opus-medium__r1__f372bfb06d86d952",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__sonnet-high__r1__d39c15d810761946",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-mistune-toc-heading-id-collisions__auto__r1__6615c822d607b68f",
+   "task": "longctx-mistune-toc-heading-id-collisions",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (26ad7b5230cba629) differs in: code"
+  },
+  {
+   "run_id": "longctx-mistune-toc-heading-id-collisions__opus-medium__r1__b7813da33afaaf83",
+   "task": "longctx-mistune-toc-heading-id-collisions",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-mistune-toc-heading-id-collisions__sonnet-high__r1__dd58935a290c6fc6",
+   "task": "longctx-mistune-toc-heading-id-collisions",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__auto__r1__292d1a3642df9167",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (9a35803377b003e4) differs in: code"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__opus-medium__r1__1ab7e697b6af71a1",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__sonnet-high__r1__09cca49eecd922d3",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-tornado-body-parse-errors-v2__auto__r1__31ceb3795c216cb9",
+   "task": "longctx-tornado-body-parse-errors-v2",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (5498ac77805bcc0e) differs in: code"
+  },
+  {
+   "run_id": "longctx-tornado-body-parse-errors-v2__opus-medium__r1__f5ac539ccdf34cf6",
+   "task": "longctx-tornado-body-parse-errors-v2",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-tornado-body-parse-errors-v2__sonnet-high__r1__aab381c3511853c9",
+   "task": "longctx-tornado-body-parse-errors-v2",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "migration-cachetools-cachedmethod-instance-attributes__auto__r1__a65d023795a29672",
+   "task": "migration-cachetools-cachedmethod-instance-attributes",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (1ca4b33d96fa7090) differs in: code"
+  },
+  {
+   "run_id": "migration-cachetools-cachedmethod-instance-attributes__opus-medium__r1__d9eda9aa57319986",
+   "task": "migration-cachetools-cachedmethod-instance-attributes",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "migration-cachetools-cachedmethod-instance-attributes__sonnet-high__r1__163f76adc37ac0f7",
+   "task": "migration-cachetools-cachedmethod-instance-attributes",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "migration-marked-list-tokens-from-lexer__auto__r1__bf670dccc7360af5",
+   "task": "migration-marked-list-tokens-from-lexer",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (fe1bce92d5b8e8d3) differs in: code"
+  },
+  {
+   "run_id": "migration-marked-list-tokens-from-lexer__opus-medium__r1__5bb3e3d60abf62ec",
+   "task": "migration-marked-list-tokens-from-lexer",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "migration-marked-list-tokens-from-lexer__sonnet-high__r1__a30e3dee5220535a",
+   "task": "migration-marked-list-tokens-from-lexer",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "refactor-pymarkdown-block-level-v2__auto__r1__7cb7e0661078072d",
+   "task": "refactor-pymarkdown-block-level-v2",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (9e6084e4adcecb05) differs in: code"
+  },
+  {
+   "run_id": "refactor-pymarkdown-block-level-v2__opus-medium__r1__0b78f449cd8ee004",
+   "task": "refactor-pymarkdown-block-level-v2",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "refactor-pymarkdown-block-level-v2__sonnet-high__r1__e4d12e40fa9a3edd",
+   "task": "refactor-pymarkdown-block-level-v2",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-findmyway-absolute-form-targets__auto__r1__d9897287ef803613",
+   "task": "security-findmyway-absolute-form-targets",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (aa4631d4de546705) differs in: code"
+  },
+  {
+   "run_id": "security-findmyway-absolute-form-targets__opus-medium__r1__d5ab969c8fb83e7b",
+   "task": "security-findmyway-absolute-form-targets",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-findmyway-absolute-form-targets__sonnet-high__r1__2e3a2d651e2416db",
+   "task": "security-findmyway-absolute-form-targets",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-markdownit-reference-continuation-quadratic__auto__r1__a3de3bc4b2a838b8",
+   "task": "security-markdownit-reference-continuation-quadratic",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (24d740550afd6a8b) differs in: code"
+  },
+  {
+   "run_id": "security-markdownit-reference-continuation-quadratic__opus-medium__r1__1215a13084488899",
+   "task": "security-markdownit-reference-continuation-quadratic",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-markdownit-reference-continuation-quadratic__sonnet-high__r1__2b31980cbf3dc165",
+   "task": "security-markdownit-reference-continuation-quadratic",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-pyjwt-key-family-validation__auto__r1__4b97b1189434353b",
+   "task": "security-pyjwt-key-family-validation",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (f8d2ab39f2bef769) differs in: code"
+  },
+  {
+   "run_id": "security-pyjwt-key-family-validation__opus-medium__r1__a7eba47a6bc0235b",
+   "task": "security-pyjwt-key-family-validation",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-pyjwt-key-family-validation__sonnet-high__r1__d9bbffdf6c4b096a",
+   "task": "security-pyjwt-key-family-validation",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__auto__r1__5697f7263c9c7986",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (8541cb7436c53907) differs in: code"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__opus-medium__r1__d48b43e84c621aa8",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__sonnet-high__r1__c5759b7db29e101d",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-toughcookie-cookie-name-token-validation__auto__r1__92fddff87858edde",
+   "task": "security-toughcookie-cookie-name-token-validation",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (7a6df633e44b2a6e) differs in: code"
+  },
+  {
+   "run_id": "security-toughcookie-cookie-name-token-validation__opus-medium__r1__67ae92976a9146d5",
+   "task": "security-toughcookie-cookie-name-token-validation",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-toughcookie-cookie-name-token-validation__sonnet-high__r1__75163a7374c31780",
+   "task": "security-toughcookie-cookie-name-token-validation",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-toughcookie-secure-cookie-origin__auto__r1__c54509fceba0f362",
+   "task": "security-toughcookie-secure-cookie-origin",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (97984e29d32c8927) differs in: code"
+  },
+  {
+   "run_id": "security-toughcookie-secure-cookie-origin__opus-medium__r1__c91c2ec3a7ac0c60",
+   "task": "security-toughcookie-secure-cookie-origin",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-toughcookie-secure-cookie-origin__sonnet-high__r1__1a7aad95d578a4ad",
+   "task": "security-toughcookie-secure-cookie-origin",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-yaml-recursive-merge-alias-limit__auto__r1__3b003aba0e647121",
+   "task": "security-yaml-recursive-merge-alias-limit",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (8e4af937016b4cfb) differs in: code"
+  },
+  {
+   "run_id": "security-yaml-recursive-merge-alias-limit__opus-medium__r1__4158de1ea55a6f5a",
+   "task": "security-yaml-recursive-merge-alias-limit",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-yaml-recursive-merge-alias-limit__sonnet-high__r1__b2a9cce4e18c5f19",
+   "task": "security-yaml-recursive-merge-alias-limit",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "trivial-bottle-if-none-match-v2__auto__r1__31480f38390adde0",
+   "task": "trivial-bottle-if-none-match-v2",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (1dfa687b2e8402ad) differs in: code"
+  },
+  {
+   "run_id": "trivial-bottle-if-none-match-v2__opus-medium__r1__8eb5383ea785352a",
+   "task": "trivial-bottle-if-none-match-v2",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "trivial-bottle-if-none-match-v2__sonnet-high__r1__5fc45c7eeb65d074",
+   "task": "trivial-bottle-if-none-match-v2",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__auto__r1__beba5b85e454a0d6",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "auto",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (514f62582fb100e9) differs in: code"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__opus-medium__r1__1144ce79f2cb841f",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__sonnet-high__r1__64f8140dee96c8ee",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  }
+ ],
+ "estimate_usd": 13.12
+}

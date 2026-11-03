@@ -32,7 +32,7 @@ import { configDir } from './lib/run-evidence.mts'
 import { loadTasks, problems, taskRepo, type Task } from './lib/task-repo.mts'
 import { workspaceEnv } from './runners/claude-code.mts'
 import { freshWorkspace, runAccept, writeHiddenTests } from './validate-fixture.mts'
-import { classify as classifyFailure, isCheck } from '../hooks/lib/failures.ts'
+import { classify as classifyFailure, isCheck, onlyMissingTools } from '../hooks/lib/failures.ts'
 import { HELDOUT } from './split.mts'
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
@@ -75,6 +75,11 @@ export function fixtureVerdict(task: Task, dir: string, host: string): FixtureVe
 
 // historyCheck replays every saved benchmark session. A crash, or a run whose own tests said FAILED but reads as
 // environment, blocks: that is the class of bug that made the ladder a no-op.
+// misread: a run whose tests failed, read as environment noise (the setuptools_scm misreading). A run whose only errors
+// are a program the machine lacks is environment on purpose (lib/failures.ts onlyMissingTools): every such run in the
+// saved history is sqlglot's test_lazy_load.
+export const misread = (out: string) => /^FAILED \((?:failures|errors)=[1-9]|^\s*\d+ failed\b|^--- FAIL: /m.test(out) && !/^\s*(?:E\s+)?(?:ModuleNotFoundError|ImportError)\b/m.test(out) && !onlyMissingTools(out) && classifyFailure(out) === 'environment'
+
 export function historyCheck(root = path.join(configDir(), 'projects')): { sessions: number; checks: number; misread: string[]; crashed: string[]; escalating: number } {
   const out = { sessions: 0, checks: 0, misread: [] as string[], crashed: [] as string[], escalating: 0 }
   if (!fs.existsSync(root)) return out
@@ -85,7 +90,7 @@ export function historyCheck(root = path.join(configDir(), 'projects')): { sessi
         const evs = toolEvents(path.join(root, d, f))
         for (const e of evs) if (e.tool === 'Bash' && isCheck(e.cmd) && e.err) {
           out.checks++
-          if (/^FAILED \((?:failures|errors)=[1-9]|^\s*\d+ failed\b|^--- FAIL: /m.test(e.out) && !/^\s*(?:E\s+)?(?:ModuleNotFoundError|ImportError)\b/m.test(e.out) && classifyFailure(e.out) === 'environment') out.misread.push(f)
+          if (misread(e.out)) out.misread.push(f)
         }
         if (replay(evs, { stop: true }).escalations > 0) out.escalating++
       } catch (err) { out.crashed.push(`${f}: ${(err as Error).message}`) }

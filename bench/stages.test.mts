@@ -117,3 +117,9 @@ test('agent environment: every path the accept command sets, made absolute; src 
   const env = workspaceEnv('/w', { PYTHONPATH: '/x' }, 'PYTHONPATH=src python3 t.py')
   assert.equal(env.PYTHONPATH, '/w/src:/x')
 })
+
+test('preflight misread: test failures read as environment, but not a missing program', async () => {
+  const { misread } = await import('./preflight.mts')
+  const lazy = "ERROR: test_lazy_load (t.T)\nFileNotFoundError: [Errno 2] No such file or directory: 'python'\nFAILED (errors=1)"
+  assert.equal(misread(lazy), false)
+})
