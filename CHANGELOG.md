@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-03
+
 ### Changed
 
 - T3 work now starts on Sonnet high, not Opus (`opusStart: evidence`). Opus comes from the escalation ladder, on a failing check, a regression or a reviewer blocker. T4 and a Fable verdict still start on Opus, and Haiku routing is unchanged. In the 30-task proof run, the old rule sent 15 tasks to Opus for $12.49, and Sonnet high passed all 15 for $4.51. `opusStart: judge` restores the old rule.
