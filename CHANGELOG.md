@@ -14,7 +14,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Changed
 
-- The rescue ladder ships on: `strongStep: effort-first`, `consult: priced`, `packet: fork-gated` and `forkRung: on`. In a 4-task pilot it cost the same per accepted run as the old defaults ($1.58 against $1.54) and passed sqlglot 3 of 4 times, against 0 of 6. See `bench/results/rescue-2026-11-03.md`. Each setting keeps its old value as an option.
+- The rescue ladder ships on: `strongStep: effort-first`, `consult: priced`, `packet: fork-gated` and `forkRung: on`. With these settings and `opusStart: evidence`, AutoMode passed 29 of 30 tasks at 32% lower cost than Opus medium ([report](bench/results/automode-proof-2026-11-03.md)). The ladder's effect alone, against the old defaults, is not settled: the 30-task run judged it inconclusive. Each setting keeps its old value as an option.
 
 ### Fixed
 
