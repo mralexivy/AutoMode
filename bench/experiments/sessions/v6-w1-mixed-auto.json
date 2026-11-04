@@ -1,0 +1,107 @@
+{
+  "id": "v6-w1-mixed-auto",
+  "description": "v6.1 W1, the AutoMode arm again on the fixed code. The first W1 run (v6-w1-mixed) finished plain Opus and plain Sonnet high, 20/20 each, then found mid-way through AutoMode that the plugin store was full: no resumed session could restore its state, so AutoMode routed every step blind to the cache. Its 7 AutoMode steps stay in v6-w1-mixed.jsonl as the record of that bug. Same sessions, questions and tasks; compare with the Opus and Sonnet high rows of v6-w1-mixed.",
+  "arms": [
+    "v6c-opus"
+  ],
+  "sessions": {
+    "marked": [
+      {
+        "ask": "Where does this repository tokenize fenced code blocks? Name the file and the method.",
+        "expect": [
+          "Tokenizer\\.ts",
+          "fences"
+        ],
+        "base": "trivial-marked-empty-code-block-v2"
+      },
+      "trivial-marked-empty-code-block-v2",
+      {
+        "ask": "Which renderer method turns a list token into HTML? Name the file and the method.",
+        "expect": [
+          "Renderer\\.ts",
+          "\\blist\\b"
+        ],
+        "base": "migration-marked-list-tokens-from-lexer"
+      },
+      "migration-marked-list-tokens-from-lexer"
+    ],
+    "jsyaml": [
+      {
+        "ask": "In which file and function does this repository read a YAML alias?",
+        "expect": [
+          "parser\\.ts",
+          "readAlias"
+        ],
+        "base": "refactor-jsyaml-tagname-module-v2"
+      },
+      "refactor-jsyaml-tagname-module-v2",
+      {
+        "ask": "Which file and function write a node when YAML is dumped?",
+        "expect": [
+          "presenter\\.ts",
+          "writeNode"
+        ],
+        "base": "migration-jsyaml-max-total-merge-keys-v2"
+      },
+      "migration-jsyaml-max-total-merge-keys-v2"
+    ],
+    "boltons": [
+      {
+        "ask": "Which file defines OrderedMultiDict, and which built-in class does it extend?",
+        "expect": [
+          "dictutils\\.py",
+          "\\bdict\\b"
+        ],
+        "base": "feature-boltons-mapping-type-fixes"
+      },
+      "feature-boltons-mapping-type-fixes",
+      {
+        "ask": "Which file defines IndexedSet, and which abstract base class does it extend?",
+        "expect": [
+          "setutils\\.py",
+          "MutableSet"
+        ],
+        "base": "feature-boltons-indexedset-complement-set-math"
+      },
+      "feature-boltons-indexedset-complement-set-math"
+    ],
+    "jinja": [
+      {
+        "ask": "Which file defines the Namespace class used by the namespace() template global?",
+        "expect": [
+          "utils\\.py"
+        ],
+        "base": "feature-jinja-namespace-tuple-assignment"
+      },
+      "feature-jinja-namespace-tuple-assignment",
+      {
+        "ask": "Which file defines the Undefined class?",
+        "expect": [
+          "runtime\\.py"
+        ],
+        "base": "feature-jinja-undefined-copy-pickle-state"
+      },
+      "feature-jinja-undefined-copy-pickle-state"
+    ],
+    "nodesemver": [
+      {
+        "ask": "Which file implements the diff function?",
+        "expect": [
+          "functions/diff\\.js"
+        ],
+        "base": "feature-nodesemver-diff-prerelease-direction"
+      },
+      "feature-nodesemver-diff-prerelease-direction",
+      {
+        "ask": "Which file implements intersection of two ranges?",
+        "expect": [
+          "ranges/intersects\\.js"
+        ],
+        "base": "longctx-nodesemver-intersects-zero-comparators"
+      },
+      "longctx-nodesemver-intersects-zero-comparators"
+    ]
+  },
+  "budget_usd": 8,
+  "run_cap_usd": 4
+}
