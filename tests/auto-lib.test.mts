@@ -370,8 +370,8 @@ test('opusOnEvidence: T3 with critical risk or an Opus need starts on Sonnet hig
 })
 
 // Haiku first (reachHaiku + opusOnEvidence): Haiku passed 27 of the 28 proof-run tasks it has rows for.
-test('haiku first: T0-T3 work without critical risk can start on Haiku whatever model the need names', () => {
-  const h = (need, tier, consequence) => eligibilityOf('haiku', { need, hm: hmOf(tier), consequence, reachHaiku: true, opusOnEvidence: true }).eligibility
+test('haiku first (haikuFirst t3): T0-T3 work without critical risk can start on Haiku whatever model the need names', () => {
+  const h = (need, tier, consequence) => eligibilityOf('haiku', { need, hm: hmOf(tier), consequence, reachHaiku: true, opusOnEvidence: true, haikuFirst: true }).eligibility
   assert.equal(h(v('opus', 'high'), 'T2', 'elevated'), 'eligible', 'the need named opus: still Haiku first')
   assert.equal(h(v('sonnet', 'high'), 'T3', 'none'), 'eligible')
   assert.equal(h(v('sonnet', 'high'), 'T3', 'critical'), 'ineligible', 'critical risk stays off Haiku')
@@ -380,8 +380,17 @@ test('haiku first: T0-T3 work without critical risk can start on Haiku whatever 
   // Without opusOnEvidence the old rule holds: an Opus need keeps T2 off Haiku.
   assert.equal(eligibilityOf('haiku', { need: v('opus', 'high'), hm: hmOf('T2'), consequence: 'elevated', reachHaiku: true }).eligibility, 'ineligible')
   // The second judge call asks Haiku for its own effort when it can win.
-  assert.equal(secondCall(base({ verdicts: { sonnet: v('opus', 'high') }, hm: hmOf('T2'), consequence: 'elevated', reachHaiku: true, opusOnEvidence: true }), 'sonnet'), 'haiku')
+  assert.equal(secondCall(base({ verdicts: { sonnet: v('opus', 'high') }, hm: hmOf('T2'), consequence: 'elevated', reachHaiku: true, opusOnEvidence: true, haikuFirst: true }), 'sonnet'), 'haiku')
   // T3 on Haiku never starts below high.
-  const best = optimizeAuto(base({ verdicts: { sonnet: v('sonnet', 'high'), haiku: v('haiku', 'medium') }, hm: hmOf('T3', 'complex'), reachHaiku: true, opusOnEvidence: true })).best
+  const best = optimizeAuto(base({ verdicts: { sonnet: v('sonnet', 'high'), haiku: v('haiku', 'medium') }, hm: hmOf('T3', 'complex'), reachHaiku: true, opusOnEvidence: true, haikuFirst: true })).best
   assert.deepEqual([best.family, best.effort], ['haiku', 'high'])
+})
+
+test('haiku first is off by default: T3 work starts on Sonnet, T0-T2 keeps the reachHaiku rule', () => {
+  // The v4 and v5 proof runs measured T3-on-Haiku at 2.07x Sonnet high's cost per accepted task.
+  const h = (need, tier) => eligibilityOf('haiku', { need, hm: hmOf(tier), consequence: 'elevated', reachHaiku: true, opusOnEvidence: true }).eligibility
+  assert.equal(h(v('sonnet', 'high'), 'T3'), 'ineligible')
+  assert.equal(h(v('sonnet', 'high'), 'T2'), 'eligible')
+  const best = optimizeAuto(base({ verdicts: { sonnet: v('sonnet', 'high'), haiku: v('haiku', 'medium') }, hm: hmOf('T3', 'complex'), reachHaiku: true, opusOnEvidence: true })).best
+  assert.deepEqual([best.family, best.effort], ['sonnet', 'high'])
 })

@@ -143,6 +143,17 @@
         "on"
       ]
     },
+    "haikuFirst": {
+      "type": "string",
+      "title": "AutoMode: Haiku first on T3 work",
+      "description": "default: follow config.json. t3: with opusStart evidence, T3 work without critical risk may start on Haiku, and failure evidence moves it up. off: Haiku takes T0 to T2 work only. Off by default: in the v4 and v5 proof runs, t3 cost more than Sonnet high.",
+      "default": "default",
+      "options": [
+        "default",
+        "off",
+        "t3"
+      ]
+    },
     "opusStart": {
       "type": "string",
       "title": "AutoMode: Opus at the start",

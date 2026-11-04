@@ -1115,3 +1115,9 @@ test('a file named schema is not a database schema', () => {
   assert.equal(pathRisk(['src/marshmallow/schema.py']).level, 'none')
   for (const p of ['db/schema.rb', 'prisma/schema.prisma', 'schema.sql', 'migrations/0001_init.py', 'db/migrate/001.rb']) assert.equal(pathRisk([p]).level, 'critical', p)
 })
+
+test('the haikuFirst setting reaches the router only when chosen', async () => {
+  const { routerOverrides } = await import('../hooks/lib/settings.ts')
+  assert.equal(routerOverrides({ haikuFirst: 't3' } as never).haikuFirst, 't3')
+  assert.equal('haikuFirst' in routerOverrides({ haikuFirst: 'default' } as never), false)
+})

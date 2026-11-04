@@ -60,6 +60,7 @@ export interface AutoInput {
   floors: AutoFloors
   reachHaiku?: boolean                                     // low-tier work without critical risk can run on Haiku
   opusOnEvidence?: boolean                                 // T3 starts on Sonnet high; Opus comes from failure evidence
+  haikuFirst?: boolean                                     // with opusOnEvidence: T3 work may start on Haiku (setting haikuFirst: t3)
   current: { family: Family; effort: Effort } | null
   cost: (family: Family, effort: Effort) => number         // one attempt, cache-neutral (optimizer.attemptCost)
 }
@@ -83,7 +84,7 @@ function effortMinFor(family: Family, i: Pick<AutoInput, 'need' | 'hm' | 'floors
   return floor
 }
 
-type Evidence = Pick<AutoInput, 'need' | 'hm' | 'consequence' | 'reachHaiku' | 'opusOnEvidence'>
+type Evidence = Pick<AutoInput, 'need' | 'hm' | 'consequence' | 'reachHaiku' | 'opusOnEvidence' | 'haikuFirst'>
 
 // opusRequired: why this task rules out every weaker model, or null.
 function opusRequired(i: Evidence): string | null {
@@ -116,10 +117,10 @@ export function eligibilityOf(family: Family, i: Evidence): { eligibility: Eligi
   if (family === 'sonnet') return { eligibility: 'eligible', why: [...why, 'sonnet: no rule requires opus'] }
   if (!i.hm) return { eligibility: 'ineligible', why: [...why, 'haiku needs both judges; the automode judge did not answer'] }
   if (i.reachHaiku && tierRank(i.hm.tier) <= 2 && i.need.model !== 'opus' && i.consequence !== 'critical') return { eligibility: 'eligible', why: [...why, 'haiku: low tier, no critical risk'] }
-  // Haiku first (with opusOnEvidence): Haiku passed 27 of the 28 proof-run tasks it has rows for, at about a tenth of
-  // Sonnet high's cost, while AutoMode sent 25 of them to Sonnet. A judge's model name never keeps work off Haiku; only
-  // T4, a Fable verdict or critical risk does. A failing check moves it to Sonnet through the ladder.
-  if (i.reachHaiku && i.opusOnEvidence && tierRank(i.hm.tier) <= 3 && i.consequence !== 'critical') return { eligibility: 'eligible', why: [...why, 'haiku first: no critical risk, failure evidence moves it up'] }
+  // Haiku first (with opusOnEvidence and haikuFirst): T3 work may start on Haiku too. Off by default: in the v4 and v5
+  // proof runs it cost more than Sonnet high (2.07x), because a Haiku miss on T3 work was rescued by a mid-task switch
+  // at a large context. A judge's model name never keeps work off Haiku here; only T4, a Fable verdict or critical risk does.
+  if (i.reachHaiku && i.opusOnEvidence && i.haikuFirst && tierRank(i.hm.tier) <= 3 && i.consequence !== 'critical') return { eligibility: 'eligible', why: [...why, 'haiku first: no critical risk, failure evidence moves it up'] }
   return i.need.model === 'haiku' && i.hm.tier === 'T0' ? { eligibility: 'eligible', why: [...why, 'both judges name haiku'] } : { eligibility: 'ineligible', why: [...why, 'haiku needs both judges'] }
 }
 

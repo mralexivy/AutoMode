@@ -97,6 +97,8 @@ const V4_DEFAULTS = {
   // Policy auto: `evidence` starts T3 work on Sonnet high and leaves Opus to the escalation ladder (lib/auto.ts). `judge`
   // is the old rule: a T3 rating with critical risk or an Opus need starts on Opus. config.json ships `evidence`.
   opusStart: 'judge' as 'judge' | 'evidence',
+  // With opusStart evidence: t3 lets T3 work start on Haiku. Off by default, on the v4 and v5 proof runs (lib/auto.ts).
+  haikuFirst: 'off' as 'off' | 't3',
   effortJudgeTimeoutMs: JUDGE_CALL.timeoutMs,
 }
 type V4Config = typeof V4_DEFAULTS
@@ -994,7 +996,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
     complexity, stage, previousStage, boundary, riskChanged, planBoundary: req.why.includes('planExited') || req.why.includes('planEntered'), planExited: S.planExited,
     floor: floorFacts(env), current: S.current ? { route: S.current, running: runningEffort()! } : null, usable: usableCurrent(at), appEffort: S.appEffort,
     executor: { on: executorOn(), taskRoute: td && !boundary && !S.compactedPending && cacheFresh(at) ? td : null },
-    reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning ? opusBuckets(S.learned, at) : [] },
+    reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning ? opusBuckets(S.learned, at) : [] },
     votes: S.votes,
     switching: {
       cache: cacheState(), reset: S.resetPending, requestsSinceSwitch: S.requestsSinceSwitch, verifiedSinceSwitch: S.verifiedSinceSwitch, switchesThisTask: S.switchesThisTask, remainingTable: remainingTable(),
@@ -1093,7 +1095,7 @@ function reoptimizeAuto(t: Trigger, event: string, at: number, turnId: string | 
   const td = S.taskDecision && S.taskDecision.taskId === env.taskId ? S.taskDecision : null
   const executed = executorInput(executorOn(), S.lastAuto.verdicts, baseFloors, !reset && td && cacheFresh(at) ? td : null)
   const floors = executed?.floors ?? baseFloors
-  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', floors, current, cost: autoCost(complexity, at) })
+  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), floors, current, cost: autoCost(complexity, at) })
   let floor = mq.tier
   if (t.mandatory) { const lift = tierOf(choice.best.family, choice.best.effort); if (tierRank(lift) > tierRank(floor.tier)) floor = { tier: lift, effort: choice.best.effort, because: [t.reason] } }
   const own = S.current ? choice.candidates.find((c) => c.family === S.current!.family) : undefined
