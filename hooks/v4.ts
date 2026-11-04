@@ -2209,13 +2209,11 @@ async function haikuGuards($: EngineInterface, at: number) {
   if (!step.crossed) return
   S.priceStepNoted = true
   S.records.push({ v: 1, kind: 'price-step', at, sessionId: S.sessionId, taskId: S.envelope.taskId, nextPrompt: S.cache.prefixTokens + S.priors.outputPerStep.haiku, ...step })
-  // Past the step after edits, the task goes to a fresh Sonnet builder. In the v6d pilot, none of the 6 tasks Haiku solved
-  // cheaply reached the step, and all 3 that did (qs, dnspython, sqlglot) cost more than Sonnet high, at five times the
-  // price per token from there. A passing check is no exception: qs had one and still ran on to Haiku's limit. Nor is
-  // a change task with no edit yet: on sqlglot, Haiku read 130k of the repository before its first edit. Only a
-  // question (no verification) stays.
-  const firstEditAt = S.editLog[0]?.at ?? (S.bashEdits ? 0 : null)
-  const because = step.verdict === 'leave' ? `Haiku's next request (${step.haikuUsd}) costs more than the same one on Sonnet (${step.sonnetUsd})` : firstEditAt !== null || S.lastDemand?.verification !== 'none' ? `Haiku passed its price step (${S.cache.prefixTokens} tokens) with the work still open` : null
+  // Past the step Haiku keeps the task unless its next request costs more than on Sonnet. Leaving Haiku there was tried
+  // and made things worse: across the v6d runs, every task Haiku kept passed cheaply up to 130k (acorn $0.07, tomlkit
+  // $0.11, dnspython $0.13), except sqlglot, which plain Sonnet high fails 2 times in 3. Every failure and every costly
+  // pass came after a rescue or a switch moved the task off Haiku mid-way (mathjs $1.76 failed, pyflakes $0.57).
+  const because = step.verdict === 'leave' ? `Haiku's next request (${step.haikuUsd}) costs more than the same one on Sonnet (${step.sonnetUsd})` : null
   if (because && !S.ladderNote) await v6Recover($, 'sonnet', because, S.envelope.createdAt, 'price-step', at, true, 'price-step')
 }
 
