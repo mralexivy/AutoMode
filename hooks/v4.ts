@@ -192,7 +192,6 @@ const S = {
   taskUsd: 0, // this task's spend so far (lib/budget.ts), summed as its records flush
   budgetTold: false, // the budget note went out for this task
   rescues: {} as Partial<Record<Family, number>>, // fresh rescue builders started for this task, by model (v6c)
-  rescueUnanswered: null as number | null, // main requests since a rescue note with no builder spawned; null when none is open
   watchdogFired: false, // the watchdog acted on this task (lib/execution.ts unproductive)
   stopHeld: false, // v6: this task's first failed stop held instead of buying a rung
   prefixAtFirstEdit: null as number | null, // the running prefix when the task's first edit landed
@@ -432,7 +431,7 @@ async function spawnOutsideAutoMode($: EngineInterface, e: any, next: any) {
 
 // Persistence: a headless --resume or a plugin reload starts a new module, but the session's cache
 // and task do not reset. The routing state is saved per session after each turn and read back once.
-const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'appModel', 'sessionModel', 'pinFamily', 'pinEffort', 'judgeRiskTask', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'dropped', 'rent', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier', 'editedSinceCheck', 'lastCheck', 'obligations', 'obligationsTask', 'completionBlocks', 'completionState', 'taskUsd', 'budgetTold', 'rescues', 'rescueUnanswered', 'editsSeen', 'stopMark', 'baseline', 'watchdogFired', 'stopHeld', 'prefixAtFirstEdit', 'contextHandled', 'priceStepNoted'] as const
+const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'appModel', 'sessionModel', 'pinFamily', 'pinEffort', 'judgeRiskTask', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'dropped', 'rent', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier', 'editedSinceCheck', 'lastCheck', 'obligations', 'obligationsTask', 'completionBlocks', 'completionState', 'taskUsd', 'budgetTold', 'rescues', 'editsSeen', 'stopMark', 'baseline', 'watchdogFired', 'stopHeld', 'prefixAtFirstEdit', 'contextHandled', 'priceStepNoted'] as const
 async function restore($: EngineInterface) {
   S.restored = true
   try { S.sessionId = await sid($) } catch {}
@@ -580,7 +579,6 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
     S.taskUsd = 0
     S.budgetTold = false
     S.rescues = {}
-    S.rescueUnanswered = null
     S.watchdogFired = false
     S.stopHeld = false
     S.prefixAtFirstEdit = null
@@ -1828,17 +1826,10 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
   if (res?.stopReason && res.stopReason !== 'tool_use') { await flush($); await persist($) }
   const ctx = trigger(trigState(), { kind: 'context', prefixTokens: S.cache?.prefixTokens ?? 0, family: r.family })
   if (r.family === 'haiku' && execution().recovery !== 'legacy') await haikuGuards($, t)
-  // A rescue the model does not take: after RESCUE_PATIENCE main requests the session leaves Haiku anyway, wherever the
-  // context stands. Haiku declined the note on sqlglot every time. Counted only past the 150k limit, the switch came at
-  // 175k to 181k, and Sonnet then worked at that size: $2.01 to $2.50 a run, against $1.44 for plain Sonnet high.
-  if (S.rescueUnanswered !== null && !e.agentId && r.family === 'haiku') S.rescueUnanswered += 1
-  const unanswered = execution().recovery !== 'legacy' && r.family === 'haiku' && (S.rescueUnanswered ?? 0) >= RESCUE_PATIENCE
-  if (unanswered && S.envelope) {
-    S.rescueUnanswered = null
-    S.haikuOutUntilCompaction = true
-    S.records.push({ v: 1, kind: 'recovery', at: t, sessionId: S.sessionId, taskId: S.envelope.taskId, source: 'rescue', rule: execution().recovery, action: 'switch', why: `the rescue went unanswered for ${RESCUE_PATIENCE} requests`, prefixTokens: S.cache?.prefixTokens ?? 0 })
-    reoptimize({ action: 'reoptimize', reason: `the rescue went unanswered for ${RESCUE_PATIENCE} requests`, mandatory: true }, 'rescue-unanswered', t, e.turnId)
-  } else if (ctx.action === 'reoptimize' && execution().recovery !== 'legacy' && r.family === 'haiku') {
+  // A rescue the model does not take is not forced. A forced switch after 10 unanswered requests never helped: qs, pyflakes
+  // and five sqlglot runs paid $0.57 to $2.50 each, and sqlglot failed every time. Without it, Haiku finished tomlkit and
+  // dnspython for $0.11 and $0.13, and failed sqlglot for $1.33.
+  if (ctx.action === 'reoptimize' && execution().recovery !== 'legacy' && r.family === 'haiku') {
     // v6: past Haiku's limit the session keeps its model unless v6Recover prices a switch in.
     if (!S.contextHandled && S.envelope && !S.ladderNote) {
       S.contextHandled = true
@@ -1960,7 +1951,6 @@ export async function v4TurnComplete($: EngineInterface, e: any, next: any) {
 }
 
 export async function v4AgentSpawn($: EngineInterface, e: any, next: any) {
-  if (e.subagentType === 'automode:builder') S.rescueUnanswered = null
   if (e.workflow && String(e.subagentType).startsWith(`${S.cfg.workflowName.split(':')[0]}:`)) noteWorkflowCall()
   if (S.mode === 'off') return next(e)
   if (!(await activeV4($))) return S.cfg.subagentsEverySession && S.mode === 'auto' ? spawnOutsideAutoMode($, e, next) : next(e)
@@ -2107,9 +2097,6 @@ async function git($: EngineInterface, argv: string[]): Promise<string> {
 const MAX_LADDER_STOPS = 4
 
 // The rescue settings past their old values turn on the review rule: a consult or a strong-evidence raise ran.
-// RESCUE_PATIENCE: main requests a rescue note may go unanswered before the session leaves Haiku. At
-// 3, qs switched 25 seconds after the note, mid-step, and paid $0.76 for the move.
-const RESCUE_PATIENCE = 10
 // promptReview: under review `observed`, a prompt's predicted risk asks for no reviewer. The change and its checks still do.
 const promptReview = () => execution().review !== 'observed'
 const rescueReview = () => S.cfg.opusStart !== 'evidence' && (S.cfg.strongStep === 'effort-first' || S.cfg.consult === 'priced')
@@ -2185,7 +2172,6 @@ async function startRescue($: EngineInterface, family: Family, because: string, 
     ...Object.entries(S.rescues).map(([f, n]) => `a fresh ${f} builder ran ${n} time${n === 1 ? '' : 's'}`),
   ]
   S.rescues = { ...S.rescues, [family]: (S.rescues[family] ?? 0) + 1 }
-  S.rescueUnanswered = 0
   S.ladderNote = rescueNote({ family, mode, because, packet, passedChecks: passed.map(([c]) => c), failedApproaches, remainingUsd })
   S.records.push({ v: 1, kind: 'rescue', at, sessionId: S.sessionId, taskId: env.taskId, family, mode, episode, because, packetChars: packet.length, prefixTokens: cacheState().prefixTokens, failedApproaches: failedApproaches.length, ...(remainingUsd === null ? {} : { remainingUsd: round6(remainingUsd) }) })
   $.ui.toast(`AutoMode: ${because}. A fresh ${family} builder takes over (${mode}); this session keeps its model.`)
@@ -2223,13 +2209,11 @@ async function haikuGuards($: EngineInterface, at: number) {
   if (!step.crossed) return
   S.priceStepNoted = true
   S.records.push({ v: 1, kind: 'price-step', at, sessionId: S.sessionId, taskId: S.envelope.taskId, nextPrompt: S.cache.prefixTokens + S.priors.outputPerStep.haiku, ...step })
-  // Past the step after edits, the task goes to a fresh Sonnet builder. In the v6d pilot, none of the 6 tasks Haiku solved
-  // cheaply reached the step, and all 3 that did (qs, dnspython, sqlglot) cost more than Sonnet high, at five times the
-  // price per token from there. A passing check is no exception: qs had one and still ran on to Haiku's limit. Nor is
-  // a change task with no edit yet: on sqlglot, Haiku read 130k of the repository before its first edit. Only a
-  // question (no verification) stays.
-  const firstEditAt = S.editLog[0]?.at ?? (S.bashEdits ? 0 : null)
-  const because = step.verdict === 'leave' ? `Haiku's next request (${step.haikuUsd}) costs more than the same one on Sonnet (${step.sonnetUsd})` : firstEditAt !== null || S.lastDemand?.verification !== 'none' ? `Haiku passed its price step (${S.cache.prefixTokens} tokens) with the work still open` : null
+  // Past the step Haiku keeps the task unless its next request costs more than on Sonnet. Leaving Haiku there was tried
+  // and made things worse: across the v6d runs, every task Haiku kept passed cheaply up to 130k (acorn $0.07, tomlkit
+  // $0.11, dnspython $0.13), except sqlglot, which plain Sonnet high fails 2 times in 3. Every failure and every costly
+  // pass came after a rescue or a switch moved the task off Haiku mid-way (mathjs $1.76 failed, pyflakes $0.57).
+  const because = step.verdict === 'leave' ? `Haiku's next request (${step.haikuUsd}) costs more than the same one on Sonnet (${step.sonnetUsd})` : null
   if (because && !S.ladderNote) await v6Recover($, 'sonnet', because, S.envelope.createdAt, 'price-step', at, true, 'price-step')
 }
 
@@ -2976,7 +2960,7 @@ function freshSession() {
     learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], taskPrompts: [], forkRuns: new Map(), bashEdits: 0, baseline: [], resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
-    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, stopMark: null, editsSeen: 0, taskUsd: 0, budgetTold: false, rescues: {}, rescueUnanswered: null, watchdogFired: false, stopHeld: false, prefixAtFirstEdit: null, contextHandled: false, priceStepNoted: false, lastMain: null, taskCauses: [], lastRecoveryAt: null, judgeRiskTask: undefined,
+    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, stopMark: null, editsSeen: 0, taskUsd: 0, budgetTold: false, rescues: {}, watchdogFired: false, stopHeld: false, prefixAtFirstEdit: null, contextHandled: false, priceStepNoted: false, lastMain: null, taskCauses: [], lastRecoveryAt: null, judgeRiskTask: undefined,
     preflight: undefined, breakers: {}, lastNoResponse: null, failures: [], pendingErrors: [], signalErrorAt: 0, signalMode: '', compactionPricedAt: 0, haikuOutUntilCompaction: false, lastWorkBand: undefined, effortUnsupported: false, thinkingRisk: false, toldErrorClass: '', toldBreaker: false, firstPrefixSaved: false, inadequate: null, toldInadequateTask: '',
   }
 }
