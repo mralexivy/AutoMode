@@ -2104,8 +2104,9 @@ async function git($: EngineInterface, argv: string[]): Promise<string> {
 const MAX_LADDER_STOPS = 4
 
 // The rescue settings past their old values turn on the review rule: a consult or a strong-evidence raise ran.
-// RESCUE_PATIENCE: main requests a rescue note may go unanswered past Haiku's limit before the session leaves Haiku.
-const RESCUE_PATIENCE = 3
+// RESCUE_PATIENCE: main requests a rescue note may go unanswered past Haiku's limit before the session leaves Haiku. At
+// 3, qs switched 25 seconds after the note, mid-step, and paid $0.76 for the move.
+const RESCUE_PATIENCE = 10
 // promptReview: under review `observed`, a prompt's predicted risk asks for no reviewer. The change and its checks still do.
 const promptReview = () => execution().review !== 'observed'
 const rescueReview = () => S.cfg.opusStart !== 'evidence' && (S.cfg.strongStep === 'effort-first' || S.cfg.consult === 'priced')
@@ -2219,11 +2220,11 @@ async function haikuGuards($: EngineInterface, at: number) {
   if (!step.crossed) return
   S.priceStepNoted = true
   S.records.push({ v: 1, kind: 'price-step', at, sessionId: S.sessionId, taskId: S.envelope.taskId, nextPrompt: S.cache.prefixTokens + S.priors.outputPerStep.haiku, ...step })
-  // Past the step with no pass since the first edit, Haiku is not converging, and each request now costs five times as
-  // much. On qs in the v6d pilot, Haiku reached 100k for $0.065, then spent $0.31 more before its context limit.
-  const firstEditAt = S.editLog[0]?.at ?? null
-  const passed = firstEditAt !== null && Object.values(S.envelope.ladder?.passed ?? {}).some((t) => t >= firstEditAt)
-  const because = step.verdict === 'leave' ? `Haiku's next request (${step.haikuUsd}) costs more than the same one on Sonnet (${step.sonnetUsd})` : firstEditAt !== null && !passed ? `Haiku passed its price step with no passing check since its first edit` : null
+  // Past the step after edits, the task goes to a fresh Sonnet builder. In the v6d pilot, none of the 6 tasks Haiku solved
+  // cheaply reached the step, and all 3 that did (qs, dnspython, sqlglot) cost more than Sonnet high, at five times the
+  // price per token from there. A passing check is no exception: qs had one and still ran on to Haiku's limit.
+  const firstEditAt = S.editLog[0]?.at ?? (S.bashEdits ? 0 : null)
+  const because = step.verdict === 'leave' ? `Haiku's next request (${step.haikuUsd}) costs more than the same one on Sonnet (${step.sonnetUsd})` : firstEditAt !== null ? `Haiku passed its price step (${S.cache.prefixTokens} tokens) with the work still open` : null
   if (because && !S.ladderNote) await v6Recover($, 'sonnet', because, S.envelope.createdAt, 'price-step', at, true, 'price-step')
 }
 
