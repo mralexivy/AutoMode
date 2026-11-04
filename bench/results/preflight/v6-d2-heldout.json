@@ -1,7 +1,7 @@
 {
  "experiment": "v6-d2-heldout",
- "plan_hash": "8eb736fac5dc2d41",
- "at": "2026-11-04T19:05:09.824Z",
+ "plan_hash": "288cb1f62844d0d4",
+ "at": "2026-11-04T19:23:25.901Z",
  "pass": true,
  "checks": [
   {
@@ -19,13 +19,13 @@
   {
    "name": "tree",
    "ok": true,
-   "detail": "clean at 244aeea",
+   "detail": "clean at 42810cb",
    "blocking": true
   },
   {
    "name": "budget",
    "ok": true,
-   "detail": "15 slots: 10 done, 0 reused, 0 unknown, 5 stale, 0 new; new paid slots expected $2.71 of $14",
+   "detail": "15 slots: 10 done, 0 reused, 0 unknown, 5 stale, 0 new; new paid slots expected $1.97 of $14",
    "blocking": true
   },
   {
@@ -43,7 +43,7 @@
   {
    "name": "history",
    "ok": true,
-   "detail": "1162 saved sessions, 924 failed checks replayed, 469 would escalate now; misread: 0; crashed: 0",
+   "detail": "1167 saved sessions, 932 failed checks replayed, 470 would escalate now; misread: 0; crashed: 0",
    "blocking": true
   },
   {
@@ -55,13 +55,13 @@
   {
    "name": "plugin-tests",
    "ok": true,
-   "detail": "492 pass, 0 fail",
+   "detail": "494 pass, 0 fail",
    "blocking": true
   }
  ],
  "slots": [
   {
-   "run_id": "feature-acorn-using-in-switch-case-and-for__v6d-opus__r1__bbae33a73eb04bdf",
+   "run_id": "feature-acorn-using-in-switch-case-and-for__v6d-opus__r1__e0d47b344f7b3290",
    "task": "feature-acorn-using-in-switch-case-and-for",
    "arm": "v6d-opus",
    "rep": 1,
@@ -85,7 +85,7 @@
    "why": "finished row in this results file"
   },
   {
-   "run_id": "feature-pyflakes-unused-global-nonlocal__v6d-opus__r1__413fe263592978a3",
+   "run_id": "feature-pyflakes-unused-global-nonlocal__v6d-opus__r1__390c03a0c514d9eb",
    "task": "feature-pyflakes-unused-global-nonlocal",
    "arm": "v6d-opus",
    "rep": 1,
@@ -109,7 +109,7 @@
    "why": "finished row in this results file"
   },
   {
-   "run_id": "longctx-acorn-commonjs-source-type__v6d-opus__r1__0bfb5f7fd63750b9",
+   "run_id": "longctx-acorn-commonjs-source-type__v6d-opus__r1__25bc41a78f41645c",
    "task": "longctx-acorn-commonjs-source-type",
    "arm": "v6d-opus",
    "rep": 1,
@@ -133,7 +133,7 @@
    "why": "finished row in this results file"
   },
   {
-   "run_id": "longctx-mathjs-nullish-coalescing-operator__v6d-opus__r1__c374550621645c5d",
+   "run_id": "longctx-mathjs-nullish-coalescing-operator__v6d-opus__r1__9d1b5817888343a0",
    "task": "longctx-mathjs-nullish-coalescing-operator",
    "arm": "v6d-opus",
    "rep": 1,
@@ -157,7 +157,7 @@
    "why": "finished row in this results file"
   },
   {
-   "run_id": "security-mathjs-array-property-and-index-escape__v6d-opus__r1__a3c75f243e5eb79c",
+   "run_id": "security-mathjs-array-property-and-index-escape__v6d-opus__r1__79d621d13f76fb66",
    "task": "security-mathjs-array-property-and-index-escape",
    "arm": "v6d-opus",
    "rep": 1,
@@ -181,5 +181,5 @@
    "why": "finished row in this results file"
   }
  ],
- "estimate_usd": 2.71
+ "estimate_usd": 1.97
 }
