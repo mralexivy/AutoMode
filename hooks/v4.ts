@@ -34,6 +34,7 @@ import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyCho
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, requireReview, summaryOf, withReview } from './lib/envelope.ts'
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
 import { budgetNote, budgetState, recordUsd } from './lib/budget.ts'
+import { snapshotsToDrop } from './lib/snapshots.ts'
 import { builderNote, haikuPriceStep, priceRecovery, recovery, rescueMode, rescueNote, resolveExecution, unproductive } from './lib/execution.ts'
 import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failKey, failingTests, failureOf, failureStep, isScratchRun, isStashRun, normalize, onlyPreexisting, ownTest, fnv1a, isCheck, isRevert, markFlaky, notRun, onlyMissingTools, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
@@ -56,7 +57,7 @@ import { routerOverrides } from './lib/settings.ts'
 import { currentOptions, storedOptions } from './options.ts'
 import { publish } from './ui/publish.ts'
 import type { AgentSnap, Ledger, RouterSnap } from './ui/view.ts'
-import { sid, fsRead, sessionModel, fsWrite, fsExists, fork } from './lib/io.ts'
+import { sid, fsRead, sessionModel, fsWrite, fsExists, fork, proc, sDel, sGet, sKeys, sSet, agents, status } from './lib/io.ts'
 import { BUILD_ASK, FORK_PROMPT, buildHandoff, completeness, forkWorth, parseForkFacts, renderHandoff, withFork } from './lib/handoff.ts'
 import { cacheNote, closeEpisodes, consultOutcome, durationsFrom, effortFirst, episodeBase, openEpisode, patchEpisode, influence, planFiles, priceConsult, RECUR_PRIOR } from './lib/rescue.ts'
 import { EMPTY_LEARNED, bucketOf, noteTask, opusBuckets, parseLearned, type Learned } from './lib/learn.ts'
@@ -434,7 +435,7 @@ async function restore($: EngineInterface) {
   S.restored = true
   try { S.sessionId = await sid($) } catch {}
   try {
-    const snap = (await $.store.get(`hm4:${S.sessionId}`)) as Record<string, unknown> | undefined
+    const snap = (await sGet($, `hm4:${S.sessionId}`)) as Record<string, unknown> | undefined
     if (!snap || typeof snap !== 'object') return
     for (const k of SNAPSHOT_KEYS) if (k in snap) (S as Record<string, unknown>)[k] = snap[k]
     S.lastReply = String(snap.lastReply ?? '')
@@ -443,11 +444,20 @@ async function restore($: EngineInterface) {
     S.resetPending = snap.compactedPending === true
   } catch {}
 }
+// The store holds 4 MiB of JSON in all, and one session's snapshot is about 14 KB. One kept per session and never removed
+// filled it after some 350 sessions; every set was then refused, and no resumed session could restore its route or its
+// cache (found in W1: 376 snapshots, 5.2 MB). The newest SNAPSHOTS_KEPT stay (lib/snapshots.ts).
 async function persist($: EngineInterface) {
   if (S.sessionId === 'unknown') return
   const snap: Record<string, unknown> = { lastReply: S.lastReply.slice(0, 600) }
   for (const k of SNAPSHOT_KEYS) snap[k] = (S as Record<string, unknown>)[k]
-  try { await $.store.set(`hm4:${S.sessionId}`, snap) } catch {}
+  const key = `hm4:${S.sessionId}`
+  try {
+    for (const k of snapshotsToDrop(await sKeys($), key)) await sDel($, k)
+    // Delete, then set: the store keeps insertion order, so this session moves to the newest end.
+    await sDel($, key)
+    await sSet($, key, snap)
+  } catch {}
 }
 
 async function now($: EngineInterface): Promise<number> { try { return await $.clock.now() } catch { return Date.now() } }
@@ -1609,7 +1619,7 @@ const INADEQUATE_REVIEW = 'no available model met the need for this task'
 
 // barLine: the route in the status row, with plan mode and a pending review.
 function barLine($: EngineInterface, r: Route) {
-  $.ui.status(`AutoMode · ${r.family} ${r.effort}${S.planMode ? ' · plan' : S.policy === 'auto' && S.workStage !== 'implement' ? ` · ${S.workStage === 'plan-approved' ? 'approved' : S.workStage}` : ''}${S.envelope?.reviewRequired.value ? ' · review pending' : ''}${S.completionState === 'none' ? '' : ` · ${S.completionState.replace('_', ' ')}`}`)
+  status($, `AutoMode · ${r.family} ${r.effort}${S.planMode ? ' · plan' : S.policy === 'auto' && S.workStage !== 'implement' ? ` · ${S.workStage === 'plan-approved' ? 'approved' : S.workStage}` : ''}${S.envelope?.reviewRequired.value ? ' · review pending' : ''}${S.completionState === 'none' ? '' : ` · ${S.completionState.replace('_', ' ')}`}`)
 }
 
 // capOf places a route on the optimizer's capability scale, for mid-turn comparisons.
@@ -2074,7 +2084,7 @@ async function consultPacket($: EngineInterface, env: TaskEnvelope, because: str
 // git runs one read-only git command for the packet; a failure is an empty answer. The name matches guardian.ts's own
 // git helper, so the validator's calls line names it once.
 async function git($: EngineInterface, argv: string[]): Promise<string> {
-  try { const r = await $.process.run(argv, { timeoutMs: 5_000 }); return r.exitCode === 0 ? String(r.stdout ?? '') : '' } catch { return '' }
+  try { const r = await proc($, argv, { timeoutMs: 5_000 }); return r.exitCode === 0 ? String(r.stdout ?? '') : '' } catch { return '' }
 }
 
 // Four rungs after a failed stop: effort, fork, consult, then the switch. With three, the final run on sqlglot spent the
@@ -2324,7 +2334,7 @@ async function guarded($: EngineInterface, e: any, next: any) {
     }
     let w = S.workers.get(e.agentId)
     if (!w) {
-      const info = (await $.agent.list().catch(() => [])).find((a) => a.id === e.agentId)
+      const info = (await agents($).catch(() => [])).find((a) => a.id === e.agentId)
       if (info && READ_ONLY_AGENTS.includes(info.type)) { w = { type: info.type, tokens: 0, stop: false }; S.workers.set(e.agentId, w) }
     }
     if (!w) return trackTool($, e, input, next)

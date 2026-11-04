@@ -26,7 +26,7 @@ import { guardianOverrides } from './lib/settings.ts'
 import { currentOptions, storedOptions } from './options.ts'
 import { publish } from './ui/publish.ts'
 import type { GuardSnap } from './ui/view.ts'
-import { sid, fsRead, sessionModel, fsWrite, sessionUsage } from './lib/io.ts'
+import { sid, fsRead, sessionModel, fsWrite, sessionUsage, proc } from './lib/io.ts'
 
 const MAX_FILES_READ = 200
 const RECORDS_ROTATE_BYTES = 1_000_000
@@ -182,7 +182,7 @@ const automatic = () => atLeast(G.cfg.mode, 'auto')
 // ---------------------------------------------------------------- storage
 // tighten: owner-only permissions on the guardian's own files (the fs API has no chmod). Best effort, never fatal.
 async function tighten($: EngineInterface, path: string, mode: '600' | '700') {
-  try { await $.process.run(['chmod', mode, path], { timeoutMs: 3000 }) } catch {}
+  try { await proc($, ['chmod', mode, path], { timeoutMs: 3000 }) } catch {}
 }
 // writeDurable: write, read back, compare. The fs API has no rename, so the write is verified instead of atomic; the
 // caller keeps a previous copy where losing the file would matter.
@@ -254,7 +254,7 @@ async function cleanup($: EngineInterface) {
   await walk(`${dir}/guardian`, RETENTION_MS.guardian, 0)
   const safe = old.filter((p) => p.startsWith(`${dir}/checkpoints/`) || p.startsWith(`${dir}/outputs/`) || p.startsWith(`${dir}/guardian/`)).slice(0, 200)
   if (!safe.length) return
-  try { await $.process.run(['rm', '-f', '--', ...safe], { timeoutMs: 10_000 }); await record($, { event: 'cleanup', removed: safe.length }) } catch {}
+  try { await proc($, ['rm', '-f', '--', ...safe], { timeoutMs: 10_000 }); await record($, { event: 'cleanup', removed: safe.length }) } catch {}
 }
 
 async function readUsage($: EngineInterface): Promise<{ usd: number | null; tokens: number }> {
@@ -570,9 +570,9 @@ async function offer($: EngineInterface, action: 'compact' | 'clear', costs: { c
 
 async function git($: EngineInterface): Promise<{ branch: string | null; dirty: string[] }> {
   try {
-    const b = await $.process.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], { timeoutMs: 5000 })
+    const b = await proc($, ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], { timeoutMs: 5000 })
     if (b.exitCode !== 0) return { branch: null, dirty: [] }
-    const s = await $.process.run(['git', 'status', '--porcelain'], { timeoutMs: 5000 })
+    const s = await proc($, ['git', 'status', '--porcelain'], { timeoutMs: 5000 })
     return { branch: b.stdout.trim(), dirty: s.stdout.split('\n').map((l) => l.slice(3).trim()).filter(Boolean).slice(0, 40) }
   } catch { return { branch: null, dirty: [] } }
 }

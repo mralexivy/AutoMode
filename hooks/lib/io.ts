@@ -12,3 +12,10 @@ export function fsWrite($: EngineInterface, ...args: Parameters<EngineInterface[
 export function sessionUsage($: EngineInterface) { return $.session.usage() }
 export function fsExists($: EngineInterface, ...args: Parameters<EngineInterface['fs']['exists']>) { return $.fs.exists(...args) }
 export function fork($: EngineInterface, ...args: Parameters<EngineInterface['model']['fork']>) { return $.model.fork(...args) }
+export function sGet($: EngineInterface, key: string) { return $.store.get(key) }
+export function sSet($: EngineInterface, key: string, value: unknown) { return $.store.set(key, value) }
+export function sKeys($: EngineInterface) { return $.store.keys() }
+export function sDel($: EngineInterface, key: string) { return $.store.delete(key) }
+export function proc($: EngineInterface, ...args: Parameters<EngineInterface['process']['run']>) { return $.process.run(...args) }
+export function agents($: EngineInterface) { return $.agent.list() }
+export function status($: EngineInterface, ...args: Parameters<EngineInterface['ui']['status']>) { return $.ui.status(...args) }
