@@ -596,6 +596,21 @@ describe('v6 strategies', () => {
     expect(h.steps.at(-1)?.model).toBe('claude-sonnet-5-5')
   })
 
+  test('v6: a rescue declined below Haiku\'s limit leaves Haiku after 10 requests, not at 175k', async ($, on) => {
+    // sqlglot: rescued at 104k, declined, switched only at 181k, then Sonnet worked at that size ($2.01, failed).
+    const h = harness(on, { policy: 'auto', config: { opusStart: 'evidence', strategy: 'v6c' }, judge: judge({ tier: 'T0', complexity: 'complex' }), effortJudge: perModel({ haiku: ['haiku', 'medium'], sonnet: ['sonnet', 'medium'] }) })
+    h.setPrefix(60_000)
+    await h.submit($, 'fix the parser so set operations keep their precedence')
+    await h.step($, 'claude-haiku-5-5')
+    h.setPrefix(104_000)
+    await h.step($, 'claude-haiku-5-5', undefined, { index: 1 })
+    expect(of(h.writes, 'recovery')[0]).toMatchObject({ source: 'price-step', action: 'rescue-up' })
+    for (let i = 2; i <= 12; i++) await h.step($, 'claude-haiku-5-5', undefined, { index: i })
+    expect(of(h.writes, 'recovery').map((x) => [x.source, x.action])).toEqual([['price-step', 'rescue-up'], ['rescue', 'switch']])
+    expect(of(h.writes, 'recovery')[1].prefixTokens).toBeLessThan(150_000)
+    expect(h.steps.at(-1)?.model).toBe('claude-sonnet-5-5')
+  })
+
   test('v6: a rescue the model takes is no reason to switch', async ($, on) => {
     const h = harness(on, { policy: 'auto', config: { opusStart: 'evidence', strategy: 'v6c' }, judge: judge({ tier: 'T0', complexity: 'trivial' }), effortJudge: perModel({ haiku: ['haiku', 'medium'], sonnet: ['sonnet', 'medium'] }) })
     h.setPrefix(60_000)
