@@ -1808,7 +1808,10 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
   pushRequest(e, { model, effort: ef.sent }, r.owner, ef.applied, ef.why, res, t, application)
   // The turn's last step (no tool call follows): flush now. A print-mode process can exit right after
   // the turn, before a later flush, and the last request would be lost from the ledger.
-  if (res?.stopReason && res.stopReason !== 'tool_use') await flush($)
+  // The turn's last request: save the state too. A print-mode process (claude -p, --resume) can exit before the turn
+  // completes, and the next process would route from a stale cache: on the W1 smoke it took a warm Sonnet session for
+  // Haiku, moved a question there, and paid the move back.
+  if (res?.stopReason && res.stopReason !== 'tool_use') { await flush($); await persist($) }
   const ctx = trigger(trigState(), { kind: 'context', prefixTokens: S.cache?.prefixTokens ?? 0, family: r.family })
   if (r.family === 'haiku' && execution().recovery !== 'legacy') await haikuGuards($, t)
   if (ctx.action === 'reoptimize' && execution().recovery !== 'legacy' && r.family === 'haiku') {

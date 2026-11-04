@@ -261,6 +261,9 @@ test('E5 sessions: two tasks in one continuing session, each graded, the second 
   const rs = fs.readFileSync(out, 'utf8').trim().split('\n').map((l) => JSON.parse(l))
   assert.deepEqual(rs.map((r) => [r.step, r.kind, r.task_id, r.accepted]), [[0, 'task', 'one', true], [1, 'question', 'two', true], [2, 'question', 'two', false], [3, 'task', 'two', true]])
   assert.ok(rs.every((r) => !('text' in r) && !('answer' in r)), 'no reply text is saved')
+  // A resumed session reports a running total; each step records its own share of it.
+  assert.deepEqual(rs.map((r) => r.cost_cumulative_usd), [0.25, 0.25, 0.25, 0.25])
+  assert.deepEqual(rs.map((r) => r.cost_usd_api_equiv), [0.25, 0, 0, 0])
   const last = JSON.parse(fs.readFileSync(path.join(dir, 'args.json'), 'utf8')).args
   assert.deepEqual(last.slice(last.indexOf('--resume'), last.indexOf('--resume') + 2), ['--resume', 'fake-session'], 'the second task continues the session')
   assert.match(last[last.indexOf('-p') + 1], /A new task in the same session/)

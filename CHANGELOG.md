@@ -19,6 +19,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Fixed
 
+- The routing state is saved after the turn's last request too. A print-mode process (`claude -p`, `--resume`) can exit before the turn completes, so the next process routed from a stale cache. On the W1 smoke it took a warm Sonnet session for Haiku, moved a question there, and paid the move back.
 - The completion gate skips only a line made of file viewers alone. A line such as `find . -name x; python3 check.py` runs a program, and its output now counts as evidence.
 - A stop with no edit since the last stop rung no longer climbs the ladder. The model has checked again and contests the failure, so a pricier model would only read the same evidence. On dnspython, three stops in 29 seconds bought a fork, an Opus consult and an Opus switch, on a network test that failed before any change: $1.51, against $0.45 for Sonnet high.
 - A check run in a copy under `/tmp` is no check of the work. On tomlkit, the model copied its new tests next to the original code to show that they fail there, and that read as a regression, which moved Haiku to Sonnet. A test the task added or edited never joins the stash baseline, so it cannot excuse its own later failures.

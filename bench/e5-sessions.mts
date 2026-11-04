@@ -48,6 +48,19 @@ export const NEXT_TASK = 'A new task in the same session. The repository was res
 
 export const stepRunId = (session: string, arm: string, step: number, task: Task, q?: Question) => `${session}__${arm}__s${step}__${q ? `q${createHash('sha256').update(q.ask).digest('hex').slice(0, 10)}` : taskHash(task).slice(0, 12)}`
 
+// sessionUsd: what an arm's sessions cost. Schema 2 rows carry each step's own cost. Schema 1 rows (the W1 smoke) carry
+// the session's running total from the CLI, so a session costs its last step's value, plus every step's judge delta.
+export function sessionUsd(rows: any[]): number {
+  let usd = 0
+  for (const s of new Set(rows.map((r) => r.session))) {
+    const rs = rows.filter((r) => r.session === s).sort((a, b) => a.step - b.step)
+    const v1 = rs.filter((r) => (r.schema_version ?? 1) < 2)
+    if (v1.length) usd += Math.max(...v1.map((r) => r.cost_usd_api_equiv ?? 0)) + v1.reduce((a, r) => a + (r.judge?.usd ?? 0), 0)
+    usd += rs.filter((r) => (r.schema_version ?? 1) >= 2).reduce((a, r) => a + rowUsd(r), 0)
+  }
+  return usd
+}
+
 export interface SessionSummary { arm: string; steps: number; accepted: number; usd: number; peakByStep: number[] }
 
 // summarize: per arm, the steps that finished, their cost and the mean context peak at each step position.
@@ -58,7 +71,7 @@ export function summarize(rows: any[]): SessionSummary[] {
     const byStep = new Map<number, number[]>()
     for (const r of rs) if (typeof r.peak_prompt_tokens === 'number') byStep.set(r.step, [...(byStep.get(r.step) ?? []), r.peak_prompt_tokens])
     const steps = [...byStep.keys()].sort((a, b) => a - b)
-    out.push({ arm, steps: rs.length, accepted: rs.filter((r) => r.accepted).length, usd: rows.filter((r) => r.arm === arm).reduce((a, r) => a + rowUsd(r), 0), peakByStep: steps.map((s) => Math.round(byStep.get(s)!.reduce((a, b) => a + b, 0) / byStep.get(s)!.length)) })
+    out.push({ arm, steps: rs.length, accepted: rs.filter((r) => r.accepted).length, usd: sessionUsd(rows.filter((r) => r.arm === arm)), peakByStep: steps.map((s) => Math.round(byStep.get(s)!.reduce((a, b) => a + b, 0) / byStep.get(s)!.length)) })
   }
   return out
 }
@@ -103,6 +116,9 @@ async function main() {
       const before = prior.filter((r) => r.session === name && r.arm === arm && r.exit_reason === 'done').sort((a, b) => a.step - b.step)
       let sid: string | null = before.at(-1)?.session_id ?? null
       let judgeSoFar: number = before.at(-1)?.judge_cumulative_usd ?? 0
+      // A resumed `claude -p` reports the session's running total as total_cost_usd, so a step's own cost is the
+      // difference (found on the W1 smoke: two steps of one session both read $0.14).
+      let costSoFar: number = before.at(-1)?.cost_cumulative_usd ?? before.at(-1)?.cost_usd_api_equiv ?? 0
       for (let k = 0; k < steps.length; k++) {
         const q = typeof steps[k] === 'string' ? undefined : (steps[k] as Question)
         const task = tasks.get(taskOf(steps[k]))!
@@ -133,15 +149,16 @@ async function main() {
         const judge = ARMS[arm].v4 ? v4JudgeCost(sid) : null
         const judgeNow = judge?.usd ?? 0
         const row: any = {
-          schema_version: 1, experiment: id, run_id: runId, session: name, step: k, kind: q ? 'question' : 'task', task_id: task.id, cohort: q ? 'question' : task.cohort, arm,
+          schema_version: 2, experiment: id, run_id: runId, session: name, step: k, kind: q ? 'question' : 'task', task_id: task.id, cohort: q ? 'question' : task.cohort, arm,
           identity: { v: 2, task: taskHash(task), code, rep: 1 }, plugin: ARMS[arm].plugin ?? null,
           exit_reason: res.exitReason, accepted, accept_exit: acceptExit, ...(q ? { answer_chars: res.answer?.length ?? 0 } : {}),
-          cost_usd_api_equiv: res.costUsd, judge: { usd: Math.max(0, judgeNow - judgeSoFar) }, judge_cumulative_usd: judgeNow,
+          cost_usd_api_equiv: res.costUsd === null ? null : Math.max(0, res.costUsd - costSoFar), cost_cumulative_usd: res.costUsd, judge: { usd: Math.max(0, judgeNow - judgeSoFar) }, judge_cumulative_usd: judgeNow,
           session_id: sid, peak_prompt_tokens: ev?.peak_prompt_tokens ?? null, requests: ev?.requests ?? null, compactions: ev?.compactions ?? null,
           actions: judge?.actions ?? null, rescues: judge?.rescues ?? null,
           completion: ARMS[arm].v4 ? completionGate(sid) : null, wall_s: res.wallS, at: new Date().toISOString(),
         }
         judgeSoFar = judgeNow
+        if (res.costUsd !== null) costSoFar = res.costUsd
         if (filesHash(behaviorFiles(REPO)) !== code) row.contaminated = true
         const fd = fs.openSync(out, 'a'); fs.writeSync(fd, JSON.stringify(row) + '\n'); fs.fsyncSync(fd); fs.closeSync(fd)
         spent += rowUsd(row)

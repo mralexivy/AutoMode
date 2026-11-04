@@ -571,4 +571,6 @@ describe('a session launched on Opus, the way most people run Claude Code', () =
     await h.step($, 'claude-opus-5-5', undefined, { index: 1 })
     expect(h.steps.at(-1)?.model).toBe('claude-sonnet-5-5')
   })
+
+
 })
