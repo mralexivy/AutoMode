@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "v6-s1-opus-pilot",
+  "track": "automode-system",
+  "description": "v6.1 S1 pilot: single coding tasks against what most people run. Plain Claude Code on Opus at its default effort (opus) against AutoMode v6c in a session launched on Opus (v6c-opus), on the first ten tasks of the proof list, fixed before any row. If AutoMode saves here at no task lost, the full 30 tasks follow.",
+  "arms": [
+    "opus",
+    "v6c-opus"
+  ],
+  "tasks": [
+    "longctx-sqlglot-intersect-precedence-across-dialects",
+    "refactor-pymarkdown-block-level-v2",
+    "security-toughcookie-secure-cookie-origin",
+    "longctx-dnspython-edns-padding",
+    "feature-xmltodict-selective-cdata",
+    "security-findmyway-absolute-form-targets",
+    "security-pyjwt-key-family-validation",
+    "security-tornado-header-control-chars-v2",
+    "longctx-mistune-toc-heading-id-collisions",
+    "migration-marked-list-tokens-from-lexer"
+  ],
+  "repeats": 1,
+  "parallel": 2,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 6,
+  "budget_usd": 16,
+  "window_usd": 0,
+  "reuse_from": [],
+  "decision": "bench/experiments/policies/v6c-opus-vs-opus.json"
+}
