@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { ANTHROPIC } from '../hooks/lib/prices.ts'
-import { builderNote, haikuPriceStep, priceRecovery, recovery, rescueMode, rescueNote, resolveExecution, unproductive, v6HaikuStart, v6SonnetFloor } from '../hooks/lib/execution.ts'
+import { builderNote, haikuPriceStep, priceRecovery, recovery, rescueMode, rescueNote, resolveExecution, unproductive, v6HaikuStart, v6RaiseAllowed, v6SonnetFloor } from '../hooks/lib/execution.ts'
 
 test('execution: strategy is a preset; each switch overrides it on its own', () => {
   assert.deepEqual(resolveExecution({}), { start: 'legacy', recovery: 'legacy', review: 'prospective' })
@@ -87,4 +87,11 @@ test('the rescue brief: a restart runs in its own worktree and folds back only o
   assert.match(repair, /Mode: repair\. Keep the current changes: these checks passed after the first edit: pytest -q tests\/a\.py/)
   assert.doesNotMatch(repair, /worktree/)
   assert.match(builderNote('sonnet'), /subagent_type "automode:builder" and model "sonnet"/)
+})
+
+test('v6 effort steps stop at high', () => {
+  assert.equal(v6RaiseAllowed('medium'), true)
+  assert.equal(v6RaiseAllowed('high'), true)
+  assert.equal(v6RaiseAllowed('xhigh'), false)
+  assert.equal(v6RaiseAllowed('max'), false)
 })

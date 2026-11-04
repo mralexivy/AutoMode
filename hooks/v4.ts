@@ -35,7 +35,7 @@ import { compactInstructions, injection, isBoundary, newEnvelope, observe, requi
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
 import { budgetNote, budgetState, recordUsd } from './lib/budget.ts'
 import { snapshotsToDrop } from './lib/snapshots.ts'
-import { builderNote, haikuPriceStep, priceRecovery, recovery, rescueMode, rescueNote, resolveExecution, unproductive } from './lib/execution.ts'
+import { builderNote, haikuPriceStep, priceRecovery, recovery, rescueMode, rescueNote, resolveExecution, unproductive, v6RaiseAllowed } from './lib/execution.ts'
 import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failKey, failingTests, failureOf, failureStep, isScratchRun, isStashRun, normalize, onlyPreexisting, ownTest, fnv1a, isCheck, isRevert, markFlaky, notRun, onlyMissingTools, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
 import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
@@ -569,7 +569,7 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
     settleConsults(at, { taskEnded: true, verified: S.completionState === 'verified' })
     const risk = prospectiveRisk(text, answer ? { risk: maxRisk(answer.risk, answer.consequence ?? 'none'), why: answer.riskWhy } : null)
     S.taskSeq += 1
-    S.envelope = newEnvelope(`task-${at}-${S.taskSeq}`, `turn-${at}`, text, at, answer?.complexity ?? 'standard', risk)
+    S.envelope = newEnvelope(`task-${at}-${S.taskSeq}`, `turn-${at}`, text, at, answer?.complexity ?? 'standard', risk, promptReview())
     S.editLog = []
     S.consulted = []
     S.consultLog = []
@@ -597,7 +597,7 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
     const judged = answer ? maxRisk(answer.risk, answer.consequence ?? 'none') : 'none'
     const risk = prospectiveRisk(text, answer && judged !== 'none' ? { risk: judged, why: answer.riskWhy } : null)
     const routing = risk.routing ?? risk.level
-    if (judged !== 'none' || routing === 'critical') S.envelope = withReview({ ...S.envelope, risk: { ...S.envelope.risk, prospective: risk, effective: routing === 'critical' ? 'critical' : S.envelope.risk.effective } }, 'none', false)
+    if (judged !== 'none' || routing === 'critical') S.envelope = withReview({ ...S.envelope, risk: { ...S.envelope.risk, prospective: risk, effective: routing === 'critical' ? 'critical' : S.envelope.risk.effective } }, 'none', false, promptReview())
   }
   if (answer && S.envelope && S.judgeRiskTask === S.envelope.taskId) {
     if (S.envelope.risk.effective === 'elevated') S.envelope = { ...S.envelope, risk: { ...S.envelope.risk, effective: maxRisk(S.envelope.risk.prospective.level, S.envelope.risk.observed?.level ?? 'none') } }
@@ -2094,6 +2094,8 @@ async function git($: EngineInterface, argv: string[]): Promise<string> {
 const MAX_LADDER_STOPS = 4
 
 // The rescue settings past their old values turn on the review rule: a consult or a strong-evidence raise ran.
+// promptReview: under review `observed`, a prompt's predicted risk asks for no reviewer. The change and its checks still do.
+const promptReview = () => execution().review !== 'observed'
 const rescueReview = () => S.cfg.opusStart !== 'evidence' && (S.cfg.strongStep === 'effort-first' || S.cfg.consult === 'priced')
 
 // noteConsultRun records what an architect consult really cost and how long it ran. Its duration feeds the consult
@@ -2252,7 +2254,10 @@ async function runLadder($: EngineInterface, at: number) {
   const allowed = allowedFamilies(at)
   const up = ladderStep(running, esc.level as 'weak' | 'strong', allowed)
   const first = effortFirst({ enabled: S.cfg.strongStep === 'effort-first', level: esc.level, episode: ep, critical: env.risk.effective === 'critical', floorBand: l.floor?.band, modelBand: up?.kind === 'model' ? up.band : undefined })
-  const step = first.use ? ladderStep(running, 'strong', allowed, { effortFirst: true }) : up
+  const chosen = first.use ? ladderStep(running, 'strong', allowed, { effortFirst: true }) : up
+  // v6: no effort step above high. Strong evidence takes the model step to v6Recover instead; weak evidence holds.
+  const capped = execution().recovery !== 'legacy' && chosen?.kind === 'effort' && !v6RaiseAllowed(chosen.effort)
+  const step = capped ? (esc.level === 'strong' && up?.kind === 'model' ? up : null) : chosen
   const strongRaise = first.use && step?.kind === 'effort'
   const episodes = strongRaise ? patchEpisode(opened.episodes, episode, { raised: ep.raised + 1 }) : opened.episodes
   const spent = { ...l, fired: [...l.fired, esc.key], raised: esc.fingerprint ? { ...l.raised, [esc.fingerprint]: count } : l.raised, episodes }
@@ -2260,7 +2265,7 @@ async function runLadder($: EngineInterface, at: number) {
   const why = first.why ? { effortFirst: first.why } : {}
   // No step taken (Haiku has no effort rung): mark the cause spent, but record no raise. A raise that never happened must
   // not turn the next repeat into 'failed after an effort raise', which is strong evidence.
-  if (!step) { S.envelope = { ...env, ladder: { ...spent, raised: l.raised } }; if (ep.consulted || ep.forked) settleConsults(at, { episode, recurred: true }); S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because, cache, episode, ...why }); return }
+  if (!step) { S.envelope = { ...env, ladder: { ...spent, raised: l.raised } }; if (ep.consulted || ep.forked) settleConsults(at, { episode, recurred: true }); S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because, cache, episode, ...why, ...(capped ? { capped: 'v6: effort stops at high' } : {}) }); return }
   // v6 (recovery hold | rescue): a model step never moves a large context; v6Recover decides. Fork and consult rungs
   // are legacy only.
   if (execution().recovery !== 'legacy' && step.kind === 'model') {
@@ -2318,7 +2323,7 @@ async function runLadder($: EngineInterface, at: number) {
   const raised = { ...env, escalations: env.escalations + 1, ladder: { ...spent, ...(moving ? { episodes: patchEpisode(episodes, episode, { switched: true }) } : {}), floor: { family: step.family, effort: step.effort, band: step.band, because: esc.because, ...(esc.fingerprint ? { command: env.failures[env.failures.length - 1].command } : {}) } } }
   // A defect that outlived a repair (and a consult) gets the independent review once it passes.
   // Under evidence routing an escalation needs no review of its own: the failing check it acts on must pass again.
-  const reviewed = esc.check && S.cfg.opusStart !== 'evidence' ? withReview(raised, 'fail', false) : raised
+  const reviewed = esc.check && S.cfg.opusStart !== 'evidence' ? withReview(raised, 'fail', false, promptReview()) : raised
   S.envelope = strongRaise && rescueReview() ? requireReview(reviewed, 'effort rose on strong evidence') : reviewed
   // A consulted episode that escalates again: the consult did not fix it.
   if (ep.consulted || ep.forked) settleConsults(at, { episode, ...(moving ? { switched: true } : { recurred: true }) })
@@ -2527,7 +2532,7 @@ async function noteRun($: EngineInterface, run: CommandRun, failureKnown: boolea
 async function noteCommand($: EngineInterface, command: string) {
   if (!S.envelope) return
   const op = classifyOperation(command)
-  if (op) S.envelope = withReview(observe(S.envelope, { level: 'critical', reasons: [`operation: ${op.reason}${op.production ? ' in production' : ''}`], source: 'diff' }), 'none', false)
+  if (op) S.envelope = withReview(observe(S.envelope, { level: 'critical', reasons: [`operation: ${op.reason}${op.production ? ' in production' : ''}`], source: 'diff' }), 'none', false, promptReview())
   if (S.envelope.editedPaths.length && isRevert(command)) {
     const answers = await Promise.all(S.envelope.editedPaths.slice(0, 10).map((p) => git($, ['git', 'status', '--porcelain', '--branch', '--', p])))
     if (!workLost(answers)) return
@@ -2553,7 +2558,7 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
       const lines = (S.envelope.changedLines ?? 0) + changedLines(e.tool, input)
       const ifaces = (S.envelope.interfacesChanged ?? 0) + interfacesOf(e.tool, input)
       S.envelope = observe({ ...S.envelope, editedPaths: edited, changedLines: lines, interfacesChanged: ifaces }, observedRisk({ editedPaths: edited, changedFiles: edited.length, changedLines: lines, verification: 'none', interfacesChanged: ifaces }))
-      S.envelope = withReview(S.envelope, 'none', edited.length > 8 || lines > 400)
+      S.envelope = withReview(S.envelope, 'none', edited.length > 8 || lines > 400, promptReview())
       // Scope change: edits well outside what discovery mapped mean the task is not what was judged.
       const known = new Set(S.envelope.discovery.flatMap((d) => d.paths))
       if (known.size) {
@@ -2668,7 +2673,7 @@ async function legacyEscalation($: EngineInterface, fp: string, at: number) {
   const applied = pinned(target as Route & { owner: Owner }, S.appModel ?? target.model)
   S.pending = { ...applied, owner: 'quality-escalation', reason: step.because, floor: { tier: step.floor, because: [step.because] }, overridden: [] }
   // A defect that outlived a repair (and a consult) gets the independent review once it passes.
-  S.envelope = withReview({ ...env, escalations: env.escalations + 1 }, 'fail', false)
+  S.envelope = withReview({ ...env, escalations: env.escalations + 1 }, 'fail', false, promptReview())
   const moved = applied.family !== S.current.family || applied.effort !== S.current.effort
   S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, floor: step.floor, action: moved ? step.action : 'held-by-pin', via: 'switch', because: step.because })
   await flush($)

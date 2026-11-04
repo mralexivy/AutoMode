@@ -19,6 +19,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Fixed
 
+- Under `review: observed`, a prompt's predicted risk no longer asks for a reviewer. The change and its checks still do: critical risk in the diff, a large change, or a failed or missing check. In W1, a judge's "public API change" rating bought a $0.29 Sonnet review on a task plain Sonnet high passed with none.
+- Under the v6 recovery, an effort step stops at high. In S1, five raises to Sonnet xhigh cost $0.84, and plain Sonnet high passed each of those tasks with no raise. A repeat failure now holds, and a failing stop goes to the priced recovery.
 - Under the v6 start rule, a first prompt whose AutoMode judge failed takes the need's model, not the model the session was launched on. In S1, the judge timed out in a session launched on Opus, and a task the need rated Sonnet high ran on Opus.
 - Under the v6 recovery, a task's first failed stop holds: the model fixes the check, or says why it does not apply. A rescue needs the check to fail again after new work. In S1, dnspython's network test fails on this machine whatever the code, and the first stop started a fresh builder at once ($0.85, against $0.69 for plain Opus).
 - A failed AutoMode judge no longer leaves a hard task on Haiku. When its reply does not parse and the other judge's need names a stronger model, that model is a floor: Sonnet, or Opus where a judge may start Opus. In W1, a question had moved the session to Haiku, and a hard migration both effortless calls rated Opus high then ran on Haiku, at Opus's cost.

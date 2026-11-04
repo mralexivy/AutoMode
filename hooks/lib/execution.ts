@@ -147,6 +147,11 @@ export type RescueMode = 'repair' | 'restart'
 
 // rescueMode: repair keeps the work when a check passed after the first edit, the evidence that part of it holds.
 // With no such pass the edits are not progress: the builder starts again from the original code.
+// v6RaiseAllowed: under v6 an effort step stops at high. In S1, five raises to Sonnet xhigh cost $0.84. Plain Sonnet
+// high passed each of those tasks with no raise, and the one that still failed failed after the raise too.
+export const v6RaiseAllowed = (to: Effort): boolean => EFFORT_ORDER.indexOf(to) <= EFFORT_ORDER.indexOf('high')
+const EFFORT_ORDER: Effort[] = ['low', 'medium', 'high', 'xhigh', 'max']
+
 export function rescueMode(firstEditAt: number | null, passedAt: number[]): RescueMode {
   return firstEditAt !== null && passedAt.some((t) => t > firstEditAt) ? 'repair' : 'restart'
 }

@@ -434,12 +434,17 @@ describe('v6 strategies', () => {
     expect(note).toContain('git worktree add -q')
     expect(note).toContain('Implement the objective')
     expect(note).not.toContain('Return the cause, the fix plan')
-    expect(of(h.writes, 'escalation').map((x) => x.action)).toEqual(['raise', 'recovery'])
+    // No raise to xhigh under v6: the watchdog, not an effort step, acts on a large context that does not converge.
+    expect(of(h.writes, 'escalation').map((x) => [x.action, x.capped ?? x.via])).toEqual([['none', 'v6: effort stops at high'], ['recovery', 'watchdog']])
     expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-same'])
     expect(of(h.writes, 'rescue')[0]).toMatchObject({ family: 'sonnet', mode: 'restart', prefixTokens: 150_000 })
-    // The same need again: the stronger builder, priced under a switch at 150k.
+    // The same need again, at a stop with the check still failing: the stronger builder, priced under a switch at 150k.
+    // A first failed stop holds; the stop after new work recovers.
     await fail($)
-    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-same', 'rescue-up'])
+    await $.classic.Stop({ stop_hook_active: false })
+    await fail($)
+    await $.classic.Stop({ stop_hook_active: false })
+    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-same', 'hold', 'rescue-up'])
     expect(of(h.writes, 'rescue').map((x) => x.family)).toEqual(['sonnet', 'opus'])
     expect(of(h.writes, 'model-switch')).toEqual([])
   })
@@ -456,8 +461,9 @@ describe('v6 strategies', () => {
     await fail($)
     expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-same'])
     await fail($)
-    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-same', 'hold'])
+    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-same'])
     expect(of(h.writes, 'rescue').map((x) => x.family)).toEqual(['sonnet'])
+    expect(of(h.writes, 'model-switch')).toEqual([])
   })
 
   test('v6: a first failed stop holds; a rescue needs the check to fail again after new work', async ($, on) => {
@@ -485,11 +491,14 @@ describe('v6 strategies', () => {
     expect(of(held.writes, 'recovery').map((x) => x.action)).toEqual(['hold'])
   })
 
-  test('v6c with a small context switches as before: the rebuild costs cents', async ($, on) => {
+  test('v6: a repeat failure at Sonnet high holds: no xhigh, no switch, no builder', async ($, on) => {
+    // S1: five raises to Sonnet xhigh cost $0.84, and plain Sonnet high passed each of those tasks with no raise.
     const h = harness(on, v6('v6c'))
     h.setPrefix(10_000)
     await climb($, h)
-    expect(of(h.writes, 'escalation').map((x) => x.action)).toEqual(['raise', 'switch'])
+    await h.step($)
+    expect(h.steps.at(-1)).toMatchObject({ model: 'claude-sonnet-5-5', effort: 'high' })
+    expect(of(h.writes, 'model-switch')).toEqual([])
     expect(of(h.writes, 'rescue')).toEqual([])
   })
 

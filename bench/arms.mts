@@ -151,6 +151,8 @@ export const EFFORT_ARMS: Record<string, Arm> = {
   'v6c': { label: 'AutoMode v6c: v6b with fresh same-model and stronger-model rescue, priced against a switch', model: HM_MODEL, v4: true, plugin: automode({ strategy: 'v6c', taskBudgetUsd: 3 }) },
   // Mixed sessions: AutoMode launched on Opus, the model most people run, with nothing pinned.
   'v6c-opus': { label: 'AutoMode v6c in a session launched on Opus', model: 'claude-opus-5-5', v4: true, plugin: automode({ strategy: 'v6c', taskBudgetUsd: 3 }) },
+  'v6d': { label: 'AutoMode v6d: the v5 Haiku-first start, fresh rescue for a switch, review on observed evidence, effort up to high', model: HM_MODEL, v4: true, plugin: automode({ haikuFirst: 't3', recovery: 'rescue', review: 'observed', taskBudgetUsd: 3 }) },
+  'v6d-opus': { label: 'AutoMode v6d in a session launched on Opus', model: 'claude-opus-5-5', v4: true, plugin: automode({ haikuFirst: 't3', recovery: 'rescue', review: 'observed', taskBudgetUsd: 3 }) },
   'e2-builder': { label: 'AutoMode v6c start, non-trivial work in one builder subagent, no rescue', model: HM_MODEL, v4: true, plugin: automode({ strategy: 'v6c', builder: 'on', recovery: 'hold', taskBudgetUsd: 3 }) },
   'e2-builder-rescue': { label: 'AutoMode v6c, non-trivial work in one builder subagent, with rescue', model: HM_MODEL, v4: true, plugin: automode({ strategy: 'v6c', builder: 'on', taskBudgetUsd: 3 }) },
   'sonnet-rescue-gate': { label: 'AutoMode Auto, Sonnet executor, rescue ladder and a blocking completion gate', model: HM_MODEL, v4: true, plugin: automode({ executor: 'sonnet', strongStep: 'effort-first', consult: 'priced', packet: 'fork-gated', forkRung: 'on', completionGate: 'block' }) },
