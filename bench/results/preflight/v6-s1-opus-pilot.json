@@ -1,0 +1,225 @@
+{
+ "experiment": "v6-s1-opus-pilot",
+ "plan_hash": "6b07be1a940d50c5",
+ "at": "2026-11-04T10:18:33.657Z",
+ "pass": true,
+ "checks": [
+  {
+   "name": "experiment",
+   "ok": true,
+   "detail": "10 tasks x 2 arms x 1; policy bench/experiments/policies/v6c-opus-vs-opus.json",
+   "blocking": true
+  },
+  {
+   "name": "split",
+   "ok": true,
+   "detail": "no held-out task",
+   "blocking": true
+  },
+  {
+   "name": "tree",
+   "ok": true,
+   "detail": "clean at 6025c2a",
+   "blocking": true
+  },
+  {
+   "name": "budget",
+   "ok": true,
+   "detail": "20 slots: 0 done, 0 reused, 0 unknown, 0 stale, 20 new; new paid slots expected $10.56 of $16",
+   "blocking": true
+  },
+  {
+   "name": "lock",
+   "ok": true,
+   "detail": "free",
+   "blocking": true
+  },
+  {
+   "name": "fixtures",
+   "ok": true,
+   "detail": "10 valid on machine 14caf2f4dce9ad6e, agent environment included",
+   "blocking": true
+  },
+  {
+   "name": "history",
+   "ok": true,
+   "detail": "1040 saved sessions, 753 failed checks replayed, 421 would escalate now; misread: 0; crashed: 0",
+   "blocking": true
+  },
+  {
+   "name": "tests",
+   "ok": true,
+   "detail": "npm run check: ℹ pass 777, ℹ fail 0",
+   "blocking": true
+  },
+  {
+   "name": "plugin-tests",
+   "ok": true,
+   "detail": "488 pass, 0 fail",
+   "blocking": true
+  }
+ ],
+ "slots": [
+  {
+   "run_id": "feature-xmltodict-selective-cdata__opus__r1__527c918fcac03902",
+   "task": "feature-xmltodict-selective-cdata",
+   "arm": "opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-xmltodict-selective-cdata__v6c-opus__r1__007857e16dfcfd1f",
+   "task": "feature-xmltodict-selective-cdata",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__opus__r1__81c12e4d077c5677",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__v6c-opus__r1__8301be20cee53303",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-mistune-toc-heading-id-collisions__opus__r1__7326077c64030be5",
+   "task": "longctx-mistune-toc-heading-id-collisions",
+   "arm": "opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-mistune-toc-heading-id-collisions__v6c-opus__r1__963d5c52dcccd072",
+   "task": "longctx-mistune-toc-heading-id-collisions",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__opus__r1__eb7f870df0da6309",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__v6c-opus__r1__9b7facfc3f7c0b3e",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "migration-marked-list-tokens-from-lexer__opus__r1__9c13f0a15a445db6",
+   "task": "migration-marked-list-tokens-from-lexer",
+   "arm": "opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "migration-marked-list-tokens-from-lexer__v6c-opus__r1__2c87834930baa844",
+   "task": "migration-marked-list-tokens-from-lexer",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "refactor-pymarkdown-block-level-v2__opus__r1__2cbd440f598fccfe",
+   "task": "refactor-pymarkdown-block-level-v2",
+   "arm": "opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "refactor-pymarkdown-block-level-v2__v6c-opus__r1__b92fd1bb848494f4",
+   "task": "refactor-pymarkdown-block-level-v2",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-findmyway-absolute-form-targets__opus__r1__79f7f65626354a3e",
+   "task": "security-findmyway-absolute-form-targets",
+   "arm": "opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-findmyway-absolute-form-targets__v6c-opus__r1__7e240f22f3bff56f",
+   "task": "security-findmyway-absolute-form-targets",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-pyjwt-key-family-validation__opus__r1__a9a851f6ea46ce9e",
+   "task": "security-pyjwt-key-family-validation",
+   "arm": "opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-pyjwt-key-family-validation__v6c-opus__r1__d135aaa67d6643c5",
+   "task": "security-pyjwt-key-family-validation",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__opus__r1__890c6ecacda8389b",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__v6c-opus__r1__2719cf8aadb452b2",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-toughcookie-secure-cookie-origin__opus__r1__71b7ec4825d10eb4",
+   "task": "security-toughcookie-secure-cookie-origin",
+   "arm": "opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-toughcookie-secure-cookie-origin__v6c-opus__r1__bc7c097279649a35",
+   "task": "security-toughcookie-secure-cookie-origin",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  }
+ ],
+ "estimate_usd": 10.56
+}
