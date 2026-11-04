@@ -460,6 +460,23 @@ describe('v6 strategies', () => {
     expect(of(h.writes, 'rescue').map((x) => x.family)).toEqual(['sonnet'])
   })
 
+  test('v6: a first failed stop holds; a rescue needs the check to fail again after new work', async ($, on) => {
+    // Found in S1: a network test that fails on this machine whatever the code started a fresh builder at the first stop.
+    const h = harness(on, { ...v6('v6c', { completionGate: 'block' }), bash: () => failing })
+    h.setPrefix(150_000)
+    await h.submit($, 'fix the parser')
+    await h.step($)
+    await $.tool.call(edit())
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    const first = await $.classic.Stop({ stop_hook_active: false })
+    expect(first.block).toContain('say why it does not apply')
+    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['hold'])
+    expect(of(h.writes, 'rescue')).toEqual([])
+    // The model explains and stops again with no edit: the stop stands.
+    expect((await $.classic.Stop({ stop_hook_active: true })).block).toBeUndefined()
+    expect(of(h.writes, 'rescue')).toEqual([])
+  })
+
   test('v6a: the route holds instead of moving a large context', async ($, on) => {
     const held = harness(on, v6('v6a'))
     held.setPrefix(150_000)
