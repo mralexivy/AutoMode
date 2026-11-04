@@ -142,6 +142,12 @@ export const EFFORT_ARMS: Record<string, Arm> = {
   'sonnet-rescue': { label: 'AutoMode Auto, Sonnet executor with every rescue setting on', model: HM_MODEL, v4: true, plugin: automode({ executor: 'sonnet', strongStep: 'effort-first', consult: 'priced', packet: 'fork-gated', forkRung: 'on' }) },
   'rescue-fork': { label: 'AutoMode Auto, a same-model fork diagnoses before the Opus consult', model: HM_MODEL, v4: true, plugin: automode({ ...RESCUE_BASELINE, forkRung: 'on' }) },
   // The full chain: Sonnet runs, the completion gate sends back a stop on a failed check, and the ladder rescues the repeat.
+  // v6 (bench/experiments/V6.md): the execution strategies, each with a $3 task budget, about twice Sonnet high's
+  // costliest task in the proof runs (sqlglot, $1.52).
+  'v6a': { label: 'AutoMode v6a: Haiku for bounded work, else Sonnet high; recovery never moves a large context', model: HM_MODEL, v4: true, plugin: automode({ strategy: 'v6a', taskBudgetUsd: 3 }) },
+  'v6b': { label: 'AutoMode v6b: v6a with Sonnet at the judged effort on standard work', model: HM_MODEL, v4: true, plugin: automode({ strategy: 'v6b', taskBudgetUsd: 3 }) },
+  'v6c': { label: 'AutoMode v6c: v6b with a fresh rescue builder in place of a large-context switch', model: HM_MODEL, v4: true, plugin: automode({ strategy: 'v6c', taskBudgetUsd: 3 }) },
+  'v6c-builder': { label: 'AutoMode v6c, with non-trivial work handed to one builder subagent from the start', model: HM_MODEL, v4: true, plugin: automode({ strategy: 'v6c', builder: 'on', taskBudgetUsd: 3 }) },
   'sonnet-rescue-gate': { label: 'AutoMode Auto, Sonnet executor, rescue ladder and a blocking completion gate', model: HM_MODEL, v4: true, plugin: automode({ executor: 'sonnet', strongStep: 'effort-first', consult: 'priced', packet: 'fork-gated', forkRung: 'on', completionGate: 'block' }) },
   'executor-sonnet': { label: 'AutoMode Auto, Sonnet executor', model: HM_MODEL, v4: true, plugin: automode({ executor: 'sonnet' }) },
   // The specialized agents, asked for with the command a person uses: Haiku explorers, Opus plan and review, Sonnet build and verify.

@@ -37,7 +37,7 @@ test('rescue mode: repair only when a check passed after the first edit', () => 
 
 test('the rescue note hands over a brief, never the conversation, and sets a restart aside in the main session', () => {
   const restart = rescueNote({ family: 'sonnet', mode: 'restart', because: 'the same check failed 3 times after edits', packet: 'Goal: fix it', passedChecks: [], remainingUsd: 1.5 })
-  assert.match(restart, /subagent_type "automode:implementer" and model "sonnet"/)
+  assert.match(restart, /subagent_type "automode:builder" and model "sonnet"/)
   assert.match(restart, /git stash push -u -m automode-failed-attempt` yourself/)
   assert.match(restart, /Goal: fix it/)
   assert.match(restart, /\$1\.50 of its budget left/)

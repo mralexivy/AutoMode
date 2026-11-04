@@ -77,7 +77,7 @@ export function rescueNote(b: RescueBrief): string {
   // Subagents may not run git writes, so the main session sets the tree aside before a restart.
   const first = b.mode === 'restart' ? ' First run `git stash push -u -m automode-failed-attempt` yourself: the stash keeps the attempt for reference.' : ''
   return [
-    `[AutoMode: ${b.because}. Do not continue this attempt in this conversation.${first} Then call the Agent tool with subagent_type "automode:implementer" and model "${b.family}", wait for it, and give it this brief:`,
+    `[AutoMode: ${b.because}. Do not continue this attempt in this conversation.${first} Then call the Agent tool with subagent_type "automode:builder" and model "${b.family}", wait for it, and give it this brief:`,
     start,
     b.packet,
     `When it returns, run the failing check once and report the result.${budget}]`,
@@ -86,4 +86,4 @@ export function rescueNote(b: RescueBrief): string {
 
 // builderNote (builder: on): non-trivial work goes to one builder subagent at the routed model from the start.
 export const builderNote = (family: Family) =>
-  `Hand the implementation to one builder: call the Agent tool with subagent_type "automode:implementer" and model "${family}", give it the whole request, the acceptance criteria and any correction the person made, and wait for it. Then run the checks yourself and report.`
+  `Hand the implementation to one builder: call the Agent tool with subagent_type "automode:builder" and model "${family}", give it the whole request, the acceptance criteria and any correction the person made, and wait for it. Then run the checks yourself and report.`
