@@ -44,7 +44,7 @@
   "parallel": 2,
   "prompt_template": "repo-change-v1",
   "run_cap_usd": 6,
-  "budget_usd": 12,
+  "budget_usd": 16,
   "window_usd": 0,
   "reuse_from": [
     "bench/results/automode-proof-v2.jsonl"
