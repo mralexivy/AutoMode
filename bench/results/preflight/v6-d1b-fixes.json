@@ -1,8 +1,8 @@
 {
  "experiment": "v6-d1b-fixes",
  "plan_hash": "61a2003936615350",
- "at": "2026-11-04T15:09:32.188Z",
- "pass": false,
+ "at": "2026-11-04T15:12:21.312Z",
+ "pass": true,
  "checks": [
   {
    "name": "experiment",
@@ -19,7 +19,7 @@
   {
    "name": "tree",
    "ok": true,
-   "detail": "clean at e2c9808",
+   "detail": "clean at 1e337fe",
    "blocking": true
   },
   {
@@ -48,8 +48,8 @@
   },
   {
    "name": "tests",
-   "ok": false,
-   "detail": "npm run check failed: ℹ pass 779, ℹ fail 1; ✖ the committed split matches its rule, names real tasks, and only its screen experiment names the screen half | ✖ failing tests:",
+   "ok": true,
+   "detail": "npm run check: ℹ pass 780, ℹ fail 0",
    "blocking": true
   },
   {
