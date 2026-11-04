@@ -113,8 +113,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const policy = e.decision ? path.join(REPO, e.decision) : null
   check('experiment', !missing.length && !!policy && fs.existsSync(policy), missing.length ? `unknown tasks: ${missing.join(', ')}` : !policy ? 'no decision policy named: fix one before any row' : !fs.existsSync(policy) ? `policy ${e.decision} is missing` : `${tasks.length} tasks x ${e.arms.length} arms x ${e.repeats}; policy ${e.decision}`)
 
-  const held = fs.existsSync(HELDOUT) ? JSON.parse(fs.readFileSync(HELDOUT, 'utf8')) : { screen: [], confirm: [], screen_experiment: null }
-  const leaked = (e.tasks ?? []).filter((t) => held.confirm.includes(t) || (held.screen.includes(t) && e.id !== held.screen_experiment))
+  const held = fs.existsSync(HELDOUT) ? JSON.parse(fs.readFileSync(HELDOUT, 'utf8')) : { screen: [], confirm: [], screen_experiment: null, confirm_experiment: null }
+  // The confirm half runs only in the one confirmation heldout.json names; the screen half only in its screen.
+  const leaked = (e.tasks ?? []).filter((t) => (held.confirm.includes(t) && e.id !== held.confirm_experiment) || (held.screen.includes(t) && e.id !== held.screen_experiment))
   check('split', !leaked.length, leaked.length ? `held-out tasks in this experiment: ${leaked.join(', ')}` : 'no held-out task')
 
   const dirty = execFileSync('git', ['status', '--porcelain', '--', 'hooks', 'agents', 'commands', 'output-styles', 'workflows', 'config.json', '.claude-plugin', 'bench/experiments', 'bench/tasks', 'bench/lib', 'bench/runners', 'bench/run.mts'], { cwd: REPO, encoding: 'utf8' }).trim()
