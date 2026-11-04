@@ -86,6 +86,10 @@ export function v4JudgeCost(sessionId: string | null | undefined) {
     verdicts: decisions.map((r) => ({ tier: r.effective?.tier, model: r.effective?.model, effort: r.effective?.effort, owner: r.effective?.owner, risk: r.risk?.effective, review: r.risk?.reviewRequired, strategy: r.strategy?.chosen })),
     workers: rows.filter((r) => r.kind === 'worker' || r.kind === 'agent').map((r) => ({ agent: r.agent ?? r.type, status: r.status, tokens: r.tokens })),
     escalations: rows.filter((r) => r.kind === 'escalation').length,
+    // v6: what each recovery did, so a report can split rescue cost from the rest without reading transcripts.
+    actions: rows.filter((r) => r.kind === 'escalation').reduce((a: Record<string, number>, r) => ({ ...a, [r.action]: (a[r.action] ?? 0) + 1 }), {}),
+    rescues: rows.filter((r) => r.kind === 'rescue').map((r) => ({ family: r.family, mode: r.mode, packetChars: r.packetChars, prefixTokens: r.prefixTokens })),
+    budgetExhausted: rows.some((r) => r.kind === 'budget'),
   }
 }
 

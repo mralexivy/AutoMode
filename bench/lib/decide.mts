@@ -10,10 +10,11 @@
 //   fixture_invalid   the task failed its preflight: no slot should exist; listed so it cannot hide
 export type RowClass = 'accepted' | 'product_failure' | 'infra_interrupted' | 'harness_invalid' | 'grader_error' | 'fixture_invalid'
 
-export interface GradedRow { run_id: string; task_id: string; cohort?: string; arm: string; exit_reason?: string; accepted?: boolean | null; harness_error?: string; cost_usd_api_equiv?: number | null; fixture_invalid?: boolean }
+export interface GradedRow { run_id: string; task_id: string; cohort?: string; arm: string; exit_reason?: string; accepted?: boolean | null; harness_error?: string; cost_usd_api_equiv?: number | null; fixture_invalid?: boolean; contaminated?: boolean }
 
 export function rowClass(r: GradedRow): RowClass {
   if (r.fixture_invalid) return 'fixture_invalid'
+  if (r.contaminated) return 'harness_invalid'
   if (r.harness_error === 'accept command did not finish') return 'grader_error'
   if (r.harness_error || r.exit_reason === 'setup_error') return 'harness_invalid'
   if (r.exit_reason === 'quota' || r.exit_reason === 'unknown') return 'infra_interrupted'
