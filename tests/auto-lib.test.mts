@@ -394,3 +394,16 @@ test('haiku first is off by default: T3 work starts on Sonnet, T0-T2 keeps the r
   const best = optimizeAuto(base({ verdicts: { sonnet: v('sonnet', 'high'), haiku: v('haiku', 'medium') }, hm: hmOf('T3', 'complex'), reachHaiku: true, opusOnEvidence: true })).best
   assert.deepEqual([best.family, best.effort], ['sonnet', 'high'])
 })
+
+test('v6 start routes: v6a puts bounded work on Haiku and the rest on Sonnet high; v6b lets standard work run at medium', () => {
+  const pick = (strategy, tier, complexity, consequence = 'none') => {
+    const b = optimizeAuto(base({ verdicts: { sonnet: v('sonnet', 'medium'), haiku: v('haiku', 'medium'), opus: v('opus', 'medium') }, hm: hmOf(tier, complexity), consequence, reachHaiku: true, opusOnEvidence: true, strategy })).best
+    return `${b.family}/${b.effort}`
+  }
+  assert.equal(pick('v6a', 'T0', 'trivial'), 'haiku/medium')
+  assert.equal(pick('v6a', 'T1', 'standard', 'elevated'), 'sonnet/high', 'T1 with risk stays off Haiku')
+  assert.equal(pick('v6a', 'T2', 'standard'), 'sonnet/high')
+  assert.equal(pick('v6a', 'T3', 'complex'), 'sonnet/high', 'a judge guess never starts Opus')
+  assert.equal(pick('v6b', 'T2', 'standard'), 'sonnet/medium')
+  assert.equal(pick('v6b', 'T3', 'complex'), 'sonnet/high')
+})

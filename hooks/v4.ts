@@ -34,6 +34,7 @@ import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyCho
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, requireReview, summaryOf, withReview } from './lib/envelope.ts'
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
 import { budgetNote, budgetState, recordUsd } from './lib/budget.ts'
+import { builderNote, isV6, recovery, rescueMode, rescueNote } from './lib/execution.ts'
 import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failKey, failingTests, failureOf, failureStep, isScratchRun, isStashRun, normalize, onlyPreexisting, ownTest, fnv1a, isCheck, isRevert, markFlaky, notRun, onlyMissingTools, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
 import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
@@ -1013,7 +1014,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
     complexity, stage, previousStage, boundary, riskChanged, planBoundary: req.why.includes('planExited') || req.why.includes('planEntered'), planExited: S.planExited,
     floor: floorFacts(env), current: S.current ? { route: S.current, running: runningEffort()! } : null, usable: usableCurrent(at), appEffort: S.appEffort,
     executor: { on: executorOn(), taskRoute: td && !boundary && !S.compactedPending && cacheFresh(at) ? td : null },
-    reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning ? opusBuckets(S.learned, at) : [] },
+    reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), ...(S.cfg.strategy !== 'legacy' ? { strategy: S.cfg.strategy } : {}), learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning ? opusBuckets(S.learned, at) : [] },
     votes: S.votes,
     switching: {
       cache: cacheState(), reset: S.resetPending, requestsSinceSwitch: S.requestsSinceSwitch, verifiedSinceSwitch: S.verifiedSinceSwitch, switchesThisTask: S.switchesThisTask, remainingTable: remainingTable(),
@@ -1112,7 +1113,7 @@ function reoptimizeAuto(t: Trigger, event: string, at: number, turnId: string | 
   const td = S.taskDecision && S.taskDecision.taskId === env.taskId ? S.taskDecision : null
   const executed = executorInput(executorOn(), S.lastAuto.verdicts, baseFloors, !reset && td && cacheFresh(at) ? td : null)
   const floors = executed?.floors ?? baseFloors
-  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), floors, current, cost: autoCost(complexity, at) })
+  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), ...(S.cfg.strategy !== 'legacy' ? { strategy: S.cfg.strategy } : {}), floors, current, cost: autoCost(complexity, at) })
   let floor = mq.tier
   if (t.mandatory) { const lift = tierOf(choice.best.family, choice.best.effort); if (tierRank(lift) > tierRank(floor.tier)) floor = { tier: lift, effort: choice.best.effort, because: [t.reason] } }
   const own = S.current ? choice.candidates.find((c) => c.family === S.current!.family) : undefined
@@ -1232,7 +1233,10 @@ function routeHeader(d: Decision, env: TaskEnvelope): string {
     lines.push(`This is open-ended multi-module work. Run Workflow({ name: "${S.cfg.workflowName}", args: ${JSON.stringify(args)} }) and do not implement it yourself until it returns. Then follow its next_action: report the result, and change code only if next_action says the checks failed.`)
   }
   if (d.strategy !== 'engineering-workflow' && (env.complexity !== 'trivial' || env.risk.effective !== 'none')) lines.push('Before you call a change done, run the relevant tests or build and show that they pass.')
-  if (env.reviewRequired.value && d.strategy !== 'engineering-workflow') lines.push(`After your checks pass, call the Agent tool with subagent_type "automode:reviewer" (${reviewerFamily(env.reviewRequired.because, S.cfg.opusStart === 'evidence') === 'sonnet' ? 'Sonnet' : 'Opus'}, read-only) and wait for it. Give it the original request, the acceptance criteria, each check with its output, and the changed files. Fix every blocker, run the checks again, and do not call it a second time.`)
+  // v6: a review only on observed critical risk (V6.md defect 4); a judge's rating alone buys none.
+  const reviewNow = env.reviewRequired.value && (!isV6(S.cfg.strategy) || reviewerFamily(env.reviewRequired.because, true) === 'opus')
+  if (S.cfg.builder === 'on' && r.family !== 'haiku' && d.strategy !== 'engineering-workflow') lines.push(builderNote(r.family))
+  if (reviewNow && d.strategy !== 'engineering-workflow') lines.push(`After your checks pass, call the Agent tool with subagent_type "automode:reviewer" (${reviewerFamily(env.reviewRequired.because, S.cfg.opusStart === 'evidence') === 'sonnet' ? 'Sonnet' : 'Opus'}, read-only) and wait for it. Give it the original request, the acceptance criteria, each check with its output, and the changed files. Fix every blocker, run the checks again, and do not call it a second time.`)
   if (env.failures.length && failureStep(env.failures, r.tier).action === 'report') lines.push(`The last check failed for an environment reason (${env.failures[env.failures.length - 1].command}). Tell the user what is missing instead of changing code.`)
   if (failureStep(env.failures, r.tier).action === 'diagnose') lines.push(delegation('diagnose', env))
   lines.push('Commit or push only when the user asks you to.')
@@ -1782,7 +1786,11 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
   // the turn, before a later flush, and the last request would be lost from the ledger.
   if (res?.stopReason && res.stopReason !== 'tool_use') await flush($)
   const ctx = trigger(trigState(), { kind: 'context', prefixTokens: S.cache?.prefixTokens ?? 0, family: r.family })
-  if (ctx.action === 'reoptimize') reoptimize(ctx, 'context-growth', t, e.turnId)
+  // v6: past Haiku's limit the session keeps its model. v6c hands the task to a fresh Sonnet builder once; v6a and v6b
+  // hold. Haiku's price step (100k) is no cue: a Haiku request at 140k still costs about a sixth of a Sonnet one.
+  if (ctx.action === 'reoptimize' && isV6(S.cfg.strategy) && r.family === 'haiku') {
+    if (S.cfg.strategy === 'v6c' && !S.rescues.sonnet && S.envelope && !S.ladderNote) await startRescue($, 'sonnet', `the context passed Haiku's limit (${S.cache?.prefixTokens ?? 0} tokens)`, S.envelope.createdAt, 'context', cacheNote(cacheState(), t), t)
+  } else if (ctx.action === 'reoptimize') reoptimize(ctx, 'context-growth', t, e.turnId)
   // With no compaction noted since the last request nothing proves a reset, so the shrink is priced and gated as a warm switch.
   else if (shrank) reoptimize(trigger(trigState(), { kind: 'compacted' }), 'compacted', t, e.turnId, compactedHere)
   if (res?.answer) S.lastReply = res.answer
@@ -2074,6 +2082,21 @@ async function noteForkRun($: EngineInterface, e: any) {
 // runLadder acts on the task's evidence once, policy auto. Weak evidence raises the effort. Strong evidence asks an Opus
 // architect first, and moves the model when the same cause comes back. A pin keeps its route, so the notice says that
 // instead of a move. Notes wait in S.ladderNote: the evidence can arrive in a subagent, which cannot act on them.
+// startRescue (v6c): a fresh builder one model up takes the task, with the evidence packet and none of this
+// conversation. Repair keeps the work when a check passed after the first edit; restart sets it aside first.
+async function startRescue($: EngineInterface, family: Family, because: string, openedAt: number, episode: string, cache: ReturnType<typeof cacheNote>, at: number) {
+  const env = S.envelope!
+  const firstEditAt = S.editLog[0]?.at ?? (S.bashEdits ? 0 : null)
+  const passed = Object.entries(env.ladder?.passed ?? {}).filter(([, t]) => firstEditAt !== null && t > firstEditAt)
+  const mode = rescueMode(firstEditAt, passed.map(([, t]) => t))
+  const packet = await consultPacket($, env, because, openedAt, episode, cache)
+  const remainingUsd = S.cfg.taskBudgetUsd > 0 ? Math.max(0, S.cfg.taskBudgetUsd - S.taskUsd) : null
+  S.rescues = { ...S.rescues, [family]: (S.rescues[family] ?? 0) + 1 }
+  S.ladderNote = rescueNote({ family, mode, because, packet, passedChecks: passed.map(([c]) => c), remainingUsd })
+  S.records.push({ v: 1, kind: 'rescue', at, sessionId: S.sessionId, taskId: env.taskId, family, mode, episode, because, packetChars: packet.length, prefixTokens: cacheState().prefixTokens, ...(remainingUsd === null ? {} : { remainingUsd: round6(remainingUsd) }) })
+  $.ui.toast(`AutoMode: ${because}. A fresh ${family} builder takes over (${mode}); this session keeps its model.`)
+}
+
 // budgetSpent: the task budget is gone. The first time, the model is told to stop and report, once.
 function budgetSpent(at: number): boolean {
   const state = budgetState(S.taskUsd, S.cfg.taskBudgetUsd)
@@ -2116,10 +2139,23 @@ async function runLadder($: EngineInterface, at: number) {
   // No step taken (Haiku has no effort rung): mark the cause spent, but record no raise. A raise that never happened must
   // not turn the next repeat into 'failed after an effort raise', which is strong evidence.
   if (!step) { S.envelope = { ...env, ladder: { ...spent, raised: l.raised } }; if (ep.consulted || ep.forked) settleConsults(at, { episode, recurred: true }); S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because, cache, episode, ...why }); return }
+  // v6: a model step never moves a large context. It switches while the context is small, else a fresh rescue builder
+  // runs (v6c) or the route holds (lib/execution.ts recovery). Fork and consult rungs are legacy only.
+  if (isV6(S.cfg.strategy) && step.kind === 'model') {
+    const act = recovery({ strategy: S.cfg.strategy, to: step.family, prefixTokens: cacheState().prefixTokens, smallContext: S.cfg.rescueSwitchTokens, observedCritical: reviewerFamily(env.reviewRequired.because, true) === 'opus', rescued: S.rescues[step.family] ?? 0 })
+    if (act !== 'switch') {
+      S.envelope = { ...env, ladder: spent, escalations: env.escalations + (act === 'rescue' ? 1 : 0) }
+      if (act === 'rescue') await startRescue($, step.family, esc.because, ep.openedAt, episode, cache, at)
+      else S.ladderNote = `[AutoMode: ${esc.because}. The route holds (${S.cfg.strategy}): moving this conversation to another model would cost more than it saves. Fix the failure on this model, or say why it does not apply.]`
+      S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: act === 'rescue' ? 'rescue' : 'held-by-strategy', via: S.cfg.strategy, route: `${step.family}/${step.effort}`, because: esc.because, cache, episode, ...why })
+      await flush($)
+      return
+    }
+  }
   const packet = () => evidencePacket(env.spec.text.slice(0, 1500), env.acceptance.map((a) => a.text), env.failures, env.editedPaths, esc.because)
   // Under effort-first the episode, not the cause, remembers the consult: a new failure of the same kind gets its own.
   const consultedBefore = S.cfg.strongStep === 'effort-first' ? ep.consulted : S.consulted.includes(esc.cause)
-  const toOpus = step.kind === 'model' && step.family === 'opus' && !consultedBefore
+  const toOpus = step.kind === 'model' && step.family === 'opus' && !consultedBefore && !isV6(S.cfg.strategy)
   // forkRung: before the Opus consult, a same-model fork agent diagnoses with the whole conversation on its warm cache.
   if (toOpus && S.cfg.forkRung === 'on' && !ep.forked) {
     S.consultLog = [...S.consultLog, { episode, via: 'fork', ...(esc.fingerprint ? { fingerprint: esc.fingerprint } : {}), at, edits: S.editLog.length }]

@@ -413,3 +413,61 @@ describe('Haiku first, escalate on evidence', () => {
     expect(of(h.writes, 'escalation').some((x) => x.action === 'switch')).toBe(true)
   })
 })
+
+describe('v6 strategies', () => {
+  const failing = { result: 'Error: Exit code 1\n--- FAIL: TestX (0.00s)\nFAIL', isError: true, text: '' }
+  const v6 = (strategy: string, extra: Record<string, unknown> = {}) => ({ ...sonnetAt('high', { opusStart: 'evidence', strategy, ...extra }), bash: () => failing })
+  const climb = async ($: any, h: any) => {
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await fail($)
+    return fail($)
+  }
+
+  test('v6c: where a switch would move a large context, a fresh rescue builder takes the task and the session keeps its model', async ($, on) => {
+    const h = harness(on, v6('v6c'))
+    h.setPrefix(150_000)
+    const out: any = await climb($, h)
+    const note = JSON.stringify(out.context ?? [])
+    expect(note).toContain('automode:implementer')
+    expect(note).toContain('model \\"opus\\"')
+    expect(note).toContain('Mode: restart')
+    expect(of(h.writes, 'escalation').map((x) => x.action)).toEqual(['raise', 'rescue'])
+    expect(of(h.writes, 'rescue')[0]).toMatchObject({ family: 'opus', mode: 'restart', prefixTokens: 150_000 })
+    expect(of(h.writes, 'model-switch')).toEqual([])
+    // One rescue per model: the same need again holds.
+    await fail($)
+    expect(of(h.writes, 'rescue').length).toBe(1)
+  })
+
+  test('v6a: the route holds instead of moving a large context; a small context still switches', async ($, on) => {
+    const held = harness(on, v6('v6a'))
+    held.setPrefix(150_000)
+    const out: any = await climb($, held)
+    expect(JSON.stringify(out.context ?? [])).toContain('The route holds (v6a)')
+    expect(of(held.writes, 'escalation').map((x) => x.action)).toEqual(['raise', 'held-by-strategy'])
+  })
+
+  test('v6c with a small context switches as before: the rebuild costs cents', async ($, on) => {
+    const h = harness(on, v6('v6c'))
+    h.setPrefix(10_000)
+    await climb($, h)
+    expect(of(h.writes, 'escalation').map((x) => x.action)).toEqual(['raise', 'switch'])
+    expect(of(h.writes, 'rescue')).toEqual([])
+  })
+
+  const crit = { policy: 'auto', judge: judge({ tier: 'T2', complexity: 'standard', risk: 'critical', riskWhy: 'auth path' }), effortJudge: perModel({ sonnet: ['sonnet', 'high'], opus: ['opus', 'medium'] }) }
+
+  test('legacy: a judge\'s critical rating asks for a review', async ($, on) => {
+    const h = harness(on, { ...crit, config: { opusStart: 'evidence' } })
+    expect((await h.submit($, 'change the login token check')).context.join('\n')).toContain('automode:reviewer')
+  })
+
+  test('v6: a judge\'s critical rating alone asks for no review; builder on hands the work to one builder', async ($, on) => {
+    const h = harness(on, { ...crit, config: { opusStart: 'evidence', strategy: 'v6b', builder: 'on' } })
+    const ctx = (await h.submit($, 'change the login token check')).context.join('\n')
+    expect(ctx).not.toContain('automode:reviewer')
+    expect(ctx).toContain('subagent_type "automode:implementer"')
+  })
+})

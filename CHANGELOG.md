@@ -6,6 +6,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
+- Setting `strategy`: `legacy` (default), `v6a`, `v6b` or `v6c` (`hooks/lib/execution.ts`). The v6 strategies keep Haiku for T0 and bounded T1 work, start everything else on Sonnet, and never move a large context to another model in the middle of a task. A model switch stays allowed below `rescueSwitchTokens` (30k). Above it, `v6c` hands the task to a fresh rescue builder one model up, once per model, in repair or restart mode. `v6a` and `v6b` hold the route. Under v6, a review runs only on observed critical risk. Experimental, measured in `bench/experiments/V6.md`.
+- Setting `builder`, off by default: when on, non-trivial work goes to one builder subagent at the routed model from the start. Experimental.
 - A task budget, `taskBudgetUsd` in `config.json`, off by default. It counts every paid request of a task: the main session, subagents, forks, consults and judges. Once it is spent, the ladder buys no more rungs, the model is told once to stop and report, and the task ends as `budget_exhausted`, never as done (`hooks/lib/budget.ts`).
 
 ### Fixed

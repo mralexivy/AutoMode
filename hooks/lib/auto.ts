@@ -26,6 +26,7 @@
 // A verdict's effort for Fable-level work is understated for Opus (the judge prompt asks for lower effort on Fable). An
 // explicit user effort still wins.
 // Pure: no `$`, no I/O.
+import { isV6, v6HaikuStart, v6SonnetFloor, type Strategy } from './execution.ts'
 import type { Complexity, Effort, Family, Risk, Tier } from './types.ts'
 import { EFFORTS, tierRank } from './types.ts'
 import { bounded, type ModelKey } from './effortless.ts'
@@ -61,6 +62,7 @@ export interface AutoInput {
   reachHaiku?: boolean                                     // low-tier work without critical risk can run on Haiku
   opusOnEvidence?: boolean                                 // T3 starts on Sonnet high; Opus comes from failure evidence
   haikuFirst?: boolean                                     // with opusOnEvidence: T3 work may start on Haiku (setting haikuFirst: t3)
+  strategy?: Strategy                                      // v6 start rules (lib/execution.ts); absent is legacy
   current: { family: Family; effort: Effort } | null
   cost: (family: Family, effort: Effort) => number         // one attempt, cache-neutral (optimizer.attemptCost)
 }
@@ -75,8 +77,9 @@ export const hmModel = (t: Tier): Family => (t === 'T0' ? 'haiku' : t === 'T1' |
 export const effortlessFloor = (need: FamilyVerdict | null): number | null => (need ? RANK[need.model] : null)
 
 // effortMinFor: the quality floor for one model, with the hard-work floor for Opus on top of the caller's floors.
-function effortMinFor(family: Family, i: Pick<AutoInput, 'need' | 'hm' | 'floors' | 'opusOnEvidence'>): Effort | undefined {
+function effortMinFor(family: Family, i: Pick<AutoInput, 'need' | 'hm' | 'floors' | 'opusOnEvidence' | 'strategy' | 'consequence'>): Effort | undefined {
   const floor = i.floors.effortMin?.[family]
+  if (family === 'sonnet' && isV6(i.strategy)) return maxEffort(floor ?? 'low', v6SonnetFloor(i.strategy, i.hm?.tier, i.hm?.complexity, i.consequence))
   const hard = i.hm?.tier === 'T4' || effortlessFloor(i.need) === RANK.fable
   if (family === 'opus' && hard) return maxEffort(floor ?? 'low', 'high')
   // T3 work that starts below Opus starts at high, the effort it passed with.
@@ -84,7 +87,7 @@ function effortMinFor(family: Family, i: Pick<AutoInput, 'need' | 'hm' | 'floors
   return floor
 }
 
-type Evidence = Pick<AutoInput, 'need' | 'hm' | 'consequence' | 'reachHaiku' | 'opusOnEvidence' | 'haikuFirst'>
+type Evidence = Pick<AutoInput, 'need' | 'hm' | 'consequence' | 'reachHaiku' | 'opusOnEvidence' | 'haikuFirst' | 'strategy'>
 
 // opusRequired: why this task rules out every weaker model, or null.
 function opusRequired(i: Evidence): string | null {
@@ -94,7 +97,7 @@ function opusRequired(i: Evidence): string | null {
   // opusOnEvidence: a judge's guess never starts Opus. In the 30-task proof run (bench/results/automode-proof-2026-11-03.md)
   // these rules sent 15 tasks to Opus for $12.49; Sonnet high passed all 15 for $4.51. Opus now comes from the
   // escalation ladder, on a failing check, a regression or a reviewer blocker.
-  if (i.opusOnEvidence) return null
+  if (i.opusOnEvidence || isV6(i.strategy)) return null
   if (tier === 'T3' && i.consequence === 'critical') return 'T3 on critical work'
   if (tier === 'T3' && i.need?.model === 'opus') return 'T3 and the need names opus'
   if (i.reachHaiku && tier === 'T2' && i.need?.model === 'opus') return 'T2 and the need names opus'
@@ -116,6 +119,8 @@ export function eligibilityOf(family: Family, i: Evidence): { eligibility: Eligi
   if (required) return { eligibility: 'ineligible', why: [...why, required] }
   if (family === 'sonnet') return { eligibility: 'eligible', why: [...why, 'sonnet: no rule requires opus'] }
   if (!i.hm) return { eligibility: 'ineligible', why: [...why, 'haiku needs both judges; the automode judge did not answer'] }
+  // v6: Haiku only where a miss costs little (lib/execution.ts v6HaikuStart), whatever model a judge's need names.
+  if (isV6(i.strategy)) return v6HaikuStart(i.hm.tier, i.hm.complexity, i.consequence) ? { eligibility: 'eligible', why: [...why, `${i.strategy}: bounded work on Haiku`] } : { eligibility: 'ineligible', why: [...why, `${i.strategy}: Haiku only for T0, or T1 with no risk`] }
   if (i.reachHaiku && tierRank(i.hm.tier) <= 2 && i.need.model !== 'opus' && i.consequence !== 'critical') return { eligibility: 'eligible', why: [...why, 'haiku: low tier, no critical risk'] }
   // Haiku first (with opusOnEvidence and haikuFirst): T3 work may start on Haiku too. Off by default: in the v4 and v5
   // proof runs it cost more than Sonnet high (2.07x), because a Haiku miss on T3 work was rescued by a mid-task switch

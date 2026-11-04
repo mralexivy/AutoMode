@@ -32,6 +32,8 @@
   "opusStart": "evidence",
   "haikuFirst": "off",
   "taskBudgetUsd": 0,
+  "strategy": "legacy",
+  "builder": "off",
   "forkRung": "on",
   "packet": "fork-gated",
   "consult": "priced",
