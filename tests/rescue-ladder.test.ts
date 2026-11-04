@@ -425,28 +425,47 @@ describe('v6 strategies', () => {
     return fail($)
   }
 
-  test('v6c: where a switch would move a large context, a fresh rescue builder takes the task and the session keeps its model', async ($, on) => {
+  test('v6c: a large context gets a fresh same-model builder first, then one model up; the session never switches', async ($, on) => {
     const h = harness(on, v6('v6c'))
     h.setPrefix(150_000)
     const out: any = await climb($, h)
     const note = JSON.stringify(out.context ?? [])
-    expect(note).toContain('automode:builder')
-    expect(note).toContain('model \\"opus\\"')
-    expect(note).toContain('Mode: restart')
-    expect(of(h.writes, 'escalation').map((x) => x.action)).toEqual(['raise', 'rescue'])
-    expect(of(h.writes, 'rescue')[0]).toMatchObject({ family: 'opus', mode: 'restart', prefixTokens: 150_000 })
-    expect(of(h.writes, 'model-switch')).toEqual([])
-    // One rescue per model: the same need again holds.
+    expect(note).toContain('subagent_type \\"automode:builder\\" and model \\"sonnet\\"')
+    expect(note).toContain('git worktree add -q')
+    expect(note).toContain('Implement the objective')
+    expect(note).not.toContain('Return the cause, the fix plan')
+    expect(of(h.writes, 'escalation').map((x) => x.action)).toEqual(['raise', 'recovery'])
+    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-same'])
+    expect(of(h.writes, 'rescue')[0]).toMatchObject({ family: 'sonnet', mode: 'restart', prefixTokens: 150_000 })
+    // The same need again: the stronger builder, priced under a switch at 150k.
     await fail($)
-    expect(of(h.writes, 'rescue').length).toBe(1)
+    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-same', 'rescue-up'])
+    expect(of(h.writes, 'rescue').map((x) => x.family)).toEqual(['sonnet', 'opus'])
+    expect(of(h.writes, 'model-switch')).toEqual([])
   })
 
-  test('v6a: the route holds instead of moving a large context; a small context still switches', async ($, on) => {
+  test('v6c: a pin keeps the model: a fresh builder on it, never one model up', async ($, on) => {
+    on('command.run', () => ({ text: 'ok' }))
+    const h = harness(on, v6('v6c'))
+    h.setPrefix(150_000)
+    await h.submit($, 'fix the failing parser test')
+    await $.command.run({ command: 'model', args: 'sonnet', origin: { kind: 'composer' } } as never)
+    await h.step($)
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await fail($)
+    await fail($)
+    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-same'])
+    await fail($)
+    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-same', 'hold'])
+    expect(of(h.writes, 'rescue').map((x) => x.family)).toEqual(['sonnet'])
+  })
+
+  test('v6a: the route holds instead of moving a large context', async ($, on) => {
     const held = harness(on, v6('v6a'))
     held.setPrefix(150_000)
     const out: any = await climb($, held)
-    expect(JSON.stringify(out.context ?? [])).toContain('The route holds (v6a)')
-    expect(of(held.writes, 'escalation').map((x) => x.action)).toEqual(['raise', 'held-by-strategy'])
+    expect(JSON.stringify(out.context ?? [])).toContain('The route holds: moving a large context costs more than it saves')
+    expect(of(held.writes, 'recovery').map((x) => x.action)).toEqual(['hold'])
   })
 
   test('v6c with a small context switches as before: the rebuild costs cents', async ($, on) => {
@@ -455,6 +474,74 @@ describe('v6 strategies', () => {
     await climb($, h)
     expect(of(h.writes, 'escalation').map((x) => x.action)).toEqual(['raise', 'switch'])
     expect(of(h.writes, 'rescue')).toEqual([])
+  })
+
+  test('recovery rescue under the legacy start (E1): the start is unchanged, the switch becomes a builder', async ($, on) => {
+    const h = harness(on, { ...sonnetAt('high', { opusStart: 'evidence', recovery: 'rescue' }), bash: () => failing })
+    h.setPrefix(150_000)
+    await climb($, h)
+    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-same'])
+  })
+
+  test('watchdog: failing checks and context growth with no pass recover early, long before the 150k limit', async ($, on) => {
+    const h = harness(on, v6('v6c'))
+    h.setPrefix(40_000)
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await $.tool.call(edit())
+    h.setPrefix(85_000)
+    await h.step($)
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await $.tool.call(edit())
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    const rec = of(h.writes, 'recovery').find((x) => x.source === 'watchdog')
+    expect(rec).toMatchObject({ action: 'rescue-same' })
+    expect(of(h.writes, 'rescue')[0].prefixTokens).toBeLessThan(150_000)
+  })
+
+  test('a correction the person gave mid-task reaches the rescue brief', async ($, on) => {
+    const h = harness(on, { ...v6('v6c'), judge: judge({ tier: 'T2', complexity: 'standard', newTask: false }) })
+    h.setPrefix(150_000)
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await h.submit($, 'keep the old flag name --legacy-mode')
+    await h.step($)
+    const out: any = await (async () => { await $.tool.call({ tool: 'Bash', command: 'go test ./...' }); await fail($); return fail($) })()
+    expect(JSON.stringify(out.context ?? [])).toContain('--legacy-mode')
+  })
+
+  test('v6b: an unverified stop is not a capability failure: no recovery, no model change', async ($, on) => {
+    const h = harness(on, { ...sonnetAt('high', { opusStart: 'evidence', strategy: 'v6b', completionGate: 'block' }), bash: () => ({ result: 'ok', isError: false, text: '' }) })
+    await h.submit($, 'fix the parser')
+    await h.step($)
+    await $.tool.call(edit())
+    await $.classic.Stop({ stop_hook_active: false })
+    expect(of(h.writes, 'recovery')).toEqual([])
+    expect(of(h.writes, 'escalation')).toEqual([])
+  })
+
+  test('v6: Haiku past its price step is priced and stays; an effort change records what the cache kept', async ($, on) => {
+    const h = harness(on, { policy: 'auto', config: { opusStart: 'evidence', strategy: 'v6b' }, judge: judge({ tier: 'T0', complexity: 'trivial' }), effortJudge: perModel({ haiku: ['haiku', 'medium'], sonnet: ['sonnet', 'medium'] }) })
+    h.setPrefix(120_000)
+    await h.submit($, 'what does the --dry-run flag do')
+    await h.step($, 'claude-haiku-5-5')
+    await h.step($, 'claude-haiku-5-5', undefined, { index: 1 })
+    expect(of(h.writes, 'price-step')[0]).toMatchObject({ crossed: true, verdict: 'stay' })
+    expect(of(h.writes, 'recovery')).toEqual([])
+  })
+
+  test('v6b: an effort raise on the same model records what the next request read from cache', async ($, on) => {
+    const h = harness(on, { ...sonnetAt('medium', { opusStart: 'evidence', strategy: 'v6b' }), bash: () => failing })
+    await h.submit($, 'fix the failing parser test')
+    await h.step($)
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await fail($)
+    await fail($)
+    await h.step($, 'claude-sonnet-5-5', undefined, { index: 1 })
+    const ec = of(h.writes, 'effort-cache')
+    expect(ec.length).toBeGreaterThan(0)
+    expect(ec[0]).toMatchObject({ family: 'sonnet', from: 'medium' })
+    expect(ec[0].cacheRead).toBeGreaterThan(0)
   })
 
   const crit = { policy: 'auto', judge: judge({ tier: 'T2', complexity: 'standard', risk: 'critical', riskWhy: 'auth path' }), effortJudge: perModel({ sonnet: ['sonnet', 'high'], opus: ['opus', 'medium'] }) }

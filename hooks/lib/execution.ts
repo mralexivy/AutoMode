@@ -1,60 +1,152 @@
-// Execution strategy (v6, bench/experiments/V6.md): how a task starts and how it recovers. Pure: no `$` and no I/O.
+// Execution strategy (v6.1, bench/experiments/V6.md): how a task starts and how it recovers. Pure: no `$` and no I/O.
 //
 // The proof runs showed that the model choice is mostly right and the recovery is what costs. A mid-task model switch
 // moves the whole conversation into a pricier model's cache: in v5 six such switches cost $8.18 more than Sonnet high.
-// The strategies below differ in the start route and in what replaces that switch.
 //
-//   legacy  main's routing and ladder, unchanged.
-//   v6a     Haiku only for T0, or T1 with no risk and no complex work; else Sonnet high. Recovery is an effort raise;
-//           a model switch only while the context is small, or for Opus on observed critical evidence.
-//   v6b     v6a, but Sonnet runs at the judged effort (medium allowed) unless the work is complex, T3 or critical.
-//   v6c     v6b, and where a switch would move a large context, a fresh rescue builder one model up runs instead,
-//           once per model.
+// Three separate switches, each off by default (`legacy` / `prospective`):
+//   start     legacy | v6a | v6b      the start route
+//   recovery  legacy | hold | rescue  what replaces the ladder's model switch
+//   review    prospective | observed  whether a judge's rating alone buys a review
+// `strategy` is a preset of the three: v6a = v6a/hold/observed, v6b = v6b/hold/observed, v6c = v6b/rescue/observed.
+// An explicit start, recovery or review setting overrides the preset.
+import { cacheWriteX, rateAt, type Rate } from './prices.ts'
 import type { Effort, Family, Risk } from './types.ts'
 
 export type Strategy = 'legacy' | 'v6a' | 'v6b' | 'v6c'
-export const isV6 = (s: string | undefined): s is 'v6a' | 'v6b' | 'v6c' => s === 'v6a' || s === 'v6b' || s === 'v6c'
+export type StartRule = 'legacy' | 'v6a' | 'v6b'
+export type RecoveryRule = 'legacy' | 'hold' | 'rescue'
+export type ReviewRule = 'prospective' | 'observed'
+export interface Execution { start: StartRule; recovery: RecoveryRule; review: ReviewRule }
 
-// v6HaikuStart: the work a Haiku miss costs little on. A tier label alone is not enough: T1 must also carry no risk
-// and no complex work.
+const PRESETS: Record<Strategy, Execution> = {
+  legacy: { start: 'legacy', recovery: 'legacy', review: 'prospective' },
+  v6a: { start: 'v6a', recovery: 'hold', review: 'observed' },
+  v6b: { start: 'v6b', recovery: 'hold', review: 'observed' },
+  v6c: { start: 'v6b', recovery: 'rescue', review: 'observed' },
+}
+
+// resolveExecution: the preset, then each explicit switch. `default` or a missing value keeps the preset's.
+export function resolveExecution(c: { strategy?: string; start?: string; recovery?: string; review?: string }): Execution {
+  const p = PRESETS[(c.strategy ?? 'legacy') as Strategy] ?? PRESETS.legacy
+  const pick = <T extends string>(v: string | undefined, ok: readonly T[], d: T): T => (v && (ok as readonly string[]).includes(v) ? (v as T) : d)
+  return {
+    start: pick(c.start, ['legacy', 'v6a', 'v6b'] as const, p.start),
+    recovery: pick(c.recovery, ['legacy', 'hold', 'rescue'] as const, p.recovery),
+    review: pick(c.review, ['prospective', 'observed'] as const, p.review),
+  }
+}
+
+// v6HaikuStart: the work a Haiku miss costs little on, and that a check can verify on its own. A tier label alone is
+// not enough: T1 must also carry no risk and no complex work.
 export function v6HaikuStart(tier: string | undefined, complexity: string | undefined, consequence: Risk | undefined): boolean {
   if (tier === 'T0') return consequence !== 'critical'
   return tier === 'T1' && (consequence ?? 'none') === 'none' && complexity !== 'complex'
 }
 
 // v6SonnetFloor: the lowest effort Sonnet starts at. v6a always high, the effort fixed Sonnet high passed 30 of 30 at.
-// v6b and v6c take the judged effort down to medium, except on complex, T3 or critical work.
-export function v6SonnetFloor(s: 'v6a' | 'v6b' | 'v6c', tier: string | undefined, complexity: string | undefined, consequence: Risk | undefined): Effort {
-  if (s === 'v6a') return 'high'
+// v6b takes the judged effort down to medium on well-specified work, and high on complex, T3+ or critical work.
+export function v6SonnetFloor(start: 'v6a' | 'v6b', tier: string | undefined, complexity: string | undefined, consequence: Risk | undefined): Effort {
+  if (start === 'v6a') return 'high'
   return complexity === 'complex' || tier === 'T3' || tier === 'T4' || consequence === 'critical' ? 'high' : 'medium'
 }
 
-export type RecoveryAction = 'switch' | 'rescue' | 'hold'
+// ---------- prices ----------
+
+// A fresh run's cost on each model, from the proof runs' fixed arms: Sonnet high $7.20 and Opus medium $14.54 over
+// 30 tasks, Haiku-only tasks $2.32 over 19 (bench/results/automode-proof-v2.jsonl, -v5.jsonl). An assumption until
+// v6 rows replace it.
+export const FRESH_PRIOR_USD: Record<Family, number> = { haiku: 0.12, sonnet: 0.24, opus: 0.48 }
+
+// requestUsd: one request at a prompt of `prompt` tokens, all of it read from cache, and `out` tokens out.
+export function requestUsd(rate: Rate, prompt: number, out: number): number {
+  const r = rateAt(rate, prompt)
+  return (prompt * r.input * r.cacheReadX + out * r.output) / 1e6
+}
+
+export interface RecoveryPrices { switchUsd: number; freshSameUsd: number; freshUpUsd: number; basis: 'estimate' }
+
+// priceRecovery: the ways forward, priced alike. A switch writes the whole prefix to the target's cache, then reads it
+// on every remaining request. A fresh builder pays the packet and a fresh run's prior.
+export function priceRecovery(i: { current: Family; to: Family; prefixTokens: number; remainingRequests: number; outPerRequest: number; packetTokens: number; ttlMs: number; rates: Record<Family, Rate> }): RecoveryPrices {
+  const write = (f: Family, tokens: number) => (tokens * rateAt(i.rates[f], tokens).input * cacheWriteX(i.ttlMs)) / 1e6
+  const switchUsd = write(i.to, i.prefixTokens) + i.remainingRequests * requestUsd(i.rates[i.to], i.prefixTokens, i.outPerRequest)
+  const fresh = (f: Family) => FRESH_PRIOR_USD[f] + write(f, i.packetTokens)
+  const round = (x: number) => Math.round(x * 1e6) / 1e6
+  return { switchUsd: round(switchUsd), freshSameUsd: round(fresh(i.current)), freshUpUsd: round(fresh(i.to)), basis: 'estimate' }
+}
+
+// ---------- recovery ----------
+
+export type RecoveryAction = 'switch' | 'rescue-same' | 'rescue-up' | 'hold'
 
 export interface RecoveryInput {
-  strategy: 'v6a' | 'v6b' | 'v6c'
-  to: Family                  // the model the ladder's step names
-  prefixTokens: number        // the running context
+  rule: 'hold' | 'rescue'
+  current: Family
+  to: Family                  // the stronger model the ladder's step names
+  pinned: boolean             // the person chose the model
+  warm: boolean               // the running prefix is still cached
+  prefixTokens: number
   smallContext: number        // below this a switch costs little (rescueSwitchTokens)
+  effortCapped: boolean       // the running model is at its top effort: its capability is in doubt
   observedCritical: boolean   // the diff itself showed critical risk
-  rescued: number             // fresh rescue builders already run at `to` for this task
+  rescued: Partial<Record<Family, number>>
+  prices: RecoveryPrices
 }
 
-// recovery: what replaces the ladder's model switch.
-//   A small context switches: the rebuild costs cents, and the same conversation keeps its corrections.
-//   Opus on observed critical evidence switches under v6a and v6b: quality first.
-//   v6c starts a fresh builder at `to`, once per model; a second need at the same model holds.
-//   Otherwise the route holds, and the model fixes the failure or says why it does not apply.
-export function recovery(i: RecoveryInput): RecoveryAction {
-  if (i.prefixTokens < i.smallContext) return 'switch'
-  if (i.strategy === 'v6c') return i.rescued > 0 ? 'hold' : 'rescue'
-  return i.to === 'opus' && i.observedCritical ? 'switch' : 'hold'
+// recovery: what replaces the ladder's model switch, in this order.
+//   A pin keeps the person's model: only a fresh builder on that same model, else the route holds.
+//   A small or cold context switches: there is little or no cache to lose, and the conversation keeps its corrections.
+//   rule hold: Opus on observed critical evidence switches (quality first); everything else holds.
+//   rule rescue, once per model:
+//     a fresh builder on the same model, when the model is not at its top effort: the attempt, not the model, is the
+//     likely fault, and a fresh context at the same price tier costs least;
+//     then a fresh builder one model up, unless switching is priced lower;
+//     then the route holds.
+export function recovery(i: RecoveryInput): { action: RecoveryAction; why: string } {
+  if (i.pinned) return i.rule === 'rescue' && !i.rescued[i.current] ? { action: 'rescue-same', why: 'the person chose this model: a fresh attempt on it, without the failed context' } : { action: 'hold', why: 'the person chose this model' }
+  if (!i.warm) return { action: 'switch', why: 'the cache is cold, so a switch loses nothing' }
+  if (i.prefixTokens < i.smallContext) return { action: 'switch', why: `the context (${i.prefixTokens} tokens) is small, so a switch costs little` }
+  if (i.rule === 'hold') return i.to === 'opus' && i.observedCritical ? { action: 'switch', why: 'observed critical risk: quality first' } : { action: 'hold', why: 'moving a large context costs more than it saves' }
+  if (!i.effortCapped && !i.rescued[i.current]) return { action: 'rescue-same', why: 'a fresh attempt on the same model, without the failed context' }
+  if (!i.rescued[i.to]) {
+    return i.prices.switchUsd < i.prices.freshUpUsd
+      ? { action: 'switch', why: `a switch ($${i.prices.switchUsd.toFixed(3)}) is priced under a fresh ${i.to} builder ($${i.prices.freshUpUsd.toFixed(3)})` }
+      : { action: 'rescue-up', why: `a fresh ${i.to} builder ($${i.prices.freshUpUsd.toFixed(3)}) is priced under a switch ($${i.prices.switchUsd.toFixed(3)})` }
+  }
+  return { action: 'hold', why: 'every rescue level for this task already ran' }
 }
+
+// ---------- watchdog ----------
+
+export interface ProgressInput { failuresSinceFirstEdit: number; passesSinceFirstEdit: number; growthSinceFirstEdit: number; prefixTokens: number }
+
+// unproductive: the attempt burns context without a pass: at least two failing checks since the first edit, no
+// passing check, and either 40k tokens of growth since that edit or a context past 100k. One failure is ordinary
+// work, however large the repository. It fires long before a 150k limit: sqlglot (v5) failed its checks from about
+// 60k on, and the switch came at 159k.
+export function unproductive(p: ProgressInput): boolean {
+  if (p.passesSinceFirstEdit > 0 || p.failuresSinceFirstEdit < 2) return false
+  return p.growthSinceFirstEdit >= 40_000 || p.prefixTokens >= 100_000
+}
+
+// ---------- Haiku's price step ----------
+
+// haikuPriceStep: Haiku's next request crosses its long-context price step (above 100k tokens, fivefold). It prices
+// that request against the same request on Sonnet. At the list prices it stays about half Sonnet's, so the verdict
+// is usually `stay`; the record lets a run check that.
+export function haikuPriceStep(rates: Record<Family, Rate>, nextPrompt: number, out: number): { crossed: boolean; haikuUsd: number; sonnetUsd: number; verdict: 'stay' | 'leave' } {
+  const step = rates.haiku.longContext?.above ?? Infinity
+  const haikuUsd = requestUsd(rates.haiku, nextPrompt, out)
+  const sonnetUsd = requestUsd(rates.sonnet, nextPrompt, out)
+  return { crossed: nextPrompt > step, haikuUsd: Math.round(haikuUsd * 1e6) / 1e6, sonnetUsd: Math.round(sonnetUsd * 1e6) / 1e6, verdict: nextPrompt > step && haikuUsd >= sonnetUsd ? 'leave' : 'stay' }
+}
+
+// ---------- the rescue brief ----------
 
 export type RescueMode = 'repair' | 'restart'
 
 // rescueMode: repair keeps the work when a check passed after the first edit, the evidence that part of it holds.
-// With no such pass the edits are not progress, so the builder starts again from the original code.
+// With no such pass the edits are not progress: the builder starts again from the original code.
 export function rescueMode(firstEditAt: number | null, passedAt: number[]): RescueMode {
   return firstEditAt !== null && passedAt.some((t) => t > firstEditAt) ? 'repair' : 'restart'
 }
@@ -63,25 +155,37 @@ export interface RescueBrief {
   family: Family
   mode: RescueMode
   because: string
-  packet: string             // the evidence packet (lib/handoff.ts): goal, corrections, acceptance, failures, diff
+  packet: string             // lib/handoff.ts: goal, the person's corrections, acceptance, failures, the diff
   passedChecks: string[]     // checks that passed after the first edit
+  failedApproaches: string[] // what this task already tried and what came of it
   remainingUsd: number | null
+  worktree: string           // restart: the isolated worktree the builder works in
 }
 
-// rescueNote: the instruction to the main session. It never moves this conversation to the builder.
+// rescueNote: the instruction to the main session. It never moves this conversation to the builder. Subagents may not
+// run git writes, so the main session sets up and folds back the restart's worktree itself.
 export function rescueNote(b: RescueBrief): string {
-  const start = b.mode === 'repair'
-    ? `Mode: repair. Keep the current changes: these checks passed after the first edit: ${b.passedChecks.slice(0, 5).join('; ')}. Fix what still fails.`
-    : 'Mode: restart. No check passed after the edits, so they are not progress. The builder implements the goal from the original code.'
-  const budget = b.remainingUsd === null ? '' : ` The task has $${b.remainingUsd.toFixed(2)} of its budget left.`
-  // Subagents may not run git writes, so the main session sets the tree aside before a restart.
-  const first = b.mode === 'restart' ? ' First run `git stash push -u -m automode-failed-attempt` yourself: the stash keeps the attempt for reference.' : ''
+  const failed = b.failedApproaches.length ? `Already tried, do not repeat: ${b.failedApproaches.slice(0, 6).join('; ')}.` : ''
+  const budget = b.remainingUsd === null ? '' : `The task has $${b.remainingUsd.toFixed(2)} of its budget left.`
+  if (b.mode === 'repair') {
+    return [
+      `[AutoMode: ${b.because}. Do not continue this attempt in this conversation. Call the Agent tool with subagent_type "automode:builder" and model "${b.family}", wait for it, and give it this brief:`,
+      `Mode: repair. Keep the current changes: these checks passed after the first edit: ${b.passedChecks.slice(0, 5).join('; ')}. Fix what still fails.`,
+      failed,
+      b.packet,
+      `When it returns, run the failing check once and report the result. ${budget}]`,
+    ].filter(Boolean).join('\n\n')
+  }
   return [
-    `[AutoMode: ${b.because}. Do not continue this attempt in this conversation.${first} Then call the Agent tool with subagent_type "automode:builder" and model "${b.family}", wait for it, and give it this brief:`,
-    start,
+    `[AutoMode: ${b.because}. Do not continue this attempt in this conversation. No check passed after the edits, so they are not progress, and the fresh attempt runs apart from them.`,
+    `1. Run: git worktree add -q ${b.worktree} HEAD`,
+    `2. Call the Agent tool with subagent_type "automode:builder" and model "${b.family}", wait for it, and give it this brief, with this line first: "Mode: restart. Work only in ${b.worktree}: cd there for every command and edit files by their path under it."`,
+    `3. If its checks pass there, fold it back: run \`git stash push -u -m automode-failed-attempt\` (the stash keeps the failed attempt), then \`git -C ${b.worktree} add -A && git -C ${b.worktree} diff --cached HEAD | git apply\`, then \`git worktree remove --force ${b.worktree}\`, then run the failing check here once.`,
+    '4. If they do not pass, remove the worktree and report what still fails.',
+    failed,
     b.packet,
-    `When it returns, run the failing check once and report the result.${budget}]`,
-  ].join('\n\n')
+    `${budget}]`,
+  ].filter(Boolean).join('\n\n')
 }
 
 // builderNote (builder: on): non-trivial work goes to one builder subagent at the routed model from the start.

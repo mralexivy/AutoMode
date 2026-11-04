@@ -396,8 +396,8 @@ test('haiku first is off by default: T3 work starts on Sonnet, T0-T2 keeps the r
 })
 
 test('v6 start routes: v6a puts bounded work on Haiku and the rest on Sonnet high; v6b lets standard work run at medium', () => {
-  const pick = (strategy, tier, complexity, consequence = 'none') => {
-    const b = optimizeAuto(base({ verdicts: { sonnet: v('sonnet', 'medium'), haiku: v('haiku', 'medium'), opus: v('opus', 'medium') }, hm: hmOf(tier, complexity), consequence, reachHaiku: true, opusOnEvidence: true, strategy })).best
+  const pick = (start, tier, complexity, consequence = 'none') => {
+    const b = optimizeAuto(base({ verdicts: { sonnet: v('sonnet', 'medium'), haiku: v('haiku', 'medium'), opus: v('opus', 'medium') }, hm: hmOf(tier, complexity), consequence, reachHaiku: true, opusOnEvidence: true, start })).best
     return `${b.family}/${b.effort}`
   }
   assert.equal(pick('v6a', 'T0', 'trivial'), 'haiku/medium')
