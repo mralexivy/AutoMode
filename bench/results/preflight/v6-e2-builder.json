@@ -1,0 +1,321 @@
+{
+ "experiment": "v6-e2-builder",
+ "plan_hash": "5d4f4b4aa05b673d",
+ "at": "2026-11-04T07:04:42.157Z",
+ "pass": false,
+ "checks": [
+  {
+   "name": "experiment",
+   "ok": true,
+   "detail": "8 tasks x 4 arms x 1; policy bench/experiments/policies/v6c-vs-sonnet.json",
+   "blocking": true
+  },
+  {
+   "name": "split",
+   "ok": true,
+   "detail": "no held-out task",
+   "blocking": true
+  },
+  {
+   "name": "tree",
+   "ok": false,
+   "detail": "uncommitted: M bench/experiments/V6.md",
+   "blocking": true
+  },
+  {
+   "name": "budget",
+   "ok": true,
+   "detail": "32 slots: 0 done, 8 reused, 0 unknown, 0 stale, 24 new; new paid slots expected $15.42 of $20",
+   "blocking": true
+  },
+  {
+   "name": "lock",
+   "ok": true,
+   "detail": "free",
+   "blocking": true
+  },
+  {
+   "name": "fixtures",
+   "ok": true,
+   "detail": "8 valid on machine 14caf2f4dce9ad6e, agent environment included",
+   "blocking": true
+  },
+  {
+   "name": "history",
+   "ok": true,
+   "detail": "1040 saved sessions, 753 failed checks replayed, 421 would escalate now; misread: 0; crashed: 0",
+   "blocking": true
+  },
+  {
+   "name": "tests",
+   "ok": true,
+   "detail": "npm run check: ℹ pass 775, ℹ fail 0",
+   "blocking": true
+  },
+  {
+   "name": "plugin-tests",
+   "ok": true,
+   "detail": "487 pass, 0 fail",
+   "blocking": true
+  }
+ ],
+ "slots": [
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__v6c__r1__70d453a9ddb17543",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__e2-builder__r1__afae522c76837a39",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "e2-builder",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__e2-builder-rescue__r1__78a1a26a2f77b54f",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "e2-builder-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__sonnet-high__r1__fed39d586f934e89",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__v6c__r1__6d25d0dd7899bad4",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__e2-builder__r1__3e6294d858d10327",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "e2-builder",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__e2-builder-rescue__r1__5adbac38521ed1a2",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "e2-builder-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__sonnet-high__r1__4bc11146f0fd59e6",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__v6c__r1__ddcef0e410ec7649",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__e2-builder__r1__ef9aaa91eb6e6706",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "e2-builder",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__e2-builder-rescue__r1__f09fa26926800fbb",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "e2-builder-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__sonnet-high__r1__369d9ce173210545",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__v6c__r1__449640b727a3ef3c",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__e2-builder__r1__befb90d1a1245ebd",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "e2-builder",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__e2-builder-rescue__r1__2f7aa8784da5dd12",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "e2-builder-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__sonnet-high__r1__61d5a43d9349c9d9",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__v6c__r1__4e406974f8a13573",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__e2-builder__r1__22fb61eb04434804",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "e2-builder",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__e2-builder-rescue__r1__ec19b99605e84427",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "e2-builder-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__sonnet-high__r1__d39c15d810761946",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__v6c__r1__a1527dc207bb79f0",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__e2-builder__r1__c8b53f2f4502a173",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "e2-builder",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__e2-builder-rescue__r1__e8e60292955b19df",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "e2-builder-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__sonnet-high__r1__09cca49eecd922d3",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__v6c__r1__0f862b1d35b25cb7",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__e2-builder__r1__5bb97b89e9f0036f",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "e2-builder",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__e2-builder-rescue__r1__0c87e79429133be7",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "e2-builder-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__sonnet-high__r1__c5759b7db29e101d",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__v6c__r1__5d0e69132e166afa",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__e2-builder__r1__1c45c7524f3d071c",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "e2-builder",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__e2-builder-rescue__r1__ba6dcb8e51a04cf3",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "e2-builder-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__sonnet-high__r1__64f8140dee96c8ee",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  }
+ ],
+ "estimate_usd": 15.42
+}

@@ -1,0 +1,1247 @@
+{
+ "experiment": "v6-e4-router",
+ "plan_hash": "ef4f173bf1e892f0",
+ "at": "2026-11-04T06:03:53.432Z",
+ "pass": false,
+ "checks": [
+  {
+   "name": "experiment",
+   "ok": true,
+   "detail": "30 tasks x 5 arms x 1; policy bench/experiments/policies/v6c-vs-sonnet.json",
+   "blocking": true
+  },
+  {
+   "name": "split",
+   "ok": true,
+   "detail": "no held-out task",
+   "blocking": true
+  },
+  {
+   "name": "tree",
+   "ok": true,
+   "detail": "clean at d1dfd44",
+   "blocking": true
+  },
+  {
+   "name": "budget",
+   "ok": false,
+   "detail": "150 slots: 0 done, 60 reused, 0 unknown, 0 stale, 90 new; new paid slots expected $37.57 of $22",
+   "blocking": true
+  },
+  {
+   "name": "lock",
+   "ok": true,
+   "detail": "free",
+   "blocking": true
+  },
+  {
+   "name": "fixtures",
+   "ok": false,
+   "detail": "skipped",
+   "blocking": true
+  }
+ ],
+ "slots": [
+  {
+   "run_id": "feature-boltons-mapping-type-fixes__v6a__r1__a7fdb8513864a46f",
+   "task": "feature-boltons-mapping-type-fixes",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-boltons-mapping-type-fixes__v6b__r1__44752dae0f9b681f",
+   "task": "feature-boltons-mapping-type-fixes",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-boltons-mapping-type-fixes__v6c__r1__d854d65ca1e66f1f",
+   "task": "feature-boltons-mapping-type-fixes",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-boltons-mapping-type-fixes__sonnet-high__r1__8179672a44ffcbcb",
+   "task": "feature-boltons-mapping-type-fixes",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-boltons-mapping-type-fixes__opus-medium__r1__81bd2781d29a2351",
+   "task": "feature-boltons-mapping-type-fixes",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-fastxmlparser-stopnode-nested-same-tag__v6a__r1__1f1da6f972f5f0da",
+   "task": "feature-fastxmlparser-stopnode-nested-same-tag",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-fastxmlparser-stopnode-nested-same-tag__v6b__r1__4aebf16c4ab68a8a",
+   "task": "feature-fastxmlparser-stopnode-nested-same-tag",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-fastxmlparser-stopnode-nested-same-tag__v6c__r1__3f79ae15725a73d1",
+   "task": "feature-fastxmlparser-stopnode-nested-same-tag",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-fastxmlparser-stopnode-nested-same-tag__sonnet-high__r1__cb46227ca882c731",
+   "task": "feature-fastxmlparser-stopnode-nested-same-tag",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-fastxmlparser-stopnode-nested-same-tag__opus-medium__r1__69ce08cc61122a59",
+   "task": "feature-fastxmlparser-stopnode-nested-same-tag",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-findmyway-regex-param-empty-segment__v6a__r1__938c8ec93c905be5",
+   "task": "feature-findmyway-regex-param-empty-segment",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-findmyway-regex-param-empty-segment__v6b__r1__06e663b199191fa0",
+   "task": "feature-findmyway-regex-param-empty-segment",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-findmyway-regex-param-empty-segment__v6c__r1__f8b720ac255fd8a0",
+   "task": "feature-findmyway-regex-param-empty-segment",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-findmyway-regex-param-empty-segment__sonnet-high__r1__6b39c68394f75d08",
+   "task": "feature-findmyway-regex-param-empty-segment",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-findmyway-regex-param-empty-segment__opus-medium__r1__45462d91ad7e4bf2",
+   "task": "feature-findmyway-regex-param-empty-segment",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-immer-array-plugin-spread-drafts__v6a__r1__d0905be802fcb93f",
+   "task": "feature-immer-array-plugin-spread-drafts",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-immer-array-plugin-spread-drafts__v6b__r1__ade844401775a927",
+   "task": "feature-immer-array-plugin-spread-drafts",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-immer-array-plugin-spread-drafts__v6c__r1__07c4154fb8828ed2",
+   "task": "feature-immer-array-plugin-spread-drafts",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-immer-array-plugin-spread-drafts__sonnet-high__r1__f907329ab49ab731",
+   "task": "feature-immer-array-plugin-spread-drafts",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-immer-array-plugin-spread-drafts__opus-medium__r1__00a4fad4a4bc3f2e",
+   "task": "feature-immer-array-plugin-spread-drafts",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-jinja-undefined-copy-pickle-state__v6a__r1__9043f205c2a3ea96",
+   "task": "feature-jinja-undefined-copy-pickle-state",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-jinja-undefined-copy-pickle-state__v6b__r1__b2edde0ecb1aa568",
+   "task": "feature-jinja-undefined-copy-pickle-state",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-jinja-undefined-copy-pickle-state__v6c__r1__51ea832497cd2a44",
+   "task": "feature-jinja-undefined-copy-pickle-state",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-jinja-undefined-copy-pickle-state__sonnet-high__r1__61fda477c272a070",
+   "task": "feature-jinja-undefined-copy-pickle-state",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-jinja-undefined-copy-pickle-state__opus-medium__r1__8957efe173b46a2f",
+   "task": "feature-jinja-undefined-copy-pickle-state",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-markdown-unclosed-markup-in-code-spans__v6a__r1__f93623b01bee92b3",
+   "task": "feature-markdown-unclosed-markup-in-code-spans",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-markdown-unclosed-markup-in-code-spans__v6b__r1__fdca757498a5abe3",
+   "task": "feature-markdown-unclosed-markup-in-code-spans",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-markdown-unclosed-markup-in-code-spans__v6c__r1__8d5cfbb449903e21",
+   "task": "feature-markdown-unclosed-markup-in-code-spans",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-markdown-unclosed-markup-in-code-spans__sonnet-high__r1__fdc518d9d7c5615a",
+   "task": "feature-markdown-unclosed-markup-in-code-spans",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-markdown-unclosed-markup-in-code-spans__opus-medium__r1__55b9cd4f14ecd94d",
+   "task": "feature-markdown-unclosed-markup-in-code-spans",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__v6a__r1__72ff1eeb673c27af",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__v6b__r1__03fabfe07ca367d2",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__v6c__r1__70d453a9ddb17543",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__sonnet-high__r1__fed39d586f934e89",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__opus-medium__r1__da30b30d0fcc84cd",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-nodesemver-diff-prerelease-direction__v6a__r1__3af0185760bafb07",
+   "task": "feature-nodesemver-diff-prerelease-direction",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-nodesemver-diff-prerelease-direction__v6b__r1__37cca05b63970a45",
+   "task": "feature-nodesemver-diff-prerelease-direction",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-nodesemver-diff-prerelease-direction__v6c__r1__571ccfac6b104ae6",
+   "task": "feature-nodesemver-diff-prerelease-direction",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-nodesemver-diff-prerelease-direction__sonnet-high__r1__ccbcd5189fa19894",
+   "task": "feature-nodesemver-diff-prerelease-direction",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-nodesemver-diff-prerelease-direction__opus-medium__r1__acbb2a09f0671ea0",
+   "task": "feature-nodesemver-diff-prerelease-direction",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-picomatch-repeated-extglob-branches__v6a__r1__b944430cb922de69",
+   "task": "feature-picomatch-repeated-extglob-branches",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-picomatch-repeated-extglob-branches__v6b__r1__4c7f2367324d01a8",
+   "task": "feature-picomatch-repeated-extglob-branches",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-picomatch-repeated-extglob-branches__v6c__r1__47e6aa761760f1d6",
+   "task": "feature-picomatch-repeated-extglob-branches",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-picomatch-repeated-extglob-branches__sonnet-high__r1__0b3ffe46848ccfa2",
+   "task": "feature-picomatch-repeated-extglob-branches",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-picomatch-repeated-extglob-branches__opus-medium__r1__44f5453ed70efa6d",
+   "task": "feature-picomatch-repeated-extglob-branches",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__v6a__r1__7ef1a94f18764605",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__v6b__r1__4f075d4f499de9fd",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__v6c__r1__6d25d0dd7899bad4",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__sonnet-high__r1__4bc11146f0fd59e6",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__opus-medium__r1__46339affba2a1ace",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__v6a__r1__202dcfd0c558efbc",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__v6b__r1__44d096a1e641d778",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__v6c__r1__ddcef0e410ec7649",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__sonnet-high__r1__369d9ce173210545",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__opus-medium__r1__c09b7011c1c044a9",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-sqlparse-begin-end-block-semicolons__v6a__r1__1f16e93d7432efc2",
+   "task": "feature-sqlparse-begin-end-block-semicolons",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-sqlparse-begin-end-block-semicolons__v6b__r1__11f48d90c5476b81",
+   "task": "feature-sqlparse-begin-end-block-semicolons",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-sqlparse-begin-end-block-semicolons__v6c__r1__7b922895593418ae",
+   "task": "feature-sqlparse-begin-end-block-semicolons",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-sqlparse-begin-end-block-semicolons__sonnet-high__r1__b2bd41c011c0b7e4",
+   "task": "feature-sqlparse-begin-end-block-semicolons",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-sqlparse-begin-end-block-semicolons__opus-medium__r1__0b3f0c9e8f12dc31",
+   "task": "feature-sqlparse-begin-end-block-semicolons",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__v6a__r1__2e8950f737678a72",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__v6b__r1__91792569614a7624",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__v6c__r1__449640b727a3ef3c",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__sonnet-high__r1__61d5a43d9349c9d9",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__opus-medium__r1__dc5183cb9e399446",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-xmltodict-selective-cdata__v6a__r1__18c34813ee3479d3",
+   "task": "feature-xmltodict-selective-cdata",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-xmltodict-selective-cdata__v6b__r1__bceae2109a5248ba",
+   "task": "feature-xmltodict-selective-cdata",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-xmltodict-selective-cdata__v6c__r1__d6ae1dbf045ed819",
+   "task": "feature-xmltodict-selective-cdata",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-xmltodict-selective-cdata__sonnet-high__r1__a0348e4342f4cecb",
+   "task": "feature-xmltodict-selective-cdata",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-xmltodict-selective-cdata__opus-medium__r1__96ecceadaf55dd59",
+   "task": "feature-xmltodict-selective-cdata",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__v6a__r1__06ef09ad0195e3a6",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__v6b__r1__7c224f18016d27c5",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__v6c__r1__4e406974f8a13573",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__sonnet-high__r1__d39c15d810761946",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__opus-medium__r1__f372bfb06d86d952",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-mistune-toc-heading-id-collisions__v6a__r1__9afa6e2f34b923c6",
+   "task": "longctx-mistune-toc-heading-id-collisions",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-mistune-toc-heading-id-collisions__v6b__r1__f7564c8affd941f4",
+   "task": "longctx-mistune-toc-heading-id-collisions",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-mistune-toc-heading-id-collisions__v6c__r1__746a85c1beacaae8",
+   "task": "longctx-mistune-toc-heading-id-collisions",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-mistune-toc-heading-id-collisions__sonnet-high__r1__dd58935a290c6fc6",
+   "task": "longctx-mistune-toc-heading-id-collisions",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-mistune-toc-heading-id-collisions__opus-medium__r1__b7813da33afaaf83",
+   "task": "longctx-mistune-toc-heading-id-collisions",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__v6a__r1__ee77292832cb0532",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__v6b__r1__9cb882ef81c5956e",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__v6c__r1__a1527dc207bb79f0",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__sonnet-high__r1__09cca49eecd922d3",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__opus-medium__r1__1ab7e697b6af71a1",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-tornado-body-parse-errors-v2__v6a__r1__8163e70a70ecb5aa",
+   "task": "longctx-tornado-body-parse-errors-v2",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-tornado-body-parse-errors-v2__v6b__r1__b189e17981b20230",
+   "task": "longctx-tornado-body-parse-errors-v2",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-tornado-body-parse-errors-v2__v6c__r1__9df7168056bf545d",
+   "task": "longctx-tornado-body-parse-errors-v2",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-tornado-body-parse-errors-v2__sonnet-high__r1__aab381c3511853c9",
+   "task": "longctx-tornado-body-parse-errors-v2",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-tornado-body-parse-errors-v2__opus-medium__r1__f5ac539ccdf34cf6",
+   "task": "longctx-tornado-body-parse-errors-v2",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "migration-cachetools-cachedmethod-instance-attributes__v6a__r1__d2d135ee779763be",
+   "task": "migration-cachetools-cachedmethod-instance-attributes",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "migration-cachetools-cachedmethod-instance-attributes__v6b__r1__67183c93778d33ec",
+   "task": "migration-cachetools-cachedmethod-instance-attributes",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "migration-cachetools-cachedmethod-instance-attributes__v6c__r1__23f8bb8dd5722bff",
+   "task": "migration-cachetools-cachedmethod-instance-attributes",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "migration-cachetools-cachedmethod-instance-attributes__sonnet-high__r1__163f76adc37ac0f7",
+   "task": "migration-cachetools-cachedmethod-instance-attributes",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "migration-cachetools-cachedmethod-instance-attributes__opus-medium__r1__d9eda9aa57319986",
+   "task": "migration-cachetools-cachedmethod-instance-attributes",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "migration-marked-list-tokens-from-lexer__v6a__r1__64f2280e69750768",
+   "task": "migration-marked-list-tokens-from-lexer",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "migration-marked-list-tokens-from-lexer__v6b__r1__263706f3dd4b0a8d",
+   "task": "migration-marked-list-tokens-from-lexer",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "migration-marked-list-tokens-from-lexer__v6c__r1__6cf2774866d54efd",
+   "task": "migration-marked-list-tokens-from-lexer",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "migration-marked-list-tokens-from-lexer__sonnet-high__r1__a30e3dee5220535a",
+   "task": "migration-marked-list-tokens-from-lexer",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "migration-marked-list-tokens-from-lexer__opus-medium__r1__5bb3e3d60abf62ec",
+   "task": "migration-marked-list-tokens-from-lexer",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "refactor-pymarkdown-block-level-v2__v6a__r1__6c32a29726d42c8d",
+   "task": "refactor-pymarkdown-block-level-v2",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "refactor-pymarkdown-block-level-v2__v6b__r1__eb27feba99318331",
+   "task": "refactor-pymarkdown-block-level-v2",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "refactor-pymarkdown-block-level-v2__v6c__r1__0022fc8b0f3b392c",
+   "task": "refactor-pymarkdown-block-level-v2",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "refactor-pymarkdown-block-level-v2__sonnet-high__r1__e4d12e40fa9a3edd",
+   "task": "refactor-pymarkdown-block-level-v2",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "refactor-pymarkdown-block-level-v2__opus-medium__r1__0b78f449cd8ee004",
+   "task": "refactor-pymarkdown-block-level-v2",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-findmyway-absolute-form-targets__v6a__r1__0d00ad390ea53eed",
+   "task": "security-findmyway-absolute-form-targets",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-findmyway-absolute-form-targets__v6b__r1__00921eb02cf54662",
+   "task": "security-findmyway-absolute-form-targets",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-findmyway-absolute-form-targets__v6c__r1__900d158c7897e08e",
+   "task": "security-findmyway-absolute-form-targets",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-findmyway-absolute-form-targets__sonnet-high__r1__2e3a2d651e2416db",
+   "task": "security-findmyway-absolute-form-targets",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-findmyway-absolute-form-targets__opus-medium__r1__d5ab969c8fb83e7b",
+   "task": "security-findmyway-absolute-form-targets",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-markdownit-reference-continuation-quadratic__v6a__r1__a28b40542040a782",
+   "task": "security-markdownit-reference-continuation-quadratic",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-markdownit-reference-continuation-quadratic__v6b__r1__3b44cd3fdc454ca7",
+   "task": "security-markdownit-reference-continuation-quadratic",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-markdownit-reference-continuation-quadratic__v6c__r1__887aef2733a7ce7d",
+   "task": "security-markdownit-reference-continuation-quadratic",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-markdownit-reference-continuation-quadratic__sonnet-high__r1__2b31980cbf3dc165",
+   "task": "security-markdownit-reference-continuation-quadratic",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-markdownit-reference-continuation-quadratic__opus-medium__r1__1215a13084488899",
+   "task": "security-markdownit-reference-continuation-quadratic",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-pyjwt-key-family-validation__v6a__r1__feeb8e9d9765996a",
+   "task": "security-pyjwt-key-family-validation",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-pyjwt-key-family-validation__v6b__r1__574dcddba606d22f",
+   "task": "security-pyjwt-key-family-validation",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-pyjwt-key-family-validation__v6c__r1__fa5373568f3324f5",
+   "task": "security-pyjwt-key-family-validation",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-pyjwt-key-family-validation__sonnet-high__r1__d9bbffdf6c4b096a",
+   "task": "security-pyjwt-key-family-validation",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-pyjwt-key-family-validation__opus-medium__r1__a7eba47a6bc0235b",
+   "task": "security-pyjwt-key-family-validation",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__v6a__r1__7a63acfbb6660598",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__v6b__r1__97628605f4dae228",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__v6c__r1__0f862b1d35b25cb7",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__sonnet-high__r1__c5759b7db29e101d",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__opus-medium__r1__d48b43e84c621aa8",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-toughcookie-cookie-name-token-validation__v6a__r1__8151f69c3dae8f2d",
+   "task": "security-toughcookie-cookie-name-token-validation",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-toughcookie-cookie-name-token-validation__v6b__r1__20565cc87fc71451",
+   "task": "security-toughcookie-cookie-name-token-validation",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-toughcookie-cookie-name-token-validation__v6c__r1__56fd3b9653d5d53d",
+   "task": "security-toughcookie-cookie-name-token-validation",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-toughcookie-cookie-name-token-validation__sonnet-high__r1__75163a7374c31780",
+   "task": "security-toughcookie-cookie-name-token-validation",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-toughcookie-cookie-name-token-validation__opus-medium__r1__67ae92976a9146d5",
+   "task": "security-toughcookie-cookie-name-token-validation",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-toughcookie-secure-cookie-origin__v6a__r1__1554168583187308",
+   "task": "security-toughcookie-secure-cookie-origin",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-toughcookie-secure-cookie-origin__v6b__r1__472fdcb56c038ee8",
+   "task": "security-toughcookie-secure-cookie-origin",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-toughcookie-secure-cookie-origin__v6c__r1__a8c59d0477e92a01",
+   "task": "security-toughcookie-secure-cookie-origin",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-toughcookie-secure-cookie-origin__sonnet-high__r1__1a7aad95d578a4ad",
+   "task": "security-toughcookie-secure-cookie-origin",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-toughcookie-secure-cookie-origin__opus-medium__r1__c91c2ec3a7ac0c60",
+   "task": "security-toughcookie-secure-cookie-origin",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-yaml-recursive-merge-alias-limit__v6a__r1__60b1195257a5b43e",
+   "task": "security-yaml-recursive-merge-alias-limit",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-yaml-recursive-merge-alias-limit__v6b__r1__639f4128548ae9b8",
+   "task": "security-yaml-recursive-merge-alias-limit",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-yaml-recursive-merge-alias-limit__v6c__r1__e1247418879467a7",
+   "task": "security-yaml-recursive-merge-alias-limit",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-yaml-recursive-merge-alias-limit__sonnet-high__r1__b2a9cce4e18c5f19",
+   "task": "security-yaml-recursive-merge-alias-limit",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-yaml-recursive-merge-alias-limit__opus-medium__r1__4158de1ea55a6f5a",
+   "task": "security-yaml-recursive-merge-alias-limit",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "trivial-bottle-if-none-match-v2__v6a__r1__1a106e8713ab5567",
+   "task": "trivial-bottle-if-none-match-v2",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "trivial-bottle-if-none-match-v2__v6b__r1__5e41903fc2d3d676",
+   "task": "trivial-bottle-if-none-match-v2",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "trivial-bottle-if-none-match-v2__v6c__r1__b6643564acd07a88",
+   "task": "trivial-bottle-if-none-match-v2",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "trivial-bottle-if-none-match-v2__sonnet-high__r1__5fc45c7eeb65d074",
+   "task": "trivial-bottle-if-none-match-v2",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "trivial-bottle-if-none-match-v2__opus-medium__r1__8eb5383ea785352a",
+   "task": "trivial-bottle-if-none-match-v2",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__v6a__r1__9cdf6116975bf512",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "v6a",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__v6b__r1__255cce62a1bc795b",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "v6b",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__v6c__r1__5d0e69132e166afa",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "v6c",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__sonnet-high__r1__64f8140dee96c8ee",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__opus-medium__r1__1144ce79f2cb841f",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "opus-medium",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  }
+ ],
+ "estimate_usd": 37.57
+}

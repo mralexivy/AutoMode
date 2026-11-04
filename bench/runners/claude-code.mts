@@ -64,7 +64,7 @@ export const claudeCodeRunner: AgentRunner = {
     const j = res.json || {}
     return {
       runner: 'claude-code', exitReason: classifyRun(res), exitCode: res.code, signal: res.signal, isError: j.is_error ?? null, turns: j.num_turns ?? null,
-      costUsd: j.total_cost_usd ?? null, sessionId: j.session_id ?? null, modelMs: j.duration_api_ms ?? null, wallS: res.wall_s, stderrTail: res.stderr_tail, finalStatus: claimOf(j.result), limitMessage: classifyRun(res) === 'quota' ? limitLine(j.result) ?? limitLine(res.stderr_tail.join('\n')) : null,
+      costUsd: j.total_cost_usd ?? null, sessionId: j.session_id ?? null, answer: typeof j.result === 'string' ? j.result : undefined, modelMs: j.duration_api_ms ?? null, wallS: res.wall_s, stderrTail: res.stderr_tail, finalStatus: claimOf(j.result), limitMessage: classifyRun(res) === 'quota' ? limitLine(j.result) ?? limitLine(res.stderr_tail.join('\n')) : null,
       modelUsage: j.modelUsage ? Object.fromEntries(Object.entries<any>(j.modelUsage).map(([m, u]) => [m, {
         input: u.inputTokens ?? null, output: u.outputTokens ?? null, cache_read: u.cacheReadInputTokens ?? null,
         cache_write: u.cacheCreationInputTokens ?? null, cost_usd: u.costUSD ?? null }])) : null,

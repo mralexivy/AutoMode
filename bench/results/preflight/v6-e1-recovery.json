@@ -1,0 +1,305 @@
+{
+ "experiment": "v6-e1-recovery",
+ "plan_hash": "3d3faf2da2e46fcf",
+ "at": "2026-11-04T06:06:02.822Z",
+ "pass": true,
+ "checks": [
+  {
+   "name": "experiment",
+   "ok": true,
+   "detail": "10 tasks x 3 arms x 1; policy bench/experiments/policies/e1-rescue-vs-v5.json",
+   "blocking": true
+  },
+  {
+   "name": "split",
+   "ok": true,
+   "detail": "no held-out task",
+   "blocking": true
+  },
+  {
+   "name": "tree",
+   "ok": true,
+   "detail": "clean at 03646b4",
+   "blocking": true
+  },
+  {
+   "name": "budget",
+   "ok": true,
+   "detail": "30 slots: 0 done, 10 reused, 0 unknown, 0 stale, 20 new; new paid slots expected $11.51 of $15",
+   "blocking": true
+  },
+  {
+   "name": "lock",
+   "ok": true,
+   "detail": "free",
+   "blocking": true
+  },
+  {
+   "name": "fixtures",
+   "ok": true,
+   "detail": "10 valid on machine 14caf2f4dce9ad6e, agent environment included",
+   "blocking": true
+  },
+  {
+   "name": "history",
+   "ok": true,
+   "detail": "1020 saved sessions, 729 failed checks replayed, 411 would escalate now; misread: 0; crashed: 0",
+   "blocking": true
+  },
+  {
+   "name": "tests",
+   "ok": true,
+   "detail": "npm run check: ℹ pass 775, ℹ fail 0",
+   "blocking": true
+  },
+  {
+   "name": "plugin-tests",
+   "ok": true,
+   "detail": "487 pass, 0 fail",
+   "blocking": true
+  }
+ ],
+ "slots": [
+  {
+   "run_id": "feature-fastxmlparser-stopnode-nested-same-tag__e1-v5__r1__d76b0963976ecfcc",
+   "task": "feature-fastxmlparser-stopnode-nested-same-tag",
+   "arm": "e1-v5",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-fastxmlparser-stopnode-nested-same-tag__e1-rescue__r1__2dee7a4c3f94e610",
+   "task": "feature-fastxmlparser-stopnode-nested-same-tag",
+   "arm": "e1-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-fastxmlparser-stopnode-nested-same-tag__sonnet-high__r1__cb46227ca882c731",
+   "task": "feature-fastxmlparser-stopnode-nested-same-tag",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-findmyway-regex-param-empty-segment__e1-v5__r1__c9070db03eb0ea71",
+   "task": "feature-findmyway-regex-param-empty-segment",
+   "arm": "e1-v5",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-findmyway-regex-param-empty-segment__e1-rescue__r1__c5467ab7c16bb27c",
+   "task": "feature-findmyway-regex-param-empty-segment",
+   "arm": "e1-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-findmyway-regex-param-empty-segment__sonnet-high__r1__6b39c68394f75d08",
+   "task": "feature-findmyway-regex-param-empty-segment",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__e1-v5__r1__d4a6caa0798a8301",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "e1-v5",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__e1-rescue__r1__5357d72cfc519bb4",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "e1-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__sonnet-high__r1__fed39d586f934e89",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__e1-v5__r1__4d2fd7df5e2a83dc",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "e1-v5",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__e1-rescue__r1__2e752f107957152a",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "e1-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__sonnet-high__r1__4bc11146f0fd59e6",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__e1-v5__r1__80236cbab8c4936a",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "e1-v5",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__e1-rescue__r1__a1edfd69a3f2ccf8",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "e1-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__sonnet-high__r1__369d9ce173210545",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__e1-v5__r1__0ee2847e62310c9b",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "e1-v5",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__e1-rescue__r1__265a0de15bd4cb9a",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "e1-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__sonnet-high__r1__61d5a43d9349c9d9",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__e1-v5__r1__1dbc08e0fe0f56b8",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "e1-v5",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__e1-rescue__r1__255f72947bc122d8",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "e1-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__sonnet-high__r1__d39c15d810761946",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__e1-v5__r1__50bdfc09bd1395f6",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "e1-v5",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__e1-rescue__r1__75c26e24030987c2",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "e1-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__sonnet-high__r1__09cca49eecd922d3",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__e1-v5__r1__ebf77ece4b090555",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "e1-v5",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__e1-rescue__r1__422779daf88c8f8c",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "e1-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__sonnet-high__r1__c5759b7db29e101d",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__e1-v5__r1__f2b27a3f9eb7f333",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "e1-v5",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__e1-rescue__r1__baf1bbe1b08dc5c0",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "e1-rescue",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__sonnet-high__r1__64f8140dee96c8ee",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  }
+ ],
+ "estimate_usd": 11.51
+}

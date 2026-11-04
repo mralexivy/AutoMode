@@ -12,6 +12,7 @@
 // budget cap before each step, append-only rows synced to disk, a usage limit waited out, and a contamination stop when
 // a behavior file changes. A crash resumes: finished steps are skipped and the session continues from its last id.
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -32,11 +33,20 @@ import { fixtureVerdict, machine } from './preflight.mts'
 import { freshWorkspace, runAccept, writeHiddenTests } from './validate-fixture.mts'
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
-export interface SessionExperiment { id: string; description: string; arms: string[]; sessions: Record<string, string[]>; budget_usd: number; run_cap_usd: number; prompt_template?: string }
+// A step is a task, graded by its hidden tests, or a question about the code, graded by whether the answer names what
+// `expect` lists (every pattern, case-insensitive). A question runs on `base`'s code. The answer is checked in memory
+// and never saved.
+export type Question = { ask: string; expect: string[]; base: string }
+export type Step = string | Question
+export interface SessionExperiment { id: string; description: string; arms: string[]; sessions: Record<string, Step[]>; budget_usd: number; run_cap_usd: number; prompt_template?: string }
 
+export const answerOk = (q: Question, answer: string | undefined) => !!answer && q.expect.every((rx) => new RegExp(rx, 'i').test(answer))
+const taskOf = (s: Step) => (typeof s === 'string' ? s : s.base)
+
+export const NEXT_QUESTION = 'Next, a question about the code as it stands now. Answer briefly; change nothing.\n\n'
 export const NEXT_TASK = 'A new task in the same session. The repository was reset to a different version, so earlier changes are gone. Work only on this task.\n\n'
 
-export const stepRunId = (session: string, arm: string, step: number, task: Task) => `${session}__${arm}__s${step}__${taskHash(task).slice(0, 12)}`
+export const stepRunId = (session: string, arm: string, step: number, task: Task, q?: Question) => `${session}__${arm}__s${step}__${q ? `q${createHash('sha256').update(q.ask).digest('hex').slice(0, 10)}` : taskHash(task).slice(0, 12)}`
 
 export interface SessionSummary { arm: string; steps: number; accepted: number; usd: number; peakByStep: number[] }
 
@@ -69,13 +79,13 @@ async function main() {
   const tasks = new Map(loadTasks(arg('tasks-dir')).map((t) => [t.id, t]))
   // The fake claude of the tests runs from a working tree; a real run needs the tree committed.
   const fake = isFake(harnessInfo('claude-code').runner_version)
-  for (const ids of Object.values(exp.sessions)) for (const t of ids) if (!tasks.has(t)) throw new Error(`unknown task ${t}`)
+  for (const steps of Object.values(exp.sessions)) for (const s of steps) if (!tasks.has(taskOf(s))) throw new Error(`unknown task ${taskOf(s)}`)
   for (const a of exp.arms) if (!ARMS[a]) throw new Error(`unknown arm ${a}`)
   // Preflight: a clean tree (results aside), every fixture valid on this machine.
   const dirty = execFileSync('git', ['status', '--porcelain', '--', '.', ':(exclude)bench/results', ':(exclude)docs/proposals'], { cwd: REPO, encoding: 'utf8' }).trim()
   if (dirty && !fake) { console.error(`Not starting: uncommitted changes: ${dirty.split('\n').slice(0, 5).join('; ')}`); process.exit(2) }
   const host = machine()
-  const bad = [...new Set(Object.values(exp.sessions).flat())].map((t) => fixtureVerdict(tasks.get(t)!, path.join(os.tmpdir(), 'am-e5-preflight'), host)).filter((v) => !v.valid)
+  const bad = [...new Set(Object.values(exp.sessions).flat().filter((s): s is string => typeof s === 'string'))].map((t) => fixtureVerdict(tasks.get(t)!, path.join(os.tmpdir(), 'am-e5-preflight'), host)).filter((v) => !v.valid)
   if (bad.length) { console.error(`Not starting: invalid fixtures: ${bad.map((v) => `${v.id} (${v.why})`).join('; ')}`); process.exit(2) }
   const lock = acquire(id)
   if ('holder' in lock) { console.error(`Not starting: ${lock.holder.experiment} holds the lock (pid ${lock.holder.pid})`); process.exit(3) }
@@ -86,21 +96,22 @@ async function main() {
   const done = new Set(prior.filter((r) => r.exit_reason !== 'quota').map((r) => r.run_id))
   console.log(`${id}: ${exp.arms.length} arms × ${Object.keys(exp.sessions).length} sessions; ${done.size} steps already done; $${spent.toFixed(2)} of $${exp.budget_usd} spent.`)
   try {
-    for (const arm of exp.arms) for (const [name, ids] of Object.entries(exp.sessions)) {
+    for (const arm of exp.arms) for (const [name, steps] of Object.entries(exp.sessions)) {
       const dir = path.join(scratch, `${name}__${arm}`)
       fs.mkdirSync(dir, { recursive: true })
       const wt = path.join(dir, 'wt')
       const before = prior.filter((r) => r.session === name && r.arm === arm && r.exit_reason === 'done').sort((a, b) => a.step - b.step)
       let sid: string | null = before.at(-1)?.session_id ?? null
       let judgeSoFar: number = before.at(-1)?.judge_cumulative_usd ?? 0
-      for (let k = 0; k < ids.length; k++) {
-        const task = tasks.get(ids[k])!
-        const runId = stepRunId(name, arm, k, task)
+      for (let k = 0; k < steps.length; k++) {
+        const q = typeof steps[k] === 'string' ? undefined : (steps[k] as Question)
+        const task = tasks.get(taskOf(steps[k]))!
+        const runId = stepRunId(name, arm, k, task, q)
         if (done.has(runId)) continue
         if (spent >= exp.budget_usd) { console.log(`Budget: $${spent.toFixed(2)} of $${exp.budget_usd} spent. No new step starts.`); return }
         const cache = taskRepo(task)
         freshWorkspace(task, cache, task.base, wt)
-        const prompt = (k === 0 ? '' : NEXT_TASK) + renderPrompt(template, task.task).text
+        const prompt = q ? (k === 0 ? '' : NEXT_QUESTION) + q.ask : (k === 0 ? '' : NEXT_TASK) + renderPrompt(template, task.task).text
         let res = await claudeCodeRunner.run({ armId: arm, workspace: wt, dir, prompt, timeoutMs: (task.limits?.wall_seconds ?? 1800) * 1000, runCap: exp.run_cap_usd, accept: task.accept, ...(sid ? { resume: sid } : {}) })
         while (res.exitReason === 'quota') {
           const head = { schema_version: 1, experiment: id, run_id: runId, session: name, step: k, task_id: task.id, arm, exit_reason: 'quota', cost_usd_api_equiv: res.costUsd, session_id: res.sessionId ?? sid, at: new Date().toISOString() }
@@ -114,15 +125,17 @@ async function main() {
           res = await claudeCodeRunner.run({ armId: arm, workspace: wt, dir, prompt, timeoutMs: (task.limits?.wall_seconds ?? 1800) * 1000, runCap: exp.run_cap_usd, accept: task.accept, ...(sid ? { resume: sid } : {}) })
         }
         sid = res.sessionId ?? sid
-        writeHiddenTests(task, cache, wt)
-        const acc = runAccept(task, wt)
+        let accepted: boolean
+        let acceptExit: number | null = null
+        if (q) accepted = answerOk(q, res.answer)
+        else { writeHiddenTests(task, cache, wt); const acc = runAccept(task, wt); accepted = acc.status === 0; acceptExit = acc.status }
         const ev: any = runEvidence(sid)
         const judge = ARMS[arm].v4 ? v4JudgeCost(sid) : null
         const judgeNow = judge?.usd ?? 0
         const row: any = {
-          schema_version: 1, experiment: id, run_id: runId, session: name, step: k, task_id: task.id, cohort: task.cohort, arm,
+          schema_version: 1, experiment: id, run_id: runId, session: name, step: k, kind: q ? 'question' : 'task', task_id: task.id, cohort: q ? 'question' : task.cohort, arm,
           identity: { v: 2, task: taskHash(task), code, rep: 1 }, plugin: ARMS[arm].plugin ?? null,
-          exit_reason: res.exitReason, accepted: acc.status === 0, accept_exit: acc.status,
+          exit_reason: res.exitReason, accepted, accept_exit: acceptExit, ...(q ? { answer_chars: res.answer?.length ?? 0 } : {}),
           cost_usd_api_equiv: res.costUsd, judge: { usd: Math.max(0, judgeNow - judgeSoFar) }, judge_cumulative_usd: judgeNow,
           session_id: sid, peak_prompt_tokens: ev?.peak_prompt_tokens ?? null, requests: ev?.requests ?? null, compactions: ev?.compactions ?? null,
           actions: judge?.actions ?? null, rescues: judge?.rescues ?? null,

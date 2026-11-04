@@ -27,6 +27,9 @@ export interface AgentRun {
   modelUsage: Record<string, { input: number | null; output: number | null; cache_read: number | null; cache_write: number | null; cost_usd: number | null }> | null
   wallS: number
   stderrTail: string[]
+  // The model's last reply, held in memory only, for a question step's grader (e5-sessions.mts). Never saved: results
+  // hold no model reply text.
+  answer?: string
   // What ran, for a runner with no transcript to read. The Claude Code runner leaves this null.
   evidence?: unknown
   toolSchemaSha256?: string | null

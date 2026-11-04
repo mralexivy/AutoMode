@@ -558,3 +558,17 @@ describe('v6 strategies', () => {
     expect(ctx).toContain('subagent_type "automode:builder"')
   })
 })
+
+describe('a session launched on Opus, the way most people run Claude Code', () => {
+  test('is no pin: AutoMode routes a quick question to Haiku and a hard task off Opus', async ($, on) => {
+    let n = 0
+    // The shipped config.json activates AutoMode with the session (activation: always), whatever model it starts on.
+    const h = harness(on, { policy: 'auto', model: 'claude-opus-5-5', config: { activation: 'always', opusStart: 'evidence', strategy: 'v6c' }, judge: () => judge(n++ === 0 ? { tier: 'T0', complexity: 'trivial' } : { tier: 'T3', complexity: 'complex', newTask: true }), effortJudge: perModel({ haiku: ['haiku', 'medium'], sonnet: ['sonnet', 'high'], opus: ['opus', 'high'] }) })
+    await h.submit($, 'where is the code span tokenizer defined?')
+    await h.step($, 'claude-opus-5-5')
+    expect(h.steps.at(-1)?.model).toBe('claude-haiku-5-5')
+    await h.submit($, 'rework how list tokens are built from the lexer')
+    await h.step($, 'claude-opus-5-5', undefined, { index: 1 })
+    expect(h.steps.at(-1)?.model).toBe('claude-sonnet-5-5')
+  })
+})
