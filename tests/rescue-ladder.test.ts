@@ -431,7 +431,8 @@ describe('v6 strategies', () => {
     const out: any = await climb($, h)
     const note = JSON.stringify(out.context ?? [])
     expect(note).toContain('subagent_type \\"automode:builder\\" and model \\"sonnet\\"')
-    expect(note).toContain('git worktree add -q')
+    expect(note).toContain('Mode: restart')
+    expect(note).not.toContain('git worktree')
     expect(note).toContain('Implement the objective')
     expect(note).not.toContain('Return the cause, the fix plan')
     // No raise to xhigh under v6: the watchdog, not an effort step, acts on a large context that does not converge.
@@ -566,6 +567,32 @@ describe('v6 strategies', () => {
     h.setPrefix(120_000)
     await h.step($, 'claude-haiku-5-5', undefined, { index: 1 })
     expect(of(h.writes, 'recovery')[0]).toMatchObject({ source: 'price-step', action: 'rescue-up', to: 'sonnet' })
+  })
+
+  test('v6: a rescue the model declines past Haiku\'s limit: after 3 requests the session leaves Haiku anyway', async ($, on) => {
+    // sqlglot in the v6d pilot: Haiku declined the note and worked on from 156k to 264k ($1.33, failed).
+    const h = harness(on, { policy: 'auto', config: { opusStart: 'evidence', strategy: 'v6c' }, judge: judge({ tier: 'T0', complexity: 'trivial' }), effortJudge: perModel({ haiku: ['haiku', 'medium'], sonnet: ['sonnet', 'medium'] }) })
+    h.setPrefix(60_000)
+    await h.submit($, 'fix the parser')
+    await h.step($, 'claude-haiku-5-5')
+    h.setPrefix(156_000)
+    await h.step($, 'claude-haiku-5-5', undefined, { index: 1 })
+    expect(of(h.writes, 'recovery')[0]).toMatchObject({ source: 'context', action: 'rescue-up' })
+    for (let i = 2; i <= 5; i++) await h.step($, 'claude-haiku-5-5', undefined, { index: i })
+    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-up', 'switch'])
+    expect(h.steps.at(-1)?.model).toBe('claude-sonnet-5-5')
+  })
+
+  test('v6: a rescue the model takes is no reason to switch', async ($, on) => {
+    const h = harness(on, { policy: 'auto', config: { opusStart: 'evidence', strategy: 'v6c' }, judge: judge({ tier: 'T0', complexity: 'trivial' }), effortJudge: perModel({ haiku: ['haiku', 'medium'], sonnet: ['sonnet', 'medium'] }) })
+    h.setPrefix(60_000)
+    await h.submit($, 'fix the parser')
+    await h.step($, 'claude-haiku-5-5')
+    h.setPrefix(156_000)
+    await h.step($, 'claude-haiku-5-5', undefined, { index: 1 })
+    await $.agent.spawn({ subagentType: 'automode:builder', model: 'sonnet', prompt: 'brief', description: 'rescue', parentModel: 'claude-haiku-5-5', fork: false, background: false, tool_use_id: 'b1' } as never)
+    for (let i = 2; i <= 5; i++) await h.step($, 'claude-haiku-5-5', undefined, { index: i })
+    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-up'])
   })
 
   test('v6b: an effort raise on the same model records what the next request read from cache', async ($, on) => {

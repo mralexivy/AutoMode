@@ -74,16 +74,15 @@ test('rescue mode: repair only when a check passed after the first edit', () => 
   assert.equal(rescueMode(null, [150]), 'restart')
 })
 
-test('the rescue brief: a restart runs in its own worktree and folds back only on a pass; repair keeps the work', () => {
-  const restart = rescueNote({ family: 'sonnet', mode: 'restart', because: 'the same check failed 3 times after edits', packet: 'Goal: fix it\nThe person later said: keep the old flag name', passedChecks: [], failedApproaches: ['`pytest -q` failed 3 times'], remainingUsd: 1.5, worktree: '/w/repo-automode-rescue-1' })
-  assert.match(restart, /git worktree add -q \/w\/repo-automode-rescue-1 HEAD/)
+test('the rescue brief: a restart reviews the unverified edits itself, with no git steps; repair keeps the work', () => {
+  const restart = rescueNote({ family: 'sonnet', mode: 'restart', because: 'the same check failed 3 times after edits', packet: 'Goal: fix it\nThe person later said: keep the old flag name', passedChecks: [], failedApproaches: ['`pytest -q` failed 3 times'], remainingUsd: 1.5 })
   assert.match(restart, /subagent_type "automode:builder" and model "sonnet"/)
-  assert.match(restart, /Work only in \/w\/repo-automode-rescue-1/)
-  assert.match(restart, /If its checks pass there, fold it back/)
+  assert.match(restart, /Mode: restart\. No check passed after the edits/)
+  assert.doesNotMatch(restart, /git |worktree|stash/, 'sqlglot: Haiku declined a note that asked for git steps')
   assert.match(restart, /keep the old flag name/, 'the person\'s correction travels with the brief')
   assert.match(restart, /Already tried, do not repeat: `pytest -q` failed 3 times/)
   assert.match(restart, /\$1\.50 of its budget left/)
-  const repair = rescueNote({ family: 'opus', mode: 'repair', because: 'x', packet: 'p', passedChecks: ['pytest -q tests/a.py'], failedApproaches: [], remainingUsd: null, worktree: '/w/r-2' })
+  const repair = rescueNote({ family: 'opus', mode: 'repair', because: 'x', packet: 'p', passedChecks: ['pytest -q tests/a.py'], failedApproaches: [], remainingUsd: null })
   assert.match(repair, /Mode: repair\. Keep the current changes: these checks passed after the first edit: pytest -q tests\/a\.py/)
   assert.doesNotMatch(repair, /worktree/)
   assert.match(builderNote('sonnet'), /subagent_type "automode:builder" and model "sonnet"/)
