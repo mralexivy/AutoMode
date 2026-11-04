@@ -4,7 +4,7 @@
 // state: valid, cut off, unknown, contaminated or invalid. With no file, it reads the v2, v4 and v5 proof runs.
 import fs from 'node:fs'
 import path from 'node:path'
-import { rowClass, valid } from './lib/decide.mts'
+import { rowClass, rowUsd, valid } from './lib/decide.mts'
 import { readRows } from './lib/plan.mts'
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
@@ -39,7 +39,7 @@ export interface Baseline {
 
 // baseline: the last valid row per task and arm decides the outcome; every paid attempt counts in the cost.
 export function baseline(rows: any[], experiment: string): Baseline {
-  const paid = (arm: string, task: string) => rows.filter((r) => r.arm === arm && r.task_id === task).reduce((s, r) => s + (r.cost_usd_api_equiv ?? 0), 0)
+  const paid = (arm: string, task: string) => rows.filter((r) => r.arm === arm && r.task_id === task).reduce((s, r) => s + rowUsd(r), 0)
   const last = (arm: string, task: string) => [...rows].reverse().find((r) => r.arm === arm && r.task_id === task && valid(rowClass(r)))
   const out: Baseline = { experiment, arms: {}, routes: {}, states: {} }
   const tasks = [...new Set(rows.map((r) => r.task_id))].sort()

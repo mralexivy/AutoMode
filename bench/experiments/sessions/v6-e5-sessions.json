@@ -1,0 +1,37 @@
+{
+  "id": "v6-e5-sessions",
+  "description": "v6.1 E5 (bench/experiments/V6.md): related tasks inside one continuing Claude Code session. Five sessions of three tasks from one repository each, in the order below, for plain Claude Code on Sonnet high and for AutoMode v6c. The code resets to each task's base at the same path, and the conversation continues. Each task is graded by its own hidden tests. Fixed before any row; none is held out.",
+  "arms": [
+    "sonnet-high",
+    "v6c"
+  ],
+  "sessions": {
+    "marked": [
+      "trivial-marked-empty-code-block-v2",
+      "feature-marked-emstrongmask-hook-v2",
+      "migration-marked-list-tokens-from-lexer"
+    ],
+    "jsyaml": [
+      "refactor-jsyaml-tagname-module-v2",
+      "migration-jsyaml-max-total-merge-keys-v2",
+      "longctx-jsyaml-map-keys-survive-dump"
+    ],
+    "boltons": [
+      "feature-boltons-mapping-type-fixes",
+      "feature-boltons-indexedset-complement-set-math",
+      "feature-boltons-barrellist-list-parity"
+    ],
+    "jinja": [
+      "feature-jinja-namespace-tuple-assignment",
+      "feature-jinja-undefined-copy-pickle-state",
+      "security-jinja-sandbox-indirect-str-format"
+    ],
+    "nodesemver": [
+      "feature-nodesemver-diff-prerelease-direction",
+      "longctx-nodesemver-intersects-zero-comparators",
+      "security-nodesemver-whitespace-regex-dos"
+    ]
+  },
+  "budget_usd": 14,
+  "run_cap_usd": 6
+}

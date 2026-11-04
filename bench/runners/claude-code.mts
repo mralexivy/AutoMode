@@ -59,6 +59,7 @@ export const claudeCodeRunner: AgentRunner = {
   async run(req: RunRequest): Promise<AgentRun> {
     const { args, env } = armInvocation(req.armId, req.dir, req.prompt)
     if (req.runCap) args.push('--max-budget-usd', String(req.runCap))
+    if (req.resume) args.push('--resume', req.resume)
     const res = await runClaude(args, workspaceEnv(req.workspace, env, req.accept), req.workspace, req.timeoutMs)
     const j = res.json || {}
     return {

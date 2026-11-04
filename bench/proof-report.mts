@@ -5,7 +5,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { ARMS } from './arms.mts'
-import { decide, rowClass, valid, type Policy } from './lib/decide.mts'
+import { decide, rowClass, rowUsd, valid, type Policy } from './lib/decide.mts'
 import { loadExperiment } from './lib/experiment.mts'
 import { readRows } from './lib/plan.mts'
 
@@ -21,11 +21,11 @@ export function report(id: string, policies: Policy[], file = path.join(REPO, 'b
   const tasks = new Set(fin.map((r) => r.task_id))
   lines.push(`# ${id}: results`, '')
   lines.push(`${e.description}`, '')
-  lines.push(`Rows: ${rows.length} paid attempts, ${fin.length} valid runs over ${tasks.size} tasks. Costs are list-price equivalents (\`cost_usd_api_equiv\`). They count every paid attempt, cut-off ones included. Runs used a Claude subscription, so no money was billed per run.`, '')
+  lines.push(`Rows: ${rows.length} paid attempts, ${fin.length} valid runs over ${tasks.size} tasks. Costs are list-price equivalents: the CLI's \`cost_usd_api_equiv\` plus AutoMode's judge calls. They count every paid attempt, cut-off ones included. Runs used a Claude subscription, so no money was billed per run.`, '')
   lines.push('## By arm', '', '| Arm | What it is | Accepted | Paid attempts | Spend | $ per accepted | Median minutes |', '|---|---|---:|---:|---:|---:|---:|')
   for (const a of e.arms) {
     const rs = rows.filter((r) => r.arm === a), ok = rs.filter((r) => rowClass(r) === 'accepted'), v = rs.filter((r) => valid(rowClass(r)))
-    const spend = rs.reduce((x, r) => x + (r.cost_usd_api_equiv ?? 0), 0)
+    const spend = rs.reduce((x, r) => x + rowUsd(r), 0)
     lines.push(`| \`${a}\` | ${ARMS[a].label} | ${ok.length} of ${v.length} | ${rs.length} | ${usd(spend)} | ${usd(ok.length ? spend / ok.length : null)} | ${median(v.map((r) => (r.wall_s ?? 0) / 60))?.toFixed(1) ?? '-'} |`)
   }
   lines.push('', '## Decisions', '', 'Each policy was committed before the first row. Thresholds never move after a row exists.', '')
@@ -42,7 +42,7 @@ export function report(id: string, policies: Policy[], file = path.join(REPO, 'b
   }
   lines.push('## By task', '', `| Task | ${e.arms.map((a) => `\`${a}\``).join(' | ')} |`, `|---|${e.arms.map(() => '---').join('|')}|`)
   for (const t of [...new Set(rows.map((r) => r.task_id))].sort()) {
-    const cell = (a: string) => { const v = rows.filter((r) => r.task_id === t && r.arm === a); const last = [...v].reverse().find((r) => valid(rowClass(r))); const cost = v.reduce((x, r) => x + (r.cost_usd_api_equiv ?? 0), 0); return last ? `${last.accepted ? 'pass' : 'fail'} ${usd(cost)}` : v.length ? `no result ${usd(cost)}` : '-' }
+    const cell = (a: string) => { const v = rows.filter((r) => r.task_id === t && r.arm === a); const last = [...v].reverse().find((r) => valid(rowClass(r))); const cost = v.reduce((x, r) => x + rowUsd(r), 0); return last ? `${last.accepted ? 'pass' : 'fail'} ${usd(cost)}` : v.length ? `no result ${usd(cost)}` : '-' }
     lines.push(`| ${t} | ${e.arms.map(cell).join(' | ')} |`)
   }
   lines.push('', '## What this does and does not show', '')

@@ -10,6 +10,7 @@ export interface RunRequest {
   prompt: string
   timeoutMs: number
   runCap: number | null
+  resume?: string // continue this Claude Code session (E5 multi-task sessions)
   accept?: string // the task's accept command: the agent gets the same path settings (runners/claude-code.mts workspaceEnv)
 }
 
