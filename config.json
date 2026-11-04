@@ -32,7 +32,7 @@
   "opusStart": "evidence",
   "haikuFirst": "off",
   "taskBudgetUsd": 0,
-  "strategy": "legacy",
+  "strategy": "v6c",
   "builder": "off",
   "forkRung": "on",
   "packet": "fork-gated",
