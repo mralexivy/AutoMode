@@ -1,0 +1,185 @@
+{
+ "experiment": "v6-d2-heldout",
+ "plan_hash": "60dae7d24aedb2b2",
+ "at": "2026-11-04T18:23:04.380Z",
+ "pass": true,
+ "checks": [
+  {
+   "name": "experiment",
+   "ok": true,
+   "detail": "5 tasks x 3 arms x 1; policy bench/experiments/policies/v6d-vs-sonnet-heldout.json",
+   "blocking": true
+  },
+  {
+   "name": "split",
+   "ok": true,
+   "detail": "no held-out task",
+   "blocking": true
+  },
+  {
+   "name": "tree",
+   "ok": true,
+   "detail": "clean at d9adf0d",
+   "blocking": true
+  },
+  {
+   "name": "budget",
+   "ok": true,
+   "detail": "15 slots: 0 done, 0 reused, 0 unknown, 0 stale, 15 new; new paid slots expected $6.87 of $10",
+   "blocking": true
+  },
+  {
+   "name": "lock",
+   "ok": true,
+   "detail": "free",
+   "blocking": true
+  },
+  {
+   "name": "fixtures",
+   "ok": true,
+   "detail": "5 valid on machine 14caf2f4dce9ad6e, agent environment included",
+   "blocking": true
+  },
+  {
+   "name": "history",
+   "ok": true,
+   "detail": "1144 saved sessions, 908 failed checks replayed, 465 would escalate now; misread: 0; crashed: 0",
+   "blocking": true
+  },
+  {
+   "name": "tests",
+   "ok": true,
+   "detail": "npm run check: ℹ pass 780, ℹ fail 0",
+   "blocking": true
+  },
+  {
+   "name": "plugin-tests",
+   "ok": true,
+   "detail": "495 pass, 0 fail",
+   "blocking": true
+  }
+ ],
+ "slots": [
+  {
+   "run_id": "feature-acorn-using-in-switch-case-and-for__v6d-opus__r1__e94e407a0bcdd2bb",
+   "task": "feature-acorn-using-in-switch-case-and-for",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-acorn-using-in-switch-case-and-for__sonnet-high__r1__837417de14052a7f",
+   "task": "feature-acorn-using-in-switch-case-and-for",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-acorn-using-in-switch-case-and-for__opus__r1__8a87be8b117a2007",
+   "task": "feature-acorn-using-in-switch-case-and-for",
+   "arm": "opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-pyflakes-unused-global-nonlocal__v6d-opus__r1__70432e759efb2b5b",
+   "task": "feature-pyflakes-unused-global-nonlocal",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-pyflakes-unused-global-nonlocal__sonnet-high__r1__e146eb61842b7ac4",
+   "task": "feature-pyflakes-unused-global-nonlocal",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-pyflakes-unused-global-nonlocal__opus__r1__e130be7ee00d7848",
+   "task": "feature-pyflakes-unused-global-nonlocal",
+   "arm": "opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-acorn-commonjs-source-type__v6d-opus__r1__e1fec729e05bec28",
+   "task": "longctx-acorn-commonjs-source-type",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-acorn-commonjs-source-type__sonnet-high__r1__ff6c1486157123a4",
+   "task": "longctx-acorn-commonjs-source-type",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-acorn-commonjs-source-type__opus__r1__a28b9cc19bb0fec8",
+   "task": "longctx-acorn-commonjs-source-type",
+   "arm": "opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-mathjs-nullish-coalescing-operator__v6d-opus__r1__8525d4ee91ee2767",
+   "task": "longctx-mathjs-nullish-coalescing-operator",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-mathjs-nullish-coalescing-operator__sonnet-high__r1__2cd513dc596932fe",
+   "task": "longctx-mathjs-nullish-coalescing-operator",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-mathjs-nullish-coalescing-operator__opus__r1__5704eb2cff48cea1",
+   "task": "longctx-mathjs-nullish-coalescing-operator",
+   "arm": "opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-mathjs-array-property-and-index-escape__v6d-opus__r1__9a64e4d8eaa1028e",
+   "task": "security-mathjs-array-property-and-index-escape",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-mathjs-array-property-and-index-escape__sonnet-high__r1__5f55e8e4996a06a1",
+   "task": "security-mathjs-array-property-and-index-escape",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-mathjs-array-property-and-index-escape__opus__r1__1ae4837f0ca9b9eb",
+   "task": "security-mathjs-array-property-and-index-escape",
+   "arm": "opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  }
+ ],
+ "estimate_usd": 6.87
+}
