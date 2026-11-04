@@ -50,3 +50,12 @@ test('no second call after a fallback, a cached verdict or under the executor', 
   assert.equal(planAuto(input({ ...g, executor: true })).secondJudge, null)
   assert.equal(planAuto(input({ ...g, judge: null })).secondJudge, null)
 })
+
+test('a failed AutoMode judge never leaves a hard task on Haiku when the need names a stronger model', () => {
+  // Found in W1: a question moved the session to Haiku, the next prompt's AutoMode judge reply did not parse, and a hard
+  // migration both effortless calls rated opus/high ran on Haiku at Opus's cost.
+  const r = routeAuto({ ...input({ judge: null, current: 'haiku/high', verdicts: { sonnet: ['opus', 'high'] }, boundary: true }), opusOnEvidence: true })
+  assert.equal(r.route.family, 'sonnet')
+  // A need for Haiku keeps the hold: nothing here asks for more.
+  assert.equal(routeAuto(input({ judge: null, current: 'haiku/high', verdicts: { sonnet: ['haiku', 'low'] }, boundary: true })).route.family, 'haiku')
+})

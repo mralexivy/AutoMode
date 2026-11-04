@@ -19,6 +19,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Fixed
 
+- A failed AutoMode judge no longer leaves a hard task on Haiku. When its reply does not parse and the other judge's need names a stronger model, that model is a floor: Sonnet, or Opus where a judge may start Opus. In W1, a question had moved the session to Haiku, and a hard migration both effortless calls rated Opus high then ran on Haiku, at Opus's cost.
+- A running model that a floor excludes is ruled out even when it is not a candidate. A fixed family used to leave it unpriced, and the vote gate held it below the floor. This closes the known Haiku-hold hole in `tests/route-properties.test.mts`.
 - AutoMode keeps session snapshots for the 40 newest sessions only. It kept one per session and never removed any, so after some 350 sessions the plugin store passed its 4 MiB limit. Every save was then refused, and no resumed session could restore its route or its cache.
 - The routing state is saved after the turn's last request too. A print-mode process (`claude -p`, `--resume`) can exit before the turn completes, so the next process routed from a stale cache. On the W1 smoke it took a warm Sonnet session for Haiku, moved a question there, and paid the move back.
 - The completion gate skips only a line made of file viewers alone. A line such as `find . -name x; python3 check.py` runs a program, and its output now counts as evidence.

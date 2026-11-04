@@ -33,10 +33,11 @@ function given(e: Evidence, rest: Given): Given {
   return { judge: e.tier ? { tier: e.tier, complexity: 'complex' } : null, verdicts, ...rest }
 }
 
-// The known hole in floor preservation. On a warm Haiku session whose need call failed, a T3 or T4 AutoMode judge makes
-// fallbackModel fix the model to Opus. The floor's tier (T1 or T2) is then below the candidate's (T3), so resolve() does
-// not mark the move mandatory. runningRuledOut also passes, because the fixed model is the only candidate. The vote gate
-// then holds Haiku, below the floor.
+// The former hole in floor preservation, now closed. On a warm Haiku session whose need call failed, a T3 or T4 AutoMode
+// judge makes fallbackModel fix the model to Opus. The floor's tier (T1 or T2) is then below the candidate's (T3), so
+// resolve() does not mark the move mandatory, and runningRuledOut passed, because the fixed model was the only
+// candidate. The vote gate then held Haiku below the floor. runningRuledOut now rules out a running model a floor
+// excludes even when it is no candidate (found in W1, where a failed judge left a hard task on Haiku).
 const haikuHoldHole = (e: Evidence, running: { family: Family } | null, allowed: Family[]) =>
   running?.family === 'haiku' && allowed.includes('haiku') && e.need === null && (e.tier === 'T3' || e.tier === 'T4') && allowed.includes('opus')
 
@@ -114,7 +115,7 @@ test('floor: critical consequence keeps the route at band 2 or more and off Haik
   let walked = 0
   let lifted = 0
   for (const e of evidence()) for (const running of [null, ...RUNNING]) for (const allowed of ALLOWED) {
-    if (!allowed.some((f) => f !== 'haiku') || haikuHoldHole(e, running, allowed)) continue
+    if (!allowed.some((f) => f !== 'haiku')) continue
     const result = routeAuto(input(given(e, { current: running ? named(running) : undefined, allowed, risk: 'critical' })))
     const r = result.route
     const where = () => JSON.stringify({ e, running, allowed, route: named(r), owner: r.owner })
@@ -157,7 +158,6 @@ const ladderRoute = (c: { e: Evidence; running: { family: Family; effort: Effort
 test('floor: a ladder step keeps the route at or above the step band', () => {
   let walked = 0
   for (const c of ladderCases()) {
-    if (haikuHoldHole(c.e, c.running, c.allowed)) continue
     const r = ladderRoute(c)
     assert.ok(bandOfRoute(r) >= c.step.band, `band ${bandOfRoute(r)} >= step ${c.step.band}: ${JSON.stringify({ ...c, route: named(r), owner: r.owner })}`)
     walked++
@@ -167,19 +167,20 @@ test('floor: a ladder step keeps the route at or above the step band', () => {
 
 test('floor: the ladder floor and the critical floor together keep the higher band', () => {
   for (const c of ladderCases()) {
-    if (!c.allowed.some((f) => f !== 'haiku') || haikuHoldHole(c.e, c.running, c.allowed)) continue
+    if (!c.allowed.some((f) => f !== 'haiku')) continue
     const r = ladderRoute(c, { risk: 'critical' })
     assert.ok(bandOfRoute(r) >= Math.max(2, c.step.band), JSON.stringify({ ...c, route: named(r), owner: r.owner }))
   }
 })
 
-// The hole, as the code behaves today. Every case in the hole holds Haiku through the cache policy, below the floor.
-test('floor hole: a warm Haiku session with a failed need and a T3 or T4 judge holds Haiku under critical consequence', () => {
+// The former hole stays closed: every case in it leaves Haiku for the floor.
+test('floor hole closed: a warm Haiku session with a failed need and a T3 or T4 judge leaves Haiku under critical consequence', () => {
   let n = 0
   for (const e of evidence()) for (const running of RUNNING.filter((x) => x.family === 'haiku')) for (const allowed of ALLOWED) {
     if (!haikuHoldHole(e, running, allowed)) continue
     const r = routeAuto(input(given(e, { current: named(running), allowed, risk: 'critical' })))
-    assert.deepEqual([r.route.family, r.route.owner, r.choice.best.family], ['haiku', 'cache-policy', 'opus'], JSON.stringify({ e, running, allowed }))
+    assert.notEqual(r.route.family, 'haiku', JSON.stringify({ e, running, allowed }))
+    assert.ok(bandOfRoute(r.route) >= 2, JSON.stringify({ e, running, allowed }))
     n++
   }
   assert.ok(n > 0)
@@ -282,7 +283,6 @@ test('chain: strong evidence never lands the route below the running band', () =
     if (seen.has(key)) continue
     seen.add(key)
     for (const e of evidence()) {
-      if (haikuHoldHole(e, running, allowed)) continue
       const r = ladderRoute({ e, running, allowed, step })
       assert.ok(bandOfRoute(r) >= bandOfRoute(running), `${s.name}: ${named(running)} -> ${named(r)} (${r.owner}) ${JSON.stringify({ e, allowed, step })}`)
       walked++
@@ -292,9 +292,10 @@ test('chain: strong evidence never lands the route below the running band', () =
   assert.ok(walked > 1_000, `walked ${walked}`)
 })
 
-test('chain hole: a failed need on warm Haiku under a T3 judge can hold Haiku below its running band', () => {
+test('chain hole closed: a failed need on warm Haiku under a T3 judge no longer holds Haiku below its running band', () => {
   const running = { family: 'haiku' as Family, effort: 'medium' as Effort }
   const step = ladderStep(running, 'strong', FAMILIES)!
   const r = ladderRoute({ e: { tier: 'T3', need: null, own: 'low' }, running, allowed: FAMILIES, step })
-  assert.deepEqual([named(step), named(r), r.owner], ['sonnet/medium', 'haiku/low', 'cache-policy'])
+  assert.equal(named(step), 'sonnet/medium')
+  assert.notEqual(r.family, 'haiku')
 })

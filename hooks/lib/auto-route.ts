@@ -198,6 +198,7 @@ export function planAuto(i: AutoRouteInput): AutoPlan {
   const reasons: string[] = []
   const cur = i.current?.route ?? null
   const mq = autoFloors(i.floor, i.complexity, i.allowed, i.stage)
+  let needTier: Floor = { tier: 'T0', because: [] }
   if (mq.floors.because.length) reasons.push(`floors: ${mq.floors.because.join('; ')}`)
   const floors: AutoFloors = { ...mq.floors, ...(i.fixedFamily ? { fixedFamily: i.fixedFamily } : {}), ...(i.fixedEffort ? { fixedEffort: i.fixedEffort } : {}) }
   let verdicts: Verdicts = { ...i.verdicts }
@@ -228,6 +229,24 @@ export function planAuto(i: AutoRouteInput): AutoPlan {
       fallback = fb.source
     }
     if ((!answer || fallback) && cur && !i.fixedFamily && i.allowed.includes(cur.family)) { floors.fixedFamily = cur.family; fallback = fallback ?? 'automode judge failed: no model switch' }
+    // The AutoMode judge failed and the need answered: a hold on Haiku never outlives a need for a stronger model. Found
+    // in W1: a question had moved the session to Haiku, the next prompt's AutoMode judge reply did not parse, and a hard
+    // migration that both effortless calls rated opus/high ran on Haiku, at Opus's cost. The need's model is a minimum:
+    // Opus only where a judge's word may start Opus, else Sonnet.
+    if (!answer && askedNeed && floors.fixedFamily === 'haiku' && !i.fixedFamily && askedNeed.model !== 'haiku') {
+      const want: Family = askedNeed.model === 'opus' && !i.opusOnEvidence && i.allowed.includes('opus') ? 'opus' : 'sonnet'
+      if (i.allowed.includes(want)) {
+        // A floor, not a candidate: an upgrade without one waits for two votes, and the hold kept Haiku in W1 too.
+        const why = `the AutoMode judge failed and the need names ${askedNeed.model}`
+        floors.fixedFamily = want
+        floors.exclude = { ...floors.exclude, haiku: why }
+        floors.because = [...floors.because, why]
+        if (tierRank(needTier.tier) < tierRank('T2')) needTier = { tier: 'T2', because: [why] }
+        verdicts = { ...verdicts, [want]: verdicts[want] ?? { model: want, effort: maxEffort(askedNeed.effort ?? 'high', mq.floors.effortMin?.[want] ?? 'low'), why: 'fallback' } }
+        notes.push({ family: want, effort: verdicts[want]!.effort, fallback: `the need names ${askedNeed.model}` })
+        fallback = `${fallback}; the need names ${askedNeed.model}: ${want}, not haiku`
+      }
+    }
     if (!answer && !cur && !i.fixedFamily && !floors.fixedFamily) { floors.fixedFamily = i.allowed.includes(i.appFamily) ? i.appFamily : i.allowed[i.allowed.length - 1]; fallback = fallback ?? 'automode judge failed on the first prompt: the app model' }
     // The effortless judge failed and the AutoMode judge answered: its model name is a minimum (fallbackModel).
     if (fallback && answer && floors.fixedFamily && !i.fixedFamily && !i.executor.on) {
@@ -264,7 +283,7 @@ export function planAuto(i: AutoRouteInput): AutoPlan {
   const secondJudge = !i.shortcut && !fallback && !i.judgeCached && !i.executor.on
     ? secondCall({ allowed: i.allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence: i.floor.risk, reachHaiku: i.reachHaiku, opusOnEvidence: i.opusOnEvidence, haikuFirst: i.haikuFirst, start: i.start, floors, current: null, cost: () => 0 }, i.anchor)
     : null
-  return { floors, tier: mq.tier, escalated: mq.escalated, verdicts, notes, ...(fallback ? { fallback } : {}), ...(ownFallback ? { ownFallback } : {}), ...(learnedBucket ? { learnedBucket } : {}), secondJudge, reasons }
+  return { floors, tier: tierRank(needTier.tier) > tierRank(mq.tier.tier) ? needTier : mq.tier, escalated: mq.escalated, verdicts, notes, ...(fallback ? { fallback } : {}), ...(ownFallback ? { ownFallback } : {}), ...(learnedBucket ? { learnedBucket } : {}), secondJudge, reasons }
 }
 
 // routeAuto: the route for this prompt, from the full verdicts.
@@ -306,7 +325,7 @@ export function routeAuto(i: AutoRouteInput): AutoRouteResult {
   const votes = i.votes.tier === candidate.tier ? { tier: candidate.tier, n: i.votes.n + 1 } : { tier: candidate.tier, n: 1 }
   let tier = plan.tier
   if (currentInadequate && cur && tierRank(tierOf(choice.best.family, choice.best.effort)) > tierRank(tier.tier))
-    tier = { tier: tierOf(choice.best.family, choice.best.effort), effort: choice.best.effort, because: [`${cur.family} ${i.current!.running} is ruled out for this task (${own!.eligibility})`] }
+    tier = { tier: tierOf(choice.best.family, choice.best.effort), effort: choice.best.effort, because: [`${cur.family} ${i.current!.running} is ruled out for this task (${own?.eligibility ?? `excluded: ${floors.exclude?.[cur.family] ?? "floor"}`})`] }
   const commandRoute = i.command ? { tier: tierOf(choice.best.family, choice.best.effort), effort: choice.best.effort, reason: `user: ${i.command.label}` } : undefined
   const e = i.economics
   const sw = i.switching

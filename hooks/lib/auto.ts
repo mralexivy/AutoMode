@@ -158,7 +158,9 @@ export function secondCall(i: AutoInput, anchor: Family): Family | null {
 // work on Haiku. Any other upgrade from the judges goes through the normal gate in the switch check.
 export function runningRuledOut(family: Family | undefined, choice: AutoChoice, floors: AutoFloors, hm: AutoInput['hm']): boolean {
   const own = family ? choice.candidates.find((c) => c.family === family) : undefined
-  if (!own) return false
+  // A running model a floor excludes is ruled out even when it is no candidate: a fixed family leaves it unpriced, and the
+  // hold then kept it below the floor.
+  if (!own) return !!family && !!floors.exclude?.[family]
   if (own.eligibility === 'unavailable') return true
   return own.eligibility === 'ineligible' && (!!floors.exclude?.[own.family] || hm?.tier === 'T4' || own.family === 'haiku')
 }
