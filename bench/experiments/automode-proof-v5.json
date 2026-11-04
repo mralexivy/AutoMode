@@ -2,7 +2,7 @@
   "schema_version": 1,
   "id": "automode-proof-v5",
   "track": "automode-system",
-  "description": "The published proof run. AutoMode (auto) on the release code, against plain Claude Code on Opus medium and Sonnet high, same 30 tasks. automode-proof-v4 ran the code before nine fixes; its rows showed each false escalation that the fixes remove, and stay committed as the diagnostic record. Every auto row here runs one commit (bench/verify-release.mts checks it against the release tag). The fixed arms run no plugin code, so their rows are reused from automode-proof-v2.jsonl by identical run id. Same policies, unchanged: automode-vs-opus-v1.json (primary) and automode-vs-sonnet-v1.json.",
+  "description": "Diagnostic run, not the published proof. AutoMode (auto) with Haiku first on T3 work and the 14 routing fixes, against plain Claude Code on Opus medium and Sonnet high, same 30 tasks, controls reused from automode-proof-v2.jsonl. Result: auto 29/30 at $0.50 per accepted task, 1.03x Opus medium and 2.07x Sonnet high (both INCONCLUSIVE under the fixed policies). Six mid-task model switches cost $8.18 more than Sonnet high on the same tasks. That finding put haikuFirst off by default and led to the v6 plan. Row caveats: 3 rows (tomlkit, xmltodict, dnspython) ran while hooks/lib/completion.ts was edited in the checkout for about 4 minutes, so treat them as contaminated. 2 rows (nodesemver, picomatch) were cut off by the usage limit and rerun; their cost counts.",
   "arms": [
     "auto",
     "opus-medium",

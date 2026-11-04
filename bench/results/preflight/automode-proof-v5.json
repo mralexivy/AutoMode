@@ -1,8 +1,8 @@
 {
  "experiment": "automode-proof-v5",
  "plan_hash": "2e1b0642c86e59bf",
- "at": "2026-11-03T16:59:41.084Z",
- "pass": false,
+ "at": "2026-11-03T17:02:39.956Z",
+ "pass": true,
  "checks": [
   {
    "name": "experiment",
@@ -19,7 +19,7 @@
   {
    "name": "tree",
    "ok": true,
-   "detail": "clean at 594b09c",
+   "detail": "clean at f752056",
    "blocking": true
   },
   {
@@ -42,14 +42,14 @@
   },
   {
    "name": "history",
-   "ok": false,
-   "detail": "988 saved sessions, 685 failed checks replayed, 401 would escalate now; misread: 29; crashed: 0",
+   "ok": true,
+   "detail": "988 saved sessions, 685 failed checks replayed, 401 would escalate now; misread: 0; crashed: 0",
    "blocking": true
   },
   {
    "name": "tests",
    "ok": true,
-   "detail": "npm run check: ℹ pass 753, ℹ fail 0",
+   "detail": "npm run check: ℹ pass 754, ℹ fail 0",
    "blocking": true
   },
   {
