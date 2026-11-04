@@ -89,10 +89,12 @@ export const reviewerFamily = (because: string[], onEvidence = false): 'sonnet' 
 
 // reviewNeeded applies the review rules: critical risk, consequential surfaces, a large change, or a
 // verification that failed or never ran. A passing test never clears rules 1, 3 or 4. Under `prospective: false`
-// (review `observed`), a prediction made before any edit asks for no review: only the change and its checks do.
+// (review `observed`), a judge's prediction made before any edit asks for no review; the S3 hard rules, the change and
+// its checks still do.
 export function reviewNeeded(prospective: RiskAssessment, observed: RiskAssessment | null, verification: ObservedInput['verification'], large: boolean, fromPrompt = true): string[] {
   const because: string[] = []
-  if (fromPrompt && prospective.level === 'critical') because.push(`prospective critical: ${prospective.reasons.join('; ')}`)
+  // The S3 hard rules (security, migrations, destructive operations, payments) keep their review under `observed` too.
+  if ((fromPrompt || !!prospective.hard?.length) && prospective.level === 'critical') because.push(`prospective critical: ${prospective.reasons.join('; ')}`)
   else if (fromPrompt && prospective.review === 'sonnet') because.push(`${JUDGE_ONLY}: ${prospective.reasons.join('; ')}`)
   if (observed && observed.level === 'critical') because.push(`observed critical: ${observed.reasons.join('; ')}`)
   if (large) because.push('large change')
