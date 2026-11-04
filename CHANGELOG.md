@@ -19,6 +19,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Fixed
 
+- The rescue note names AutoMode as its source and makes no claim about the work. On sqlglot, a note that called the edits "not progress" read as false to Haiku, which declined it as an injected instruction. A change task that Haiku explores past its 100k price step before any edit now gets the builder too; only a question stays.
 - A rescue in restart mode asks for one builder call and no git steps, and a rescue the model declines past Haiku's limit moves the session off Haiku after 10 requests. On sqlglot in the v6d pilot, the note asked for a worktree, a stash and a patch. Haiku read it as an injected instruction, declined it, and worked on from 156k to 264k tokens: $1.33, and the task failed.
 - Under the v6 recovery, Haiku past its 100k price step after edits gets the priced recovery: a fresh Sonnet builder on a large context. In the v6d pilot, none of the 6 tasks Haiku solved cheaply reached the step, and all 3 that did cost more than Sonnet high. On qs, Haiku reached 100k for $0.065 and then spent $0.31 more, at five times the price, before its context limit.
 - Under the v6 recovery, a revert alone no longer climbs the ladder. In the v6d pilot, Haiku had solved marshmallow, then checked out its change to redo it cleanly, and "the task reverted its own work" moved it to Sonnet: $0.22 against $0.02 in v5. A real failure still shows in the checks and at the stop.

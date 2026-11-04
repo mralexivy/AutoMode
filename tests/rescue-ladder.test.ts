@@ -569,6 +569,17 @@ describe('v6 strategies', () => {
     expect(of(h.writes, 'recovery')[0]).toMatchObject({ source: 'price-step', action: 'rescue-up', to: 'sonnet' })
   })
 
+  test('v6: a change task Haiku explores past its price step before any edit also gets the builder', async ($, on) => {
+    // sqlglot in the final run: Haiku read 130k of the repository before its first edit, then ran on to its limit.
+    const h = harness(on, { policy: 'auto', config: { opusStart: 'evidence', strategy: 'v6c' }, judge: judge({ tier: 'T0', complexity: 'complex' }), effortJudge: perModel({ haiku: ['haiku', 'medium'], sonnet: ['sonnet', 'medium'] }) })
+    h.setPrefix(60_000)
+    await h.submit($, 'fix the parser so set operations keep their precedence')
+    await h.step($, 'claude-haiku-5-5')
+    h.setPrefix(120_000)
+    await h.step($, 'claude-haiku-5-5', undefined, { index: 1 })
+    expect(of(h.writes, 'recovery')[0]).toMatchObject({ source: 'price-step', action: 'rescue-up', to: 'sonnet' })
+  })
+
   test('v6: a rescue the model declines past Haiku\'s limit: after 10 requests the session leaves Haiku anyway', async ($, on) => {
     // sqlglot in the v6d pilot: Haiku declined the note and worked on from 156k to 264k ($1.33, failed).
     const h = harness(on, { policy: 'auto', config: { opusStart: 'evidence', strategy: 'v6c' }, judge: judge({ tier: 'T0', complexity: 'trivial' }), effortJudge: perModel({ haiku: ['haiku', 'medium'], sonnet: ['sonnet', 'medium'] }) })

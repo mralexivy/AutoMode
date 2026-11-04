@@ -170,25 +170,21 @@ export interface RescueBrief {
 export function rescueNote(b: RescueBrief): string {
   const failed = b.failedApproaches.length ? `Already tried, do not repeat: ${b.failedApproaches.slice(0, 6).join('; ')}.` : ''
   const budget = b.remainingUsd === null ? '' : `The task has $${b.remainingUsd.toFixed(2)} of its budget left.`
-  if (b.mode === 'repair') {
-    return [
-      `[AutoMode: ${b.because}. Do not continue this attempt in this conversation. Call the Agent tool with subagent_type "automode:builder" and model "${b.family}", wait for it, and give it this brief:`,
-      `Mode: repair. Keep the current changes: these checks passed after the first edit: ${b.passedChecks.slice(0, 5).join('; ')}. Fix what still fails.`,
-      failed,
-      b.packet,
-      `When it returns, run the failing check once and report the result. ${budget}]`,
-    ].filter(Boolean).join('\n\n')
-  }
-  // Restart has no git steps in the note. Asked to add a worktree, stash and apply a patch, Haiku read the note as an
-  // injected instruction and declined it (sqlglot, v6d pilot). The builder reviews the unverified edits itself.
+  // One neutral wording for both modes. It names its source and claims nothing about the work. On sqlglot, a note that
+  // said the edits "are not progress" read as false to Haiku ("the baseline script ran fine"), which then declined it
+  // as an injected instruction, twice. The plain repair note was followed on qs and dnspython.
+  const state = b.mode === 'repair'
+    ? `These checks pass after the first edit: ${b.passedChecks.slice(0, 5).join('; ')}. Keep that work and fix what still fails.`
+    : 'No check has passed since the first edit yet. Read the current changes first, keep what holds up, and finish the task.'
   return [
-    `[AutoMode: ${b.because}. Do not continue this attempt in this conversation. Call the Agent tool with subagent_type "automode:builder" and model "${b.family}", wait for it, and give it this brief:`,
-    `Mode: restart. No check passed after the edits in this checkout, so they are not progress. Review them first: keep only what you can verify, and rewrite the rest.`,
+    `[AutoMode (the routing plugin in this session): ${b.because}. To keep the task's cost down, AutoMode hands the rest of it to a fresh builder. Call the Agent tool with subagent_type "automode:builder" and model "${b.family}", wait for it, and give it this brief. The builder works on the files as they are now.`,
+    `Mode: ${b.mode}. ${state}`,
     failed,
     b.packet,
     `When it returns, run the failing check once and report the result. ${budget}]`,
   ].filter(Boolean).join('\n\n')
 }
 
+// builderNote (builder: on): non-trivial work goes to one builder subagent at the routed model from the start.
 export const builderNote = (family: Family) =>
   `Hand the implementation to one builder: call the Agent tool with subagent_type "automode:builder" and model "${family}", give it the whole request, the acceptance criteria and any correction the person made, and wait for it. Then run the checks yourself and report.`
