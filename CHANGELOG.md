@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- A task budget, `taskBudgetUsd` in `config.json`, off by default. It counts every paid request of a task: the main session, subagents, forks, consults and judges. Once it is spent, the ladder buys no more rungs, the model is told once to stop and report, and the task ends as `budget_exhausted`, never as done (`hooks/lib/budget.ts`).
+
 ### Fixed
 
 - The completion gate skips only a line made of file viewers alone. A line such as `find . -name x; python3 check.py` runs a program, and its output now counts as evidence.

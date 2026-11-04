@@ -78,6 +78,24 @@ describe('Completion gate', () => {
     expect((await $.classic.Stop({ stop_hook_active: false })).block).toContain('work is failed')
   })
 
+  test('a spent task budget: one stop note, no rung, and the task ends budget_exhausted, not done', async ($, on) => {
+    const fail = { result: 'Error: Exit code 1\n--- FAIL: TestX (0.00s)\nFAIL', isError: true, text: '' }
+    const h = harness(on, { policy: 'auto', config: { completionGate: 'block', opusStart: 'evidence', taskBudgetUsd: 0.000001 }, bash: () => fail })
+    await h.submit($, 'fix the parser')
+    await h.step($)
+    // The note rides on the first main tool result after the budget runs out, here the edit.
+    const first: any = await edit($)
+    expect(JSON.stringify(first.context ?? [])).toContain('budget')
+    await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    await edit($)
+    const second: any = await $.tool.call({ tool: 'Bash', command: 'go test ./...' })
+    expect(JSON.stringify(second.context ?? [])).not.toContain('budget')
+    expect(records(h.writes).filter((x) => x.kind === 'escalation' && x.action !== 'none')).toEqual([])
+    expect((await $.classic.Stop({ stop_hook_active: false })).block).toBeUndefined()
+    expect(completions(h.writes).at(-1).state).toBe('budget_exhausted')
+    expect(records(h.writes).filter((x) => x.kind === 'budget').length).toBe(1)
+  })
+
   test('a passing check alone does not pass a stated result', async ($, on) => {
     const h = harness(on, gate('block'))
     await h.submit($, PROMPT)

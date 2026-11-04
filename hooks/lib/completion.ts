@@ -12,7 +12,7 @@ import { tools } from './shell.ts'
 
 export type ObligationStatus = 'open' | 'attempted' | 'satisfied' | 'contradicted'
 export interface Obligation { id: string; kind: 'example' | 'semantic'; input?: string; expected?: string; status: ObligationStatus }
-export type CompletionState = 'none' | 'unverified' | 'partially_verified' | 'failed' | 'verified'
+export type CompletionState = 'none' | 'unverified' | 'partially_verified' | 'failed' | 'verified' | 'budget_exhausted'
 export type CompletionGate = 'off' | 'report' | 'block'
 
 const MAX_EXAMPLES = 16
@@ -140,9 +140,15 @@ export function observeRun(obligations: Obligation[], run: CommandRun): Obligati
 // reopen: an edit changed the code, so what the earlier runs showed no longer stands.
 export const reopen = (obligations: Obligation[]): Obligation[] => obligations.map((o) => (o.status === 'open' ? o : { ...o, status: 'open' as const }))
 
-export interface CompletionEvidence { edited: boolean; editedSinceCheck: boolean; lastCheckPassed: boolean | null; obligations: Obligation[] }
+export interface CompletionEvidence { edited: boolean; editedSinceCheck: boolean; lastCheckPassed: boolean | null; obligations: Obligation[]; budgetExhausted?: boolean }
 
 export function assessCompletion(e: CompletionEvidence): CompletionState {
+  const state = assessWork(e)
+  // A spent budget ends the task short of done, unless the evidence already showed it done.
+  return e.budgetExhausted && e.edited && state !== 'verified' ? 'budget_exhausted' : state
+}
+
+function assessWork(e: CompletionEvidence): CompletionState {
   if (!e.edited) return 'none'
   if (e.obligations.some((o) => o.status === 'contradicted')) return 'failed'
   if (e.lastCheckPassed === null || e.editedSinceCheck) return 'unverified'

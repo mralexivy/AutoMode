@@ -33,6 +33,7 @@ import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, requireReview, summaryOf, withReview } from './lib/envelope.ts'
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
+import { budgetNote, budgetState, recordUsd } from './lib/budget.ts'
 import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failKey, failingTests, failureOf, failureStep, isScratchRun, isStashRun, normalize, onlyPreexisting, ownTest, fnv1a, isCheck, isRevert, markFlaky, notRun, onlyMissingTools, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
 import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
@@ -99,6 +100,14 @@ const V4_DEFAULTS = {
   opusStart: 'judge' as 'judge' | 'evidence',
   // With opusStart evidence: t3 lets T3 work start on Haiku. Off by default, on the v4 and v5 proof runs (lib/auto.ts).
   haikuFirst: 'off' as 'off' | 't3',
+  // v6 (bench/experiments/V6.md): the execution strategy. legacy is main's routing; v6a, v6b and v6c start and rescue
+  // differently (lib/strategy.ts executionRules). builder: on hands non-trivial work to one builder subagent at once.
+  strategy: 'legacy' as 'legacy' | 'v6a' | 'v6b' | 'v6c',
+  builder: 'off' as 'off' | 'on',
+  // A model switch in the middle of a task moves the whole context. Below this prefix it costs little and stays allowed.
+  rescueSwitchTokens: 30_000,
+  // The task budget in list-price USD, every paid request of the task included (lib/budget.ts). 0 is off.
+  taskBudgetUsd: 0,
   effortJudgeTimeoutMs: JUDGE_CALL.timeoutMs,
 }
 type V4Config = typeof V4_DEFAULTS
@@ -174,6 +183,9 @@ const S = {
   appPlan: false,             // plan mode at the last main request: leaving it changes the app's model too
   ladderNote: null as string | null, // an escalation note for the next main tool result or prompt
   stopMark: null as number | null, // editsSeen at the last stop rung (v4Stop)
+  taskUsd: 0, // this task's spend so far (lib/budget.ts), summed as its records flush
+  budgetTold: false, // the budget note went out for this task
+  rescues: {} as Partial<Record<Family, number>>, // fresh rescue builders started for this task, by model (v6c)
   editsSeen: 0, // every edit-tool edit the session saw; it only counts up (Bash writes are bashEdits)
   judgeRiskTask: undefined as string | undefined, // the task whose risk a failed judge raised, until a judge answers
   toldPolicy: false,
@@ -478,6 +490,8 @@ function flush($: EngineInterface): Promise<void> {
   return flushing
 }
 async function flushNow($: EngineInterface) {
+  // The task's spend, before the records go: a request of this task, or a judge call (lib/budget.ts).
+  for (const r of S.records) if ((r as { taskId?: string }).taskId === S.envelope?.taskId || (r as { kind?: string }).kind === 'model-call') S.taskUsd += recordUsd(r)
   if (!S.cfg.recordDecisions || !S.records.length) return
   const lines = S.records.map((r) => JSON.stringify(r)).join('\n') + '\n'
   S.records = []
@@ -539,6 +553,9 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
     S.taskPrompts = []
     S.bashEdits = 0
     S.baseline = []
+    S.taskUsd = 0
+    S.budgetTold = false
+    S.rescues = {}
     S.consultCounts = {}
     S.resolvedCounts = {}
     S.switchesThisTask = 0
@@ -1947,6 +1964,7 @@ export async function v4ToolCall($: EngineInterface, e: any, next: any) {
   const out = await guarded($, e, next)
   if (S.mode !== 'auto') return out
   await noteToolResult($, e, out)
+  if (e.agentId === undefined && S.envelope) budgetSpent(await now($))
   if (e.agentId !== undefined || !S.ladderNote || out?.deny) return out
   // A note on a tool result is new input, so a per-message effort change takes effect at the next request.
   const note = S.ladderNote
@@ -2056,9 +2074,23 @@ async function noteForkRun($: EngineInterface, e: any) {
 // runLadder acts on the task's evidence once, policy auto. Weak evidence raises the effort. Strong evidence asks an Opus
 // architect first, and moves the model when the same cause comes back. A pin keeps its route, so the notice says that
 // instead of a move. Notes wait in S.ladderNote: the evidence can arrive in a subagent, which cannot act on them.
+// budgetSpent: the task budget is gone. The first time, the model is told to stop and report, once.
+function budgetSpent(at: number): boolean {
+  const state = budgetState(S.taskUsd, S.cfg.taskBudgetUsd)
+  if (state !== 'exhausted') return false
+  if (!S.budgetTold && S.envelope) {
+    S.budgetTold = true
+    S.ladderNote = budgetNote(S.taskUsd, S.cfg.taskBudgetUsd)
+    S.records.push({ v: 1, kind: 'budget', at, sessionId: S.sessionId, taskId: S.envelope.taskId, spentUsd: round6(S.taskUsd), budgetUsd: S.cfg.taskBudgetUsd })
+  }
+  return true
+}
+
 async function runLadder($: EngineInterface, at: number) {
   const env = S.envelope
   if (!env || !S.current || S.policy !== 'auto') return
+  // A spent budget buys no rung: the task stops and reports.
+  if (budgetSpent(at)) return
   const l = env.ladder ?? EMPTY_LADDER
   const running = { family: S.current.family, effort: runningEffort()! }
   const editedSincePass = (since: number) => [...new Set(S.editLog.filter((x) => x.at > since).map((x) => x.path))]
@@ -2281,7 +2313,7 @@ export async function v4Stop($: EngineInterface, e: any, next: any) {
   const out = await next(e)
   if (!gateOn() || S.mode === 'off' || !S.envelope || !(await activeV4($))) return out
   syncObligations()
-  const state = assessCompletion({ edited: S.envelope.editedPaths.length > 0 || S.bashEdits > 0, editedSinceCheck: S.editedSinceCheck, lastCheckPassed: S.lastCheck ? S.lastCheck.passed : null, obligations: S.obligations })
+  const state = assessCompletion({ edited: S.envelope.editedPaths.length > 0 || S.bashEdits > 0, editedSinceCheck: S.editedSinceCheck, lastCheckPassed: S.lastCheck ? S.lastCheck.passed : null, obligations: S.obligations, budgetExhausted: budgetState(S.taskUsd, S.cfg.taskBudgetUsd) === 'exhausted' })
   S.completionState = state
   // The gate's own evidence, the obligations met by real output, is an independent check for a consult's pass.
   if (state === 'verified' && settleConsults(await now($), { verified: true })) await flush($)
@@ -2300,7 +2332,7 @@ export async function v4Stop($: EngineInterface, e: any, next: any) {
   // consult and an Opus switch within seconds, with no edit between, on a test that failed before any change.
   const edits = S.editsSeen + S.bashEdits
   const contested = ladderStops && S.stopMark !== null && edits === S.stopMark
-  if (contested) reason = null
+  if (contested || state === 'budget_exhausted') reason = null
   if (reason && ladderStops && S.policy === 'auto') {
     S.stopMark = edits
     // The stop goes to the ladder as strong evidence, and its next step rides in the block itself.
@@ -2754,7 +2786,7 @@ function freshSession() {
     learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], taskPrompts: [], forkRuns: new Map(), bashEdits: 0, baseline: [], resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
-    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, stopMark: null, editsSeen: 0, judgeRiskTask: undefined,
+    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, stopMark: null, editsSeen: 0, taskUsd: 0, budgetTold: false, rescues: {}, judgeRiskTask: undefined,
     preflight: undefined, breakers: {}, lastNoResponse: null, failures: [], pendingErrors: [], signalErrorAt: 0, signalMode: '', compactionPricedAt: 0, haikuOutUntilCompaction: false, lastWorkBand: undefined, effortUnsupported: false, thinkingRisk: false, toldErrorClass: '', toldBreaker: false, firstPrefixSaved: false, inadequate: null, toldInadequateTask: '',
   }
 }
