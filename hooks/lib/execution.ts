@@ -164,11 +164,9 @@ export interface RescueBrief {
   passedChecks: string[]     // checks that passed after the first edit
   failedApproaches: string[] // what this task already tried and what came of it
   remainingUsd: number | null
-  worktree: string           // restart: the isolated worktree the builder works in
 }
 
-// rescueNote: the instruction to the main session. It never moves this conversation to the builder. Subagents may not
-// run git writes, so the main session sets up and folds back the restart's worktree itself.
+// rescueNote: the instruction to the main session. It never moves this conversation to the builder.
 export function rescueNote(b: RescueBrief): string {
   const failed = b.failedApproaches.length ? `Already tried, do not repeat: ${b.failedApproaches.slice(0, 6).join('; ')}.` : ''
   const budget = b.remainingUsd === null ? '' : `The task has $${b.remainingUsd.toFixed(2)} of its budget left.`
@@ -181,18 +179,16 @@ export function rescueNote(b: RescueBrief): string {
       `When it returns, run the failing check once and report the result. ${budget}]`,
     ].filter(Boolean).join('\n\n')
   }
+  // Restart has no git steps in the note. Asked to add a worktree, stash and apply a patch, Haiku read the note as an
+  // injected instruction and declined it (sqlglot, v6d pilot). The builder reviews the unverified edits itself.
   return [
-    `[AutoMode: ${b.because}. Do not continue this attempt in this conversation. No check passed after the edits, so they are not progress, and the fresh attempt runs apart from them.`,
-    `1. Run: git worktree add -q ${b.worktree} HEAD`,
-    `2. Call the Agent tool with subagent_type "automode:builder" and model "${b.family}", wait for it, and give it this brief, with this line first: "Mode: restart. Work only in ${b.worktree}: cd there for every command and edit files by their path under it."`,
-    `3. If its checks pass there, fold it back: run \`git stash push -u -m automode-failed-attempt\` (the stash keeps the failed attempt), then \`git -C ${b.worktree} add -A && git -C ${b.worktree} diff --cached HEAD | git apply\`, then \`git worktree remove --force ${b.worktree}\`, then run the failing check here once.`,
-    '4. If they do not pass, remove the worktree and report what still fails.',
+    `[AutoMode: ${b.because}. Do not continue this attempt in this conversation. Call the Agent tool with subagent_type "automode:builder" and model "${b.family}", wait for it, and give it this brief:`,
+    `Mode: restart. No check passed after the edits in this checkout, so they are not progress. Review them first: keep only what you can verify, and rewrite the rest.`,
     failed,
     b.packet,
-    `${budget}]`,
+    `When it returns, run the failing check once and report the result. ${budget}]`,
   ].filter(Boolean).join('\n\n')
 }
 
-// builderNote (builder: on): non-trivial work goes to one builder subagent at the routed model from the start.
 export const builderNote = (family: Family) =>
   `Hand the implementation to one builder: call the Agent tool with subagent_type "automode:builder" and model "${family}", give it the whole request, the acceptance criteria and any correction the person made, and wait for it. Then run the checks yourself and report.`
