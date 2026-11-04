@@ -19,6 +19,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Fixed
 
+- Under the v6 start rule, a first prompt whose AutoMode judge failed takes the need's model, not the model the session was launched on. In S1, the judge timed out in a session launched on Opus, and a task the need rated Sonnet high ran on Opus.
 - Under the v6 recovery, a task's first failed stop holds: the model fixes the check, or says why it does not apply. A rescue needs the check to fail again after new work. In S1, dnspython's network test fails on this machine whatever the code, and the first stop started a fresh builder at once ($0.85, against $0.69 for plain Opus).
 - A failed AutoMode judge no longer leaves a hard task on Haiku. When its reply does not parse and the other judge's need names a stronger model, that model is a floor: Sonnet, or Opus where a judge may start Opus. In W1, a question had moved the session to Haiku, and a hard migration both effortless calls rated Opus high then ran on Haiku, at Opus's cost.
 - A running model that a floor excludes is ruled out even when it is not a candidate. A fixed family used to leave it unpriced, and the vote gate held it below the floor. This closes the known Haiku-hold hole in `tests/route-properties.test.mts`.

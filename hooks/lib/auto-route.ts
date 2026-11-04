@@ -247,6 +247,13 @@ export function planAuto(i: AutoRouteInput): AutoPlan {
         fallback = `${fallback}; the need names ${askedNeed.model}: ${want}, not haiku`
       }
     }
+    // v6: on a first prompt with the AutoMode judge failed, the need decides the model, not the model the session was
+    // launched on. Found in S1: the judge timed out on mistune in a session launched on Opus, and the task ran on Opus
+    // although the need said Sonnet high. Opus only where a judge's word may start Opus; the legacy start keeps the app model.
+    if (!answer && !cur && !i.fixedFamily && !floors.fixedFamily && i.start && askedNeed) {
+      const want: Family = askedNeed.model === 'opus' && !i.opusOnEvidence && i.allowed.includes('opus') ? 'opus' : 'sonnet'
+      if (i.allowed.includes(want)) { floors.fixedFamily = want; fallback = fallback ?? `automode judge failed on the first prompt: the need names ${askedNeed.model}, so ${want}` }
+    }
     if (!answer && !cur && !i.fixedFamily && !floors.fixedFamily) { floors.fixedFamily = i.allowed.includes(i.appFamily) ? i.appFamily : i.allowed[i.allowed.length - 1]; fallback = fallback ?? 'automode judge failed on the first prompt: the app model' }
     // The effortless judge failed and the AutoMode judge answered: its model name is a minimum (fallbackModel).
     if (fallback && answer && floors.fixedFamily && !i.fixedFamily && !i.executor.on) {
