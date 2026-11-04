@@ -2,7 +2,7 @@
 // weak and strong evidence, and regressions.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { EMPTY_LADDER, checkKey, checkPassed, escalation, failingTests, failureOf, isCheck, isRevert, regression, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
+import { EMPTY_LADDER, isScratchRun, ownTest, isStashRun, onlyPreexisting, onlyMissingTools, classify, failKey, checkKey, checkPassed, masked, escalation, failingTests, failureOf, isCheck, isRevert, notRun, regression, workLost, reviewerBlocked, scopeGrew, writesFiles } from '../hooks/lib/failures.ts'
 import { simpleCommands, tools, unwrapped } from '../hooks/lib/shell.ts'
 
 const CHECKS = [
@@ -196,4 +196,74 @@ test('escalation: a stop the gate sent back on a failing check is strong evidenc
   assert.equal(e.cause, 'stop')
   assert.equal(escalation([], { ...s, fired: [e.key] }).level, 'none')
   assert.equal(escalation([], { ...s, fired: [e.key], stops: 2 }).level, 'strong')
+})
+
+test('escalation when patient (Haiku first): repeats alone never escalate; a regression still does', () => {
+  const f = (at: number, fp: string, o: Record<string, unknown> = {}) => ({ fingerprint: fp, class: 'defect' as const, command: 'vitest run', exitCode: 1, at, editedSince: true, evidence: fp, ...o })
+  const capped = { ...EMPTY_LADDER, effortCapped: true }
+  assert.equal(escalation([f(1, 'a'), f(2, 'a')], capped).level, 'strong', 'impatient: the first repeat at the top effort moves the model')
+  assert.notEqual(escalation([f(1, 'a'), f(2, 'a')], { ...capped, patient: true }).level, 'strong', 'patient: the write-test, fail, fix loop is not evidence')
+  assert.notEqual(escalation([f(1, 'a'), f(2, 'b'), f(3, 'c')], { ...capped, patient: true }).level, 'strong')
+  assert.equal(escalation([f(5, 'a', { tests: ['parses a'] })], { ...capped, patient: true, passed: { 'vitest run': 3 } }).level, 'strong', 'a regression still escalates')
+  // Found live: `npm run build; node probe.mjs` exited 1 on the probe's TypeError, and read as a test regression.
+  assert.notEqual(escalation([f(5, 'TypeError: x is undefined')], { ...capped, patient: true, passed: { 'vitest run': 3 } }).level, 'strong', 'an exit code with no failing test is not a regression')
+  assert.equal(escalation([], { ...capped, patient: true, stops: 1 }).level, 'strong', 'a failed stop still escalates')
+})
+
+test('workLost reads the tree after a revert command', () => {
+  assert.equal(workLost(['## main\n M a.ts\n', '## main\n?? new.ts\n']), false)
+  assert.equal(workLost(['## main\n M a.ts\n', '## main\n']), true) // one edited file lost its change
+  assert.equal(workLost(['']), true) // a failed git call keeps the old behavior
+})
+
+test('a check that never ran is not a pass', () => {
+  // Found live: zsh printed `command not found: python`, and the trailing echo made the command exit 0.
+  const cmd = '(python -m pytest tests -q 2>&1 | tail -25); echo "exit=$?"'
+  assert.equal(masked(cmd), true)
+  assert.equal(checkPassed(cmd, 0, false, '(eval):1: command not found: python\nexit=127'), false)
+  assert.equal(notRun('sh: 1: pytest: not found'), true)
+  assert.equal(notRun('12 passed in 0.4s'), false)
+  assert.equal(checkPassed('(pytest | tail); echo "exit=$?"', 0, false, '12 passed in 0.4s\nexit=0'), true)
+})
+
+test('a clean suite beside a failing command is not the suite failing', () => {
+  // Found live: pytest printed 100 passed, and the old doctests run after it set the exit code.
+  const cmd = 'python3 -m pytest -q tests 2>&1 | tail -30; echo ---; python3 -m doctest -v xmltodict.py 2>&1 | tail -3'
+  assert.equal(checkKey(cmd), 'pytest -q tests')
+  assert.notEqual(failKey(cmd, '....\n100 passed in 0.24s\n---\n5 passed and 5 failed.\n***Test Failed*** 5 failures.'), checkKey(cmd))
+  assert.equal(failKey(cmd, '2 failed, 98 passed in 0.3s\nFAILED tests/t.py::test_a'), checkKey(cmd))
+  assert.equal(failKey('pytest -q', '100 passed in 0.2s'), 'pytest -q')
+})
+
+test('a test that errors on a program the machine lacks is the environment', () => {
+  // Found live: sqlglot's test_lazy_load runs `python`, the machine has only python3, and the gate climbed to Opus on it.
+  const lazy = "ERROR: test_lazy_load (tests.dialects.test_dialect.TestDialect)\nTraceback (most recent call last):\nFileNotFoundError: [Errno 2] No such file or directory: 'python'\n\nRan 1548 tests in 75s\n\nFAILED (errors=1, skipped=2)"
+  assert.equal(onlyMissingTools(lazy), true)
+  assert.equal(classify(lazy), 'environment')
+  // A real assertion failure beside it is still a defect.
+  assert.equal(classify(lazy.replace('FAILED (errors=1, skipped=2)', 'FAIL: test_x (t.T)\nFAILED (failures=1, errors=1)')), 'defect')
+  // A missing data file, with a path, is the work's own error.
+  assert.equal(onlyMissingTools(lazy.replace("'python'", "'tests/fixtures/a.sql'")), false)
+})
+
+test('a failure the original code already had is not the work failing', () => {
+  // Found live: pyjwt's TLS test failed on the untouched code, and the ladder climbed to Opus on it.
+  const tls = 'tests/test_jwks_client.py::TestPyJWKClient::test_get_jwt_set_sslcontext_no_ca'
+  assert.equal(onlyPreexisting([tls], [tls], 'Validate the key family in prepare_key.'), true)
+  assert.equal(onlyPreexisting([tls, 'tests/t.py::test_new'], [tls], 'Validate the key family.'), false, 'a new failure counts')
+  assert.equal(onlyPreexisting([tls], [tls], 'Fix test_get_jwt_set_sslcontext_no_ca.'), false, 'the task names the test')
+  assert.equal(onlyPreexisting([tls], [tls], 'The tests fail on CI; make them pass.'), false, 'the task is the failing tests')
+  assert.equal(onlyPreexisting([], [tls], 'x'), false, 'no failing test named: no claim')
+  assert.equal(isStashRun('git stash -q && PYTHONPATH=. pytest -q tests; git stash pop -q'), true)
+  assert.equal(isStashRun('git stash pop && pytest'), false)
+  assert.equal(isStashRun('pytest -q'), false)
+})
+
+test('the task\'s own tests are never the baseline, and a run in a /tmp copy is no check of the work', () => {
+  assert.equal(ownTest('tests/test_toml_document.py::test_replace', ['/w/tests/test_toml_document.py']), true)
+  assert.equal(ownTest('tests.test_parser.TestParser.test_x', ['/w/tests/test_parser.py']), true)
+  assert.equal(ownTest('tests/test_jwks_client.py::TestPyJWKClient::test_tls', ['/w/jwt/algorithms.py']), false)
+  assert.equal(isScratchRun('rm -rf /tmp/o && cp -R tests /tmp/o/ && cd /tmp/o && python3 -m pytest -q'), true)
+  assert.equal(isScratchRun('cd "$TMPDIR/x" && pytest'), true)
+  assert.equal(isScratchRun('pytest -q > /tmp/log.txt'), false)
 })

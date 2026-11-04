@@ -158,3 +158,27 @@ test('a record holds no text from the request', () => {
   assert.equal(JSON.stringify(pub).includes('secret'), false)
   assert.deepEqual(Object.keys(pub).sort(), ['id', 'kind', 'status'])
 })
+
+test('a described result is a requirement, not a printable example', () => {
+  // Found live: every check that named _undefined_obj read as a contradiction, and the gate blocked a finished task.
+  const os = extractObligations("copy.deepcopy(undef)._undefined_obj must be a separate list equal to ['foo'].")
+  assert.deepEqual(os.map((o) => o.kind), ['semantic'])
+  // A stated value still makes an example.
+  assert.deepEqual(extractObligations("parse('a') must return ['a'].").map((o) => [o.kind, o.expected]), [['example', "['a']"]])
+})
+
+test('an example written as code keeps its own colons and commas', () => {
+  // Found live: qs's input was cut at the object literal's `: `, and the expected value kept ", and arr must stay ...".
+  // Every check that named the input read as a contradiction, and the gate climbed to an Opus consult.
+  const os = extractObligations("Arrays: with arr = ['x'], qs.parse({ a: arr, 'a[]': 'y' }) must return { a: ['x', 'y'] }, and arr must stay ['x']. Today arr gains 'y'.")
+  assert.deepEqual(os.filter((o) => o.kind === 'example').map((o) => [o.input, o.expected]), [["qs.parse({ a: arr, 'a[]': 'y' })", "{ a: ['x', 'y'] }"]])
+  // A prose apostrophe opens no quote.
+  assert.deepEqual(extractObligations("For today's input: parse('a') must return ['a'].").map((o) => [o.input, o.expected]), [["parse('a')", "['a']"]])
+})
+
+test('a viewer first does not hide a program run after it', () => {
+  const [o] = extractObligations("parse('a') must return ['a'].")
+  const run = (command: string) => observeRun([o], { command, output: "['a']", exit: 0 })[0].status
+  assert.equal(run("find . -name '*.so' | head; python3 -c \"print(parse('a'))\""), 'satisfied')
+  assert.equal(run("cat notes.md | grep \"parse('a')\""), 'open', 'viewers alone show the request, not a result')
+})

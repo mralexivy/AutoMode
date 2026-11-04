@@ -24,6 +24,7 @@ export const FIELDS = {
   packet: { title: 'Consult packet', options: ['default', 'basic', 'rich', 'fork-gated'], default: 'default', applies: 'next prompt', section: 'router' },
   forkRung: { title: 'Fork diagnosis rung', options: ['default', 'off', 'on'], default: 'default', applies: 'next prompt', section: 'router' },
   opusStart: { title: 'Opus at the start', options: ['default', 'judge', 'evidence'], default: 'default', applies: 'next prompt', section: 'router' },
+  haikuFirst: { title: 'Haiku first on T3 work', options: ['default', 'off', 't3'], default: 'default', applies: 'next prompt', section: 'router' },
   executor: { title: 'Executor', options: ['default', 'judge', 'sonnet'], default: 'default', applies: 'next prompt', section: 'router' },
   subagentsEverySession: { title: 'Subagents in every session', options: ONOFF, default: 'default', applies: 'next prompt', section: 'subagents' },
   guardianMode: { title: 'Guardian', options: ['default', 'off', 'observe', 'recommend', 'assist', 'auto'], default: 'default', applies: 'next prompt', section: 'guardian' },
@@ -73,6 +74,8 @@ export function routerOverrides(options: Options, stored: Options = {}): Record<
   if (executor !== 'default') out.executor = executor
   const opusStart = valueOf('opusStart', options, stored)
   if (opusStart !== 'default') out.opusStart = opusStart
+  const haikuFirst = valueOf('haikuFirst', options, stored)
+  if (haikuFirst !== 'default') out.haikuFirst = haikuFirst
   const forkRung = valueOf('forkRung', options, stored)
   if (forkRung !== 'default') out.forkRung = forkRung
   const packet = valueOf('packet', options, stored)

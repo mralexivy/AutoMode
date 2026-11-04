@@ -29,11 +29,16 @@ test('eb50028: FAILED (failures=3) beside a stray "No module named" is a defect,
   assert.equal(classify(hit.out), 'defect')
 })
 
-test('7876b25: FAILED (errors=1) with the same line is a defect too', () => {
+test('7876b25: FAILED (errors=1) with the same line is a defect too, unless the error is a missing program', () => {
   const hit = checks(load('sqlglot-errors-with-setuptools-noise')).find((e) => /FAILED \(errors=\d/.test(e.out) && !/failures=/.test(e.out))!
   assert.ok(hit)
   assert.match(hit.out, /No module named 'setuptools_scm'/)
-  assert.equal(classify(hit.out), 'defect')
+  // The one error is test_lazy_load running `python` on a machine with only python3. It fails before and after any
+  // edit, the grader deselects it, and reading it as a defect sent the 2026-11-03 run up four rungs to Opus.
+  assert.match(hit.out, /FileNotFoundError: \[Errno 2\] No such file or directory: 'python'$/m)
+  assert.equal(classify(hit.out), 'environment')
+  // The same output with an error of the work's own is a defect, setuptools noise or not.
+  assert.equal(classify(hit.out.replace(/'python'$/m, "'tests/fixtures/q.sql'")), 'defect')
 })
 
 test('eb50028 pymarkdown: without the grader\'s PYTHONPATH every check failed on imports, so no real failure showed', () => {
@@ -61,9 +66,14 @@ test('997ca79: a full suite that failed is still failing at the stop, whatever s
   assert.equal(stop.level, 'strong', 'the stop with the full suite failing is strong evidence')
 })
 
-test('997ca79: the same check failing again after edits, each time differently, escalates', () => {
-  const r = replay(load('sqlglot-same-check-new-failures'))
-  assert.ok(r.steps.some((s) => /times after edits/.test(s.because)), r.steps.map((s) => s.because).join(' | '))
+test('997ca79: the full-suite runs that failed only on test_lazy_load are the machine, not new failures', () => {
+  // This test once asserted an escalation here. Two of the full suite's failing runs were test_lazy_load alone, a
+  // program the machine lacks, so read right the check failed for the work twice, not three times.
+  const evs = load('sqlglot-same-check-new-failures')
+  const lazy = checks(evs).filter((e) => /FAILED \(errors=1, skipped=2\)/.test(e.out))
+  assert.ok(lazy.length >= 2)
+  for (const e of lazy) assert.equal(classify(e.out), 'environment')
+  assert.ok(!replay(evs).steps.some((s) => /times after edits/.test(s.because)))
 })
 
 test('the old reading of the same sessions never escalated: whole Bash lines as keys and no Bash edits', () => {

@@ -207,10 +207,14 @@ test('60-slot simulation: a usage limit, a kill -9 and resumes end with 60 uniqu
   child.kill('SIGKILL')
   await new Promise((r) => child.on('exit', r))
   const callsAtKill = calls(dir)
-  // Resume again: everything but the one UNKNOWN slot.
+  // The slot in flight when the kill landed. Under load the 400 ms run can finish between the poll and the kill, so the
+  // test reads what the ledger shows instead of assuming one (it failed 1 run in 12 that way).
+  const inflight = [...foldEvents(readEvents(eventsFile(path.join(dir, 'r.jsonl'))), () => true).values()].filter((x) => x.state === 'RUNNING').length
+  assert.ok(inflight <= 1, `in flight: ${inflight}`)
+  // Resume again: everything but the UNKNOWN slot.
   const second = spawnSync(process.execPath, simArgs(), { encoding: 'utf8', env: e('solve') })
   assert.equal(second.status, 0, second.stderr)
-  assert.match(second.stdout, /1 unknown \(held: --retry-unknown\)/)
+  assert.match(second.stdout, inflight ? /1 unknown \(held: --retry-unknown\)/ : /0 unknown/)
   const third = spawnSync(process.execPath, simArgs('--retry-unknown'), { encoding: 'utf8', env: e('solve') })
   assert.equal(third.status, 0)
   const finished = rows(dir).filter((r) => r.exit_reason === 'done')

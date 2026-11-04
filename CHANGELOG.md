@@ -4,6 +4,28 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Fixed
+
+- The completion gate skips only a line made of file viewers alone. A line such as `find . -name x; python3 check.py` runs a program, and its output now counts as evidence.
+- A stop with no edit since the last stop rung no longer climbs the ladder. The model has checked again and contests the failure, so a pricier model would only read the same evidence. On dnspython, three stops in 29 seconds bought a fork, an Opus consult and an Opus switch, on a network test that failed before any change: $1.51, against $0.45 for Sonnet high.
+- A check run in a copy under `/tmp` is no check of the work. On tomlkit, the model copied its new tests next to the original code to show that they fail there, and that read as a regression, which moved Haiku to Sonnet. A test the task added or edited never joins the stash baseline, so it cannot excuse its own later failures.
+- The completion gate reads a stated example written as code whole. It split on `: ` and `, ` inside brackets and quotes, so qs's `qs.parse({ a: arr, 'a[]': 'y' })` became the input `y' })`. A trailing ", and arr must stay ..." clause also became part of the expected value. Every check that named the input then read as a contradiction, and the gate climbed to an Opus consult: $1.99, against $0.16 for Sonnet high.
+- A test that fails on the stashed original code is the repository's own failure. A later run that fails only on such tests no longer fails the completion gate or climbs the ladder, unless the task names the test or asks to fix failing tests. On pyjwt, a TLS test failed on the untouched code, and AutoMode climbed to Opus on it: $1.55, against $0.32 for Sonnet high.
+- A test regression needs evidence in the output: a failing test, a runner's failure line or a compile error. An exit code alone is often a probe script run beside the check. All three regressions the 2026-11-03 run escalated on were that, on xmltodict, cachetools and marked.
+- A test run whose only errors are a program the machine lacks, such as `python` where only `python3` exists, is no verdict on the work. It no longer fails the completion gate or climbs the ladder. On sqlglot, `test_lazy_load` failed this way before and after every edit, and AutoMode climbed four rungs to Opus on it: $2.71 of a $4.93 run that still failed.
+- Under `opusStart: evidence`, a review the model asks for on its own also runs on Sonnet, unless a critical failure was observed. The reviewer agent's own default is Opus, and on cachetools such a review cost $0.46 of a $1.21 run.
+- A failing line whose test runner printed a clean pass is filed under the whole line, not as a failure of the suite. On xmltodict, `pytest | tail; python3 -m doctest x.py` printed `100 passed`, and old doctests failing read as a test regression, which moved Haiku to Sonnet.
+- A check that never started, such as `command not found: python`, is no longer a passed check. A trailing `; echo "exit=$?"` now counts as a masked exit code. In the benchmark, such a run counted as a pass on marshmallow and started a re-route.
+- A file named `schema` is a database schema only as `db/schema*`, `schema.prisma` or `schema.rb`. Editing marshmallow's `schema.py` had made the task critical and moved it from Haiku to Sonnet after its fix was done.
+- The completion gate no longer reads a described result as a printable example. "x must be a separate list equal to ['foo']" had made every check that named x a contradiction, and the gate blocked a finished jinja task, which then bought a fork and an Opus consult.
+- A revert command counts as escalation evidence only when an edited file has lost its change. A model that checks out the old file to prove its new tests fail, then copies its fix back, keeps its work. In the benchmark, findmyway moved from Haiku to Sonnet on exactly that, for $0.27 of its $0.30.
+
+### Changed
+
+- Under `opusStart: evidence`, a run on Haiku keeps working through repeated check failures, the write-test, fail, fix loop. It moves to Sonnet on a regression, a revert, a reviewer blocker, or a stop with the last check failing, which is now always sent back once. An escalation no longer adds a review of its own. In the benchmark, Haiku's first repeat had counted as 'failed at the top effort' and moved immer to Sonnet, plus a review: $0.77, against $0.26 for Sonnet high.
+- New setting `haikuFirst`, off by default. With `t3` and `opusStart: evidence`, T3 work without critical risk can start on Haiku, at high effort, and failure evidence moves it up. It stays off because the v4 and v5 proof runs measured it at 2.07× Sonnet high's cost per accepted task. A Haiku miss on T3 work was rescued by a mid-task switch at a large context, and six such switches cost $8.18 more than Sonnet high (`bench/results/automode-proof-v5.jsonl`).
+- The independent review runs on Sonnet unless the diff itself shows critical risk. Before, a prompt rating or a rescue rule bought an Opus review. In the proof run those reviews were all of AutoMode's Opus spend ($2.07 of $9.11), and none changed an outcome.
+
 ## [0.8.0] - 2026-11-03
 
 ### Changed

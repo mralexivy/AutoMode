@@ -33,7 +33,7 @@ import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, requireReview, summaryOf, withReview } from './lib/envelope.ts'
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
-import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failureOf, failureStep, fnv1a, isCheck, isRevert, markFlaky, reviewerBlocked, scopeGrew, withPipefail, writesFiles } from './lib/failures.ts'
+import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failKey, failingTests, failureOf, failureStep, isScratchRun, isStashRun, normalize, onlyPreexisting, ownTest, fnv1a, isCheck, isRevert, markFlaky, notRun, onlyMissingTools, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
 import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
 import { guardTool, READ_ONLY_AGENTS, subagentBlocked } from './lib/guard.ts'
@@ -97,6 +97,8 @@ const V4_DEFAULTS = {
   // Policy auto: `evidence` starts T3 work on Sonnet high and leaves Opus to the escalation ladder (lib/auto.ts). `judge`
   // is the old rule: a T3 rating with critical risk or an Opus need starts on Opus. config.json ships `evidence`.
   opusStart: 'judge' as 'judge' | 'evidence',
+  // With opusStart evidence: t3 lets T3 work start on Haiku. Off by default, on the v4 and v5 proof runs (lib/auto.ts).
+  haikuFirst: 'off' as 'off' | 't3',
   effortJudgeTimeoutMs: JUDGE_CALL.timeoutMs,
 }
 type V4Config = typeof V4_DEFAULTS
@@ -171,6 +173,8 @@ const S = {
   unroutable: false,          // the app's model is not one this router runs: requests pass through unrewritten
   appPlan: false,             // plan mode at the last main request: leaving it changes the app's model too
   ladderNote: null as string | null, // an escalation note for the next main tool result or prompt
+  stopMark: null as number | null, // editsSeen at the last stop rung (v4Stop)
+  editsSeen: 0, // every edit-tool edit the session saw; it only counts up (Bash writes are bashEdits)
   judgeRiskTask: undefined as string | undefined, // the task whose risk a failed judge raised, until a judge answers
   toldPolicy: false,
   judgeBreaker: {} as Partial<Record<'effortless' | 'automode', { failures: number; until: number }>>,
@@ -190,6 +194,7 @@ const S = {
   consultLog: [] as ConsultLog[], // this task's ladder consults and what came of them (lib/rescue.ts)
   taskPrompts: [] as string[], // the person's messages in this task after the first, for the consult packet
   bashEdits: 0, // edits made through Bash in this task (writesFiles): an edit for the completion gate too
+  baseline: [] as string[], // tests that failed on the stashed original code (onlyPreexisting)
   forkRuns: new Map<string, { at: number; episode: string | null; first?: { cacheRead: number; prompt: number } }>(), // fork agents the ladder asked for
   resolvedCounts: {} as Record<string, number>, // policy auto: failures of that fingerprint when its command passed again
   switchesThisTask: 0,        // discretionary model switches in this task (anti-oscillation)
@@ -533,6 +538,7 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
     S.consultLog = []
     S.taskPrompts = []
     S.bashEdits = 0
+    S.baseline = []
     S.consultCounts = {}
     S.resolvedCounts = {}
     S.switchesThisTask = 0
@@ -990,7 +996,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
     complexity, stage, previousStage, boundary, riskChanged, planBoundary: req.why.includes('planExited') || req.why.includes('planEntered'), planExited: S.planExited,
     floor: floorFacts(env), current: S.current ? { route: S.current, running: runningEffort()! } : null, usable: usableCurrent(at), appEffort: S.appEffort,
     executor: { on: executorOn(), taskRoute: td && !boundary && !S.compactedPending && cacheFresh(at) ? td : null },
-    reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning ? opusBuckets(S.learned, at) : [] },
+    reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning ? opusBuckets(S.learned, at) : [] },
     votes: S.votes,
     switching: {
       cache: cacheState(), reset: S.resetPending, requestsSinceSwitch: S.requestsSinceSwitch, verifiedSinceSwitch: S.verifiedSinceSwitch, switchesThisTask: S.switchesThisTask, remainingTable: remainingTable(),
@@ -1089,7 +1095,7 @@ function reoptimizeAuto(t: Trigger, event: string, at: number, turnId: string | 
   const td = S.taskDecision && S.taskDecision.taskId === env.taskId ? S.taskDecision : null
   const executed = executorInput(executorOn(), S.lastAuto.verdicts, baseFloors, !reset && td && cacheFresh(at) ? td : null)
   const floors = executed?.floors ?? baseFloors
-  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', floors, current, cost: autoCost(complexity, at) })
+  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), floors, current, cost: autoCost(complexity, at) })
   let floor = mq.tier
   if (t.mandatory) { const lift = tierOf(choice.best.family, choice.best.effort); if (tierRank(lift) > tierRank(floor.tier)) floor = { tier: lift, effort: choice.best.effort, because: [t.reason] } }
   const own = S.current ? choice.candidates.find((c) => c.family === S.current!.family) : undefined
@@ -1209,7 +1215,7 @@ function routeHeader(d: Decision, env: TaskEnvelope): string {
     lines.push(`This is open-ended multi-module work. Run Workflow({ name: "${S.cfg.workflowName}", args: ${JSON.stringify(args)} }) and do not implement it yourself until it returns. Then follow its next_action: report the result, and change code only if next_action says the checks failed.`)
   }
   if (d.strategy !== 'engineering-workflow' && (env.complexity !== 'trivial' || env.risk.effective !== 'none')) lines.push('Before you call a change done, run the relevant tests or build and show that they pass.')
-  if (env.reviewRequired.value && d.strategy !== 'engineering-workflow') lines.push(`After your checks pass, call the Agent tool with subagent_type "automode:reviewer" (${reviewerFamily(env.reviewRequired.because) === 'sonnet' ? 'Sonnet' : 'Opus'}, read-only) and wait for it. Give it the original request, the acceptance criteria, each check with its output, and the changed files. Fix every blocker, run the checks again, and do not call it a second time.`)
+  if (env.reviewRequired.value && d.strategy !== 'engineering-workflow') lines.push(`After your checks pass, call the Agent tool with subagent_type "automode:reviewer" (${reviewerFamily(env.reviewRequired.because, S.cfg.opusStart === 'evidence') === 'sonnet' ? 'Sonnet' : 'Opus'}, read-only) and wait for it. Give it the original request, the acceptance criteria, each check with its output, and the changed files. Fix every blocker, run the checks again, and do not call it a second time.`)
   if (env.failures.length && failureStep(env.failures, r.tier).action === 'report') lines.push(`The last check failed for an environment reason (${env.failures[env.failures.length - 1].command}). Tell the user what is missing instead of changing code.`)
   if (failureStep(env.failures, r.tier).action === 'diagnose') lines.push(delegation('diagnose', env))
   lines.push('Commit or push only when the user asks you to.')
@@ -1910,8 +1916,11 @@ export async function v4AgentSpawn($: EngineInterface, e: any, next: any) {
     return res
   }
   // A worker keeps the guards below, so a route changes only its model.
-  // A judge's word alone buys a Sonnet review (lib/risk.ts reviewerFamily). The workflow picks its own reviewers.
-  const sonnetReview = e.subagentType === 'automode:reviewer' && !e.model && !e.workflow && S.envelope?.reviewRequired.value && reviewerFamily(S.envelope.reviewRequired.because) === 'sonnet'
+  // A judge's word alone buys a Sonnet review (lib/risk.ts reviewerFamily). The workflow picks its own reviewers. Under
+  // evidence routing the rule holds for a review the model asks for on its own, too: the agent's own default is Opus,
+  // and on cachetools such a review cost $0.46 of a $1.21 run.
+  const evidence = S.cfg.opusStart === 'evidence'
+  const sonnetReview = e.subagentType === 'automode:reviewer' && !e.model && !e.workflow && (evidence || S.envelope?.reviewRequired.value) && reviewerFamily(S.envelope?.reviewRequired.because ?? [], evidence) === 'sonnet'
   const model = sr?.model ?? (sonnetReview ? 'sonnet' : e.model)
   const hp = S.policy === 'auto' ? await helperPick($, e, model) : null
   const res = await next(sr || sonnetReview ? { ...e, model } : e)
@@ -2017,7 +2026,7 @@ async function git($: EngineInterface, argv: string[]): Promise<string> {
 const MAX_LADDER_STOPS = 4
 
 // The rescue settings past their old values turn on the review rule: a consult or a strong-evidence raise ran.
-const rescueReview = () => S.cfg.strongStep === 'effort-first' || S.cfg.consult === 'priced'
+const rescueReview = () => S.cfg.opusStart !== 'evidence' && (S.cfg.strongStep === 'effort-first' || S.cfg.consult === 'priced')
 
 // noteConsultRun records what an architect consult really cost and how long it ran. Its duration feeds the consult
 // price, and the files its plan names feed the influence measure.
@@ -2053,7 +2062,7 @@ async function runLadder($: EngineInterface, at: number) {
   const l = env.ladder ?? EMPTY_LADDER
   const running = { family: S.current.family, effort: runningEffort()! }
   const editedSincePass = (since: number) => [...new Set(S.editLog.filter((x) => x.at > since).map((x) => x.path))]
-  const esc = escalation(env.failures, { ...l, editedSincePass, effortCapped: !nextEffort(running.family, running.effort) })
+  const esc = escalation(env.failures, { ...l, editedSincePass, effortCapped: !nextEffort(running.family, running.effort), patient: S.cfg.opusStart === 'evidence' && running.family === 'haiku' })
   if (esc.level === 'none') return
   const count = esc.count ?? (esc.fingerprint ? env.failures.filter((f) => f.fingerprint === esc.fingerprint).length : 0)
   // One episode per failure: what the ladder spent on it, so an unrelated failure gets its own rungs (lib/rescue.ts).
@@ -2072,7 +2081,9 @@ async function runLadder($: EngineInterface, at: number) {
   const spent = { ...l, fired: [...l.fired, esc.key], raised: esc.fingerprint ? { ...l.raised, [esc.fingerprint]: count } : l.raised, episodes }
   const cache = cacheNote(cacheState(), at)
   const why = first.why ? { effortFirst: first.why } : {}
-  if (!step) { S.envelope = { ...env, ladder: spent }; if (ep.consulted || ep.forked) settleConsults(at, { episode, recurred: true }); S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because, cache, episode, ...why }); return }
+  // No step taken (Haiku has no effort rung): mark the cause spent, but record no raise. A raise that never happened must
+  // not turn the next repeat into 'failed after an effort raise', which is strong evidence.
+  if (!step) { S.envelope = { ...env, ladder: { ...spent, raised: l.raised } }; if (ep.consulted || ep.forked) settleConsults(at, { episode, recurred: true }); S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because, cache, episode, ...why }); return }
   const packet = () => evidencePacket(env.spec.text.slice(0, 1500), env.acceptance.map((a) => a.text), env.failures, env.editedPaths, esc.because)
   // Under effort-first the episode, not the cause, remembers the consult: a new failure of the same kind gets its own.
   const consultedBefore = S.cfg.strongStep === 'effort-first' ? ep.consulted : S.consulted.includes(esc.cause)
@@ -2117,7 +2128,8 @@ async function runLadder($: EngineInterface, at: number) {
   const moving = moved && step.kind === 'model'
   const raised = { ...env, escalations: env.escalations + 1, ladder: { ...spent, ...(moving ? { episodes: patchEpisode(episodes, episode, { switched: true }) } : {}), floor: { family: step.family, effort: step.effort, band: step.band, because: esc.because, ...(esc.fingerprint ? { command: env.failures[env.failures.length - 1].command } : {}) } } }
   // A defect that outlived a repair (and a consult) gets the independent review once it passes.
-  const reviewed = esc.check ? withReview(raised, 'fail', false) : raised
+  // Under evidence routing an escalation needs no review of its own: the failing check it acts on must pass again.
+  const reviewed = esc.check && S.cfg.opusStart !== 'evidence' ? withReview(raised, 'fail', false) : raised
   S.envelope = strongRaise && rescueReview() ? requireReview(reviewed, 'effort rose on strong evidence') : reviewed
   // A consulted episode that escalates again: the consult did not fix it.
   if (ep.consulted || ep.forked) settleConsults(at, { episode, ...(moving ? { switched: true } : { recurred: true }) })
@@ -2260,6 +2272,7 @@ function syncObligations() {
   S.obligationEdited = false
   S.completionBlocks = 0
   S.completionState = 'none'
+  S.stopMark = null
 }
 
 // v4Stop: the model is about to finish. Hooks beneath decide first, and a block of theirs stands. Only the mode `auto`
@@ -2273,20 +2286,30 @@ export async function v4Stop($: EngineInterface, e: any, next: any) {
   // The gate's own evidence, the obligations met by real output, is an independent check for a consult's pass.
   if (state === 'verified' && settleConsults(await now($), { verified: true })) await flush($)
   if (state === 'none') return out
-  const gate = S.mode === 'auto' && !out?.block ? S.cfg.completionGate : 'report'
+  // Under evidence routing a stop with the last check failing is always sent back: it is the evidence that moves Haiku
+  // up, so a cheap start never ends failed without a rescue. Other states keep the configured gate.
+  const evidence = S.cfg.opusStart === 'evidence'
+  const gate = S.mode === 'auto' && !out?.block ? (evidence && state === 'failed' ? 'block' : S.cfg.completionGate) : 'report'
   // Under a rescue setting a failed stop may come back up to MAX_LADDER_STOPS times, each one a rung; else once.
-  const ladderStops = rescueReview() && state === 'failed'
+  const ladderStops = (rescueReview() || evidence) && state === 'failed'
   const blocks = ladderStops ? Math.max(0, S.completionBlocks - (MAX_LADDER_STOPS - 1)) : S.completionBlocks
   let reason = blockReason(state, S.obligations, { gate, stopHookActive: e.stop_hook_active === true && !ladderStops, blocks, backgroundWork: Array.isArray(e.background_tasks) ? e.background_tasks.length : 0 })
   if (reason) S.completionBlocks += 1
+  // A stop with no edit since the last stop rung contests the failure: the model checked again and says the work holds.
+  // A pricier model would read the same evidence, so the stop stands. Found live: dnspython and sqlglot each bought a
+  // consult and an Opus switch within seconds, with no edit between, on a test that failed before any change.
+  const edits = S.editsSeen + S.bashEdits
+  const contested = ladderStops && S.stopMark !== null && edits === S.stopMark
+  if (contested) reason = null
   if (reason && ladderStops && S.policy === 'auto') {
+    S.stopMark = edits
     // The stop goes to the ladder as strong evidence, and its next step rides in the block itself.
     const l = S.envelope.ladder ?? EMPTY_LADDER
     S.envelope = { ...S.envelope, ladder: { ...l, stops: (l.stops ?? 0) + 1 } }
     await runLadder($, await now($))
     if (S.ladderNote) { reason = `${reason}\n\n${S.ladderNote}`; S.ladderNote = null; S.newInput = true }
   }
-  S.records.push({ v: 1, kind: 'completion', at: await now($), sessionId: S.sessionId, taskId: S.envelope.taskId, state, blocked: !!reason, obligations: publicObligations(S.obligations) })
+  S.records.push({ v: 1, kind: 'completion', at: await now($), sessionId: S.sessionId, taskId: S.envelope.taskId, state, blocked: !!reason, ...(contested ? { contested: true } : {}), obligations: publicObligations(S.obligations) })
   await flush($)
   if (S.current) barLine($, S.current)
   return reason ? { ...out, block: reason } : out
@@ -2317,6 +2340,8 @@ async function noteCommand($: EngineInterface, command: string) {
   const op = classifyOperation(command)
   if (op) S.envelope = withReview(observe(S.envelope, { level: 'critical', reasons: [`operation: ${op.reason}${op.production ? ' in production' : ''}`], source: 'diff' }), 'none', false)
   if (S.envelope.editedPaths.length && isRevert(command)) {
+    const answers = await Promise.all(S.envelope.editedPaths.slice(0, 10).map((p) => git($, ['git', 'status', '--porcelain', '--branch', '--', p])))
+    if (!workLost(answers)) return
     const l = S.envelope.ladder ?? EMPTY_LADDER
     S.envelope = { ...S.envelope, ladder: { ...l, reverts: l.reverts + 1 } }
     await runLadder($, await now($))
@@ -2333,6 +2358,7 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
       S.editedSinceCheck = true
       if (gateOn()) { syncObligations(); S.obligations = reopen(S.obligations); S.obligationEdited = true }
       S.editLog = [...S.editLog, { path: p, at: await now($) }].slice(-200)
+      S.editsSeen += 1
       const edited = [...new Set([...S.envelope.editedPaths, p])]
       const lines = (S.envelope.changedLines ?? 0) + changedLines(e.tool, input)
       const ifaces = (S.envelope.interfacesChanged ?? 0) + interfacesOf(e.tool, input)
@@ -2368,11 +2394,23 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
       S.records.push({ v: 1, kind: 'debug-bash', keys: Object.keys(out), resultType: typeof out.result, resultKeys: r && typeof r === 'object' ? Object.keys(r) : null, isError: out.isError, sample: JSON.stringify(out.result ?? out.text ?? '').slice(0, 300) })
     }
     const text = resultText(out)
+    // A check that never started tells nothing about the work: no pass, no failure, and the edits stay unchecked.
+    if (notRun(text)) return out
     const exit = text.match(/Exit code (\d+)/)
     const exitCode = exit ? Number(exit[1]) : out.isError === true ? 1 : 0
     // A reliable exit code decides; a masked one falls back to the runner's own summary lines.
     const passed = checkPassed(command, exitCode, out.isError === true, text)
     const at = await now($)
+    // A run that failed only on the machine (a program it lacks) is no verdict on the work. It neither fails the
+    // completion gate nor counts as the last check, and the edits stay unchecked.
+    if (!passed && onlyMissingTools(text)) return out
+    // The original code's own failures, from a run on the stashed original. A run before the first edit does not set
+    // them: a bug fix reproduces its own failure first. A stash run checks the original, not the work, so it is no
+    // check of the work at all.
+    const names = failingTests(normalize(text))
+    if (isStashRun(command)) { S.baseline = [...new Set([...S.baseline, ...names.filter((t) => !ownTest(t, S.envelope!.editedPaths))])].slice(0, 50); return out }
+    if (isScratchRun(command)) return out
+    if (!passed && onlyPreexisting(names, S.baseline, S.envelope.spec.text)) return out
     S.lastCheck = { command, passed }
     if (passed) {
       S.envelope = { ...S.envelope, failures: markFlaky(S.envelope.failures, key, true, S.editedSinceCheck), verified: true }
@@ -2390,7 +2428,7 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
       S.verifiedAfterPlan = true
       if (tr.action === 'reoptimize') reoptimize(tr, 'check-pass', at, undefined)
     } else {
-      const f = failureOf(key, exitCode || 1, text.slice(-8000), at, S.editedSinceCheck)
+      const f = failureOf(failKey(command, text), exitCode || 1, text.slice(-8000), at, S.editedSinceCheck)
       if (f) {
         S.envelope = { ...S.envelope, failures: [...S.envelope.failures, f].slice(-20), verified: false }
         if (S.policy === 'auto') await runLadder($, at)
@@ -2713,10 +2751,10 @@ function freshSession() {
     obligations: [], obligationsTask: null, obligationEdited: false, completionBlocks: 0, completionState: 'none' as CompletionState,
     toldJudgeDown: false, taskSeq: 0, lastOutcome: null, sessionId: 'unknown', restored: false, expectWorker: 0,
     warm: {}, turnRequests: new Map(), stayUp: 0, redoFloor: null, heldRoute: null, planMode: false, planExited: false, editLog: [],
-    learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], taskPrompts: [], forkRuns: new Map(), bashEdits: 0, resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
+    learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], taskPrompts: [], forkRuns: new Map(), bashEdits: 0, baseline: [], resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
-    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, judgeRiskTask: undefined,
+    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, stopMark: null, editsSeen: 0, judgeRiskTask: undefined,
     preflight: undefined, breakers: {}, lastNoResponse: null, failures: [], pendingErrors: [], signalErrorAt: 0, signalMode: '', compactionPricedAt: 0, haikuOutUntilCompaction: false, lastWorkBand: undefined, effortUnsupported: false, thinkingRisk: false, toldErrorClass: '', toldBreaker: false, firstPrefixSaved: false, inadequate: null, toldInadequateTask: '',
   }
 }

@@ -49,6 +49,16 @@ export const checkKey = (command: string): string => {
   return (full ?? (checks.length ? checks.join(' && ') : command.trim())).slice(0, 200)
 }
 
+// failKey: the key a failed run is filed under. When the check's own summary shows a clean pass, the exit code
+// came from a command beside it, so the failure is that line's, not the suite's. Found live: `pytest -q tests | tail;
+// python3 -m doctest x.py` printed `100 passed`, and old doctests failing read as a regression of the suite.
+const SUITE_PASSED = /^=*\s*\d+ passed(?:, \d+ (?:skipped|deselected|warnings?|xfailed|xpassed))*(?: in [\d.]+s)?\s*=*$|^OK(?: \(skipped=\d+\))?$|^Tests:\s+(?:\d+ skipped, )?\d+ passed, \d+ total$|^ℹ fail 0$/m
+export function failKey(command: string, output: string): string {
+  const key = checkKey(command)
+  if (tools(command).length < 2 || !SUITE_PASSED.test(output) || FAILURE_MARKERS.test(output)) return key
+  return command.replace(/\s+/g, ' ').trim().slice(0, 200)
+}
+
 // writesFiles: the command changes files in the workspace. Models edit through Bash as often as through Edit: sed -i,
 // a Python heredoc that opens a file to write, a redirect, tee, git apply. A write under /tmp or to /dev/null is not
 // an edit of the work.
@@ -107,9 +117,19 @@ const TESTS_FAILED = /^FAIL: \S+ \(|^FAILED \(failures=[1-9]|^--- FAIL: |^\s*\d+
 const TESTS_ERRORED = /^ERROR: \S+ \(|^FAILED \(errors=[1-9]|^\s*\d+ errors?\b.* in [\d.]+s/m
 const IMPORT_TRACEBACK = /^\s*(?:E\s+)?(?:ModuleNotFoundError|ImportError)\b/m
 
+// onlyMissingTools: every test that errored raised for a program the machine lacks, a subprocess of a bare name such
+// as `python` where only `python3` exists. That says nothing about the work. Found live: sqlglot's test_lazy_load
+// failed every full run the same way, before and after the edits, and the completion gate climbed four rungs to Opus
+// on it ($2.71 of a $4.93 run). The grader deselects that test.
+const MISSING_TOOL = /^\s*(?:E\s+)?FileNotFoundError: \[Errno 2\] No such file or directory: '[\w.+-]+'$/gm
+export function onlyMissingTools(output: string): boolean {
+  const errors = Number(output.match(/^FAILED \(errors=(\d+)/m)?.[1] ?? output.match(/^[=\s]*(?:\d+ passed, )?(\d+) errors? in [\d.]+s/m)?.[1] ?? 0)
+  return errors > 0 && (output.match(MISSING_TOOL) ?? []).length >= errors
+}
+
 export function classify(output: string): FailureRecord['class'] {
   if (TESTS_FAILED.test(output)) return 'defect'
-  if (TESTS_ERRORED.test(output) && !IMPORT_TRACEBACK.test(output)) return 'defect'
+  if (TESTS_ERRORED.test(output) && !IMPORT_TRACEBACK.test(output) && !onlyMissingTools(output)) return 'defect'
   if (ENVIRONMENT.some((r) => r.test(output))) return 'environment'
   if (DEFECT.some((r) => r.test(output))) return 'defect'
   return 'unknown'
@@ -136,6 +156,25 @@ export function failingTests(norm: string): string[] {
   for (const m of norm.matchAll(/^not ok \d+ - (.+)$/gm)) out.add(m[1].trim())
   for (const m of norm.matchAll(/error (TS\d+)/g)) out.add(m[1])
   return [...out].sort().slice(0, 20)
+}
+
+// Pre-existing failures: a test that fails on the stashed original code is the repo's and not the work's. A run that fails only on those says nothing about the work. Found live: pyjwt's TLS test failed on
+// the untouched code (the model showed it with git stash), and the ladder climbed to Opus on it: $1.55 against $0.32.
+// A task that names the test, or asks to fix failing tests, is about that failure, so it still counts there.
+// A test the task itself added or edited is never the repository's own: on the original code it fails by design. Found
+// in review: `git stash push -- src` keeps the new tests, and they would have excused their own later failures.
+export function ownTest(test: string, edited: string[]): boolean {
+  const file = test.includes('::') ? test.split('::')[0] : test.split('.').slice(0, -2).join('/')
+  return !!file && edited.some((p) => p.endsWith(file) || p.replace(/\.py$/, '').endsWith(file))
+}
+// isScratchRun: the check runs in a copy under /tmp, not in the work. Found live: tomlkit copied its new tests next to
+// the original code in /tmp/orig_repo to show they fail there, and that read as a regression of the work.
+export const isScratchRun = (command: string) => tools(command).some((t) => /^cd\s+['"]?(?:\/tmp\/|\/private\/tmp\/|\$\{?TMPDIR)/.test(t))
+export const isStashRun = (command: string) => /^git\s+stash(?:\s+(?:push|save|-q|--quiet|-u|--include-untracked)\b|\s*$)/.test(tools(command)[0] ?? '')
+export function onlyPreexisting(tests: string[], baseline: string[], spec: string): boolean {
+  if (!tests.length || !tests.every((t) => baseline.includes(t))) return false
+  if (/\bfail(?:ing|s|ed)?\b[^.]{0,40}\btests?\b|\btests?\b[^.]{0,40}\bfail/i.test(spec)) return false
+  return !tests.some((t) => spec.includes(t.split(/::|\./).pop()!))
 }
 
 // markFlaky turns a recorded failure into `flaky` when the same command now passed with no edit between.
@@ -183,6 +222,7 @@ export interface LadderSignals {
   reviewerBlockers: number
   stops?: number                             // stops the gate sent back on a failing check
   effortCapped: boolean                      // the running model has no effort step left
+  patient?: boolean                          // Haiku first: repeats alone never escalate (see escalation)
   fired: string[]
 }
 export type EscalationLevel = 'none' | 'weak' | 'strong'
@@ -204,6 +244,10 @@ export function regression(history: FailureRecord[], s: Pick<LadderSignals, 'pas
   const before = [...history.slice(0, -1)].reverse().find((f) => f.command === last.command)
   const compile = COMPILE_ERROR.test(last.evidence)
   const passedAt = s.passed[last.command]
+  // The output itself has to show the break: a failing test, a runner's failure line or a compile error. An exit code
+  // alone is often a probe run beside the check. In the 2026-11-03 run all three "test regressions" were that
+  // (xmltodict, cachetools, marked), and each moved Haiku to Sonnet.
+  if (!compile && !last.tests?.length && !FAILURE_MARKERS.test(last.evidence)) return null
   if (passedAt !== undefined && passedAt < last.at && (!before || passedAt > before.at)) {
     const edited = s.editedSincePass?.(passedAt) ?? []
     if (edited.length && edited.every((p) => TEST_PATH.test(p))) return null
@@ -236,7 +280,10 @@ export function escalation(history: FailureRecord[], s: LadderSignals): Escalati
     if (repeats) {
       const again = `repeat:${fp}:${count}`
       if (s.raised[fp] !== undefined) { if (count > s.raised[fp] && open(again)) return pick('strong', `the same check failed after an effort raise (${fp})`, again, fp, last) }
-      else if (s.effortCapped) { if (open(again)) return pick('strong', `the same check failed at the top effort (${fp})`, again, fp, last) }
+      // Haiku has no effort step, so its first repeat was 'at the top effort' and moved the task to Sonnet. That is the
+      // write-test, fail, fix loop, not evidence: fixed Haiku passed those tasks. When patient, only a regression, a
+      // revert, a reviewer blocker or a failed stop escalates.
+      else if (s.effortCapped && !s.patient) { if (open(again)) return pick('strong', `the same check failed at the top effort (${fp})`, again, fp, last) }
       else if (open(`repeat:${fp}`)) return pick('weak', `the same check failed after an edit (${fp})`, `repeat:${fp}`, fp, last)
     }
     // The same check failing in a new way each time, after each edit, is not converging either: 3 such failures since
@@ -250,7 +297,7 @@ export function escalation(history: FailureRecord[], s: LadderSignals): Escalati
         const f = { ...last, fingerprint: cid }
         const at = (level: EscalationLevel, because: string, key: string) => ({ ...pick(level, because, key, cid, f), count: tries })
         if (s.raised[cid] !== undefined) { if (tries > s.raised[cid] && open(again)) return at('strong', `the same check kept failing after an effort raise (${last.command.slice(0, 60)})`, again) }
-        else if (s.effortCapped) { if (open(again)) return at('strong', `the same check kept failing at the top effort (${last.command.slice(0, 60)})`, again) }
+        else if (s.effortCapped && !s.patient) { if (open(again)) return at('strong', `the same check kept failing at the top effort (${last.command.slice(0, 60)})`, again) }
         else if (open(`repeat:${cid}`)) return at('weak', `the same check failed ${tries} times after edits (${last.command.slice(0, 60)})`, `repeat:${cid}`)
       }
     }
@@ -266,6 +313,13 @@ export const EMPTY_LADDER: LadderState = { raised: {}, passed: {}, toolErrors: 0
 // isRevert: a command that throws away the task's work. `git restore` counts as guard.ts counts it: all but --staged.
 const REVERT = /^git\s+(revert\b|reset\s+--hard\b|checkout\s+(--\s|\.\s*$)|restore\b(?!.*--staged))/
 export const isRevert = (command: string) => tools(command).some((t) => REVERT.test(t))
+
+// workLost: the command's effect, read after it ran. Each answer is `git status --porcelain --branch -- <path>` for one
+// edited file. A file whose answer lists no change has lost the task's work. A revert command alone is no evidence: a
+// model checks that its new tests catch the bug with `git checkout -- f && <test>; cp fixed f`, and keeps its work
+// (found live: findmyway escalated to Sonnet on that, for $0.27 of its $0.30). An empty answer is a failed git call,
+// and it counts as lost, the behavior before this check.
+export const workLost = (answers: string[]) => answers.some((a) => !a.startsWith('##') || !a.split('\n').slice(1).some((l) => l.trim()))
 
 // reviewerBlocked: agents/reviewer.md uses `changes_required` only when a finding is a blocker.
 export const reviewerBlocked = (answer: string) => /\bchanges_required\b/.test(answer)
@@ -294,7 +348,8 @@ export function evidencePacket(goal: string, acceptance: string[], history: Fail
 // Check commands and their exit codes. A pipe without pipefail reports the last command's exit code, so
 // `go test | head` exits 0 when tests fail; `|| true` and `; true` mask failures outright.
 export const hasPipe = (cmd: string) => /(^|[^|])\|(?!\|)/.test(cmd)
-export const masked = (cmd: string) => /\|\|\s*(true|:)\b|;\s*true\s*$|\bexit 0\s*$/.test(cmd)
+// A trailing `; echo "exit=$?"` reports the code as text, and the command itself then exits 0.
+export const masked = (cmd: string) => /\|\|\s*(true|:)\b|;\s*true\s*$|\bexit 0\s*$|;\s*echo\b[^;|&]*\$\?[^;|&]*$/.test(cmd)
 // withPipefail makes a piped check report its real exit code. Only for checks: the command's output stays
 // the same; only a failure now also shows as a nonzero exit.
 export function withPipefail(cmd: string): string | null {
@@ -307,7 +362,11 @@ export const FAILURE_MARKERS = /^FAIL: \S+ \(|^FAILED \((failures|errors)=\d+|^-
 
 // checkPassed: a reliable exit code decides; a masked or unreliable one falls back to the runner's own
 // summary lines. Never "passed" on missing evidence: an error result is a failure.
+// notRun: the check never started, so it is neither a pass nor a failure of the work. Found live: `(python -m pytest |
+// tail); echo "exit=$?"` printed `command not found: python`, exited 0, and counted as a passed check.
+export const notRun = (text: string) => /\bcommand not found\b|^\S+: (\d+: )?\S+: not found$/m.test(text)
+
 export function checkPassed(cmd: string, exitCode: number, isError: boolean, text: string): boolean {
-  if (isError || exitCode !== 0) return false
+  if (isError || exitCode !== 0 || notRun(text)) return false
   return exitReliable(cmd) ? true : !FAILURE_MARKERS.test(text)
 }

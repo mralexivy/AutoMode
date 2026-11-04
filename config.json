@@ -30,6 +30,7 @@
   "delegation": "off",
   "executor": "judge",
   "opusStart": "evidence",
+  "haikuFirst": "off",
   "forkRung": "on",
   "packet": "fork-gated",
   "consult": "priced",
