@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "v6-d5-sqlglot",
+  "track": "automode-system",
+  "description": "v6d final, the costliest task: longctx-sqlglot-intersect-precedence-across-dialects, 3 AutoMode v6d runs on the code with the last fix (an unanswered rescue leaves Haiku after 10 requests wherever the context stands); the 3 Sonnet high rows of v6-d3-sqlglot are reused. Fixed before any row.",
+  "arms": [
+    "v6d-opus",
+    "sonnet-high"
+  ],
+  "tasks": [
+    "longctx-sqlglot-intersect-precedence-across-dialects"
+  ],
+  "repeats": 3,
+  "parallel": 2,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 4,
+  "budget_usd": 8,
+  "window_usd": 0,
+  "reuse_from": [
+    "bench/results/v6-d3-sqlglot.jsonl"
+  ],
+  "decision": "bench/experiments/policies/v6d-vs-sonnet-heldout.json"
+}
