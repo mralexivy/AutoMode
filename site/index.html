@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AutoMode: Automatic Model and Effort Router for Claude Code</title>
-<meta name="description" content="Free, open source Claude Code plugin that picks the model and effort for each prompt, sets a risk floor and forces an Opus review on risky work. No key.">
+<meta name="description" content="Free, open source Claude Code plugin that picks the model and effort for each prompt, sets a risk floor and forces an independent review on risky work. No key.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="AutoMode">
 <meta property="og:title" content="AutoMode for Claude Code">
@@ -143,7 +143,7 @@ footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--f
     <div class="prompts" id="prompts"></div>
     <div>
       <div id="rungs"><div class="rung"><span>T0&nbsp; <b>Haiku</b> low</span><em></em></div><div class="rung"><span>T1&nbsp; <b>Sonnet</b> medium</span><em></em></div><div class="rung"><span>T2&nbsp; <b>Sonnet</b> high</span><em></em></div><div class="rung on"><span>T3&nbsp; <b>Opus</b> high</span><em>risk floor</em></div><div class="rung"><span>T4&nbsp; <b>Opus</b> max</span><em></em></div></div>
-      <p class="why-box" id="why">Security and migration. Code sets a floor, the judge cannot lower it, and changed code gets an Opus review.</p>
+      <p class="why-box" id="why">Security and migration. Code sets a floor, the judge cannot lower it, and changed code gets an independent review.</p>
     </div>
   </div>
 </div></section>
@@ -232,7 +232,7 @@ const EXAMPLES = [
   { text: 'What does the -r flag do in cp?', rung: 0, tag: 'quick fact', why: 'A fact with no tools. Haiku at Low is enough.' },
   { text: 'Rename this helper and update its tests', rung: 1, tag: 'small edit', why: 'A clear edit. Sonnet does it, and must show a passing test.' },
   { text: 'Refactor the importer to stream rows', rung: 2, tag: 'multi-step', why: 'More steps and more reasoning, so effort goes up, and the model holds if the cache says so.' },
-  { text: 'Move sessions from cookies to signed JWTs', rung: 3, tag: 'risk floor', why: 'Security and migration. Code sets a floor, the judge cannot lower it, and changed code gets an Opus review.' },
+  { text: 'Move sessions from cookies to signed JWTs', rung: 3, tag: 'risk floor', why: 'Security and migration. Code sets a floor, the judge cannot lower it, and changed code gets an independent review.' },
 ]
 const rungs = document.getElementById('rungs'), prompts = document.getElementById('prompts'), why = document.getElementById('why')
 rungs.innerHTML = RUNGS.map(([t, m, e]) => `<div class="rung"><span>${t}&nbsp; <b>${m}</b> ${e}</span><em></em></div>`).join('')
