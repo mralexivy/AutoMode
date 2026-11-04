@@ -2536,6 +2536,10 @@ async function noteCommand($: EngineInterface, command: string) {
   if (S.envelope.editedPaths.length && isRevert(command)) {
     const answers = await Promise.all(S.envelope.editedPaths.slice(0, 10).map((p) => git($, ['git', 'status', '--porcelain', '--branch', '--', p])))
     if (!workLost(answers)) return
+    // v6: a revert alone is no capability failure. A model that undoes a formatter's noise, or redoes its own fix cleanly,
+    // has not failed: on marshmallow in the v6d pilot, Haiku had passed, then checked out its change to redo it, and the
+    // strong signal moved it to Sonnet ($0.22 against $0.02). A real failure still shows in the checks and at the stop.
+    if (execution().recovery !== 'legacy') { S.records.push({ v: 1, kind: 'recovery', at: await now($), sessionId: S.sessionId, taskId: S.envelope.taskId, source: 'revert', rule: execution().recovery, action: 'hold', why: 'a revert alone: the checks and the stop decide' }); return }
     const l = S.envelope.ladder ?? EMPTY_LADDER
     S.envelope = { ...S.envelope, ladder: { ...l, reverts: l.reverts + 1 } }
     await runLadder($, await now($))
