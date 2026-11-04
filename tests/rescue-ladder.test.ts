@@ -440,12 +440,12 @@ describe('v6 strategies', () => {
     expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-same'])
     expect(of(h.writes, 'rescue')[0]).toMatchObject({ family: 'sonnet', mode: 'restart', prefixTokens: 150_000 })
     // The same need again, at a stop with the check still failing: the stronger builder, priced under a switch at 150k.
-    // A first failed stop holds; the stop after new work recovers.
+    // The declined rescue comes back at the first stop, which also holds; the stop after new work recovers.
     await fail($)
     await $.classic.Stop({ stop_hook_active: false })
     await fail($)
     await $.classic.Stop({ stop_hook_active: false })
-    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-same', 'hold', 'rescue-up'])
+    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-same', 'rescue-at-stop', 'hold', 'rescue-up'])
     expect(of(h.writes, 'rescue').map((x) => x.family)).toEqual(['sonnet', 'opus'])
     expect(of(h.writes, 'model-switch')).toEqual([])
   })
@@ -570,6 +570,38 @@ describe('v6 strategies', () => {
     for (let i = 2; i <= 14; i++) await h.step($, 'claude-haiku-5-5', undefined, { index: i })
     expect(of(h.writes, 'recovery').map((x) => [x.source, x.action])).toEqual([['context', 'rescue-up']])
     expect(of(h.writes, 'model-switch')).toEqual([])
+  })
+
+  test('v6: a rescue declined mid-turn comes back once at the stop when the work is not verified', async ($, on) => {
+    // Held-out mathjs-nullish: Haiku declined the rescue at its limit and stopped partly verified ($0.56, failed).
+    const h = harness(on, { policy: 'auto', config: { opusStart: 'evidence', strategy: 'v6c', completionGate: 'block' }, judge: judge({ tier: 'T0', complexity: 'complex' }), effortJudge: perModel({ haiku: ['haiku', 'medium'], sonnet: ['sonnet', 'medium'] }) })
+    h.setPrefix(60_000)
+    await h.submit($, 'add the nullish coalescing operator to the parser')
+    await h.step($, 'claude-haiku-5-5')
+    await $.tool.call(edit())
+    h.setPrefix(156_000)
+    await h.step($, 'claude-haiku-5-5', undefined, { index: 1 })
+    expect(of(h.writes, 'recovery')[0]).toMatchObject({ source: 'context', action: 'rescue-up' })
+    const first = await $.classic.Stop({ stop_hook_active: false })
+    expect(first.block).toContain('Before you stop: [AutoMode (the routing plugin in this session)')
+    expect(first.block).toContain('subagent_type "automode:builder" and model "sonnet"')
+    expect(of(h.writes, 'recovery').map((x) => x.action)).toContain('rescue-at-stop')
+    // Once only: a second stop is not sent back for the rescue.
+    const second = await $.classic.Stop({ stop_hook_active: true })
+    expect(String(second.block ?? '')).not.toContain('Before you stop')
+  })
+
+  test('v6: a rescue the model took is not repeated at the stop', async ($, on) => {
+    const h = harness(on, { policy: 'auto', config: { opusStart: 'evidence', strategy: 'v6c', completionGate: 'block' }, judge: judge({ tier: 'T0', complexity: 'complex' }), effortJudge: perModel({ haiku: ['haiku', 'medium'], sonnet: ['sonnet', 'medium'] }) })
+    h.setPrefix(60_000)
+    await h.submit($, 'add the nullish coalescing operator to the parser')
+    await h.step($, 'claude-haiku-5-5')
+    await $.tool.call(edit())
+    h.setPrefix(156_000)
+    await h.step($, 'claude-haiku-5-5', undefined, { index: 1 })
+    await $.agent.spawn({ subagentType: 'automode:builder', model: 'sonnet', prompt: 'brief', description: 'rescue', parentModel: 'claude-haiku-5-5', fork: false, background: false, tool_use_id: 'b1' } as never)
+    const stop = await $.classic.Stop({ stop_hook_active: false })
+    expect(String(stop.block ?? '')).not.toContain('Before you stop')
   })
 
   test('v6: a rescue the model takes is no reason to switch', async ($, on) => {

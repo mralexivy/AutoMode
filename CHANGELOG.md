@@ -19,6 +19,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Fixed
 
+- A rescue the model declined mid-turn comes back once at the stop, when the work is not verified. The model follows a stop block where it declines a note in a tool result. On held-out mathjs-nullish, Haiku declined the rescue at its context limit and stopped with the work partly verified ($0.56, failed), while plain Sonnet high passed it for $0.70.
 - The rescue note names AutoMode as its source and makes no claim about the work. On sqlglot, a note that called the edits "not progress" read as false to Haiku, which declined it as an injected instruction.
 - A rescue in restart mode asks for one builder call and no git steps. On sqlglot in the v6d pilot, the note asked for a worktree, a stash and a patch, and Haiku declined it as an injected instruction. A declined rescue is not forced: a switch after 10 unanswered requests was tried and never helped. qs, pyflakes and five sqlglot runs paid $0.57 to $2.50 each with it, and sqlglot failed every time.
 - Under the v6 recovery, Haiku past its 100k price step keeps the task unless its next request costs more than on Sonnet. Moving the task off Haiku there was tried and made things worse. Across the v6d runs, every task Haiku kept passed cheaply up to 130k, except sqlglot, which plain Sonnet high fails 2 times in 3. Every failure and every costly pass came after a rescue or a switch moved the task off Haiku mid-way.

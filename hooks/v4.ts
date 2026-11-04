@@ -192,6 +192,7 @@ const S = {
   taskUsd: 0, // this task's spend so far (lib/budget.ts), summed as its records flush
   budgetTold: false, // the budget note went out for this task
   rescues: {} as Partial<Record<Family, number>>, // fresh rescue builders started for this task, by model (v6c)
+  rescueBrief: null as string | null, // the last rescue note of this task, until a builder takes it or a stop delivers it
   watchdogFired: false, // the watchdog acted on this task (lib/execution.ts unproductive)
   stopHeld: false, // v6: this task's first failed stop held instead of buying a rung
   prefixAtFirstEdit: null as number | null, // the running prefix when the task's first edit landed
@@ -431,7 +432,7 @@ async function spawnOutsideAutoMode($: EngineInterface, e: any, next: any) {
 
 // Persistence: a headless --resume or a plugin reload starts a new module, but the session's cache
 // and task do not reset. The routing state is saved per session after each turn and read back once.
-const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'appModel', 'sessionModel', 'pinFamily', 'pinEffort', 'judgeRiskTask', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'dropped', 'rent', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier', 'editedSinceCheck', 'lastCheck', 'obligations', 'obligationsTask', 'completionBlocks', 'completionState', 'taskUsd', 'budgetTold', 'rescues', 'editsSeen', 'stopMark', 'baseline', 'watchdogFired', 'stopHeld', 'prefixAtFirstEdit', 'contextHandled', 'priceStepNoted'] as const
+const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'appModel', 'sessionModel', 'pinFamily', 'pinEffort', 'judgeRiskTask', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'dropped', 'rent', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier', 'editedSinceCheck', 'lastCheck', 'obligations', 'obligationsTask', 'completionBlocks', 'completionState', 'taskUsd', 'budgetTold', 'rescues', 'rescueBrief', 'editsSeen', 'stopMark', 'baseline', 'watchdogFired', 'stopHeld', 'prefixAtFirstEdit', 'contextHandled', 'priceStepNoted'] as const
 async function restore($: EngineInterface) {
   S.restored = true
   try { S.sessionId = await sid($) } catch {}
@@ -579,6 +580,7 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
     S.taskUsd = 0
     S.budgetTold = false
     S.rescues = {}
+    S.rescueBrief = null
     S.watchdogFired = false
     S.stopHeld = false
     S.prefixAtFirstEdit = null
@@ -1951,6 +1953,7 @@ export async function v4TurnComplete($: EngineInterface, e: any, next: any) {
 }
 
 export async function v4AgentSpawn($: EngineInterface, e: any, next: any) {
+  if (e.subagentType === 'automode:builder') S.rescueBrief = null
   if (e.workflow && String(e.subagentType).startsWith(`${S.cfg.workflowName.split(':')[0]}:`)) noteWorkflowCall()
   if (S.mode === 'off') return next(e)
   if (!(await activeV4($))) return S.cfg.subagentsEverySession && S.mode === 'auto' ? spawnOutsideAutoMode($, e, next) : next(e)
@@ -2173,6 +2176,7 @@ async function startRescue($: EngineInterface, family: Family, because: string, 
   ]
   S.rescues = { ...S.rescues, [family]: (S.rescues[family] ?? 0) + 1 }
   S.ladderNote = rescueNote({ family, mode, because, packet, passedChecks: passed.map(([c]) => c), failedApproaches, remainingUsd })
+  S.rescueBrief = S.ladderNote
   S.records.push({ v: 1, kind: 'rescue', at, sessionId: S.sessionId, taskId: env.taskId, family, mode, episode, because, packetChars: packet.length, prefixTokens: cacheState().prefixTokens, failedApproaches: failedApproaches.length, ...(remainingUsd === null ? {} : { remainingUsd: round6(remainingUsd) }) })
   $.ui.toast(`AutoMode: ${because}. A fresh ${family} builder takes over (${mode}); this session keeps its model.`)
 }
@@ -2502,6 +2506,15 @@ export async function v4Stop($: EngineInterface, e: any, next: any) {
   const edits = S.editsSeen + S.bashEdits
   const contested = ladderStops && S.stopMark !== null && edits === S.stopMark
   if (contested || state === 'budget_exhausted') reason = null
+  // A rescue the model declined mid-turn comes back once at the stop, when the work is not verified. The model follows a
+  // stop block where it declines a note in a tool result. On held-out mathjs-nullish, Haiku declined the rescue at its
+  // limit and stopped with the work partly verified ($0.56, failed); plain Sonnet high passed it for $0.70.
+  if (S.rescueBrief && execution().recovery !== 'legacy' && S.mode === 'auto' && state !== 'verified' && state !== 'budget_exhausted') {
+    reason = `${reason ? `${reason}\n\n` : ''}Before you stop: ${S.rescueBrief}`
+    S.rescueBrief = null
+    S.newInput = true
+    S.records.push({ v: 1, kind: 'recovery', at: await now($), sessionId: S.sessionId, taskId: S.envelope.taskId, source: 'stop', rule: execution().recovery, action: 'rescue-at-stop', why: `a declined rescue, and the stop found the work ${state}` })
+  }
   if (reason && ladderStops && S.policy === 'auto') {
     S.stopMark = edits
     // The stop goes to the ladder as strong evidence, and its next step rides in the block itself.
@@ -2960,7 +2973,7 @@ function freshSession() {
     learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], taskPrompts: [], forkRuns: new Map(), bashEdits: 0, baseline: [], resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
-    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, stopMark: null, editsSeen: 0, taskUsd: 0, budgetTold: false, rescues: {}, watchdogFired: false, stopHeld: false, prefixAtFirstEdit: null, contextHandled: false, priceStepNoted: false, lastMain: null, taskCauses: [], lastRecoveryAt: null, judgeRiskTask: undefined,
+    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, stopMark: null, editsSeen: 0, taskUsd: 0, budgetTold: false, rescues: {}, rescueBrief: null, watchdogFired: false, stopHeld: false, prefixAtFirstEdit: null, contextHandled: false, priceStepNoted: false, lastMain: null, taskCauses: [], lastRecoveryAt: null, judgeRiskTask: undefined,
     preflight: undefined, breakers: {}, lastNoResponse: null, failures: [], pendingErrors: [], signalErrorAt: 0, signalMode: '', compactionPricedAt: 0, haikuOutUntilCompaction: false, lastWorkBand: undefined, effortUnsupported: false, thinkingRisk: false, toldErrorClass: '', toldBreaker: false, firstPrefixSaved: false, inadequate: null, toldInadequateTask: '',
   }
 }
