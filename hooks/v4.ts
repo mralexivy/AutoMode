@@ -1828,18 +1828,21 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
   if (res?.stopReason && res.stopReason !== 'tool_use') { await flush($); await persist($) }
   const ctx = trigger(trigState(), { kind: 'context', prefixTokens: S.cache?.prefixTokens ?? 0, family: r.family })
   if (r.family === 'haiku' && execution().recovery !== 'legacy') await haikuGuards($, t)
-  // A rescue the model does not take: past Haiku's limit the session leaves Haiku anyway. On sqlglot in the v6d pilot,
-  // Haiku read the rescue note as an injected instruction, declined it, and worked on from 156k to 264k ($1.33, failed).
+  // A rescue the model does not take: after RESCUE_PATIENCE main requests the session leaves Haiku anyway, wherever the
+  // context stands. Haiku declined the note on sqlglot every time. Counted only past the 150k limit, the switch came at
+  // 175k to 181k, and Sonnet then worked at that size: $2.01 to $2.50 a run, against $1.44 for plain Sonnet high.
   if (S.rescueUnanswered !== null && !e.agentId && r.family === 'haiku') S.rescueUnanswered += 1
-  if (ctx.action === 'reoptimize' && execution().recovery !== 'legacy' && r.family === 'haiku') {
+  const unanswered = execution().recovery !== 'legacy' && r.family === 'haiku' && (S.rescueUnanswered ?? 0) >= RESCUE_PATIENCE
+  if (unanswered && S.envelope) {
+    S.rescueUnanswered = null
+    S.haikuOutUntilCompaction = true
+    S.records.push({ v: 1, kind: 'recovery', at: t, sessionId: S.sessionId, taskId: S.envelope.taskId, source: 'rescue', rule: execution().recovery, action: 'switch', why: `the rescue went unanswered for ${RESCUE_PATIENCE} requests`, prefixTokens: S.cache?.prefixTokens ?? 0 })
+    reoptimize({ action: 'reoptimize', reason: `the rescue went unanswered for ${RESCUE_PATIENCE} requests`, mandatory: true }, 'rescue-unanswered', t, e.turnId)
+  } else if (ctx.action === 'reoptimize' && execution().recovery !== 'legacy' && r.family === 'haiku') {
     // v6: past Haiku's limit the session keeps its model unless v6Recover prices a switch in.
     if (!S.contextHandled && S.envelope && !S.ladderNote) {
       S.contextHandled = true
       if (!(await v6Recover($, 'sonnet', `the context passed Haiku's limit (${S.cache?.prefixTokens ?? 0} tokens)`, S.envelope.createdAt, 'context', t, true, 'context'))) reoptimize(ctx, 'context-growth', t, e.turnId)
-    } else if ((S.rescueUnanswered ?? 0) >= RESCUE_PATIENCE) {
-      S.rescueUnanswered = null
-      if (S.envelope) S.records.push({ v: 1, kind: 'recovery', at: t, sessionId: S.sessionId, taskId: S.envelope.taskId, source: 'context', rule: execution().recovery, action: 'switch', why: `the rescue went unanswered for ${RESCUE_PATIENCE} requests past Haiku's limit` })
-      reoptimize(ctx, 'context-growth', t, e.turnId)
     }
   } else if (ctx.action === 'reoptimize') reoptimize(ctx, 'context-growth', t, e.turnId)
   // With no compaction noted since the last request nothing proves a reset, so the shrink is priced and gated as a warm switch.
@@ -2104,7 +2107,7 @@ async function git($: EngineInterface, argv: string[]): Promise<string> {
 const MAX_LADDER_STOPS = 4
 
 // The rescue settings past their old values turn on the review rule: a consult or a strong-evidence raise ran.
-// RESCUE_PATIENCE: main requests a rescue note may go unanswered past Haiku's limit before the session leaves Haiku. At
+// RESCUE_PATIENCE: main requests a rescue note may go unanswered before the session leaves Haiku. At
 // 3, qs switched 25 seconds after the note, mid-step, and paid $0.76 for the move.
 const RESCUE_PATIENCE = 10
 // promptReview: under review `observed`, a prompt's predicted risk asks for no reviewer. The change and its checks still do.
