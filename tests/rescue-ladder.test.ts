@@ -556,6 +556,18 @@ describe('v6 strategies', () => {
     expect(of(h.writes, 'recovery')).toEqual([])
   })
 
+  test('v6: Haiku past its price step after edits and no pass gets a fresh Sonnet builder', async ($, on) => {
+    // qs in the v6d pilot: Haiku reached 100k for $0.065, then spent $0.31 more at five times the price.
+    const h = harness(on, { policy: 'auto', config: { opusStart: 'evidence', strategy: 'v6c' }, judge: judge({ tier: 'T0', complexity: 'trivial' }), effortJudge: perModel({ haiku: ['haiku', 'medium'], sonnet: ['sonnet', 'medium'] }), bash: () => ({ result: 'Error: Exit code 1\nFAIL', isError: true, text: '' }) })
+    h.setPrefix(60_000)
+    await h.submit($, 'fix the parser so it never mutates its input')
+    await h.step($, 'claude-haiku-5-5')
+    await $.tool.call(edit())
+    h.setPrefix(120_000)
+    await h.step($, 'claude-haiku-5-5', undefined, { index: 1 })
+    expect(of(h.writes, 'recovery')[0]).toMatchObject({ source: 'price-step', action: 'rescue-up', to: 'sonnet' })
+  })
+
   test('v6b: an effort raise on the same model records what the next request read from cache', async ($, on) => {
     const h = harness(on, { ...sonnetAt('medium', { opusStart: 'evidence', strategy: 'v6b' }), bash: () => failing })
     await h.submit($, 'fix the failing parser test')

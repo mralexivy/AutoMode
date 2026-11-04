@@ -2207,7 +2207,12 @@ async function haikuGuards($: EngineInterface, at: number) {
   if (!step.crossed) return
   S.priceStepNoted = true
   S.records.push({ v: 1, kind: 'price-step', at, sessionId: S.sessionId, taskId: S.envelope.taskId, nextPrompt: S.cache.prefixTokens + S.priors.outputPerStep.haiku, ...step })
-  if (step.verdict === 'leave' && !S.ladderNote) await v6Recover($, 'sonnet', `Haiku's next request (${step.haikuUsd}) costs more than the same one on Sonnet (${step.sonnetUsd})`, S.envelope.createdAt, 'price-step', at, true, 'price-step')
+  // Past the step with no pass since the first edit, Haiku is not converging, and each request now costs five times as
+  // much. On qs in the v6d pilot, Haiku reached 100k for $0.065, then spent $0.31 more before its context limit.
+  const firstEditAt = S.editLog[0]?.at ?? null
+  const passed = firstEditAt !== null && Object.values(S.envelope.ladder?.passed ?? {}).some((t) => t >= firstEditAt)
+  const because = step.verdict === 'leave' ? `Haiku's next request (${step.haikuUsd}) costs more than the same one on Sonnet (${step.sonnetUsd})` : firstEditAt !== null && !passed ? `Haiku passed its price step with no passing check since its first edit` : null
+  if (because && !S.ladderNote) await v6Recover($, 'sonnet', because, S.envelope.createdAt, 'price-step', at, true, 'price-step')
 }
 
 // budgetSpent: the task budget is gone. The first time, the model is told to stop and report, once.
