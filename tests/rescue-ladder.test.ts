@@ -580,35 +580,17 @@ describe('v6 strategies', () => {
     expect(of(h.writes, 'recovery')[0]).toMatchObject({ source: 'price-step', action: 'rescue-up', to: 'sonnet' })
   })
 
-  test('v6: a rescue the model declines past Haiku\'s limit: after 10 requests the session leaves Haiku anyway', async ($, on) => {
-    // sqlglot in the v6d pilot: Haiku declined the note and worked on from 156k to 264k ($1.33, failed).
-    const h = harness(on, { policy: 'auto', config: { opusStart: 'evidence', strategy: 'v6c' }, judge: judge({ tier: 'T0', complexity: 'trivial' }), effortJudge: perModel({ haiku: ['haiku', 'medium'], sonnet: ['sonnet', 'medium'] }) })
-    h.setPrefix(60_000)
-    await h.submit($, 'fix the parser')
-    await h.step($, 'claude-haiku-5-5')
-    h.setPrefix(156_000)
-    await h.step($, 'claude-haiku-5-5', undefined, { index: 1 })
-    expect(of(h.writes, 'recovery')[0]).toMatchObject({ source: 'context', action: 'rescue-up' })
-    for (let i = 2; i <= 9; i++) await h.step($, 'claude-haiku-5-5', undefined, { index: i })
-    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-up'])
-    for (let i = 10; i <= 12; i++) await h.step($, 'claude-haiku-5-5', undefined, { index: i })
-    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-up', 'switch'])
-    expect(h.steps.at(-1)?.model).toBe('claude-sonnet-5-5')
-  })
-
-  test('v6: a rescue declined below Haiku\'s limit leaves Haiku after 10 requests, not at 175k', async ($, on) => {
-    // sqlglot: rescued at 104k, declined, switched only at 181k, then Sonnet worked at that size ($2.01, failed).
+  test('v6: a rescue the model declines is not forced: no switch, the session stays on Haiku', async ($, on) => {
+    // A forced switch never helped: qs, pyflakes and five sqlglot runs paid $0.57 to $2.50 each, and sqlglot always failed.
     const h = harness(on, { policy: 'auto', config: { opusStart: 'evidence', strategy: 'v6c' }, judge: judge({ tier: 'T0', complexity: 'complex' }), effortJudge: perModel({ haiku: ['haiku', 'medium'], sonnet: ['sonnet', 'medium'] }) })
     h.setPrefix(60_000)
     await h.submit($, 'fix the parser so set operations keep their precedence')
     await h.step($, 'claude-haiku-5-5')
     h.setPrefix(104_000)
     await h.step($, 'claude-haiku-5-5', undefined, { index: 1 })
-    expect(of(h.writes, 'recovery')[0]).toMatchObject({ source: 'price-step', action: 'rescue-up' })
-    for (let i = 2; i <= 12; i++) await h.step($, 'claude-haiku-5-5', undefined, { index: i })
-    expect(of(h.writes, 'recovery').map((x) => [x.source, x.action])).toEqual([['price-step', 'rescue-up'], ['rescue', 'switch']])
-    expect(of(h.writes, 'recovery')[1].prefixTokens).toBeLessThan(150_000)
-    expect(h.steps.at(-1)?.model).toBe('claude-sonnet-5-5')
+    for (let i = 2; i <= 14; i++) await h.step($, 'claude-haiku-5-5', undefined, { index: i })
+    expect(of(h.writes, 'recovery').map((x) => [x.source, x.action])).toEqual([['price-step', 'rescue-up']])
+    expect(of(h.writes, 'model-switch')).toEqual([])
   })
 
   test('v6: a rescue the model takes is no reason to switch', async ($, on) => {
