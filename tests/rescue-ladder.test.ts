@@ -557,7 +557,7 @@ describe('v6 strategies', () => {
     expect(of(h.writes, 'recovery')).toEqual([])
   })
 
-  test('v6: Haiku past its price step after edits and no pass gets a fresh Sonnet builder', async ($, on) => {
+  test('v6: Haiku past its price step after edits gets a fresh Sonnet builder', async ($, on) => {
     // qs in the v6d pilot: Haiku reached 100k for $0.065, then spent $0.31 more at five times the price.
     const h = harness(on, { policy: 'auto', config: { opusStart: 'evidence', strategy: 'v6c' }, judge: judge({ tier: 'T0', complexity: 'trivial' }), effortJudge: perModel({ haiku: ['haiku', 'medium'], sonnet: ['sonnet', 'medium'] }), bash: () => ({ result: 'Error: Exit code 1\nFAIL', isError: true, text: '' }) })
     h.setPrefix(60_000)
@@ -569,7 +569,7 @@ describe('v6 strategies', () => {
     expect(of(h.writes, 'recovery')[0]).toMatchObject({ source: 'price-step', action: 'rescue-up', to: 'sonnet' })
   })
 
-  test('v6: a rescue the model declines past Haiku\'s limit: after 3 requests the session leaves Haiku anyway', async ($, on) => {
+  test('v6: a rescue the model declines past Haiku\'s limit: after 10 requests the session leaves Haiku anyway', async ($, on) => {
     // sqlglot in the v6d pilot: Haiku declined the note and worked on from 156k to 264k ($1.33, failed).
     const h = harness(on, { policy: 'auto', config: { opusStart: 'evidence', strategy: 'v6c' }, judge: judge({ tier: 'T0', complexity: 'trivial' }), effortJudge: perModel({ haiku: ['haiku', 'medium'], sonnet: ['sonnet', 'medium'] }) })
     h.setPrefix(60_000)
@@ -578,7 +578,9 @@ describe('v6 strategies', () => {
     h.setPrefix(156_000)
     await h.step($, 'claude-haiku-5-5', undefined, { index: 1 })
     expect(of(h.writes, 'recovery')[0]).toMatchObject({ source: 'context', action: 'rescue-up' })
-    for (let i = 2; i <= 5; i++) await h.step($, 'claude-haiku-5-5', undefined, { index: i })
+    for (let i = 2; i <= 9; i++) await h.step($, 'claude-haiku-5-5', undefined, { index: i })
+    expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-up'])
+    for (let i = 10; i <= 12; i++) await h.step($, 'claude-haiku-5-5', undefined, { index: i })
     expect(of(h.writes, 'recovery').map((x) => x.action)).toEqual(['rescue-up', 'switch'])
     expect(h.steps.at(-1)?.model).toBe('claude-sonnet-5-5')
   })
