@@ -6,7 +6,7 @@
     "name": "Alex Ivy",
     "url": "https://github.com/mralexivy"
   },
-  "version": "0.9.1",
+  "version": "0.10.0",
   "license": "MIT",
   "homepage": "https://mralexivy.github.io/AutoMode/",
   "documentationUrl": "https://github.com/mralexivy/AutoMode#readme",
@@ -326,8 +326,8 @@
     "metrics": {
       "type": "string",
       "title": "AutoMode: Bar metrics",
-      "description": "Comma-separated bar items: pending, context, cache, cost, guardian, stage. The mode, model and effort always show.",
-      "default": "pending,context,cache,cost,guardian,stage"
+      "description": "Comma-separated bar items: pending, context, cache, cost, saved, guardian, stage. saved is the estimated saving against the model the session started on. The mode, model and effort always show.",
+      "default": "pending,context,cache,cost,saved,guardian,stage"
     }
   }
 }

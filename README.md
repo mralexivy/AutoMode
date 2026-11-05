@@ -8,12 +8,13 @@
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-22d3ee"></a>
   <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-34d399"></a>
   <a href="https://github.com/mralexivy/AutoMode/issues?q=is%3Aopen+label%3A%22good+first+issue%22"><img alt="Good first issues" src="https://img.shields.io/badge/good%20first-issues-8b5cf6"></a>
-  <img alt="Version 0.9.1" src="https://img.shields.io/badge/version-0.9.1-fbbf24">
+  <img alt="Version 0.10.0" src="https://img.shields.io/badge/version-0.10.0-fbbf24">
   <img alt="Claude Code 2.1.287 or later" src="https://img.shields.io/badge/Claude%20Code-2.1.287%2B-38bdf8">
 </p>
 
 <p align="center">
   <a href="https://mralexivy.github.io/AutoMode/"><b>Website</b></a> ·
+  <a href="https://mralexivy.github.io/AutoMode/docs/"><b>Docs</b></a> ·
   <a href="#install"><b>Install</b></a> ·
   <a href="#what-the-bar-shows"><b>The bar</b></a> ·
   <a href="#how-it-works"><b>How it works</b></a> ·
@@ -25,12 +26,12 @@
 
 **A free, open source model router for Claude Code. It picks the right model and the right effort for every prompt.**
 
-**On the website:** [the benchmark](https://mralexivy.github.io/AutoMode/benchmark/) · [how to reduce Claude Code costs](https://mralexivy.github.io/AutoMode/reduce-claude-code-costs/) · [install guide](https://mralexivy.github.io/AutoMode/install/) · [Claude Code routers compared](https://mralexivy.github.io/AutoMode/compare/) · [AutoMode vs effortless](https://mralexivy.github.io/AutoMode/automode-vs-effortless/) · [AutoMode vs Claude Code Router](https://mralexivy.github.io/AutoMode/automode-vs-claude-code-router/) · [does switching models waste the cache?](https://mralexivy.github.io/AutoMode/prompt-cache/)
+**On the website:** [the docs](https://mralexivy.github.io/AutoMode/docs/) · [the benchmark](https://mralexivy.github.io/AutoMode/docs/benchmarks/results/) · [how to reduce Claude Code costs](https://mralexivy.github.io/AutoMode/docs/guides/reduce-claude-code-costs/) · [install guide](https://mralexivy.github.io/AutoMode/docs/getting-started/install/) · [Claude Code routers compared](https://mralexivy.github.io/AutoMode/docs/compare/) · [AutoMode vs effortless](https://mralexivy.github.io/AutoMode/docs/guides/automode-vs-effortless/) · [AutoMode vs Claude Code Router](https://mralexivy.github.io/AutoMode/docs/guides/automode-vs-claude-code-router/) · [does switching models waste the cache?](https://mralexivy.github.io/AutoMode/docs/concepts/prompt-cache/)
 
 Quick questions stay cheap. Hard jobs get the strongest model. Risky changes always get a review.
 Install it and it starts. You never touch the model or the Effort control again.
 
-<sub>A community project. It is not Claude Code's built-in auto permission mode, and Anthropic does not make it. [See the difference](https://mralexivy.github.io/AutoMode/auto-mode-vs-automode/).</sub>
+<sub>A community project. It is not Claude Code's built-in auto permission mode, and Anthropic does not make it. [See the difference](https://mralexivy.github.io/AutoMode/docs/guides/auto-mode-vs-automode/).</sub>
 
 **Paste these into Claude Code, one at a time, then run `/reload-plugins`:**
 
@@ -146,6 +147,7 @@ One quiet line above the prompt, in your theme's colors. It reports what actuall
 | **High · Opus** | The effort and the model for this prompt. `Deciding…` while the judge thinks. |
 | **◔ 38%** | How full the chat's context is. |
 | **cache 58:12** | Time until the prompt cache goes cold. After that, the next message pays full price to re-read the chat. |
+| **saved ~$0.38** | The estimated saving against the model the session started on. Right after a switch it reads **↺ $0.07 to pay back**, until cheaper requests pay off the new model's cache rewrite. |
 | *a refactor across modules* | Why the route was chosen. |
 | **Auto** | Switches routing on or off for this session. |
 | **⚙** | Settings. |

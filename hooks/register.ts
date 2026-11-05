@@ -1,4 +1,4 @@
-// Generated from hooks/ at commit c745e51ec7f2a03a4d20b4fa200e0c29f0c39fc7 by tools/release.mts. The readable source is hooks/ on the main branch.
+// Generated from hooks/ at commit eadcb686ff7122cdb9ed96df9ad737f4928c6f74 by tools/release.mts. The readable source is hooks/ on the main branch.
 // hooks/lib/io.ts
 function sid($) {
   return $.session.id();
@@ -422,7 +422,7 @@ var FIELDS = {
   layout: { title: "Layout", options: ["expanded", "minimal"], default: "expanded", applies: "now", section: "appearance" },
   theme: { title: "Theme", options: ["native", "automode", "mono", "contrast"], default: "native", applies: "now", section: "appearance" },
   appearance: { title: "Appearance", options: ["auto", "dark", "light"], default: "auto", applies: "now", section: "appearance" },
-  metrics: { title: "Bar metrics", options: [], default: "pending,context,cache,cost,guardian,stage", applies: "now", section: "appearance" }
+  metrics: { title: "Bar metrics", options: [], default: "pending,context,cache,cost,saved,guardian,stage", applies: "now", section: "appearance" }
 };
 var FIELD_NAMES = Object.keys(FIELDS);
 function valueOf(field, options2, stored2 = {}) {
@@ -718,7 +718,7 @@ function tipOf(r, g, ctx, facts2) {
   void g;
   return null;
 }
-var METRICS = ["pending", "context", "cache", "cost", "guardian", "stage"];
+var METRICS = ["pending", "context", "cache", "cost", "saved", "guardian", "stage"];
 function barSegments(v, columns, now3, shown = METRICS) {
   const has = (m) => shown.includes(m);
   const all = [];
@@ -729,6 +729,8 @@ function barSegments(v, columns, now3, shown = METRICS) {
   if (has("context")) all.push({ key: "context", text: v.context.percent === null ? "—" : `${Math.round(v.context.percent)}%`, tone: v.context.level === "ok" ? "text" : "warn", drop: 4 });
   if (has("cache") && v.cache.state !== "unknown") all.push({ key: "cache", text: cacheText(v.cache.until, now3), tone: v.cache.state === "cold" ? "dim" : "dim", drop: 3 });
   if (has("cost")) all.push({ key: "cost", text: usdText(v.cost.session), tone: v.cost.session === null ? "dim" : "text", drop: 2 });
+  const sv = savedSegment(v.router.savings);
+  if (has("saved") && sv) all.push({ ...sv, drop: 2 });
   if (has("guardian") && v.guardian.on && v.guardian.tone === "warn") all.push({ key: "guardian", text: `${v.guardian.glyph} ${v.guardian.state}`, tone: "warn", drop: 98 });
   if (has("stage") && v.stage) all.push({ key: "stage", text: v.stage, tone: "dim", drop: 1 });
   if (v.why) all.push({ key: "why", text: v.why, tone: "dim", sep: " — ", drop: 0 });
@@ -748,6 +750,20 @@ function barSegments(v, columns, now3, shown = METRICS) {
     list = step(list);
   }
   return list.map(({ drop: _d, ...s }) => s);
+}
+function savedSegment(s) {
+  if (!s || s.phase === "none") return null;
+  if (s.phase === "paying-back") return { key: "saved", text: `↺ ${usdText(-s.netUsd)} to pay back`, tone: "dim" };
+  return { key: "saved", text: `saved ~${usdText(s.netUsd)}`, tone: "guard" };
+}
+function savingsLine(s) {
+  if (!s || !s.baseline || s.requests === 0) return null;
+  const base = FAMILY_NAME[s.baseline];
+  if (s.phase === "none") return `Saved: nothing yet. Every request ran on ${base}, the session's model.`;
+  const pct = s.share === null ? "" : ` (${Math.round(s.share * 100)}%)`;
+  const head = s.phase === "paying-back" ? `Saved: ${usdText(-s.netUsd)} still to pay back. A switch wrote the chat into a new cache; cheaper requests pay it off.` : `Saved: about ${usdText(s.netUsd)}${pct} against ${base}.`;
+  return `${head}
+  estimate: the same tokens on ${base} with its own warm cache ${usdText(s.baselineUsd)}, actual ${usdText(s.actualUsd)}, AutoMode's judges ${usdText(s.overheadUsd)}, cache rewrites ${usdText(s.rewriteUsd)}`;
 }
 var barText = (segs) => segs.map((s, i) => (i ? s.sep ?? " · " : "") + s.text).join("");
 
@@ -1513,6 +1529,7 @@ function guardianSnapshot() {
 // hooks/v4.ts
 import { EFFORTS as EFFORTS3, maxRisk, tierRank as tierRank2 } from "./lib/types.ts";
 import { ANTHROPIC as ANTHROPIC2, familyOf as familyOf2, rowFor, usageUsd } from "./lib/prices.ts";
+import { addOverhead, addRequest, NO_SAVINGS, netOf, phaseOf, shareOf } from "./lib/savings.ts";
 import { isTask, JUDGE_SYSTEM, JUDGE_SYSTEM_V3, JUDGE_SYSTEM_V4, judgePrompt, parseJudge, parseOverride } from "./lib/classify.ts";
 import { transitionOf } from "./lib/transition.ts";
 import { classifyError, UNCLASSIFIED } from "./lib/errors.ts";
@@ -2630,7 +2647,9 @@ var S = {
   // and userConfig and under AUTOMODE_ROUTER; it is in the snapshot, so a settings reload keeps it.
   sessionMode: null,
   // The request ledger for the UI: running sums of the prices pushRequest and the judges already compute.
-  ledger: emptyLedger()
+  ledger: emptyLedger(),
+  // Live savings against the model the session started on (lib/savings.ts). Read only by the UI.
+  savings: NO_SAVINGS
 };
 var U = {
   killed: false,
@@ -2839,7 +2858,7 @@ async function spawnOutsideAutoMode($, e, next) {
   noteAgent(res, e, sr?.model, !!sr);
   return res;
 }
-var SNAPSHOT_KEYS = ["sessionMode", "ledger", "lastAuto", "taskDecision", "decidedPlanMode", "lastRisk", "lastEffective", "appEffort", "appModel", "sessionModel", "pinFamily", "pinEffort", "judgeRiskTask", "inadequate", "haikuOutUntilCompaction", "planExited", "signalMode", "lastWorkBand", "workStage", "breakers", "failures", "signalErrorAt", "effortUnsupported", "current", "cache", "envelope", "votes", "requestsSinceSwitch", "verifiedSinceSwitch", "lastSummary", "taskSeq", "warm", "stayUp", "redoFloor", "planMode", "switchesThisTask", "dropped", "rent", "lastDemand", "stage", "consulted", "pending", "compactedPending", "basePrefix", "compactedAt", "lastMessageCount", "consultCounts", "resolvedCounts", "signalSeq", "signalCompactAt", "compactHookSeen", "toldUserTier", "editedSinceCheck", "lastCheck", "obligations", "obligationsTask", "completionBlocks", "completionState", "taskUsd", "budgetTold", "rescues", "rescueBrief", "editsSeen", "stopMark", "baseline", "watchdogFired", "stopHeld", "prefixAtFirstEdit", "contextHandled", "priceStepNoted"];
+var SNAPSHOT_KEYS = ["sessionMode", "ledger", "lastAuto", "taskDecision", "decidedPlanMode", "lastRisk", "lastEffective", "appEffort", "appModel", "sessionModel", "pinFamily", "pinEffort", "judgeRiskTask", "inadequate", "haikuOutUntilCompaction", "planExited", "signalMode", "lastWorkBand", "workStage", "breakers", "failures", "signalErrorAt", "effortUnsupported", "current", "cache", "envelope", "votes", "requestsSinceSwitch", "verifiedSinceSwitch", "lastSummary", "taskSeq", "warm", "stayUp", "redoFloor", "planMode", "switchesThisTask", "dropped", "rent", "lastDemand", "stage", "consulted", "pending", "compactedPending", "basePrefix", "compactedAt", "lastMessageCount", "consultCounts", "resolvedCounts", "signalSeq", "signalCompactAt", "compactHookSeen", "toldUserTier", "editedSinceCheck", "lastCheck", "obligations", "obligationsTask", "completionBlocks", "completionState", "taskUsd", "budgetTold", "rescues", "rescueBrief", "editsSeen", "stopMark", "baseline", "watchdogFired", "stopHeld", "prefixAtFirstEdit", "contextHandled", "priceStepNoted", "savings"];
 async function restore2($) {
   S.restored = true;
   try {
@@ -4078,6 +4097,7 @@ function pushRequest(e, sent, owner, applied, why, res, at2, application) {
   const answered = res?.usage?.model ?? null;
   const price = u ? usdOf(answered ?? sent.model, u) : null;
   if (u && price) noteLedger(answered ?? sent.model, u, price.value, e.agentId);
+  if (u && e.agentId === void 0 && typeof e.model === "string") S.savings = addRequest(S.savings, { appModel: e.model, answeredModel: answered ?? sent.model, usage: u, at: at2, ttlMs: S.ttl }, prices());
   const fam = familyOf2(sent.model);
   if (e.agentId === void 0 && fam && u && (execution().start !== "legacy" || execution().recovery !== "legacy")) {
     const effort = sent.effort === void 0 || sent.effort === null ? null : String(sent.effort);
@@ -5203,6 +5223,7 @@ Continue from where it left off without asking the user further questions.`, too
 }
 var TIER_ORDER = ["T0", "T1", "T2", "T3", "T4"];
 function noteJudge(usd) {
+  S.savings = addOverhead(S.savings, usd);
   S.ledger = { ...S.ledger, judgeUsd: round6(S.ledger.judgeUsd + usd), judgeCalls: S.ledger.judgeCalls + 1 };
 }
 function noteLedger(model, u, usd, agentId) {
@@ -5281,7 +5302,8 @@ function v4Snapshot(sessionModel2, now3) {
     warm: Object.fromEntries(Object.entries(S.warm).map(([f, w]) => [f, { until: w.until, effort: w.effort }])),
     candidates: U.candidates,
     agents: [...U.agents.values()],
-    ledger: S.ledger
+    ledger: S.ledger,
+    savings: { baseline: S.savings.baseline, netUsd: netOf(S.savings), share: shareOf(S.savings), phase: phaseOf(S.savings), baselineUsd: S.savings.baselineUsd, actualUsd: S.savings.actualUsd, overheadUsd: S.savings.overheadUsd, rewriteUsd: S.savings.rewriteUsd, requests: S.savings.requests, rerouted: S.savings.rerouted }
   };
 }
 async function setSessionMode($, m) {
@@ -5369,6 +5391,7 @@ function freshSession() {
     toldUserTier: false,
     sessionMode: null,
     ledger: emptyLedger(),
+    savings: NO_SAVINGS,
     judgeBreaker: {},
     lastAuto: null,
     verdictCache: {},
@@ -5560,6 +5583,7 @@ function detailsText(v, now3) {
     r.learned?.tasks ? `Learned: ${r.learned.tasks} tasks in this project${r.learned.opusFirst.length ? ` · starts on Opus: ${r.learned.opusFirst.join(", ")}` : ""}` : null,
     v.workflow.length ? `Workflow: ${v.workflow.map((s) => `${STAGE_GLYPH[s.state]} ${s.name}`).join(" ─ ")}` : null,
     `Guardian: ${g.enabled ? `${v.guardian.glyph} ${v.guardian.state} (mode ${g.mode})` : "off"}${g.checkpoint ? ` · checkpoint ${g.checkpoint.sum}` : ""}`,
+    savingsLine(r.savings),
     `Usage: ${usdText(v.cost.session)} this session${r.ledger.requests ? ` · judges ${usdText(r.ledger.judgeUsd)} · subagents ${usdText(r.ledger.subagentUsd)} (measured)` : ""}`
   ];
   return lines.filter(Boolean).join("\n");
