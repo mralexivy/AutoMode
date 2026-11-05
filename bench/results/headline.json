@@ -3,12 +3,35 @@
   "report": "bench/experiments/V6.md",
   "why": "The one source of the public benchmark numbers. tests/claims.test.mts recomputes them from the rows and fails CI when a surface drifts. Follow .claude/skills/publish-results to change them.",
   "mixed": {
-    "automode": { "rows": "bench/results/v6-w2-release.jsonl", "arm": "v6c-opus", "shown": "$2.01" },
-    "sonnet-high": { "rows": "bench/results/v6-w1-mixed.jsonl", "arm": "sonnet-high", "shown": "$2.14" },
-    "effortless": { "rows": "bench/results/v6-w3-effortless.jsonl", "arm": "opus-effortless", "shown": "$3.87" },
-    "opus": { "rows": "bench/results/v6-w1-mixed.jsonl", "arm": "opus", "shown": "$4.14" }
+    "automode": {
+      "rows": "bench/results/v6-w2-release.jsonl",
+      "arm": "v6c-opus",
+      "shown": "$2.01"
+    },
+    "sonnet-high": {
+      "rows": "bench/results/v6-w1-mixed.jsonl",
+      "arm": "sonnet-high",
+      "shown": "$2.14"
+    },
+    "effortless": {
+      "rows": "bench/results/v6-w3-effortless.jsonl",
+      "arm": "opus-effortless",
+      "shown": "$3.87"
+    },
+    "opus": {
+      "rows": "bench/results/v6-w1-mixed.jsonl",
+      "arm": "opus",
+      "shown": "$4.14"
+    }
   },
-  "surfaces": ["README.md", "docs/compare.md", "site/index.html", "site/compare/index.html"],
+  "surfaces": [
+    "README.md",
+    "docs/compare.md",
+    "site/index.html",
+    "site/compare/index.html",
+    "site/benchmark/index.html",
+    "site/reduce-claude-code-costs/index.html"
+  ],
   "banned": [
     "no published cost result",
     "quote no saving",
