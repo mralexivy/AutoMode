@@ -1,6 +1,6 @@
 # How AutoMode compares
 
-Four routers for Claude Code, as each project describes itself. Read from each project's README on 2026-10-30. These projects change quickly, so check their pages too. If a cell is wrong, [open an issue](https://github.com/mralexivy/AutoMode/issues).
+Four routers for Claude Code. Feature rows come from each project's README, read on 2026-10-30. The cost rows come from our own benchmark run on 2026-11-04. These projects change quickly, so check their pages too. If a cell is wrong, [open an issue](https://github.com/mralexivy/AutoMode/issues).
 
 AutoMode is not independent of these projects. Its effort rules and bar techniques are ported from effortless, and its classifier contract and switch payback are adapted from claude-router and jev-router. See [Credits](../README.md#credits).
 
@@ -12,11 +12,24 @@ AutoMode is not independent of these projects. Its effort rules and bar techniqu
 | **How it runs** | Claude Code mod | Claude Code mod | Local proxy around the CLI | Claude Code mod |
 | **CLIs** | Claude Code | Claude Code | Claude Code and Codex | Claude Code |
 | **Multi-stage workflow** | Plan, build, verify, review | Not described | Not described | Not described |
-| **Mandatory review for risky work** | Yes, Opus | Not described | Not described | Not described |
+| **Mandatory review for risky work** | Yes. Opus when the diff shows critical risk | Not described | Not described | Not described |
 | **Prompt cache** | Countdown on the bar, cost check before a switch | Countdown on the bar, compact and handoff offers | Refuses a downgrade that wastes more cache than it saves | Cache-cost rules in its policy |
-| **Published cost result** | **No** | **Yes.** 21% less than Opus medium, on mostly easy tasks. Its README gives the limits. | None found | "Savings are not measured" |
+| **Cost result** | **Measured: 51% less than Opus** in mixed sessions, 45% less on 30 coding tasks, same pass rate | Measured by us: 7% less than Opus in the same sessions. Its own: 21% less than Opus medium, on mostly easy tasks | None found | "Savings are not measured" |
 
 "Not described" means the README does not mention it. It does not prove the feature is absent.
+
+## Measured on the same sessions
+
+Five mixed sessions on real repositories, 20 steps per arm: questions and coding tasks in one continuing conversation, graded by hidden tests. Sessions were launched on Opus, as most people run Claude Code. effortless ran at its pinned commit, as its author ships it. Costs are list-price equivalents of every paid request.
+
+| Arm | Passed | Questions | Coding tasks | Total | vs Opus |
+|---|---|---|---|---|---|
+| **AutoMode** | **20/20** | **$0.08** | $1.93 | **$2.01** | **−51%** |
+| Plain Sonnet high | 20/20 | $0.24 | $1.90 | $2.14 | −48% |
+| effortless, on Opus | 20/20 | $0.43 | $3.44 | $3.87 | −7% |
+| Plain Opus | 20/20 | $0.50 | $3.64 | $4.14 | — |
+
+effortless sets the effort and keeps the model. AutoMode also routes the model: questions go to Haiku and coding to Sonnet. jev-router and claude-router were audited from source, not run ([method](../bench/external/METHODOLOGY.md)). The full report, with the 30-task run and the limits, is [`bench/experiments/V6.md`](../bench/experiments/V6.md).
 
 ## Other tools with similar names
 
@@ -28,7 +41,6 @@ Read on 2026-10-31.
 
 ## Where the others are ahead
 
-- **effortless has a cost result.** AutoMode does not. We will not quote a saving until a public run produces one. See [Benchmarks](../README.md#benchmarks).
 - **effortless is simpler.** It does one job.
 - **jev-router also runs on Codex.** AutoMode runs only in Claude Code.
 - **claude-router lets you choose the classifier,** including a local Ollama model. AutoMode's judge always runs on Haiku, through your Claude login.
@@ -49,6 +61,8 @@ AutoMode switches models by default, so it checks each switch first. The check i
 | Moving down in a chat of 20k tokens or more | The cautious estimate of the saving must exceed 1.5 times the cache rewrite. |
 | Too many switches | After 3 discretionary switches in one task, the route holds. |
 
-**What this does not show.** These gates limit the cost of a switch. They do not prove that AutoMode saves money. The thresholds are defaults, not calibrated values, and the saving is an estimate. Only a public benchmark can settle it, and we do not have one yet.
+**When a task fails mid-way.** Under the default strategy, `v6c`, AutoMode no longer moves a large failed conversation to a pricier model. A fresh builder takes over instead, with a brief of the task, the corrections and what already failed. In an earlier version, six such switches cost $8.18 more than Sonnet high on the same tasks.
+
+**What the benchmark shows.** These gates and the fresh builder are why AutoMode costs 51% less than Opus in mixed sessions. They do not make it cheaper than Sonnet high on long single coding tasks, where it costs about 15% more. See [Benchmarks](../README.md#benchmarks).
 
 To route effort only and keep the model you picked, run `/plugin configure automode@automode` and set **Route models** to `off`.

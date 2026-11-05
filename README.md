@@ -170,7 +170,7 @@ Each prompt takes one of four paths:
 
 - **Chat and non-code requests:** answered directly.
 - **Code changes with a clear goal:** Sonnet does them itself and must show a passing test or build before it says done.
-- **High-risk changes:** after the checks pass, one Opus reviewer checks the diff.
+- **High-risk changes:** after the checks pass, one independent reviewer checks the diff. It runs on Opus when the diff shows critical risk, and on Sonnet otherwise.
 - **Open-ended work:** run `am:run <request>` for the `automode:run` workflow. Automatic entry is off by default (`autoWorkflow`).
 
 <p align="center">
@@ -186,7 +186,7 @@ Each prompt takes one of four paths:
 | **Verify** | Sonnet runs the commands. Code decides pass or fail from the exit codes. At most 2 rounds. |
 | **Review** | Opus reads the diff. It is mandatory for S2 and S3, failed checks, unfinished work and incomplete evidence. If the router leaves review out, size alone does not force it. Sonnet fixes blockers and major correctness or security defects. The verifier checks evidence gaps. |
 
-**The S3 rule.** If a prompt matches security or credentials, migrations or destructive operations, concurrency, external contracts, or payments and sensitive data, the Opus review is mandatory.
+**The S3 rule.** If a prompt matches security or credentials, migrations or destructive operations, concurrency, external contracts, or payments and sensitive data, the review is mandatory. It runs on Opus when the diff shows critical risk.
 
 **One-prompt overrides:** `am:direct <request>` skips the workflow. `am:run <request>` forces it. `am:opus`, `am:high` and `am:reset` set or clear the route.
 
@@ -224,7 +224,7 @@ Defaults live in [`config.json`](config.json). To override them, put a `config.j
 | `autoWorkflow` | `false` | `true` lets the router enter the workflow by itself. `am:run` works either way. Decision records show what entry would have done |
 | `reachHaiku` | `true` | T0 to T2 work without critical risk can run on Haiku. `false`: Haiku needs T0 and a Haiku verdict |
 | `learning` | `true` | A kind of task that needed rescue in this project starts on Opus next time. It only raises a route |
-| `reviewPolicy` | `risk` | `always` adds an Opus review to every change |
+| `reviewPolicy` | `risk` | `always` adds a review to every change |
 | `maxConcurrency` | `1` | Workstreams built at once (maximum 2) |
 | `blockGitWritesWhenActive` | `true` | Deny git writes from subagents |
 | `delegation` | `off` | `on`: a full read of a large file stops once, with an outline and a cheap `extract` tool. `shadow`: records what the gate would do |
