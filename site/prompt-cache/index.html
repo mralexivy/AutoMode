@@ -40,7 +40,7 @@
     <p>A switch is cheap when there is little cache to lose. That means at session start, after <code>/clear</code>, or after the cache has gone cold. A short chat is also cheap to rewrite. The risk grows with the size of the chat.</p>
 
     <h2>Does changing effort waste the cache?</h2>
-    <p>It depends on the provider. Where the provider shares the cache across effort levels, effort can change on each prompt and the cache stays. Where the provider splits the cache by effort, an effort change has the same problem as a model switch. AutoMode checks this rule for each provider. Where the cache splits by effort, it keeps the warm effort until a low-penalty point.</p>
+    <p><a href="../effort-levels/">What each effort level does</a>. It depends on the provider. Where the provider shares the cache across effort levels, effort can change on each prompt and the cache stays. Where the provider splits the cache by effort, an effort change has the same problem as a model switch. AutoMode checks this rule for each provider. Where the cache splits by effort, it keeps the warm effort until a low-penalty point.</p>
 
     <h2>How AutoMode checks each switch</h2>
     <p>AutoMode switches models by default, so it checks each switch first. The route holds unless the switch passes.</p>
@@ -73,7 +73,7 @@
     <p>It is free. It needs no key and no server, and it starts on its own.</p>
 </article></main>
 <footer><div class="wrap">
-  <p><a href="../">Home</a> · <a href="../benchmark/">Benchmark</a> · <a href="../reduce-claude-code-costs/">Reduce Claude Code costs</a> · <a href="../install/">Install</a> · <a href="../how-it-works/">How it works</a> · <a href="../compare/">Compare routers</a> · <a href="../automode-vs-effortless/">AutoMode vs effortless</a> · <a href="../automode-vs-claude-code-router/">AutoMode vs Claude Code Router</a> · <a href="../prompt-cache/">Prompt cache</a> · <a href="../auto-mode-vs-automode/">AutoMode vs auto mode</a> · <a href="https://github.com/mralexivy/AutoMode">GitHub</a></p>
+  <p><a href="../">Home</a> · <a href="../benchmark/">Benchmark</a> · <a href="../calculator/">Cost calculator</a> · <a href="../reduce-claude-code-costs/">Reduce Claude Code costs</a> · <a href="../effort-levels/">Effort levels</a> · <a href="../haiku-vs-sonnet-vs-opus/">Haiku vs Sonnet vs Opus</a> · <a href="../install/">Install</a> · <a href="../how-it-works/">How it works</a> · <a href="../compare/">Compare routers</a> · <a href="../automode-vs-effortless/">AutoMode vs effortless</a> · <a href="../automode-vs-claude-code-router/">AutoMode vs Claude Code Router</a> · <a href="../prompt-cache/">Prompt cache</a> · <a href="../auto-mode-vs-automode/">AutoMode vs auto mode</a> · <a href="https://github.com/mralexivy/AutoMode">GitHub</a></p>
   <p>AutoMode is a community project, MIT licensed, and not made by Anthropic. Claude and Claude Code are trademarks of Anthropic.</p>
 </div></footer>
 </body>

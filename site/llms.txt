@@ -10,6 +10,9 @@ Install in Claude Code: `/plugin marketplace add mralexivy/AutoMode`, then `/plu
 
 - [Home](https://mralexivy.github.io/AutoMode/): what AutoMode does, the benchmark summary and FAQ
 - [Benchmark](https://mralexivy.github.io/AutoMode/benchmark/): costs and pass rates against Opus, Sonnet high and effortless, with method and limits
+- [Cost calculator](https://mralexivy.github.io/AutoMode/calculator/): estimate monthly spend on Opus, Sonnet high, effortless and AutoMode from measured per-step costs
+- [Claude Code effort levels explained](https://mralexivy.github.io/AutoMode/effort-levels/): what low to max do, defaults, and how to set them
+- [Haiku vs Sonnet vs Opus in Claude Code](https://mralexivy.github.io/AutoMode/haiku-vs-sonnet-vs-opus/): which model fits which task, with measured costs
 - [How to reduce Claude Code costs](https://mralexivy.github.io/AutoMode/reduce-claude-code-costs/): nine ways, with sources
 - [Install](https://mralexivy.github.io/AutoMode/install/): requirements, steps, troubleshooting and removal
 - [How it works](https://mralexivy.github.io/AutoMode/how-it-works/): how a route is decided, the ladder, the risk bands and the workflow

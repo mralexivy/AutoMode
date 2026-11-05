@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Code Cost Calculator: What Would AutoMode Save You?</title>
+<meta name="description" content="Estimate your monthly Claude Code spend on Opus, Sonnet high or effortless, and what AutoMode would cost, from per-step costs measured on real coding sessions.">
+<link rel="canonical" href="https://mralexivy.github.io/AutoMode/calculator/">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="AutoMode">
+<meta property="og:title" content="Claude Code Cost Calculator: What Would AutoMode Save You?">
+<meta property="og:description" content="Estimate your monthly Claude Code spend on Opus, Sonnet high or effortless, and what AutoMode would cost, from per-step costs measured on real coding sessions.">
+<meta property="og:image" content="https://mralexivy.github.io/AutoMode/social.png">
+<meta property="og:image:alt" content="AutoMode for Claude Code: the right model and the right effort for every prompt">
+<meta property="og:url" content="https://mralexivy.github.io/AutoMode/calculator/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../page.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Claude Code cost calculator","description":"Estimate your monthly Claude Code spend on Opus, Sonnet high or effortless, and what AutoMode would cost, from per-step costs measured on real coding sessions.","url":"https://mralexivy.github.io/AutoMode/calculator/","mainEntityOfPage":"https://mralexivy.github.io/AutoMode/calculator/","image":"https://mralexivy.github.io/AutoMode/social.png","datePublished":"2026-11-05","dateModified":"2026-11-05","author":{"@type":"Person","name":"Alex Ivy","url":"https://github.com/mralexivy"},"about":{"@type":"SoftwareApplication","name":"AutoMode","url":"https://mralexivy.github.io/AutoMode/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"AutoMode","item":"https://mralexivy.github.io/AutoMode/"},{"@type":"ListItem","position":2,"name":"Cost calculator","item":"https://mralexivy.github.io/AutoMode/calculator/"}],"name":"Cost calculator breadcrumbs"},{"@type":"WebApplication","name":"Claude Code cost calculator","url":"https://mralexivy.github.io/AutoMode/calculator/","applicationCategory":"DeveloperApplication","operatingSystem":"Any","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}]}</script>
+</head>
+<body>
+<header><div class="wrap">
+    <nav>
+      <a class="brand" href="../"><img src="../mark.svg" alt="" width="28" height="28">AutoMode</a>
+      <div>
+        <a href="../benchmark/">Benchmark</a>
+        <a href="../how-it-works/">How it works</a>
+        <a href="../compare/">Compare</a>
+        <a href="https://github.com/mralexivy/AutoMode">GitHub</a>
+      </div>
+    </nav>
+</div></header>
+<main><article class="wrap">
+    <p class="crumb"><a href="../">AutoMode</a> / Cost calculator</p>
+    <h1>Claude Code cost calculator</h1>
+    <p class="byline">By <a href="https://github.com/mralexivy">Alex Ivy</a>, who makes AutoMode. Updated <time datetime="2026-11-05">November 5, 2026</time>.</p>
+    <p class="answer"><strong>At 50 questions and 20 coding tasks a week, Claude Code on Opus costs about $42.35 a month at list price, and AutoMode about $18.45, 56% less.</strong> The estimate multiplies your weekly mix by the cost of each step in our benchmark: a question cost $0.050 on Opus and $0.008 on AutoMode, and a coding task $0.364 on Opus and $0.193 on AutoMode. Change the numbers below to match how you work.</p>
+
+    <form class="calc" id="calc" onsubmit="return false">
+      <label>Questions per week <input id="q" type="number" min="0" max="10000" value="50" inputmode="numeric"></label>
+      <label>Coding tasks per week <input id="t" type="number" min="0" max="10000" value="20" inputmode="numeric"></label>
+      <label>What you run today
+        <select id="arm">
+          <option value="opus">Claude Code on Opus (the default)</option>
+          <option value="sonnet">Sonnet high</option>
+          <option value="effortless">effortless, on Opus</option>
+        </select>
+      </label>
+    </form>
+    <div class="scroll"><table aria-live="polite">
+      <tr><th>Per month, list price</th><th>Cost</th></tr>
+      <tr><td id="nowLabel">Claude Code on Opus (the default)</td><td id="now">$42.35</td></tr>
+      <tr><td>AutoMode</td><td id="auto">$18.45</td></tr>
+      <tr><td>Difference</td><td id="diff"><b>56% less</b></td></tr>
+    </table></div>
+    <p class="note">A month here is 4.33 weeks. On a Pro or Max plan you pay a flat price, so read the difference as the share of your usage limits you would save.</p>
+
+    <h2>Where do the numbers come from?</h2>
+    <p>Each arm ran the same five mixed sessions on real repositories: a question, a task, another question, then a harder task, in one conversation. Hidden tests graded every task, and every arm passed all 20 steps. Costs are list-price equivalents of every paid request, judges and subagents included.</p>
+    <div class="scroll"><table>
+      <tr><th>Cost per step</th><th>Question</th><th>Coding task</th></tr>
+      <tr><td>Claude Code on Opus (the default)</td><td>$0.050</td><td>$0.364</td></tr>
+      <tr><td>Sonnet high</td><td>$0.024</td><td>$0.190</td></tr>
+      <tr><td>effortless, on Opus</td><td>$0.043</td><td>$0.344</td></tr>
+      <tr><td>AutoMode</td><td>$0.008</td><td>$0.193</td></tr>
+    </table></div>
+
+    <h2>When is the estimate wrong?</h2>
+    <ul>
+      <li><strong>Your tasks are longer or shorter</strong> than the benchmark's. Cost grows with context, so long sessions cost more on every arm.</li>
+      <li><strong>You only run coding tasks on Sonnet high.</strong> Then AutoMode costs about the same, a little more for its judges and checks.</li>
+      <li><strong>One repetition per arm.</strong> The benchmark is a release signal, not a law. <a href="../benchmark/">Read its method and limits</a>.</li>
+    </ul>
+
+    <h2>Install AutoMode</h2>
+    <p>Paste these into Claude Code, one at a time, then run <code>/reload-plugins</code>.</p>
+    <pre><code>/plugin marketplace add mralexivy/AutoMode
+/plugin install automode@automode</code></pre>
+    <p>It is free. It needs no key and no server, and it starts on its own. <a href="../install/">Read the install guide</a>.</p>
+<script>
+// Recomputes the table from the same per-step costs as the static page.
+const ARMS = {"opus":{"label":"Claude Code on Opus (the default)","q":0.05,"t":0.364},"sonnet":{"label":"Sonnet high","q":0.024,"t":0.19},"effortless":{"label":"effortless, on Opus","q":0.043,"t":0.344}}, AUTO = {"q":0.008,"t":0.193}, WEEKS = 4.33
+const $ = (id) => document.getElementById(id)
+function update() {
+  const q = Math.max(0, +$('q').value || 0), t = Math.max(0, +$('t').value || 0), arm = ARMS[$('arm').value]
+  const now = (arm.q * q + arm.t * t) * WEEKS, auto = (AUTO.q * q + AUTO.t * t) * WEEKS
+  $('nowLabel').textContent = arm.label
+  $('now').textContent = '$' + now.toFixed(2)
+  $('auto').textContent = '$' + auto.toFixed(2)
+  const pct = now > 0 ? Math.round((1 - auto / now) * 100) : 0
+  $('diff').innerHTML = '<b>' + (pct >= 0 ? pct + '% less' : -pct + '% more') + '</b>'
+}
+$('calc').addEventListener('input', update)
+</script>
+</article></main>
+<footer><div class="wrap">
+  <p><a href="../">Home</a> · <a href="../benchmark/">Benchmark</a> · <a href="../calculator/">Cost calculator</a> · <a href="../reduce-claude-code-costs/">Reduce Claude Code costs</a> · <a href="../effort-levels/">Effort levels</a> · <a href="../haiku-vs-sonnet-vs-opus/">Haiku vs Sonnet vs Opus</a> · <a href="../install/">Install</a> · <a href="../how-it-works/">How it works</a> · <a href="../compare/">Compare routers</a> · <a href="../automode-vs-effortless/">AutoMode vs effortless</a> · <a href="../automode-vs-claude-code-router/">AutoMode vs Claude Code Router</a> · <a href="../prompt-cache/">Prompt cache</a> · <a href="../auto-mode-vs-automode/">AutoMode vs auto mode</a> · <a href="https://github.com/mralexivy/AutoMode">GitHub</a></p>
+  <p>AutoMode is a community project, MIT licensed, and not made by Anthropic. Claude and Claude Code are trademarks of Anthropic.</p>
+</div></footer>
+</body>
+</html>
