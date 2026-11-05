@@ -1,0 +1,229 @@
+{
+  "date": "2026-11-05",
+  "repo": "mralexivy/AutoMode",
+  "stars": 8,
+  "forks": 0,
+  "watchers": 0,
+  "open_issues": 2,
+  "views": {
+    "count": 260,
+    "uniques": 25,
+    "days": [
+      {
+        "date": "2026-10-22",
+        "count": 0,
+        "uniques": 0
+      },
+      {
+        "date": "2026-10-23",
+        "count": 0,
+        "uniques": 0
+      },
+      {
+        "date": "2026-10-24",
+        "count": 0,
+        "uniques": 0
+      },
+      {
+        "date": "2026-10-25",
+        "count": 0,
+        "uniques": 0
+      },
+      {
+        "date": "2026-10-26",
+        "count": 0,
+        "uniques": 0
+      },
+      {
+        "date": "2026-10-27",
+        "count": 15,
+        "uniques": 2
+      },
+      {
+        "date": "2026-10-28",
+        "count": 6,
+        "uniques": 1
+      },
+      {
+        "date": "2026-10-29",
+        "count": 0,
+        "uniques": 0
+      },
+      {
+        "date": "2026-10-30",
+        "count": 61,
+        "uniques": 3
+      },
+      {
+        "date": "2026-10-31",
+        "count": 39,
+        "uniques": 3
+      },
+      {
+        "date": "2026-11-01",
+        "count": 19,
+        "uniques": 2
+      },
+      {
+        "date": "2026-11-02",
+        "count": 56,
+        "uniques": 7
+      },
+      {
+        "date": "2026-11-03",
+        "count": 43,
+        "uniques": 10
+      },
+      {
+        "date": "2026-11-04",
+        "count": 21,
+        "uniques": 8
+      }
+    ]
+  },
+  "clones": {
+    "count": 2344,
+    "uniques": 584
+  },
+  "referrers": [
+    {
+      "referrer": "mralexivy.github.io",
+      "count": 22,
+      "uniques": 5
+    },
+    {
+      "referrer": "github.com",
+      "count": 13,
+      "uniques": 5
+    },
+    {
+      "referrer": "Google",
+      "count": 1,
+      "uniques": 1
+    },
+    {
+      "referrer": "claude.ai",
+      "count": 1,
+      "uniques": 1
+    },
+    {
+      "referrer": "search.brave.com",
+      "count": 1,
+      "uniques": 1
+    }
+  ],
+  "paths": [
+    {
+      "path": "/mralexivy/AutoMode",
+      "count": 124,
+      "uniques": 23
+    },
+    {
+      "path": "/mralexivy/AutoMode/pulls",
+      "count": 20,
+      "uniques": 3
+    },
+    {
+      "path": "/mralexivy/AutoMode/issues",
+      "count": 17,
+      "uniques": 4
+    },
+    {
+      "path": "/mralexivy/AutoMode/commits/main",
+      "count": 7,
+      "uniques": 3
+    },
+    {
+      "path": "/mralexivy/AutoMode/releases",
+      "count": 4,
+      "uniques": 2
+    },
+    {
+      "path": "/mralexivy/AutoMode/issues/95",
+      "count": 3,
+      "uniques": 2
+    },
+    {
+      "path": "/mralexivy/AutoMode/pull/50",
+      "count": 3,
+      "uniques": 2
+    },
+    {
+      "path": "/mralexivy/AutoMode/pull/93",
+      "count": 3,
+      "uniques": 2
+    },
+    {
+      "path": "/mralexivy/AutoMode/branches",
+      "count": 3,
+      "uniques": 1
+    },
+    {
+      "path": "/mralexivy/AutoMode/pull/98",
+      "count": 3,
+      "uniques": 1
+    }
+  ],
+  "release_downloads": [
+    {
+      "tag": "v0.10.0",
+      "downloads": 2
+    },
+    {
+      "tag": "v0.9.1",
+      "downloads": 2
+    },
+    {
+      "tag": "v0.9.0",
+      "downloads": 2
+    },
+    {
+      "tag": "v0.8.0",
+      "downloads": 4
+    },
+    {
+      "tag": "v0.7.0",
+      "downloads": 2
+    },
+    {
+      "tag": "v0.6.1",
+      "downloads": 2
+    },
+    {
+      "tag": "v0.6.0",
+      "downloads": 2
+    },
+    {
+      "tag": "v0.5.0",
+      "downloads": 2
+    },
+    {
+      "tag": "v0.4.0",
+      "downloads": 2
+    },
+    {
+      "tag": "v0.3.0",
+      "downloads": 3
+    },
+    {
+      "tag": "v0.2.1",
+      "downloads": 2
+    },
+    {
+      "tag": "v0.2.0",
+      "downloads": 2
+    },
+    {
+      "tag": "v0.1.2",
+      "downloads": 2
+    },
+    {
+      "tag": "v0.1.1",
+      "downloads": 0
+    },
+    {
+      "tag": "v0.1.0",
+      "downloads": 0
+    }
+  ]
+}

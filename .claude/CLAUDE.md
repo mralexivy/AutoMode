@@ -43,6 +43,7 @@ Run all four checks before you call a change to `hooks/` done: `npm run typechec
 | Workflow | `workflows/run.js`, `agents/*.md` | The `automode:run` workflow and its six agents. It runs in a different runtime from the hooks and shares no imports with them. |
 | User scripts | `scripts/*.mjs` | Run through a user's `node`, which may be older than 23.6. |
 | Evidence | `bench/` | Benchmarks and offline transcript tools. Most of `bench/external/` is vendored upstream code with checksums. Do not edit it. |
+| Marketing | `marketing/` | Listings registry, post drafts, GitHub metrics snapshots and the Buffer client. Not shipped. The `growth` skill runs it. `tests/marketing.test.mts` checks every post's numbers against the benchmark. |
 
 **How a route is decided.** `v4PromptSubmit` runs `decideAuto` under policy `auto`, the shipped policy. Policy `legacy` is the interval optimizer in `lib/optimizer.ts`.
 
