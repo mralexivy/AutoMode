@@ -61,7 +61,7 @@
     <ul>
       <li><strong>Chat and non-code requests</strong> get a direct answer.</li>
       <li><strong>Code changes with a clear goal:</strong> Sonnet does them, and must show a passing test or build before it says done.</li>
-      <li><strong>High-risk changes:</strong> after the checks pass, one Opus reviewer checks the diff.</li>
+      <li><strong>High-risk changes:</strong> after the checks pass, one independent reviewer checks the diff. It runs on Opus when the diff shows critical risk, and on Sonnet otherwise.</li>
       <li><strong>Open-ended work</strong> runs through the workflow below.</li>
     </ul>
 
@@ -83,7 +83,7 @@
     <p>Routing runs in the terminal, the Code tab of the Desktop app, the VS Code extension, <code>claude -p</code> and the Agent SDK. The bar above the prompt appears in the terminal and the Desktop app. In VS Code, use <code>/automode</code> for the same facts. AutoMode does not run in a WSL session of the Desktop app.</p>
 
     <h2>How well does it work?</h2>
-    <p>The judge picked an accepted effort on 74 of 75 labeled cases. This measures the label, not cost. AutoMode has no published cost result yet, so we quote no saving. <a href="../compare/">See how other routers compare</a>.</p>
+    <p>Measured on real work: in five mixed sessions AutoMode passed 20 of 20 for $2.01, against $4.14 for plain Claude Code on Opus. On 30 coding tasks it passed 29 at $0.275 per pass, against 28 at $0.499 for Opus. The judge also picked an accepted effort on 74 of 75 labeled cases. <a href="https://github.com/mralexivy/AutoMode/blob/main/bench/experiments/V6.md">Read the benchmark report</a>.</p>
 
     <h2>Install AutoMode</h2>
     <p>Paste these into Claude Code, one at a time, then run <code>/reload-plugins</code>.</p>

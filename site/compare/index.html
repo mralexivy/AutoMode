@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Claude Code Model Routers Compared (October 2026)</title>
-<meta name="description" content="AutoMode, effortless, jev-router, claude-router and more compared on model routing, effort, workflows, credentials and published cost results.">
+<meta name="description" content="AutoMode, effortless, jev-router, claude-router and more compared on routing, workflows and measured cost.">
 <link rel="canonical" href="https://mralexivy.github.io/AutoMode/compare/">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="AutoMode">
@@ -32,9 +32,20 @@
 <main><article class="wrap">
     <p class="crumb"><a href="../">AutoMode</a> / Compare routers</p>
     <h1>Claude Code model routers compared</h1>
-    <p class="byline">By <a href="https://github.com/mralexivy">Alex Ivy</a>, who makes AutoMode. Updated <time datetime="2026-10-31">October 31, 2026</time>.</p>
+    <p class="byline">By <a href="https://github.com/mralexivy">Alex Ivy</a>, who makes AutoMode. Updated <time datetime="2026-11-05">November 5, 2026</time>.</p>
     <p class="answer"><strong>A Claude Code model router picks a model for each prompt, so you stop switching by hand.</strong> The main options differ in how they run, what they route and what they can prove. We make AutoMode, so read this as a maker's view. Each row comes from the project's own README.</p>
-    <p>These projects change quickly. We read the four main READMEs on 2026-10-30 and the others on 2026-10-31. If a cell is wrong, <a href="https://github.com/mralexivy/AutoMode/issues">open an issue</a>.</p>
+    <p>These projects change quickly. Feature rows come from the READMEs, read on 2026-10-30 and 2026-10-31. The cost row comes from our own benchmark run on 2026-11-04. If a cell is wrong, <a href="https://github.com/mralexivy/AutoMode/issues">open an issue</a>.</p>
+
+    <h2>Measured on the same sessions</h2>
+    <p>Five mixed sessions on real repositories, 20 steps each arm: questions and coding tasks in one continuing conversation, graded by hidden tests. effortless ran at its pinned commit, as its author ships it.</p>
+    <div class="scroll"><table>
+      <tr><th>Arm</th><th>Passed</th><th>Total cost</th><th>vs Opus</th></tr>
+      <tr><td><b>AutoMode</b></td><td><b>20/20</b></td><td><b>$2.01</b></td><td><b>&minus;51%</b></td></tr>
+      <tr><td>Plain Sonnet high</td><td>20/20</td><td>$2.14</td><td>&minus;48%</td></tr>
+      <tr><td>effortless, on Opus</td><td>20/20</td><td>$3.87</td><td>&minus;7%</td></tr>
+      <tr><td>Plain Opus</td><td>20/20</td><td>$4.14</td><td>&mdash;</td></tr>
+    </table></div>
+    <p class="note">AutoMode routes the model as well as the effort: questions go to Haiku and coding to Sonnet. effortless sets the effort and keeps the model. jev-router and claude-router were audited from source, not run. <a href="https://github.com/mralexivy/AutoMode/blob/main/bench/experiments/V6.md">Read the report</a>.</p>
 
     <h2>Four routers side by side</h2>
     <div class="scroll"><table>
@@ -45,16 +56,15 @@
       <tr><td>How it runs</td><td>Claude Code mod</td><td>Claude Code mod</td><td>Local proxy around the CLI</td><td>Claude Code mod</td></tr>
       <tr><td>CLIs</td><td>Claude Code</td><td>Claude Code</td><td>Claude Code and Codex</td><td>Claude Code</td></tr>
       <tr><td>Multi-stage workflow</td><td>Plan, build, verify, review</td><td>Not described</td><td>Not described</td><td>Not described</td></tr>
-      <tr><td>Mandatory review for risky work</td><td>Yes, Opus</td><td>Not described</td><td>Not described</td><td>Not described</td></tr>
+      <tr><td>Mandatory review for risky work</td><td>Yes. Opus when the diff shows critical risk</td><td>Not described</td><td>Not described</td><td>Not described</td></tr>
       <tr><td>Prompt cache</td><td>Countdown on the bar, cost check before a switch</td><td>Countdown on the bar, compact and handoff offers</td><td>Refuses a downgrade that wastes more cache than it saves</td><td>Cache-cost rules in its policy</td></tr>
-      <tr><td>Published cost result</td><td><b>No</b></td><td><b>Yes.</b> 21% less than Opus medium, on mostly easy tasks. Its README gives the limits</td><td>None found</td><td>"Savings are not measured"</td></tr>
+      <tr><td>Cost result</td><td><b>51% less than Opus</b> in mixed sessions, 45% on 30 coding tasks, same pass rate</td><td>7% less than Opus in our run. Its own: 21% less than Opus medium, on mostly easy tasks</td><td>None found</td><td>"Savings are not measured"</td></tr>
     </table></div>
     <p class="note">"Not described" means the README does not mention it. It does not prove the feature is absent.</p>
 
     <h2>Where the others are ahead</h2>
     <ul>
-      <li><strong>effortless has a cost result.</strong> AutoMode does not. We will not quote a saving until a public run produces one.</li>
-      <li><strong>effortless is simpler.</strong> It does one job.</li>
+            <li><strong>effortless is simpler.</strong> It does one job.</li>
       <li><strong>jev-router also runs on Codex.</strong> AutoMode runs only in Claude Code.</li>
       <li><strong>claude-router lets you choose the classifier,</strong> including a local Ollama model. AutoMode's judge always runs on Haiku, through your Claude login.</li>
     </ul>
@@ -77,7 +87,7 @@
     </ul>
 
     <h2>Does a router save money?</h2>
-    <p>It can, but a router can also cost more. <a href="../prompt-cache/">A model switch in a warm chat rewrites the prompt cache</a>. Treat any saving as a claim until you can repeat the benchmark.</p>
+    <p>It can, and it can also cost more. <a href="../prompt-cache/">A model switch in a warm chat rewrites the prompt cache</a>, and a moved conversation can cost more than it saves. AutoMode's measured result: 51% less than Opus in mixed sessions and 45% less on 30 coding tasks, at the same pass rate. On long single coding tasks it costs about what Sonnet high costs. The rows and the decision rules are public, so you can repeat the run.</p>
 
     <h2>Install AutoMode</h2>
     <p>Paste these into Claude Code, one at a time, then run <code>/reload-plugins</code>.</p>
