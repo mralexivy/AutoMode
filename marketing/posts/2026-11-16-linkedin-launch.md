@@ -1,7 +1,8 @@
 ---
+url: https://www.linkedin.com/feed/update/urn:li:activity:7427031833260994560/
 channel: linkedin
-status: draft
-date: 2026-11-16
+status: sent
+date: 2026-11-05
 assets: [site/public/video/benchmark-race.mp4]
 ---
 My first benchmark said my own tool made things worse.

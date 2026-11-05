@@ -1,7 +1,9 @@
 ---
+note: "Filtered by AutoModerator (new account, low karma). Modmail sent to r/ClaudeAI asking for review."
+url: https://www.reddit.com/r/ClaudeAI/comments/1xop5sd/i_measured_what_my_claude_code_sessions_cost_on/
 channel: reddit
-status: draft
-date: 2026-11-17
+status: sent
+date: 2026-11-05
 title: "I measured what my Claude Code sessions cost on Opus vs. letting a router pick the model per prompt"
 subreddit: r/ClaudeAI
 ---
@@ -23,6 +25,8 @@ Most of the gap is the questions. Haiku answered them for $0.08 in total, agains
 **Where it doesn't help:** on long coding tasks with no questions in between, AutoMode ends up on Sonnet and costs about 15% more than plain Sonnet high, because of its judge calls. If you already run Sonnet high and only do long tasks, skip it.
 
 Costs are list-price equivalents, not what a Pro or Max plan bills. Each setup ran once.
+
+**How Claude helped:** I built AutoMode with Claude Code itself. Claude wrote most of the routing code and the benchmark harness, and it ran the benchmark sessions as the agent under test. It also found the rule that made the first run lose to Opus while we were reading the rows together. I reviewed every change and set the pass rules before each run.
 
 I also put a calculator on the site where you enter your own weekly mix of questions and tasks: https://mralexivy.github.io/AutoMode/calculator/
 

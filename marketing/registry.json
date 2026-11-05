@@ -1,7 +1,14 @@
 {
   "why": "Every place AutoMode is listed or will be submitted, with its rules and what it did. Read it before any submission, so nothing is sent twice. The growth skill updates it.",
   "checked": "2026-11-05",
-  "statuses": ["planned", "open", "listed", "merged", "closed", "skipped"],
+  "statuses": [
+    "planned",
+    "open",
+    "listed",
+    "merged",
+    "closed",
+    "skipped"
+  ],
   "entries": [
     {
       "id": "anthropic-directory",
@@ -34,8 +41,17 @@
       "rules": "A scanner finds repos with the claude-code-mod topic. A seed PR is only for repos it misses.",
       "status": "open",
       "submissions": [
-        { "url": "https://github.com/karanb192/awesome-claude-code-mods/pull/444", "opened": "2026-10-30", "status": "closed", "closed": "2026-11-05" },
-        { "url": "https://github.com/karanb192/awesome-claude-code-mods/pull/446", "opened": "2026-10-30", "status": "open" }
+        {
+          "url": "https://github.com/karanb192/awesome-claude-code-mods/pull/444",
+          "opened": "2026-10-30",
+          "status": "closed",
+          "closed": "2026-11-05"
+        },
+        {
+          "url": "https://github.com/karanb192/awesome-claude-code-mods/pull/446",
+          "opened": "2026-10-30",
+          "status": "open"
+        }
       ],
       "notes": "Not in data/repos.txt or catalogue.md on 2026-11-05. A search for 'automode' matches the unrelated mod 'automodel', so search for 'mralexivy'. #446 is the one seed PR. #444 was closed as its duplicate."
     },
@@ -48,7 +64,13 @@
       "tier": "A",
       "rules": "Nomination issue: mod URL, the task it helps with, a real recording, install steps, access notes, Claude Code version and platform. Disclose authorship.",
       "status": "open",
-      "submissions": [{ "url": "https://github.com/karanb192/awesome-claude-code-mods/issues/467", "opened": "2026-11-05", "status": "open" }]
+      "submissions": [
+        {
+          "url": "https://github.com/karanb192/awesome-claude-code-mods/issues/467",
+          "opened": "2026-11-05",
+          "status": "open"
+        }
+      ]
     },
     {
       "id": "quemsah",
@@ -91,7 +113,14 @@
       "kind": "pr",
       "tier": "B",
       "status": "merged",
-      "submissions": [{ "url": "https://github.com/hamzafer/claude-code-mods/pull/164", "opened": "2026-10-30", "status": "merged", "closed": "2026-11-01" }],
+      "submissions": [
+        {
+          "url": "https://github.com/hamzafer/claude-code-mods/pull/164",
+          "opened": "2026-10-30",
+          "status": "merged",
+          "closed": "2026-11-01"
+        }
+      ],
       "result": "No referral visits by 2026-11-05."
     },
     {
@@ -103,7 +132,13 @@
       "tier": "B",
       "rules": "The maintainer adds resources in batch commits and merged none of the last 30 closed PRs.",
       "status": "open",
-      "submissions": [{ "url": "https://github.com/jqueryscript/awesome-claude-code/pull/889", "opened": "2026-10-30", "status": "open" }],
+      "submissions": [
+        {
+          "url": "https://github.com/jqueryscript/awesome-claude-code/pull/889",
+          "opened": "2026-10-30",
+          "status": "open"
+        }
+      ],
       "notes": "Leave it alone. Do not ping."
     },
     {
@@ -114,7 +149,13 @@
       "kind": "issue",
       "tier": "C",
       "status": "open",
-      "submissions": [{ "url": "https://github.com/wh000wh000/awesome-claude-mods/issues/25", "opened": "2026-10-30", "status": "open" }]
+      "submissions": [
+        {
+          "url": "https://github.com/wh000wh000/awesome-claude-mods/issues/25",
+          "opened": "2026-10-30",
+          "status": "open"
+        }
+      ]
     },
     {
       "id": "whyashthakker",
@@ -124,7 +165,13 @@
       "kind": "pr",
       "tier": "C",
       "status": "open",
-      "submissions": [{ "url": "https://github.com/whyashthakker/awesome-claude-code-mods/pull/27", "opened": "2026-10-30", "status": "open" }],
+      "submissions": [
+        {
+          "url": "https://github.com/whyashthakker/awesome-claude-code-mods/pull/27",
+          "opened": "2026-10-30",
+          "status": "open"
+        }
+      ],
       "notes": "Last push 2026-10-03. No merges in its last 30 closed PRs."
     },
     {
@@ -135,7 +182,13 @@
       "kind": "pr",
       "tier": "C",
       "status": "open",
-      "submissions": [{ "url": "https://github.com/lycfyi/awesome-claude-code-mods/pull/10", "opened": "2026-10-30", "status": "open" }]
+      "submissions": [
+        {
+          "url": "https://github.com/lycfyi/awesome-claude-code-mods/pull/10",
+          "opened": "2026-10-30",
+          "status": "open"
+        }
+      ]
     },
     {
       "id": "saksham10arora",
@@ -145,7 +198,13 @@
       "kind": "pr",
       "tier": "C",
       "status": "open",
-      "submissions": [{ "url": "https://github.com/saksham10arora-dotcom/awesome-claude-mods/pull/1", "opened": "2026-10-30", "status": "open" }]
+      "submissions": [
+        {
+          "url": "https://github.com/saksham10arora-dotcom/awesome-claude-mods/pull/1",
+          "opened": "2026-10-30",
+          "status": "open"
+        }
+      ]
     },
     {
       "id": "sahiti",
@@ -155,7 +214,13 @@
       "kind": "pr",
       "tier": "C",
       "status": "open",
-      "submissions": [{ "url": "https://github.com/SahitiMulagada/awesome-ai-coding-agents/pull/10", "opened": "2026-10-30", "status": "open" }],
+      "submissions": [
+        {
+          "url": "https://github.com/SahitiMulagada/awesome-ai-coding-agents/pull/10",
+          "opened": "2026-10-30",
+          "status": "open"
+        }
+      ],
       "notes": "Last push 2026-05-28."
     },
     {
@@ -166,7 +231,13 @@
       "kind": "issue",
       "tier": "C",
       "status": "open",
-      "submissions": [{ "url": "https://github.com/Singh-AP/awesome-claude-mods/issues/6", "opened": "2026-10-30", "status": "open" }]
+      "submissions": [
+        {
+          "url": "https://github.com/Singh-AP/awesome-claude-mods/issues/6",
+          "opened": "2026-10-30",
+          "status": "open"
+        }
+      ]
     },
     {
       "id": "krou4",
@@ -176,7 +247,12 @@
       "kind": "issue",
       "tier": "C",
       "status": "listed",
-      "submissions": [{ "url": "https://github.com/KROU4/claude-code-mod-showroom/issues/25", "status": "open" }],
+      "submissions": [
+        {
+          "url": "https://github.com/KROU4/claude-code-mod-showroom/issues/25",
+          "status": "open"
+        }
+      ],
       "notes": "Its weekly discovery issue mentions AutoMode. We did not submit it."
     },
     {
@@ -187,7 +263,8 @@
       "tier": "A",
       "rules": "The maintainer posts by hand and stays for the comments. Never coordinate votes.",
       "status": "planned",
-      "planned": "2026-11-17"
+      "planned": "2026-11-10",
+      "notes": "Account mralexivy has 1 karma. Planned for Tuesday 8:37am ET so a weekday morning gives it a fair start."
     },
     {
       "id": "r-claudeai",
@@ -196,8 +273,15 @@
       "kind": "community",
       "tier": "A",
       "rules": "Read the subreddit rules on self-promotion before posting. State authorship.",
-      "status": "planned",
-      "planned": "2026-11-17"
+      "status": "open",
+      "submissions": [
+        {
+          "url": "https://www.reddit.com/r/ClaudeAI/comments/1xop5sd/i_measured_what_my_claude_code_sessions_cost_on/",
+          "opened": "2026-11-05",
+          "status": "open"
+        }
+      ],
+      "notes": "AutoModerator filtered the post: the account is new and has 1 karma. A modmail asking for review was sent 2026-11-05. Rules allow Built with Claude posts that say how Claude helped and that the project is free. Use the Built with Claude flair."
     },
     {
       "id": "r-claudecode",
@@ -208,6 +292,64 @@
       "rules": "Read the subreddit rules first. State authorship.",
       "status": "planned",
       "planned": "2026-11-20"
+    },
+    {
+      "id": "devto",
+      "name": "Dev.to",
+      "url": "https://dev.to/alexivy",
+      "kind": "community",
+      "tier": "A",
+      "rules": "Disclose AI tooling in the editor. Up to 4 tags.",
+      "status": "listed",
+      "submissions": [
+        {
+          "url": "https://dev.to/alexivy/my-claude-code-router-cost-more-than-opus-heres-what-the-benchmark-taught-me-2am2",
+          "opened": "2026-11-05",
+          "status": "listed"
+        }
+      ],
+      "notes": "AI disclosure set to Fully Autonomous, because an agent wrote the article."
+    },
+    {
+      "id": "x",
+      "name": "X (@mr_alexivy)",
+      "url": "https://x.com/mr_alexivy",
+      "kind": "community",
+      "tier": "A",
+      "status": "listed",
+      "submissions": [
+        {
+          "url": "https://x.com/mr_alexivy/status/2118400494385107363",
+          "opened": "2026-11-05",
+          "status": "listed"
+        }
+      ],
+      "notes": "6-post thread with the benchmark-race video."
+    },
+    {
+      "id": "linkedin",
+      "name": "LinkedIn (Alex Ivy)",
+      "url": "https://www.linkedin.com/in/alex-ivy/",
+      "kind": "community",
+      "tier": "B",
+      "status": "listed",
+      "submissions": [
+        {
+          "url": "https://www.linkedin.com/feed/update/urn:li:activity:7427031833260994560/",
+          "opened": "2026-11-05",
+          "status": "listed"
+        }
+      ],
+      "notes": "LinkedIn dropped the sign-in twice while the composer was opened by script. Open the composer from the feed button, not by URL."
+    },
+    {
+      "id": "bluesky",
+      "name": "Bluesky",
+      "url": "https://bsky.app",
+      "kind": "community",
+      "tier": "B",
+      "status": "planned",
+      "notes": "No signed-in account on 2026-11-05."
     }
   ]
 }

@@ -1,7 +1,8 @@
 ---
+url: https://dev.to/alexivy/my-claude-code-router-cost-more-than-opus-heres-what-the-benchmark-taught-me-2am2
 channel: devto
-status: draft
-date: 2026-11-16
+status: sent
+date: 2026-11-05
 title: "My Claude Code router cost more than Opus. Here's what the benchmark taught me"
 tags: [claudecode, ai, opensource, benchmark]
 canonical: https://mralexivy.github.io/AutoMode/docs/benchmarks/results/
