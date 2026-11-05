@@ -71,6 +71,7 @@ A change to what a session does needs a benchmark on its branch. That covers rou
 2. State the expected spend. Ask the user before a run that spends usage or money. CI never runs a live benchmark, so this run happens here.
 3. Run it on the branch's final code. A run id hashes the plugin code, so a later code change starts new runs.
 4. Commit the rows and the report to the branch.
+5. If the run changes a number you publish, follow the `publish-results` skill on the same branch. It updates the README, the docs, the comparison and the website together, and `tests/claims.test.mts` blocks the merge until they agree.
 
 ```bash
 node bench/run.mts --experiment <id> --dry-run
@@ -109,6 +110,8 @@ gh pr merge <PR> --squash
 ```
 
 Then go back to step 1 for the next change.
+
+Before you merge a release PR, run the `publish-results` skill if any public number or promise changed since the last release.
 
 ## What happens next
 
