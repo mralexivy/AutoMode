@@ -10,6 +10,14 @@ seoTitle: "Claude Code Cost Calculator: What Would AutoMode Save You?"
 
 On a Pro or Max plan you pay a flat price, so read the difference as the share of your usage limits you would save.
 
+## What does a switch cost inside one session?
+
+A cheaper model does not save money from its first request. It has to write the whole chat into its own prompt cache, while the model you started on would only have read its warm cache. The saving dips first, and every cheaper request after it pays some back. AutoMode's bar shows the same thing live: `↺ $0.07 to pay back`, then `saved ~$0.38`.
+
+<Payback />
+
+The chart runs the same code as the bar, `hooks/lib/savings.ts`. We checked that code against the benchmark by replaying its five mixed sessions: it estimated a 56% saving against Opus, and the measured Opus runs showed 52%. [Read the calibration](https://github.com/mralexivy/AutoMode/blob/main/bench/results/savings-calibration-2026-11-05.md).
+
 ## Where do the numbers come from?
 
 <Motion id="benchmark-race" />

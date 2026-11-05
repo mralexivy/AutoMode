@@ -5,7 +5,7 @@ name: pages
 on:
   push:
     branches: [main]
-    paths: ['site/**', 'docs/readme/**', 'brand/**', '.github/workflows/pages.yml']
+    paths: ['site/**', 'docs/readme/**', 'brand/**', 'hooks/lib/savings.ts', 'hooks/lib/prices.ts', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:

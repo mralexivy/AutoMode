@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { Select } from './select';
 
 // Per-step list-price costs from the five mixed sessions in bench/results: 10 questions and 10 coding tasks per arm.
 const ARMS = {
@@ -22,7 +23,7 @@ export function Calculator() {
   const now = (a.q * count(q) + a.t * count(t)) * WEEKS;
   const auto = (AUTO.q * count(q) + AUTO.t * count(t)) * WEEKS;
   const pct = now > 0 ? Math.round((1 - auto / now) * 100) : 0;
-  const field = 'mt-1 w-full rounded-lg border bg-fd-background px-3 py-2 text-fd-foreground';
+  const field = 'mt-1 w-full rounded-lg border bg-fd-background px-3 py-2 text-fd-foreground transition-colors hover:border-fd-primary/50 focus:border-fd-primary focus:outline-none focus:ring-2 focus:ring-fd-primary/30';
 
   return (
     <div className="not-prose my-6 rounded-xl border bg-fd-card p-5">
@@ -37,13 +38,13 @@ export function Calculator() {
         </label>
         <label className="text-sm font-medium">
           What you run today
-          <select className={field} value={arm} onChange={(e) => setArm(e.target.value as Arm)}>
+          <Select value={arm} onChange={(e) => setArm(e.target.value as Arm)}>
             {Object.entries(ARMS).map(([k, v]) => (
               <option key={k} value={k}>
                 {v.label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       </div>
       <div className="mt-5 grid gap-3 sm:grid-cols-3" aria-live="polite">

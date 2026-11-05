@@ -8,6 +8,7 @@ import type { MDXComponents } from 'mdx/types';
 import { Calculator } from './calculator';
 import { InstallCard } from './install-card';
 import { Motion } from './motion';
+import { Payback } from './payback';
 
 export function getMDXComponents(components?: MDXComponents) {
   return {
@@ -25,6 +26,7 @@ export function getMDXComponents(components?: MDXComponents) {
     Calculator,
     InstallCard,
     Motion,
+    Payback,
     ...components,
   } satisfies MDXComponents;
 }

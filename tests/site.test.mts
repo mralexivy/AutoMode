@@ -128,6 +128,17 @@ test('every scene has a rendered video and poster, and every page plays a real s
   assert.match(read(new URL('app/docs/[[...slug]]/page.tsx', site)), /videoObject/)
 })
 
+test('the payback chart runs the mod's own savings code, and every dropdown uses the site style', () => {
+  assert.match(read(new URL('lib/mod.ts', site)), /from '\.\.\/\.\.\/hooks\/lib\/savings\.ts'/)
+  assert.match(read(new URL('components/payback.tsx', site)), /from '@\/lib\/mod'/)
+  assert.match(read(new URL('content/docs/guides/calculator.mdx', site)), /<Payback \/>/)
+  for (const f of readdirSync(new URL('components/', site))) {
+    if (f === 'select.tsx') continue
+    assert.ok(!/<select[\s>]/.test(read(new URL(`components/${f}`, site))), `components/${f} uses a raw <select>; use components/select.tsx`)
+  }
+  assert.match(read(new URL('.github/workflows/pages.yml', root)), /'hooks\/lib\/savings\.ts'/)
+})
+
 test('the site is dark only', () => {
   assert.match(read(new URL('components/provider.tsx', site)), /forcedTheme: 'dark'/)
   assert.match(read(new URL('lib/layout.shared.tsx', site)), /themeSwitch: \{ enabled: false \}/)
