@@ -29,7 +29,7 @@ test('every public surface shows every headline number', () => {
 })
 
 test('no tracked doc or page carries a stale claim', () => {
-  const files = execFileSync('git', ['ls-files', '*.md', '*.html'], { cwd: root, encoding: 'utf8' }).split('\n')
+  const files = execFileSync('git', ['ls-files', '*.md', '*.mdx', '*.html'], { cwd: root, encoding: 'utf8' }).split('\n')
     .filter((f) => f && !/^(CHANGELOG\.md|bench\/(external|results|experiments)\/|\.claude\/skills\/publish-results\/)/.test(f))
   for (const f of files) {
     const text = read(f)

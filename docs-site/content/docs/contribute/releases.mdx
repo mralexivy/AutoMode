@@ -1,0 +1,44 @@
+---
+title: "Pull requests and releases"
+description: "How a change reaches AutoMode users: issue, branch and pull request, the changelog headings that set the version, the release PR and the stable branch."
+---
+
+Nothing is pushed to `main` directly. Every change goes through this path, and the `guard` CI job enforces it.
+
+<Steps>
+  <Step>
+    ### Open an issue
+
+    Search for a duplicate first, so the work has one record.
+  </Step>
+  <Step>
+    ### Branch from main
+
+    Name it `<type>/<short-name>`, such as `fix/bar-width`. The types are `feature`, `fix`, `docs`, `chore`, `refactor`, `test` and `bench`. Forks may use any name.
+  </Step>
+  <Step>
+    ### Make the change
+
+    If it touches a shipped path, add a line under `[Unreleased]` in `CHANGELOG.md`. Shipped paths are `agents/`, `commands/`, `hooks/`, `output-styles/`, `scripts/`, `types/`, `workflows/`, `config.json` and `.claude-plugin/plugin.json`. Use the `no-changelog` label if no line is needed.
+  </Step>
+  <Step>
+    ### Run the checks
+
+    `npm run check`, `claude plugin validate . --strict` and `claude plugin test .`. If the change alters what a session does, run its benchmark on the branch and commit the results.
+  </Step>
+  <Step>
+    ### Open the pull request
+
+    Describe what changed and why. The body must contain `Closes #N`. We squash merge, so the title becomes the commit subject on `main`.
+  </Step>
+</Steps>
+
+## How a release ships
+
+1. A merge that changes a shipped path makes a bot open or update a `Release x.y.z` pull request.
+2. The headings in `[Unreleased]` set the version. `Fixed` and `Security` give a patch. `Added`, `Changed`, `Removed` and `Deprecated` give a minor. A major is a manual run.
+3. A maintainer merges that pull request. The release workflow tests on Linux and macOS, builds and attests the bundle, publishes the GitHub Release, and then moves `stable`.
+
+Users install from the `stable` branch, so `main` can hold unreleased work. Do not change `version` in `.claude-plugin/plugin.json`: the release flow does it. To undo a bad release, ship a new patch.
+
+See the [changelog](https://github.com/mralexivy/AutoMode/blob/main/CHANGELOG.md) and the [releases](https://github.com/mralexivy/AutoMode/releases).

@@ -34,6 +34,7 @@ Change all of them in the same PR. Never one now and the rest later.
 | `site/index.html` | The hero stat, `#results` (the chart widths are each arm's share of the largest total), `#wins`, `#fit`, `#method`, the comparison table, the FAQ cards, **and the JSON-LD FAQ in the `<head>`**, which search engines and AI assistants read |
 | `site/compare/index.html` | The table, "Measured on the same sessions", "Does a router save money?", the byline date and the meta description |
 | `site/how-it-works/index.html`, `site/auto-mode-vs-automode/index.html` | Any number, and any claim about reviews or models |
+| `docs-site/content/docs/benchmarks/results.mdx`, `docs-site/content/docs/compare.mdx` | The docs tables, "Where AutoMode does not win" and the FAQ answer in `faq.mdx` |
 | `site/sitemap.xml` | `lastmod` of every page you changed |
 | `bench/experiments/<report>.md` | The results section, the fixes and the limits |
 | `CHANGELOG.md` | A line under `[Unreleased]` when the shipped behavior changed |

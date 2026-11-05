@@ -1,0 +1,30 @@
+---
+title: "Where AutoMode runs"
+description: "Where AutoMode routing, the guardian and the bar run: the terminal, the Desktop app, VS Code, claude -p, the Agent SDK, and each API provider."
+---
+
+AutoMode's hooks run in every session that loads the plugin. What AutoMode draws depends on the app.
+
+| Where you run Claude Code | Routing and guardian | The bar above the prompt | `/automode` text |
+|---|---|---|---|
+| `claude` in a terminal, including an editor's terminal | Yes | Yes | Yes |
+| The Code tab of the Desktop app (not a WSL session) | Yes | Yes | Yes |
+| The VS Code extension chat panel (2.1.299 or later) | Yes | **No.** Claude Code does not draw the band above the prompt there. | Yes. Use `/automode` for the same facts. |
+| `claude -p` and the Agent SDK | Yes | No | Yes |
+| A WSL session in the Desktop app | No. Plugins are not available there. | No | No |
+
+Source: [Mods overview, where mods run](https://code.claude.com/docs/en/plugins/mods/overview#where-mods-run).
+
+## Providers
+
+| Provider | Routing |
+|---|---|
+| Claude Pro, Max, Team or Enterprise plan | On |
+| Anthropic API key | On |
+| Vertex, Bedrock, Foundry, or a custom `ANTHROPIC_BASE_URL` | Shadow: it records what it would route and changes nothing. Set `"allowUnverifiedProviders": true` to route anyway. |
+
+The provider guard exists because effort and model switches touch prompt cache behavior that AutoMode verified only on the Anthropic API.
+
+## Managed settings
+
+On a machine with managed settings, or in a Team or Enterprise login, Claude Code skips some hooks of a user-installed mod. See [Organizations](/security/organizations).

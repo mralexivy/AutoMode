@@ -1,0 +1,4 @@
+{
+  "title": "How it works",
+  "pages": ["routing", "the-bar", "workflow", "agents", "guardian", "prompt-cache", "learning", "delegation"]
+}

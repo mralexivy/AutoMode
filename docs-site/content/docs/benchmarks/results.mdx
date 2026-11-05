@@ -1,0 +1,48 @@
+---
+title: "Benchmark results"
+description: "AutoMode's measured cost and pass rates against Claude Code on Opus, Sonnet high and effortless, on mixed sessions and 30 coding tasks, with its limits."
+---
+
+**In a typical session, AutoMode costs half as much as Claude Code on Opus, 48% less than effortless, and less than Sonnet high, at the same quality.**
+
+## Mixed sessions
+
+A typical session mixes quick questions with real coding work. Each of the 5 sessions runs in one continuing conversation, on a real repository: a question, a task, another question, then a harder task. Every task is graded by its own hidden tests, and every answer by the facts it must name.
+
+| 5 mixed sessions, 20 steps | Passed | Questions | Coding tasks | **Total** | vs Opus |
+|---|---|---|---|---|---|
+| **AutoMode** | **20/20** | **$0.08** | $1.93 | **$2.01** | **−51%** |
+| Plain Sonnet high | 20/20 | $0.24 | $1.90 | $2.14 | −48% |
+| [effortless](https://github.com/HeyCubit/effortless), on Opus | 20/20 | $0.43 | $3.44 | $3.87 | −7% |
+| Plain Opus (Claude Code default) | 20/20 | $0.50 | $3.64 | $4.14 | — |
+
+Questions are where AutoMode pulls ahead. Haiku answers them for a third of Sonnet's cost and a sixth of Opus's, and the session stays warm for the next task. Coding tasks run on Sonnet at the effort a judge picks, at Sonnet's own price.
+
+<Callout title="Estimate your own saving">
+  The [cost calculator](https://mralexivy.github.io/AutoMode/calculator/) multiplies your weekly mix of questions and tasks by these per-step costs.
+</Callout>
+
+## Single coding tasks
+
+**On single coding tasks, AutoMode is 45% cheaper than Opus and passes one more task.**
+
+| 30 real coding tasks | Passed | Cost per passed task |
+|---|---|---|
+| **AutoMode** | **29/30** | **$0.275** |
+| Plain Opus | 28/30 | $0.499 |
+| Plain Sonnet high | 30/30 | $0.240 |
+
+The cost ratio against Opus is 0.551, with a 90% interval of 0.511 to 0.591. That clears the ship rule fixed before the run: no task lost and a ratio of 0.85 or less. The one task AutoMode missed, sqlglot, plain Sonnet high passed only 1 time in 3, and plain Opus failed it too. Against Sonnet high, AutoMode costs about 15% more on single coding tasks. The Sonnet high rows come from an earlier run on the same tasks and tests.
+
+## Where AutoMode does not win
+
+No router wins every workload, so here is ours.
+
+- **Long single coding tasks with no questions.** AutoMode runs them on Sonnet, so it costs about what Sonnet high costs, plus its judges and checks. If all you ever do is long coding tasks, and you already run Sonnet high, AutoMode saves you little.
+- **Haiku on hard work.** A Haiku-first mode (`haikuFirst: t3`, with `recovery: rescue` and `review: observed`) cost 44% less than Sonnet high on 14 tasks: $1.74 against $3.09. It failed 1 of them, mathjs-nullish, which Sonnet high passed. So it ships off. Turn it on if your work is mostly small and well tested.
+
+## Judge accuracy
+
+`node bench/judge-bench-effortless.mts` measures how often the judge picks a sensible effort, on [labeled cases](https://github.com/mralexivy/AutoMode/blob/main/bench/judge-cases.json). [One run](https://github.com/mralexivy/AutoMode/blob/main/bench/results/judge-bench-effortless-2026-10-30.json) got 74 of 75 cases right, and 20 of 20 held-out cases. It measures the effort label only.
+
+Read [how the numbers were made](/benchmarks/method).

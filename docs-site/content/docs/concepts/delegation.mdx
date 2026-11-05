@@ -1,0 +1,47 @@
+---
+title: "Delegated reads"
+description: "AutoMode's optional read gate: a full read of a large file stops once with a free outline and a cheap Haiku extract tool. How it works and stays safe."
+---
+
+<Callout type="info">
+  Delegated reads ship **off**. Set `"delegation": "on"`, or `shadow` to record what the gate would do. The change takes effect in the next session.
+</Callout>
+
+A large file read into a long Opus chat costs that file's tokens on every later request. The read gate offers a cheaper way to get what the model needs from it.
+
+## How it works
+
+<Steps>
+  <Step>
+    ### The first full read stops
+
+    A full read of a text file at or above `delegationGateTokens` stops once per file and task. The model gets a free outline of the file instead. Size comes from bytes, not lines, so a minified file counts.
+  </Step>
+  <Step>
+    ### The model picks a path
+
+    It can read the file again, and the second read always runs, so the exact text is always available. Or it can call `mcp__automode__extract` with a question.
+  </Step>
+  <Step>
+    ### Haiku extracts
+
+    `extract` asks Claude Code whether each path may be read, so your Read deny rules hold. It makes one Haiku call with no tools.
+  </Step>
+  <Step>
+    ### Code checks the evidence
+
+    A finding is kept only if its quote is in the file at or near the cited lines. A kept claim is still Haiku's reading, so the model must read those lines before it relies on them.
+  </Step>
+</Steps>
+
+## When the gate stands aside
+
+- A file edited in the task.
+- The `debug`, `reconsider` and `review` stages.
+- Any task with a risk rating.
+
+The gate only saves money, so it fails open. Shadow mode registers no tool, because a tool definition changes the request.
+
+## What it costs and saves
+
+At the shipped 5k-token gate, only 3 of 76 benchmark tasks ever hit a full read that large. Full reads in the audit's bloat list were about 1.6% of 30 days of spend. The canary runs test safety, not a saving. See [`bench/README.md`](https://github.com/mralexivy/AutoMode/blob/main/bench/README.md#delegated-reads).

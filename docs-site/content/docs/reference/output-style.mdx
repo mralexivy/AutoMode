@@ -1,0 +1,30 @@
+---
+title: "The Concise output style"
+description: "AutoMode's optional Concise output style: short sentences, the answer first. Measured at 10% fewer output tokens, with code and quotes kept exact."
+---
+
+An optional output style, `automode:Concise`. It has nothing to do with routing.
+
+```text
+/output-style automode:Concise
+```
+
+It writes prose at 80% of the way to ASD-STE100 Simplified Technical English: short sentences, active voice, the answer first. It keeps code, commands, file paths and quoted text exactly as they are.
+
+## What we measured
+
+[`bench/style-check.mts`](https://github.com/mralexivy/AutoMode/blob/main/bench/style-check.mts) runs 20 prompts three times each, with and without the style, on Sonnet 5.5, and checks the answers with code.
+
+| What we checked | Result |
+|---|---|
+| **Code and commands stay exact.** Six prompts. Two answers were run in a sandbox. | Same as without the style. |
+| **Verbatim text stays verbatim.** A sentence with em dashes, a Spanish reply, a warm customer email. | Same as without the style. |
+| **Warnings and honesty survive.** `rm` and force push keep their warnings. When a file is missing, the model says so. | Same as without the style. |
+| **Facts stay in explanations.** Six prompts, 3 to 5 required facts each. | 99% against 100% without the style. |
+| **Output tokens.** | **10% fewer in total.** Shorter on 11 prompts, the same on 7, longer on 2. |
+
+## What it does not show
+
+- **The saving is modest.** Explanations get up to 30% shorter. Short writing tasks can get longer: a commit message took 179% of the tokens, and a customer email 124%.
+- It covers short single-turn prompts with no tools, one model and 20 cases. Long agentic sessions are not covered.
+- Three cases failed in the first run because of our own test setup. We fixed it and reran those cases. Read [run 1](https://github.com/mralexivy/AutoMode/blob/main/bench/results/style-check-2026-10-27-run1.md) and [the rerun](https://github.com/mralexivy/AutoMode/blob/main/bench/results/style-check-2026-10-27-rerun.md).

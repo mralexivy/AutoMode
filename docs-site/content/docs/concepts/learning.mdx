@@ -1,0 +1,42 @@
+---
+title: "Route learning"
+description: "How AutoMode learns per project: a kind of task that needed rescue starts on a stronger model next time. It only raises a route and stores no prompt text."
+---
+
+AutoMode keeps a small memory per project. A kind of task that needed rescue in this project starts on a stronger model next time.
+
+## How it decides
+
+<Steps>
+  <Step>
+    ### Each task is filed
+
+    After every turn, and after a correction, the task goes into a bucket: its tier and its need.
+  </Step>
+  <Step>
+    ### The outcome is rated
+
+    A task is **bad** when it moved up to Opus after an escalation, or when you corrected or retried it. It is **ok** when a check passed.
+  </Step>
+  <Step>
+    ### A bucket moves up
+
+    Once a bucket has 2 bad tasks and a 40% bad share in 30 days, the cheaper models are left out for that bucket.
+  </Step>
+</Steps>
+
+## What it never does
+
+- It never lowers a route. Learning only raises one.
+- It never overrides a pin. Your `/model` keeps its model.
+- It never stores prompt text. The file holds task ids, tier and model labels, outcomes and times.
+
+## Where it lives
+
+`~/.claude/plugins/data/automode/learned-<project hash>.json`. It keeps the last 200 tasks. Delete the file to forget a project.
+
+## Turn it off
+
+Set `"learning": false` in `config.json`, or run `/plugin configure automode@automode` and set **Route learning** to `off`.
+
+`node bench/learn-replay.mts` replays your own decision records through the learning rules. It calls no model and costs nothing.

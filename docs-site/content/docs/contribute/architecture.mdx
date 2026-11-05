@@ -1,0 +1,54 @@
+---
+title: "Architecture"
+description: "How the AutoMode mod is built: one register function binds every Claude Code event, wiring files own engine calls, and pure modules decide routes."
+---
+
+`hooks/hooks.json` names one module, `hooks/register.ts`. Its `register` function binds every engine event. The guardian sees each prompt first, and then the router decides the route.
+
+<Files>
+  <Folder name="hooks" defaultOpen>
+    <File name="hooks.json" />
+    <File name="register.ts" />
+    <File name="v4.ts" />
+    <File name="guardian.ts" />
+    <Folder name="lib" />
+    <Folder name="ui" />
+  </Folder>
+  <Folder name="workflows">
+    <File name="run.js" />
+  </Folder>
+  <Folder name="agents" />
+  <Folder name="scripts" />
+  <Folder name="bench" />
+  <File name="config.json" />
+</Files>
+
+| Layer | Files | Role |
+|---|---|---|
+| Wiring | `hooks/v4.ts`, `hooks/guardian.ts` | Own all `$` engine calls and module state. They move values between the engine and the pure modules. |
+| Pure logic | `hooks/lib/*.ts` | No `$` and no I/O. Each file opens with a comment that states its contract. `lib/io.ts` is the one exception. |
+| UI | `hooks/ui/` | `publish.ts` writes the `automode.view` atom, and every drawing reads it. A drawing never calls `publish`. |
+| Workflow | `workflows/run.js`, `agents/*.md` | The `automode:run` workflow and its agents. It runs in a different runtime from the hooks and shares no imports with them. |
+| User scripts | `scripts/*.mjs` | Run through a user's `node`, which may be older than 23.6. |
+| Evidence | `bench/` | Benchmarks and offline transcript tools. Most of `bench/external/` is vendored upstream code with checksums. |
+
+## Where a route is decided
+
+`v4PromptSubmit` runs `decideAuto` under policy `auto`, the shipped policy. Policy `legacy` is the interval optimizer in `lib/optimizer.ts`.
+
+| Step | File |
+|---|---|
+| The effortless judge | `lib/effortless.ts`, a verbatim port. Changes go in `lib/effortless-adapt.ts`. |
+| The AutoMode judge | `lib/classify.ts` |
+| Quality floors | `lib/consequence.ts`, `lib/risk.ts` |
+| The weakest eligible model | `optimizeAuto` in `lib/auto.ts` |
+| Authority order | `resolve` in `lib/authority.ts` |
+| The switch check | `lib/policy.ts` |
+| Pins | `lib/pins.ts` |
+| Failure evidence and the ladder | `escalation()` in `lib/failures.ts`, `ladderStep` in `lib/bands.ts` |
+| Route learning | `lib/learn.ts` |
+| Delegated reads | `gateRead` in `lib/delegation.ts` |
+
+`v4TurnStep` applies the route to each request. `tests/golden/decisions.json` pins optimizer and switch-check behavior.
+
+See [How a route is decided](/concepts/routing) for the behavior these files produce.
