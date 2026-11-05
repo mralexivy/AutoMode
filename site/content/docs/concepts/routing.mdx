@@ -1,0 +1,64 @@
+---
+title: "How a route is decided"
+description: "How AutoMode picks a model and effort for each Claude Code prompt: two Haiku judges, quality floors for risky work, and a cache check before any switch."
+---
+
+Every prompt takes the cheapest route that is still adequate. Code sets a floor for risky work, and the judge never lowers it.
+
+![The ladder: T0 Haiku low, T1 Sonnet medium, T2 Sonnet high, T3 Opus high, T4 Opus max](/img/ladder.svg)
+
+## The four steps
+
+<Steps>
+  <Step>
+    ### Two judges give evidence
+
+    Two short Haiku calls read the prompt, a short part of the last reply and a few lines of session state. The **effortless judge** rates the effort the prompt needs. Its rules are ported from [effortless](https://github.com/HeyCubit/effortless). The **AutoMode judge** rates the tier, T0 to T4, and the model the work needs. Each call takes about a second.
+  </Step>
+  <Step>
+    ### Code sets quality floors
+
+    The consequence and risk rules read the prompt, the planned and changed files, and blocking unknowns. Security and credentials, migrations and destructive operations, concurrency, external contracts, and payments and sensitive data raise the floor. A floor only goes up.
+  </Step>
+  <Step>
+    ### The optimizer picks the weakest eligible model
+
+    It picks the cheapest model that is eligible for the work, at that model's own effort. Eligibility reads one verdict asked with a fixed anchor, so the route follows the task, not the model the session started on.
+  </Step>
+  <Step>
+    ### Authority and the switch check settle it
+
+    A user override or a workflow role is final. The floor lifts the candidate. Then the [switch check](/docs/concepts/prompt-cache) holds or switches on cache cost. A hold never drops below the floor.
+  </Step>
+</Steps>
+
+## The paths a prompt can take
+
+- **Chat and non-code requests** are answered directly.
+- **Code changes with a clear goal:** Sonnet does them itself. It must show a passing test or build before it says done.
+- **High-risk changes:** after the checks pass, one independent reviewer checks the diff. It runs on Opus when the diff shows critical risk, and on Sonnet otherwise.
+- **Open-ended work:** run `am:run <request>` for the [workflow](/docs/concepts/workflow). Automatic entry is off by default (`autoWorkflow`).
+
+## Haiku reach
+
+With `reachHaiku` on, as shipped, T0 to T2 work without critical risk can run on Haiku, unless the need names Opus. In the screen tasks, Haiku solved 64 of 65, so a judge's "Sonnet" often overstates the need. T2 work whose need names Opus requires Opus.
+
+## Effort changes, model holds
+
+Effort can change on every prompt while the model holds. On the Anthropic API, an effort change keeps the prompt cache for the 5.5 models, so it costs nothing extra. A model change writes the whole chat to the new model's cache, so it passes the [switch check](/docs/concepts/prompt-cache) first.
+
+## When work fails
+
+Failure evidence moves a task up one step at a time. Evidence is weak, such as a vague complaint, or strong, such as a failing check, a regression or a reviewer blocker.
+
+- Under the default strategy, `v6c`, strong evidence first raises effort on the running model (`strongStep: effort-first`). A critical-risk floor still moves the model.
+- A large conversation does not move to a pricier model. A **fresh rescue builder** takes over instead, with a brief of the task, the corrections and what already failed.
+- Opus comes from failure evidence, not from a judge's guess (`opusStart: evidence`).
+
+## Pins
+
+Your own `/model` and `/effort` are pins. AutoMode reads them and keeps them. An `am:` command is a pin for one prompt. [Route learning](/docs/concepts/learning) only raises a route, and a pin keeps its model.
+
+## Failure behavior
+
+Routing fails open. A routing error falls through to Claude Code's own choice, and a failed judge never blocks a prompt. The tool guards fail closed: if a guard throws before a tool call runs, the call is denied.

@@ -1,0 +1,42 @@
+---
+title: "Haiku vs Sonnet vs Opus in Claude Code"
+description: "Which Claude model to use in Claude Code for questions, everyday coding and hard reasoning, with the aliases, the defaults, and measured cost and pass rates."
+seoTitle: "Haiku vs Sonnet vs Opus in Claude Code: Which Model When?"
+---
+
+**Use Haiku for quick questions, Sonnet for most coding, and Opus for complex reasoning.** That is Anthropic's own guidance. Our benchmark agrees: Haiku answered ten questions correctly for $0.08, against $0.50 on Opus. On 30 real coding tasks, plain Sonnet high passed 30 at $0.240 per passed task, and plain Opus passed 28 at $0.499.
+
+## The three models at a glance
+
+| Model | Alias | Anthropic's description | Good for |
+| --- | --- | --- | --- |
+| Haiku 5.5 | `haiku` | Fast and efficient, for simple tasks | Questions, lookups, simple subagent work |
+| Sonnet 5.5 | `sonnet` | For daily coding tasks | Features, fixes, refactors, tests |
+| Opus 5.5 | `opus` | For complex reasoning tasks | Architecture, hard debugging, risky changes |
+
+*Aliases and descriptions from Anthropic's [model configuration docs](https://code.claude.com/docs/en/model-config), read on 2026-11-05. On the Anthropic API, the aliases resolve to the 5.5 models. Other providers may resolve to earlier versions.*
+
+## Which model does Claude Code use by default?
+
+On Pro, Max, Team, Enterprise and the Anthropic API, the default is Opus 5.5. That is the strongest choice and the most expensive for routine work. Switch with `/model sonnet`, start with `claude --model sonnet`, or set `model` in your settings.
+
+## What did the models cost on real work?
+
+| 30 real coding tasks | Passed | Cost per passed task |
+| --- | --- | --- |
+| Plain Sonnet high | 30/30 | $0.240 |
+| AutoMode | 29/30 | $0.275 |
+| Plain Opus | 28/30 | $0.499 |
+
+Opus did not pass more tasks here, and it cost about twice as much per passed task. On hard work, Haiku alone is a risk: a Haiku-first mode failed a task that Sonnet high passed. [Read the benchmark](/docs/benchmarks/results).
+
+## What about opusplan and Fable?
+
+- **`opusplan`** uses Opus in plan mode and Sonnet for the edits.
+- **Fable** suits ambiguous work larger than one sitting, such as a root-cause investigation. It is not the default on any plan.
+
+## Can Claude Code pick the model for me?
+
+Not by itself. A router can: AutoMode sends questions to Haiku and coding to Sonnet, moves risky work up to Opus, and checks the prompt cache cost before any switch. [Estimate what it would save you](/docs/guides/calculator).
+
+<InstallCard />

@@ -1,0 +1,30 @@
+---
+title: "Cost calculator"
+description: "Estimate your monthly Claude Code spend on Opus, Sonnet high or effortless, and what AutoMode would cost, from per-step costs measured on real sessions."
+seoTitle: "Claude Code Cost Calculator: What Would AutoMode Save You?"
+---
+
+**At 50 questions and 20 coding tasks a week, Claude Code on Opus costs about $42.35 a month at list price, and AutoMode about $18.45, 56% less.** The estimate multiplies your weekly mix by the cost of each step in our benchmark. Change the numbers to match how you work.
+
+<Calculator />
+
+On a Pro or Max plan you pay a flat price, so read the difference as the share of your usage limits you would save.
+
+## Where do the numbers come from?
+
+Each arm ran the same five mixed sessions on real repositories: a question, a task, another question, then a harder task, in one conversation. Hidden tests graded every task, and every arm passed all 20 steps. Costs are list-price equivalents of every paid request, judges and subagents included.
+
+| Cost per step | Question | Coding task |
+|---|---|---|
+| Claude Code on Opus (the default) | $0.050 | $0.364 |
+| Sonnet high | $0.024 | $0.190 |
+| effortless, on Opus | $0.043 | $0.344 |
+| **AutoMode** | **$0.008** | **$0.193** |
+
+## When is the estimate wrong?
+
+- **Your tasks are longer or shorter** than the benchmark's. Cost grows with context, so long sessions cost more on every arm.
+- **You only run coding tasks on Sonnet high.** Then AutoMode costs about the same, a little more for its judges and checks.
+- **One repetition per arm.** The benchmark is a release signal, not a law. [Read its method and limits](/docs/benchmarks/method).
+
+<InstallCard />

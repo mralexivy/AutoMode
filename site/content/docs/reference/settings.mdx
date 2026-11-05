@@ -1,0 +1,82 @@
+---
+title: "Settings"
+description: "Every AutoMode setting and default: the config.json keys, the /plugin configure options, and the order in which config, plugin settings and env apply."
+---
+
+## Where settings come from
+
+Lowest first. A later source wins.
+
+<Steps>
+  <Step>
+    ### Code defaults
+  </Step>
+  <Step>
+    ### `config.json`
+
+    The shipped [`config.json`](https://github.com/mralexivy/AutoMode/blob/main/config.json), or your own copy in `~/.claude/plugins/data/automode/config.json`.
+  </Step>
+  <Step>
+    ### Plugin settings
+
+    `/plugin configure automode@automode`. Every routing and guardian option defaults to `default`, which means "follow `config.json`", so an untouched option never overrides the shipped profile.
+  </Step>
+  <Step>
+    ### Environment switches
+
+    `AUTOMODE_ROUTER`, `AUTOMODE_POLICY`, `AUTOMODE_GUARDIAN` and `AUTOMODE_GUARDIAN_CONFIG`. See [Environment variables](/docs/reference/environment).
+  </Step>
+</Steps>
+
+## The main keys
+
+| Key | Default | Meaning |
+|---|---|---|
+| `activation` | `always` | `always`: AutoMode starts with every session. `picker`: only when the model ID is `pickerModel`. |
+| `pickerModel` | `claude-sonnet-5-5[1m]` | The model ID for `activation: picker`. Claude Code 2.1.311 strips the suffix, so use `always`. |
+| `mode` | `auto` | `auto` routes. `shadow` records what it would route. `off` does not route. |
+| `policy` | `auto` | The routing policy. `legacy` is the earlier interval optimizer. |
+| `defaultPath` | `direct` | `workflow` sends every standard task through the workflow. |
+| `autoWorkflow` | `false` | `true` lets the router enter the workflow by itself. `am:run` works either way. |
+| `reachHaiku` | `true` | T0 to T2 work without critical risk can run on Haiku. `false`: Haiku needs T0 and a Haiku verdict. |
+| `learning` | `true` | A kind of task that needed rescue in this project starts on Opus next time. It only raises a route. |
+| `reviewPolicy` | `risk` | `always` adds a review to every change. |
+| `maxConcurrency` | `1` | Workstreams built at once, at most 2. |
+| `blockGitWritesWhenActive` | `true` | Deny git writes from subagents. |
+| `delegation` | `off` | `on`: a full read of a large file stops once, with an outline and a cheap `extract` tool. `shadow`: records what the gate would do. |
+| `delegationGateTokens` | `5000` | The file size, in estimated tokens, at which the read gate acts. |
+| `recordDecisions` | `true` | Keep routing records in the data folder. They hold no prompt text. |
+| `debugLog` | `false` | Write decisions to `judge-log.jsonl` in the plugin folder. |
+| `allowUnverifiedProviders` | `false` | Route on Vertex, Bedrock, Foundry or a gateway. Otherwise the router runs in shadow there. |
+| `judgeModel` | `haiku` | The model of the judges. |
+| `judgeTimeoutMs` | `8000` | How long a judge may take before the prompt goes on without it. |
+| `strategy` | `v6c` | The execution strategy. See below. |
+| `guardian` | `{ "mode": "auto", … }` | See [The guardian](/docs/concepts/guardian). |
+
+## Plugin settings
+
+Run `/plugin configure automode@automode`. Each routing option defaults to `default`.
+
+| Option | Choices | What it changes |
+|---|---|---|
+| **Router mode** | `auto`, `shadow`, `off` | Whether AutoMode routes. `AUTOMODE_ROUTER` still wins. |
+| **Routing policy** | `auto`, `legacy` | `auto`: the effortless judges with the joint optimizer. |
+| **Route models** | `on`, `off` | `off` routes effort only and keeps the model you picked. |
+| **Completion gate** | `off`, `report`, `block` | `report` records whether the work showed its stated results. `block` also sends the model back once per task when that evidence is missing. |
+| **Route learning** | `on`, `off` | See [Route learning](/docs/concepts/learning). |
+| **Delegated reads** | `off`, `shadow`, `on` | See [Delegated reads](/docs/concepts/delegation). |
+| **Executor** | `judge`, `sonnet` | `sonnet`: Sonnet runs the task, and a pin, a floor or a repeated failure can still move it. |
+| **Strong evidence step** | `model`, `effort-first` | `effort-first`: strong failure evidence raises effort on the running model once per failure, unless a critical-risk floor needs the model. |
+| **Opus consult** | `always`, `priced` | `priced`: a read-only Opus architect is asked only when that costs less than moving the session. |
+| **Consult packet** | `basic`, `rich`, `fork-gated` | What the consult receives. |
+| **Fork diagnosis rung** | `off`, `on` | Before the Opus consult, a fork that shares the warm cache diagnoses the failure without editing. |
+| **Execution strategy** | `legacy`, `v6a`, `v6b`, `v6c` | `v6c`: a fresh rescue builder replaces a model switch on a large context. See the [v6 report](https://github.com/mralexivy/AutoMode/blob/main/bench/experiments/V6.md). |
+| **Start route**, **Recovery**, **Review rule** | | Parts of the strategy you can set one by one. |
+| **Builder subagent from the start** | `off`, `on` | Experimental. Non-trivial work goes to one builder subagent at the routed model. |
+| **Haiku first on T3 work** | `off`, `t3` | Off by default. In the proof runs, `t3` cost more than Sonnet high. |
+| **Opus at the start** | `judge`, `evidence` | `evidence`: T3 work starts on Sonnet high, and Opus comes only from failure evidence. |
+| **Subagents in every session** | `on`, `off` | Route built-in subagents in every session. An explicit model is always kept. |
+| **Guardian**, **Guardian in every session**, **Hard pause**, **Auto compact**, **Reduce long outputs** | | See [The guardian](/docs/concepts/guardian). |
+| **Layout**, **Theme**, **Appearance**, **Bar metrics** | | See [What the bar shows](/docs/concepts/the-bar). |
+
+`/automode settings` prints the settings in force, and where to change each one.

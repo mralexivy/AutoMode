@@ -1,0 +1,44 @@
+---
+title: "Run the benchmark yourself"
+description: "Run AutoMode's benchmark harness yourself: a dry run, a study on your own plan, grading and reports, plus free tools that read your own transcripts."
+---
+
+Benchmarks run from a terminal, not from the chat. Clone the repository and run `npm install` first. You need Node 23.6 or later.
+
+## A study
+
+```bash
+node bench/run.mts --experiment stage-a --dry-run
+node bench/run.mts --experiment stage-a --out bench/results/stage-a.jsonl
+node bench/grade.mts bench/results/stage-a.jsonl --budget-usd 2
+node bench/report.mts --manifest bench/results/stage-a.manifest.json bench/results/stage-a.jsonl
+```
+
+Runs use your signed-in plan. An API key in your shell does not reach them, unless you set `BENCH_AUTH=api`. All costs are list-price equivalents, not charges.
+
+<Callout type="warn" title="The usage window">
+  `--window-usd` caps list-price spend per rolling 5 hours. It starts at $10. A full window waits, and `--stop-at-window` ends the run instead. Stopping is always safe: run the same command, and it continues.
+</Callout>
+
+## Free tools
+
+These read records and results and call no model.
+
+| Command | What it does |
+|---|---|
+| `node bench/replay.mts` | Replays routes from your own Claude Code transcripts. |
+| `node bench/spend-audit.mts` | Prices your own sessions. |
+| `node bench/route-replay.mts --mode exact` | Checks that this code reproduces each recorded route. |
+| `node bench/select.mts` | Picks the tasks a router change should run on. |
+| `node bench/learn-replay.mts` | Replays decision records through route learning. |
+
+## Cheap checks
+
+| Command | Cost |
+|---|---|
+| `node bench/classify-eval.mts` | Cents. Asks the real judges about real task prompts and passes each answer through the real rules. |
+| `node bench/judge-bench-effortless.mts` | Cents. Scores the effort judge on labeled cases. |
+| `node bench/style-check.mts --dry` | Free. Lists the output style checks. |
+| `node bench/delegate-eval.mts` | One tool-free Haiku call per case. |
+
+Want to add a task? See [Contribute](/docs/contribute).

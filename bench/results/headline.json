@@ -27,12 +27,9 @@
   "surfaces": [
     "README.md",
     "docs/compare.md",
-    "site/index.html",
-    "site/compare/index.html",
-    "site/benchmark/index.html",
-    "site/reduce-claude-code-costs/index.html",
-    "docs-site/content/docs/benchmarks/results.mdx",
-    "docs-site/content/docs/compare.mdx"
+    "site/app/(home)/page.tsx",
+    "site/content/docs/benchmarks/results.mdx",
+    "site/content/docs/compare.mdx"
   ],
   "banned": [
     "no published cost result",

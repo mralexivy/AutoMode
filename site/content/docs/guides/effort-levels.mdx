@@ -1,0 +1,39 @@
+---
+title: "Claude Code effort levels explained"
+description: "What each Claude Code effort level does, low to max, the default for each model, how to set it with /effort, settings or env, and which level fits a task."
+seoTitle: "Claude Code Effort Levels Explained: low to max (2026)"
+---
+
+**Effort sets how much Claude thinks before it answers.** Claude Code has five levels: `low`, `medium`, `high`, `xhigh` and `max`. Opus 5.5, Sonnet 5.5 and Haiku 5.5 default to `medium`. Thinking tokens bill as output tokens, so a lower effort costs less, and a higher one helps on hard problems. Set it with `/effort`.
+
+## Which effort level should I use?
+
+| Level | Fits |
+| --- | --- |
+| low | Quick exchanges you review yourself: brainstorming, a first sketch, a rename |
+| medium | Day-to-day work with a clear scope, such as a new feature |
+| high | Work where verification matters, such as fixing a bug in existing code |
+| xhigh | Deeper reasoning, at higher token spend |
+| max | Hard problems Claude works through alone, such as a security review. It can overthink, so test it first |
+
+*Paraphrased from Anthropic's [model configuration docs](https://code.claude.com/docs/en/model-config), read on 2026-11-05.*
+
+## What is the default effort?
+
+Opus 5.5, Sonnet 5.5 and Haiku 5.5 default to `medium`. Most other models that support effort default to `high`, and Opus 4.7 defaults to `xhigh`. If you set a level a model does not support, Claude Code uses the highest supported level below it. For example, `xhigh` runs as `high` on Opus 4.6.
+
+## How do I set the effort level?
+
+- **In a session:** `/effort` opens a slider. `/effort high` sets it directly, and `/effort auto` clears your saved level.
+- **For one session:** `claude --effort high`.
+- **Everywhere:** the `CLAUDE_CODE_EFFORT_LEVEL` environment variable. It wins over every other setting.
+- **As a saved default:** `effortLevel` in settings, or a per-model level in `modelSettings`. Settings do not accept `max`.
+- **For a skill or subagent:** `effort` in its frontmatter.
+
+## Why not set one level and forget it?
+
+Because prompts differ. A quick question at `high` wastes thinking tokens, and a tricky bug at `low` wastes your time. Most people never change the level, because doing it by hand on every prompt is tedious.
+
+AutoMode picks the effort for each prompt, and the model too. In our benchmark of mixed sessions it cost 51% less than Claude Code on Opus, with every step passing. [See how it chooses](/docs/concepts/routing), or [estimate your own saving](/docs/guides/calculator).
+
+<InstallCard />

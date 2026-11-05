@@ -31,11 +31,9 @@ Change all of them in the same PR. Never one now and the rest later.
 |---|---|
 | `README.md` | The table cell under the banner, the `## Benchmarks` tables, "Where AutoMode does not win", the `## How it compares` paragraph and any review or model claim |
 | `docs/compare.md` | The feature table's cost row, "Measured on the same sessions", "Where the others are ahead" and the switch section |
-| `site/index.html` | The hero stat, `#results` (the chart widths are each arm's share of the largest total), `#wins`, `#fit`, `#method`, the comparison table, the FAQ cards, **and the JSON-LD FAQ in the `<head>`**, which search engines and AI assistants read |
-| `site/compare/index.html` | The table, "Measured on the same sessions", "Does a router save money?", the byline date and the meta description |
-| `site/how-it-works/index.html`, `site/auto-mode-vs-automode/index.html` | Any number, and any claim about reviews or models |
-| `docs-site/content/docs/benchmarks/results.mdx`, `docs-site/content/docs/compare.mdx` | The docs tables, "Where AutoMode does not win" and the FAQ answer in `faq.mdx` |
-| `site/sitemap.xml` | `lastmod` of every page you changed |
+| `site/app/(home)/page.tsx` | `RESULTS` (the chart widths come from it), the stat cards, `#fit`, the FAQ list, which also feeds the FAQ schema that search engines and AI assistants read |
+| `site/content/docs/benchmarks/results.mdx`, `site/content/docs/compare.mdx` | The tables, "Where AutoMode does not win" and the byline dates |
+| `site/content/docs/guides/*.mdx`, `faq.mdx`, `concepts/prompt-cache.mdx` | Any number, and any claim about reviews or models. The calculator's per-step costs live in `site/components/calculator.tsx` |
 | `bench/experiments/<report>.md` | The results section, the fixes and the limits |
 | `CHANGELOG.md` | A line under `[Unreleased]` when the shipped behavior changed |
 
@@ -53,7 +51,7 @@ node --test tests/claims.test.mts tests/site.test.mts
 git ls-files '*.md' '*.html' | xargs grep -nE "<an old number or claim>"
 ```
 
-- Render the site locally (`python3 -m http.server` in `site/`, then headless Chrome) and look at it in dark and light modes, at desktop and phone widths.
+- Build the site (`npm run build` in `site/`), serve `site/out/` under `/AutoMode/`, and look at it at desktop and phone widths. The site is dark only.
 - After the merge, wait for the `pages` workflow, then fetch the live site and confirm it shows the new numbers: `curl -s https://mralexivy.github.io/AutoMode/ | grep '<a new number>'`.
 
 Then follow `ship-change` for the issue, branch and PR.

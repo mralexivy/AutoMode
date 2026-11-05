@@ -1,0 +1,25 @@
+{
+  "title": "AutoMode",
+  "root": true,
+  "pages": [
+    "index",
+    "---Get started---",
+    "...getting-started",
+    "---How it works---",
+    "...concepts",
+    "---Guides---",
+    "...guides",
+    "---Reference---",
+    "...reference",
+    "---Security and privacy---",
+    "...security",
+    "---Benchmarks---",
+    "...benchmarks",
+    "compare",
+    "---Help---",
+    "troubleshooting",
+    "faq",
+    "---Contribute---",
+    "...contribute"
+  ]
+}

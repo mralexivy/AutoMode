@@ -1,0 +1,51 @@
+---
+title: "Develop the mod"
+description: "Develop the AutoMode mod: load the working tree in Claude Code, run the four checks and two test runners, follow the validator rules, build the docs."
+---
+
+The mod itself has no install step and no build step. Claude Code loads the `.ts` files directly. `npm` tooling exists for development only, and it needs Node 23.6 or later.
+
+```bash
+npm install                          # TypeScript and Node types, for the checks only
+npm run check                        # type check, then the Node tests
+claude plugin validate . --strict    # reads the mod the way Claude Code does
+claude plugin test .                 # the .test.ts files, in the Claude Code test harness
+claude --plugin-dir .                # load the working tree; it reloads on save
+```
+
+Develop with `--plugin-dir`, not an installed copy. Claude Code caches an installed plugin by version. When you load the mod with `--plugin-dir`, Claude Code writes the type declarations for your version into `.claude-plugin/types/`. Read the [mods overview](https://code.claude.com/docs/en/plugins/mods/overview) first if mods are new to you.
+
+## Two test runners
+
+| File | Runs with | Why |
+|---|---|---|
+| `tests/*.test.ts`, `*.test.tsx` | `claude plugin test .` | They use the Claude Code test harness, `claude-code/testing`. `tests/harness.ts` stands in for the engine. |
+| `tests/*.test.mts`, `bench/*.test.mts` | `npm test` (`node --test`) | Plain Node tests, for pure modules and anything with no engine. |
+
+`claude plugin test` takes a folder only, so it cannot run one file or one test by name. For a Node test: `node --test --test-name-pattern='demandBand' tests/bands.test.mts`.
+
+## Validator rules
+
+- Write every mods API call in full: `$.fs.read(...)`, never `const fs = $.fs`.
+- Pass event names and `$.env.get` names as string literals.
+- The validator cuts the `calls:` line at 1,000 characters, and the mods catalogue refuses a cut line. Busy host calls go through the function declarations in `hooks/lib/io.ts`.
+
+## TypeScript rules
+
+- Write erasable TypeScript only: no `enum`, no `namespace`, no constructor parameter properties.
+- `scripts/*.mjs` stay JavaScript, because a user's `node` may be older than 23.6.
+- `workflows/run.js` stays JavaScript. Claude Code loads it, and it has a top-level `return`.
+- A new file must pass the type check. Older files that start with `// @ts-nocheck TODO(types)` are a ratchet: delete the line and fix what it reports.
+
+## The website
+
+The website and these docs are one [Fumadocs](https://fumadocs.dev) app in `site/`, built with Next.js as a static export.
+
+```bash
+cd site
+npm install
+npm run dev      # http://localhost:3000/AutoMode/
+npm run build    # static files in site/out/
+```
+
+The home page is `site/app/(home)/page.tsx`. Docs pages are MDX files in `site/content/docs/`, and each folder's `meta.json` sets the sidebar order. The site is dark only. The `pages` workflow builds it and publishes it under `/AutoMode/`. An old address redirects through the `moved` list in `site/lib/shared.ts`.

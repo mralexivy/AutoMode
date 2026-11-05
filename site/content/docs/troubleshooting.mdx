@@ -1,0 +1,30 @@
+---
+title: "Troubleshooting"
+description: "Fix common AutoMode problems: nothing changes after install, the mod is not listed, the bar is idle or missing, a hook is skipped, and filing a bug."
+---
+
+| Symptom | Check |
+|---|---|
+| Nothing changes after install | Run `/reload-plugins`. Then run `/plugin` and look for `1 mod active · automode`. |
+| The mod is not listed | Check `claude --version` is 2.1.287 or later. Run `claude plugin test` in a folder that holds no mod: the message says whether mods can load. |
+| The bar says AutoMode is idle | You set `"activation": "picker"` and the model ID does not match. Use `"always"`, or run `/automode setup`. |
+| The bar is missing in VS Code | Expected. Claude Code does not draw the band there. Use `/automode`. |
+| Routing only records, never switches | You are on Vertex, Bedrock, Foundry or a gateway. See [Where AutoMode runs](/docs/getting-started/where-it-runs#providers). |
+| `/automode` says the mod is not loaded | Restart Claude Code. |
+| A hook seems skipped | Start with `claude --debug` and search the log for `automode`. See [Troubleshoot a mod](https://code.claude.com/docs/en/plugins/mods/troubleshoot). On a managed machine, see [Organizations](/docs/security/organizations). |
+| Plan mode or compaction acts odd at work | Managed settings skip some hooks. See [Organizations](/docs/security/organizations). |
+
+## File a bug
+
+<Steps>
+  <Step>
+    ### Run the debug report
+
+    `/automode debug` prints a report to paste. It holds no prompt text, and it masks your home folder.
+  </Step>
+  <Step>
+    ### Open an issue
+
+    [Open an issue](https://github.com/mralexivy/AutoMode/issues/new/choose). Say what the bar showed and what you expected, and paste the report.
+  </Step>
+</Steps>
