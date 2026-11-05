@@ -33,4 +33,5 @@ export const stage: React.CSSProperties = {
     'radial-gradient(900px 420px at 80% -10%, rgba(139,92,246,0.22), transparent 70%), radial-gradient(700px 380px at 0% 110%, rgba(34,211,238,0.12), transparent 70%)',
   color: C.text,
   fontFamily,
+  textAlign: 'left',
 };

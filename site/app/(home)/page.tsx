@@ -88,7 +88,7 @@ const jsonLd = {
       author: { '@type': 'Person', name: 'Alex Ivy', url: 'https://github.com/mralexivy' },
       sameAs: [repoUrl],
     },
-    ...(['route-demo', 'benchmark-race', 'workflow-flow', 'cache-check'] as const).map(videoObject),
+    ...(['terminal-demo', 'benchmark-race', 'workflow-flow', 'cache-check'] as const).map(videoObject),
     {
       '@type': 'FAQPage',
       mainEntity: FAQ.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
@@ -115,50 +115,46 @@ export default function HomePage() {
     <main className="flex flex-1 flex-col">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
 
-      <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 pb-12 pt-16 lg:grid-cols-[1fr_1.15fr]">
-        <div>
-          <p className="mb-4 inline-block rounded-full border px-3 py-1 text-xs text-fd-muted-foreground">
-            Free · MIT · No key · No server
-          </p>
-          <h1 className="text-5xl font-bold leading-[1.04] tracking-tight md:text-6xl">
-            AutoMode <span className={`block ${grad}`}>for Claude Code</span>
-          </h1>
-          <p className="mt-5 text-xl text-fd-muted-foreground">
-            A free model router for Claude Code. The right model and the right effort for every prompt. Quick questions stay cheap. Hard jobs get the strongest
-            model. Risky changes always get a review.
-          </p>
-          <p className="mt-4">
-            <b>Half the cost of Claude Code on Opus.</b> Same pass rate, on real coding sessions.{' '}
-            <Link href="#results" className="text-fd-primary underline">
-              See the benchmark
-            </Link>
-            .
-          </p>
-          <div className="mt-6 flex flex-col gap-2">
-            <CopyCommand command="/plugin marketplace add mralexivy/AutoMode" />
-            <CopyCommand command="/plugin install automode@automode" />
-          </div>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link href="/docs/getting-started/install" className="rounded-xl bg-gradient-to-r from-violet-400 to-cyan-400 px-5 py-3 font-bold text-[#0a0d1b]">
-              Get started
-            </Link>
-            <Link href="/docs" className="rounded-xl border px-5 py-3 font-semibold">
-              Read the docs
-            </Link>
-            <a href={repoUrl} className="rounded-xl border px-5 py-3 font-semibold">
-              Star on GitHub
-            </a>
-          </div>
-          <p className="mt-4 text-sm text-fd-muted-foreground">
-            A community project, not made by Anthropic, and not Claude Code&apos;s built-in auto permission mode.
-          </p>
+      <section className="mx-auto w-full max-w-6xl px-6 pb-12 pt-16 text-center">
+        <p className="mb-4 inline-block rounded-full border px-3 py-1 text-xs text-fd-muted-foreground">Free · MIT · No key · No server</p>
+        <h1 className="text-5xl font-bold leading-[1.04] tracking-tight md:text-7xl">
+          AutoMode <span className={grad}>for Claude Code</span>
+        </h1>
+        <p className="mx-auto mt-5 max-w-3xl text-xl text-fd-muted-foreground">
+          A free model router for Claude Code. The right model and the right effort for every prompt. Quick questions stay cheap. Hard jobs get the strongest
+          model. Risky changes always get a review.
+        </p>
+        <p className="mt-4">
+          <b>Half the cost of Claude Code on Opus.</b> Same pass rate, on real coding sessions.{' '}
+          <Link href="#results" className="text-fd-primary underline">
+            See the benchmark
+          </Link>
+          .
+        </p>
+        <div className="mx-auto mt-6 grid max-w-3xl gap-2 text-left md:grid-cols-2">
+          <CopyCommand command="/plugin marketplace add mralexivy/AutoMode" />
+          <CopyCommand command="/plugin install automode@automode" />
         </div>
-        <figure>
-          <Motion id="route-demo" className="my-0" />
-          <figcaption className="mt-2 text-center text-sm text-fd-muted-foreground">
-            How a session routes. <Link href="#demo" className="text-fd-primary underline">Watch a real recording</Link>.
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
+          <Link href="/docs/getting-started/install" className="rounded-xl bg-gradient-to-r from-violet-400 to-cyan-400 px-5 py-3 font-bold text-[#0a0d1b]">
+            Get started
+          </Link>
+          <Link href="/docs" className="rounded-xl border px-5 py-3 font-semibold">
+            Read the docs
+          </Link>
+          <a href={repoUrl} className="rounded-xl border px-5 py-3 font-semibold">
+            Star on GitHub
+          </a>
+        </div>
+        <figure className="mx-auto mt-12 max-w-5xl">
+          <Motion id="terminal-demo" className="my-0" />
+          <figcaption className="mt-3 text-sm text-fd-muted-foreground">
+            AutoMode in Claude Code, recreated. <Link href="#demo" className="text-fd-primary underline">Watch a real recording</Link>.
           </figcaption>
         </figure>
+        <p className="mt-6 text-sm text-fd-muted-foreground">
+          A community project, not made by Anthropic, and not Claude Code&apos;s built-in auto permission mode.
+        </p>
       </section>
 
       <Section id="results">

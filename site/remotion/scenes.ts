@@ -1,11 +1,13 @@
 import { BenchmarkRace, BENCHMARK_FRAMES } from './BenchmarkRace';
 import { CacheCheck, CACHE_FRAMES } from './CacheCheck';
 import { SCENE_META, type SceneId } from './meta';
+import { TerminalDemo, TERMINAL_FRAMES } from './TerminalDemo';
 import { ROUTE_DEMO_FRAMES, RouteDemo } from './RouteDemo';
 import { WorkflowFlow, WORKFLOW_FRAMES } from './WorkflowFlow';
 
 // Every AutoMode scene, by id: its component and length, with the facts from meta.ts.
 export const SCENES = {
+  'terminal-demo': { ...SCENE_META['terminal-demo'], component: TerminalDemo, frames: TERMINAL_FRAMES },
   'route-demo': { ...SCENE_META['route-demo'], component: RouteDemo, frames: ROUTE_DEMO_FRAMES },
   'benchmark-race': { ...SCENE_META['benchmark-race'], component: BenchmarkRace, frames: BENCHMARK_FRAMES },
   'workflow-flow': { ...SCENE_META['workflow-flow'], component: WorkflowFlow, frames: WORKFLOW_FRAMES },
