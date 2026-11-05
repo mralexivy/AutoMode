@@ -15,6 +15,7 @@ npm run build                        # release bundle in dist/, validated
 npm run typecheck
 npm test                             # tests/*.test.mts and bench/*.test.mts
 node --test tests/bands.test.mts     # one Node test file
+node --test tests/claims.test.mts    # every public page shows the numbers in bench/results/headline.json
 node --test --test-name-pattern='demandBand' tests/bands.test.mts   # one Node test by name
 claude plugin validate . --strict    # reads the mod the way Claude Code does
 claude plugin test .                 # tests/*.test.ts and *.test.tsx
@@ -90,6 +91,7 @@ Hooks record each step as `kind: 'delegation'`, with the action `gate`, `read-ag
 ## Repository rules
 
 - Follow the `ship-change` skill for every change: one issue, one branch and one pull request per task. The branch holds the task's code, tests and benchmark. Nothing writes to `main` directly.
+- Publish every result everywhere. After a benchmark run that changes a public number, before a release PR merges, and for any edit to the benchmark docs or the website, follow the `publish-results` skill. It updates the README, `docs/compare.md`, every website page, the website's FAQ data, the sitemap and the report in the same PR. `bench/results/headline.json` holds the public numbers, and `tests/claims.test.mts` fails CI when any page drifts from the rows or keeps a stale claim. Never deliver a result to one page and leave the rest.
 - Do not change `version` in `.claude-plugin/plugin.json`. The release PR raises it, and also updates the README. Add a line under `[Unreleased]` in `CHANGELOG.md` when you change a shipped path.
 - CI rejects personal absolute paths anywhere in the repository, and a `"text":` field in `bench/results/*.json`. Never save model reply text or real session transcripts.
 - Do not claim a cost saving without a repeatable benchmark run. Under 30 tasks, a run is a pilot. See `bench/README.md`.
