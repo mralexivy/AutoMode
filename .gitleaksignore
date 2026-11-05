@@ -1,0 +1,3 @@
+# The guardian redaction tests use a fake, secret-shaped value on purpose. gitleaks 8.24 in CI does not apply the
+# [[allowlists]] path rule of .gitleaks.toml on a full-history scan, so the old commit that added it is listed here.
+3f023f44d4a24df0e0f7450a2523c4ecbe821fd3:tests/guardian-lib.test.mjs:generic-api-key:167
