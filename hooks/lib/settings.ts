@@ -40,7 +40,7 @@ export const FIELDS = {
   layout: { title: 'Layout', options: ['expanded', 'minimal'], default: 'expanded', applies: 'now', section: 'appearance' },
   theme: { title: 'Theme', options: ['native', 'automode', 'mono', 'contrast'], default: 'native', applies: 'now', section: 'appearance' },
   appearance: { title: 'Appearance', options: ['auto', 'dark', 'light'], default: 'auto', applies: 'now', section: 'appearance' },
-  metrics: { title: 'Bar metrics', options: [], default: 'pending,context,cache,cost,guardian,stage', applies: 'now', section: 'appearance' },
+  metrics: { title: 'Bar metrics', options: [], default: 'pending,context,cache,cost,saved,guardian,stage', applies: 'now', section: 'appearance' },
 } as const satisfies Record<string, FieldSpec>
 
 export type Field = keyof typeof FIELDS

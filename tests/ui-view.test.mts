@@ -5,8 +5,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { tokensFor, PALETTES as THEMES, THEMES as ALL_THEMES, TEXT_ROLES, contrast, appearanceOf } from '../hooks/ui/tokens.ts'
-import { buildView, barSegments, barText, modelName, cacheText, usdText, tokensText, workflowOf, METRICS } from '../hooks/ui/view.ts'
-import { STATES, stateOf, NOW, router, guard, usage } from './fixtures/ui-states.mts'
+import { buildView, barSegments, barText, modelName, cacheText, usdText, tokensText, workflowOf, METRICS, savedSegment, savingsLine } from '../hooks/ui/view.ts'
+import { STATES, stateOf, NOW, router, guard, usage, SAVINGS } from './fixtures/ui-states.mts'
 
 const viewOf = (name) => { const s = stateOf(name); return buildView(s.router, s.guard, s.usage, s.now) }
 
@@ -205,4 +205,21 @@ test('an open ladder consult shows on the escalation line, and a settled one doe
   assert.equal(at('open'), '↑ asking an Opus architect')
   assert.equal(at('verified_resolved'), null)
   assert.equal(buildView(router(), guard(), usage(), NOW).escalation, null)
+})
+
+test('the bar shows the live saving, a switch still paying back, or nothing', () => {
+  const bar = (savings: object) => barText(barSegments(buildView(router({ savings }), guard(), usage(), NOW), 200, NOW))
+  assert.match(bar(SAVINGS), /saved ~\$0\.38/)
+  assert.match(bar({ ...SAVINGS, phase: 'paying-back', netUsd: -0.07 }), /↺ \$0\.07 to pay back/)
+  assert.ok(!/saved|pay back/.test(bar({ ...SAVINGS, phase: 'none', netUsd: 0, rerouted: 0 })))
+  assert.equal(savedSegment(undefined), null)
+  // The person can hide it, and it goes before the stage when the bar is narrow.
+  assert.ok(!/saved/.test(barText(barSegments(buildView(router(), guard(), usage(), NOW), 200, NOW, METRICS.filter((m) => m !== 'saved')))))
+})
+
+test('/automode says what the saving compares and leaves out', () => {
+  const line = savingsLine(SAVINGS as any)!
+  assert.match(line, /about \$0\.38 \(41%\) against Opus/)
+  assert.match(line, /estimate: the same tokens on Opus with its own warm cache \$0\.93, actual \$0\.52/)
+  assert.match(savingsLine({ ...SAVINGS, phase: 'none', rerouted: 0 } as any)!, /nothing yet/)
 })

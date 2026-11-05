@@ -19,6 +19,7 @@ import type { EngineInterface } from 'claude-code'
 import type { CacheState, Complexity, EffectiveRoute, Effort, Family, Mode, Owner, Risk, Route, Strategy, TaskEnvelope, Tier, TokenUsage } from './lib/types.ts'
 import { EFFORTS, maxRisk, tierRank } from './lib/types.ts'
 import { ANTHROPIC, familyOf, rowFor, usageUsd } from './lib/prices.ts'
+import { addOverhead, addRequest, NO_SAVINGS, netOf, phaseOf, shareOf, type Savings } from './lib/savings.ts'
 import { isTask, JUDGE_SYSTEM, JUDGE_SYSTEM_V3, JUDGE_SYSTEM_V4, judgePrompt, parseJudge, parseOverride, type JudgeAnswer } from './lib/classify.ts'
 import { transitionOf } from './lib/transition.ts'
 import { classifyError, sanitizeDetail, UNCLASSIFIED } from './lib/errors.ts'
@@ -246,6 +247,8 @@ const S = {
   sessionMode: null as Mode | null,
   // The request ledger for the UI: running sums of the prices pushRequest and the judges already compute.
   ledger: emptyLedger(),
+  // Live savings against the model the session started on (lib/savings.ts). Read only by the UI.
+  savings: NO_SAVINGS as Savings,
 }
 
 // What the UI shows that routing itself does not keep (hooks/ui/view.ts RouterSnap). Written where the state already
@@ -432,7 +435,7 @@ async function spawnOutsideAutoMode($: EngineInterface, e: any, next: any) {
 
 // Persistence: a headless --resume or a plugin reload starts a new module, but the session's cache
 // and task do not reset. The routing state is saved per session after each turn and read back once.
-const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'appModel', 'sessionModel', 'pinFamily', 'pinEffort', 'judgeRiskTask', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'dropped', 'rent', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier', 'editedSinceCheck', 'lastCheck', 'obligations', 'obligationsTask', 'completionBlocks', 'completionState', 'taskUsd', 'budgetTold', 'rescues', 'rescueBrief', 'editsSeen', 'stopMark', 'baseline', 'watchdogFired', 'stopHeld', 'prefixAtFirstEdit', 'contextHandled', 'priceStepNoted'] as const
+const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'appModel', 'sessionModel', 'pinFamily', 'pinEffort', 'judgeRiskTask', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'dropped', 'rent', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier', 'editedSinceCheck', 'lastCheck', 'obligations', 'obligationsTask', 'completionBlocks', 'completionState', 'taskUsd', 'budgetTold', 'rescues', 'rescueBrief', 'editsSeen', 'stopMark', 'baseline', 'watchdogFired', 'stopHeld', 'prefixAtFirstEdit', 'contextHandled', 'priceStepNoted', 'savings'] as const
 async function restore($: EngineInterface) {
   S.restored = true
   try { S.sessionId = await sid($) } catch {}
@@ -1658,6 +1661,8 @@ function pushRequest(e: any, sent: { model: string; effort: unknown }, owner: st
   const answered = res?.usage?.model ?? null
   const price = u ? usdOf(answered ?? sent.model, u) : null
   if (u && price) noteLedger(answered ?? sent.model, u, price.value, e.agentId)
+  // Live savings: main-session requests only, against the app's model, which routing never rewrites.
+  if (u && e.agentId === undefined && typeof e.model === 'string') S.savings = addRequest(S.savings, { appModel: e.model, answeredModel: answered ?? sent.model, usage: u, at, ttlMs: S.ttl }, prices())
   // v6b: an effort change on the same model, and what the next request read from cache. It checks, per provider,
   // model and version, that an effort change keeps the cache (V6.md, E3).
   const fam = familyOf(sent.model)
@@ -2893,6 +2898,7 @@ const TIER_ORDER: Tier[] = ['T0', 'T1', 'T2', 'T3', 'T4']
 // noteJudge and noteLedger keep running sums of prices already computed for the records; noteAgent and noteVerdict
 // copy what a spawn and a decision already carry. None of them is read by routing.
 function noteJudge(usd: number) {
+  S.savings = addOverhead(S.savings, usd)
   S.ledger = { ...S.ledger, judgeUsd: round6(S.ledger.judgeUsd + usd), judgeCalls: S.ledger.judgeCalls + 1 }
 }
 function noteLedger(model: string, u: TokenUsage, usd: number, agentId?: string) {
@@ -2947,6 +2953,7 @@ export function v4Snapshot(sessionModel: string | null, now: number): RouterSnap
     consult: S.consultLog.length ? { episode: S.consultLog.at(-1)!.episode, state: (S.consultLog.at(-1)!.outcome ?? 'open') as NonNullable<RouterSnap['consult']>['state'] } : null,
     warm: Object.fromEntries(Object.entries(S.warm).map(([f, w]) => [f, { until: w!.until, effort: w!.effort }])),
     candidates: U.candidates, agents: [...U.agents.values()], ledger: S.ledger,
+    savings: { baseline: S.savings.baseline, netUsd: netOf(S.savings), share: shareOf(S.savings), phase: phaseOf(S.savings), baselineUsd: S.savings.baselineUsd, actualUsd: S.savings.actualUsd, overheadUsd: S.savings.overheadUsd, rewriteUsd: S.savings.rewriteUsd, requests: S.savings.requests, rerouted: S.savings.rerouted },
   }
 }
 
@@ -2972,7 +2979,7 @@ function freshSession() {
     warm: {}, turnRequests: new Map(), stayUp: 0, redoFloor: null, heldRoute: null, planMode: false, planExited: false, editLog: [],
     learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], taskPrompts: [], forkRuns: new Map(), bashEdits: 0, baseline: [], resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
-    signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
+    signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(), savings: NO_SAVINGS,
     judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, stopMark: null, editsSeen: 0, taskUsd: 0, budgetTold: false, rescues: {}, rescueBrief: null, watchdogFired: false, stopHeld: false, prefixAtFirstEdit: null, contextHandled: false, priceStepNoted: false, lastMain: null, taskCauses: [], lastRecoveryAt: null, judgeRiskTask: undefined,
     preflight: undefined, breakers: {}, lastNoResponse: null, failures: [], pendingErrors: [], signalErrorAt: 0, signalMode: '', compactionPricedAt: 0, haikuOutUntilCompaction: false, lastWorkBand: undefined, effortUnsupported: false, thinkingRisk: false, toldErrorClass: '', toldBreaker: false, firstPrefixSaved: false, inadequate: null, toldInadequateTask: '',
   }

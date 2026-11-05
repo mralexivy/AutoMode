@@ -6,6 +6,9 @@ const MIN = 60_000
 
 export const LEDGER = { requests: 14, byModel: { 'claude-sonnet-5-5': { usd: 0.98, requests: 11 }, 'claude-haiku-5-5': { usd: 0.06, requests: 3 } }, cacheRead: 412_000, cacheWrite: 61_000, judgeUsd: 0.031, judgeCalls: 6, subagentUsd: 0.06 }
 
+// A session where reroutes saved money. The states below default to nothing rerouted, so the bar shows no saving.
+export const SAVINGS = { baseline: 'opus', netUsd: 0.38, share: 0.41, phase: 'saving', baselineUsd: 0.93, actualUsd: 0.52, overheadUsd: 0.03, rewriteUsd: 0.11, requests: 14, rerouted: 11 }
+
 export function router(over = {}) {
   return {
     enabled: true, killed: false, activation: 'always', active: true, mode: 'auto', configMode: 'auto', sessionMode: null, policy: 'auto', providerGuard: false, provider: 'anthropic',
@@ -16,7 +19,7 @@ export function router(over = {}) {
     stage: 'implement', planMode: false, review: { required: false, because: [] }, lastCheck: null,
     warm: { sonnet: { until: NOW + 42 * MIN + 15_000, effort: 'high' } }, ttlMs: 60 * MIN,
     candidates: [{ route: 'haiku/medium', eligibility: 'ineligible', usd: 0.004, why: 'only one judge named Haiku' }, { route: 'sonnet/high', eligibility: 'eligible', usd: 0.021, why: 'cheapest eligible' }, { route: 'opus/medium', eligibility: 'eligible', usd: 0.058, why: '' }],
-    agents: [], ledger: LEDGER,
+    agents: [], ledger: LEDGER, savings: { ...SAVINGS, phase: 'none', netUsd: 0, share: null, rerouted: 0, rewriteUsd: 0 },
     ...over,
   }
 }

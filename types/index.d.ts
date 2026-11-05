@@ -38,6 +38,20 @@ export interface Ledger {
   subagentUsd: number
 }
 
+// Live savings against the session's starting model (hooks/lib/savings.ts). An estimate: the same tokens at other prices.
+export interface SavingsSnap {
+  baseline: Family | null
+  netUsd: number                // negative while a switch's cache rewrite is paying back
+  share: number | null          // net as a share of the baseline cost
+  phase: 'none' | 'paying-back' | 'saving'
+  baselineUsd: number
+  actualUsd: number
+  overheadUsd: number
+  rewriteUsd: number
+  requests: number
+  rerouted: number
+}
+
 export interface RouterSnap {
   enabled: boolean              // config.json router v4
   killed: boolean               // AUTOMODE_ROUTER=off
@@ -72,6 +86,7 @@ export interface RouterSnap {
   candidates: { route: string; eligibility: string; usd: number | null; why: string }[] // the last auto decision's, as recorded
   agents: AgentSnap[]
   ledger: Ledger
+  savings: SavingsSnap
 }
 
 export interface GuardSnap {
