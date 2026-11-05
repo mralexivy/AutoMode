@@ -1,0 +1,59 @@
+---
+title: "How to reduce Claude Code costs"
+description: "Practical ways to cut Claude Code token use and spend: match the model to the job, lower effort, clear context, keep the cache warm, and route each prompt."
+seoTitle: "How to Reduce Claude Code Costs: 9 Ways That Work (2026)"
+---
+
+**Claude Code costs depend mostly on three things: the model, the effort, and how much context each request carries.** Anthropic's own docs say token costs scale with context size, Sonnet handles most coding tasks and costs less than Opus, and lowering effort cuts thinking tokens on simple tasks. In our benchmark, routing each prompt to the right model and effort cost 51% less than running Claude Code on Opus, at the same pass rate.
+
+## 1. Check where your usage goes
+
+Run `/usage`. On a subscription plan it shows what counts against your limits, with recommendations for anything behind 10% or more of recent usage. It also reports how much of your input came from the prompt cache.
+
+## 2. Match the model to the job
+
+[Compare Haiku, Sonnet and Opus](/docs/guides/haiku-vs-sonnet-vs-opus). Anthropic's guidance is to use Sonnet for most coding and keep Opus for complex architecture and multi-step reasoning. Use `/model` to switch, and set `model: haiku` for simple subagent tasks. Quick factual questions rarely need more than Haiku: in our runs, Haiku answered ten questions for $0.08, against $0.50 on Opus.
+
+## 3. Lower the effort on simple tasks
+
+Thinking tokens bill as output tokens. [See what each effort level does](/docs/guides/effort-levels). For simple work, lower the effort with `/effort` or in `/model`. Raise it again for a hard problem.
+
+## 4. Clear between unrelated tasks
+
+Claude Code sends your whole conversation with every request. Run `/clear` when you switch to unrelated work. It costs nothing, and `/resume` brings an old session back.
+
+## 5. Switch models at a natural break
+
+Each model keeps its own prompt cache. A switch in the middle of a long chat rewrites the whole chat to the new model's cache. Switch at the start of a session or after `/clear`. [Read when a model switch pays off](/docs/concepts/prompt-cache).
+
+## 6. Keep the cache warm
+
+Your first message after a break longer than the cache lifetime reprocesses your full context. If you step away from a large session, expect that cost when you return.
+
+## 7. Trim what loads every time
+
+CLAUDE.md loads at the start of every session. Anthropic suggests keeping it under 200 lines and moving specialized instructions into skills, which load only when needed. Disable MCP servers you do not use with `/mcp`.
+
+## 8. Write specific prompts
+
+"Add input validation to the login function in auth.ts" costs less than "improve this codebase", because Claude reads fewer files. Plan mode helps on complex work, because it catches a wrong direction before the edits.
+
+## 9. Route each prompt automatically
+
+Doing steps 2, 3 and 5 by hand on every prompt is tedious, so most people leave Claude Code on one model. A router does it for you. AutoMode picks the model and effort for each prompt, checks the cache cost before a switch, and sets a quality floor for risky work.
+
+| 5 mixed sessions, 20 steps | Passed | Questions | Coding tasks | Total | vs Opus |
+| --- | --- | --- | --- | --- | --- |
+| AutoMode | 20/20 | $0.08 | $1.93 | **$2.01** | **−51%** |
+| Plain Sonnet high | 20/20 | $0.24 | $1.90 | $2.14 | −48% |
+| effortless, on Opus | 20/20 | $0.43 | $3.44 | $3.87 | −7% |
+| Plain Opus (Claude Code default) | 20/20 | $0.50 | $3.64 | $4.14 | — |
+
+*Five mixed sessions, list-price equivalents, one repetition per arm. [Read the full benchmark and its limits](/docs/benchmarks/results).*
+
+## Sources
+
+- Anthropic: [Manage costs effectively](https://code.claude.com/docs/en/costs), read on 2026-11-05.
+- AutoMode: [v6 benchmark report](https://github.com/mralexivy/AutoMode/blob/main/bench/experiments/V6.md) and [rows](https://github.com/mralexivy/AutoMode/tree/main/bench/results).
+
+<InstallCard />

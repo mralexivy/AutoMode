@@ -1,0 +1,50 @@
+---
+title: "The guardian"
+description: "The AutoMode guardian redacts secrets, pauses turns that stop converging, shortens long output, saves checkpoints and guards subagents. Its five modes."
+---
+
+The guardian watches the session and its cost. Model and effort stay with the router: the guardian never picks a model.
+
+- Redacts secret-shaped text before it is stored.
+- Pauses a risky turn and waits for `am:continue`.
+- Shortens large tool results and keeps the original on disk.
+- Saves a task checkpoint, and restores it after `/clear` with `am:handoff`.
+- Denies git writes and `rm -rf` from subagents. The main session can still commit when you ask.
+
+## What it watches
+
+| Question | What it looks at |
+|---|---|
+| **Progress** | Is the turn still producing outcomes, such as a check that passes after a change, an approved plan or a commit? Or is it spending without them: the same call again, the same failure again, many requests since the last outcome? |
+| **Lifecycle** | At a task boundary: continue in this context, compact it, or clear with a handoff. It prices this on the remaining requests, the cache state and the cost of rebuilding what a reset drops. |
+| **Output** | Which large tool results to shorten before they stay in context. Every error line stays, and the full text is saved where the model can read it. |
+
+## Modes
+
+Each mode includes the one before it. The shipped mode is `auto`.
+
+| Mode | Adds |
+|---|---|
+| `off` | Nothing. |
+| `observe` | Records only. |
+| `recommend` | Notes to the model when a turn stops converging, and toasts with the savings case. |
+| `assist` | Checkpoints, the verified handoff after `/clear`, and the one-key `/clear` or `/compact` suggestion. |
+| `auto` | The automatic actions you keep on: `autoCompact`, `hardPause` and `reduceOutputs`. |
+
+`auto` never accepts edits, runs git or widens permissions.
+
+## Settings
+
+| Key | Default | Meaning |
+|---|---|---|
+| `guardian.mode` | `auto` | One of the modes above. `AUTOMODE_GUARDIAN` wins. |
+| `guardian.everySession` | `true` | Run the guardian in every session, not only AutoMode sessions. |
+| `guardian.hardPause` | `true` | In `auto`, a turn that does not converge is ended between requests, never mid-write. |
+| `guardian.autoCompact` | `true` | In `auto`, compact between turns when it pays. Otherwise `/compact` is suggested. |
+| `guardian.reduceOutputs` | `true` | In `auto`, long command output is saved in full and shortened in the chat, with every error line kept. |
+
+`AUTOMODE_GUARDIAN=off` turns the guardian off and leaves the rest of AutoMode running. `AUTOMODE_GUARDIAN_CONFIG` takes a JSON object over `config.json`, for a test profile or one machine.
+
+## Where its records go
+
+Guardian events stay 30 days, checkpoints 7 days and saved outputs 3 days, all in `~/.claude/plugins/data/automode/`. See [Privacy](/docs/security/privacy).

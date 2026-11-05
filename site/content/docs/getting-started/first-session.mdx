@@ -1,0 +1,51 @@
+---
+title: "Your first session"
+description: "Your first AutoMode session in Claude Code: a question runs on Haiku, an edit on Sonnet, risky work on Opus with a review. Read the bar and steer a prompt."
+---
+
+You do not change how you work. Type prompts as usual. AutoMode decides the model and the effort before each one runs, and the bar above the prompt shows what it chose.
+
+<Steps>
+  <Step>
+    ### Ask a quick question
+
+    Try `What does the --frozen-lockfile flag do?`. The bar shows `Deciding…` for about a second, then **Low · Haiku**. A question needs facts, not deep thought, so it runs on the cheapest model.
+  </Step>
+  <Step>
+    ### Ask for a small change
+
+    Try `Rename getUser to fetchUser across the package`. It runs on Sonnet at the effort the judge picks. Sonnet must show a passing test or build before it says done.
+  </Step>
+  <Step>
+    ### Ask for something risky
+
+    Try `Migrate the session tokens from HS256 to RS256`. That matches the security rules, so a quality floor rules out Haiku. After the checks pass, an independent reviewer reads the diff. It runs on Opus when the diff shows critical risk.
+  </Step>
+  <Step>
+    ### Ask for open-ended work
+
+    Start the prompt with `am:run`, such as `am:run add rate limiting to the public API`. That runs the [workflow](/docs/concepts/workflow): discover, plan, build, verify and review, with six small agents.
+  </Step>
+</Steps>
+
+![Two prompts in a real session, with the bar under each: Haiku Low, then Opus High](/img/session.png)
+
+## Steer one prompt
+
+Start a prompt with an `am:` command to override the route for that prompt only.
+
+| You want | Type |
+|---|---|
+| A stronger model | `am:opus` or `am:sonnet` before the prompt |
+| More or less thinking | `am:low`, `am:medium`, `am:high`, `am:xhigh` or `am:max` |
+| No workflow | `am:direct <request>` |
+| The workflow | `am:run <request>` |
+| Back to automatic | `am:reset` |
+
+Your own `/model` and `/effort` choices count too. AutoMode treats them as a pin and keeps them. See [Prompt commands](/docs/reference/prompt-commands).
+
+## See what it did
+
+- `/automode` prints the bar as text, with the reason for the route.
+- `/automode details` adds the workflow stages, the guardian and usage.
+- `/automode:usage` lists model calls, tokens, cache use and the estimated API cost of the session.

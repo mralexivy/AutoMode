@@ -1,0 +1,12 @@
+{
+  "title": "Guides",
+  "pages": [
+    "calculator",
+    "reduce-claude-code-costs",
+    "effort-levels",
+    "haiku-vs-sonnet-vs-opus",
+    "automode-vs-effortless",
+    "automode-vs-claude-code-router",
+    "auto-mode-vs-automode"
+  ]
+}

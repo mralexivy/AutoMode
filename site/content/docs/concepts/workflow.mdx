@@ -1,0 +1,33 @@
+---
+title: "The workflow"
+description: "AutoMode's plan, build, verify and review workflow for open-ended Claude Code work: risk bands S0 to S3, stage models, the S3 rule, and how to start it."
+---
+
+Open-ended work runs through the `automode:run` workflow. Start it with `am:run <request>`. Automatic entry is off by default, so the router never starts it by itself unless you set `"autoWorkflow": true`.
+
+![The workflow: risk band, discover, plan, build, verify, review](/img/workflow.svg)
+
+| Stage | What runs |
+|---|---|
+| **Risk band** | Code, not a model. It sets S0 to S3 from the task text, the planned and changed files, and blocking unknowns. The band only goes up. |
+| **Discover** | Haiku. One agent for S1. Three agents with separate scopes for S2 and S3. |
+| **Plan** | Opus. Workstreams, acceptance criteria and risks. |
+| **Build** | Sonnet. Workstreams that share files never run together. `maxConcurrency` defaults to 1. |
+| **Verify** | Sonnet runs the commands. Code decides pass or fail from the exit codes. At most 2 rounds. |
+| **Review** | Opus reads the diff. It is mandatory for S2 and S3, failed checks, unfinished work and incomplete evidence. Sonnet fixes blockers and major correctness or security defects. The verifier checks evidence gaps. |
+
+<Callout type="warn" title="The S3 rule">
+  If a prompt matches security or credentials, migrations or destructive operations, concurrency, external contracts, or payments and sensitive data, the review is mandatory. It runs on Opus when the diff shows critical risk.
+</Callout>
+
+## Start it, skip it
+
+| You want | Type |
+|---|---|
+| The workflow for one prompt | `am:run <request>` |
+| No workflow for one prompt | `am:direct <request>` |
+| The workflow for every standard task | `"defaultPath": "workflow"` in `config.json` |
+| The router to enter it by itself | `"autoWorkflow": true`. Decision records show what entry would have done either way. |
+| A review on every change | `"reviewPolicy": "always"` |
+
+The six agents the workflow runs are on the [agents page](/docs/concepts/agents).

@@ -1,0 +1,31 @@
+---
+title: "AutoMode vs Claude Code Router"
+description: "Claude Code Router connects coding agents to other model providers. AutoMode picks the Claude model and effort for each prompt. Here is which one you need."
+seoTitle: "AutoMode vs Claude Code Router: What Is the Difference?"
+---
+
+**They solve different problems.** [Claude Code Router](https://github.com/musistudio/claude-code-router) is a local app that connects Claude Code and other coding agents to the model providers you choose, then routes and fails over between them. AutoMode is a Claude Code plugin that picks which Claude model and effort to use for each prompt, on your existing Claude login. Pick Claude Code Router to reach non-Anthropic models. Pick AutoMode to spend less on Claude models.
+
+## The difference at a glance
+
+| Feature | AutoMode | Claude Code Router |
+| --- | --- | --- |
+| What it is | A Claude Code plugin (mod) | A local app between agents and providers |
+| Main job | Pick the Claude model and effort per prompt | Route requests across providers and models |
+| Models | Haiku, Sonnet and Opus | The providers you connect |
+| Agents | Claude Code | Claude Code, Codex and other coding agents |
+| Credentials | Your Claude login, nothing else | Keys for the providers you choose |
+| Risk floor and review | Yes | Not described |
+| Measured cost result | 51% less than Claude Code on Opus, same pass rate | None found |
+
+*Claude Code Router facts come from its README, read on 2026-10-31.*
+
+## Why do the names get confused?
+
+Both "route" models for Claude Code. Claude Code Router routes between providers. AutoMode routes between Claude models, inside Claude Code, prompt by prompt. Several smaller projects also use "claude-router" in their names. [See them compared](/docs/compare).
+
+## Can I use both?
+
+We have not tested them together, so we make no claim. AutoMode chooses Claude model IDs, and Claude Code Router changes where requests go, so the two could conflict.
+
+<InstallCard />

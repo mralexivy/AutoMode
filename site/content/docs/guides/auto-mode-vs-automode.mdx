@@ -1,0 +1,36 @@
+---
+title: "AutoMode vs Claude Code auto mode"
+description: "Claude Code auto mode is a built-in permission mode. AutoMode is a free plugin that picks the model and effort for each prompt. Here is how they differ."
+seoTitle: "AutoMode vs Claude Code auto mode: what is the difference?"
+---
+
+**They are two different things with similar names.** Claude Code *auto mode* is a permission mode built by Anthropic. It decides whether an action can run without asking you. *AutoMode* is a free community plugin. It picks the model and the effort for each prompt.
+
+## The difference at a glance
+
+| Feature | Claude Code auto mode | AutoMode |
+| --- | --- | --- |
+| Made by | Anthropic, built into Claude Code | A community project, not Anthropic |
+| Question it answers | Can this action run without a prompt? | Which model and effort fit this prompt? |
+| What it controls | Permissions for each tool call | The model and effort for each prompt |
+| How it decides | A classifier reviews each action before it runs | Haiku judges and code-set risk floors choose a route |
+| Extra it adds | Fewer permission prompts | A cache countdown, a workflow and an independent review for risky work |
+| How you get it | Built in. Press Shift+Tab to cycle modes | Install the plugin |
+
+*Auto mode facts come from Anthropic's [permission modes docs](https://code.claude.com/docs/en/permission-modes) and [announcement](https://claude.com/blog/auto-mode), read on 2026-10-31.*
+
+## What is Claude Code auto mode?
+
+Auto mode is a permission mode. Claude runs actions without routine permission prompts, and a separate classifier reviews each action first. The classifier blocks actions that go beyond your request. Anthropic's docs warn that it "reduces permission prompts but does not guarantee safety."
+
+Start a session with `claude --permission-mode auto`, or press Shift+Tab to cycle modes. Auto mode does not choose your model. The `/model` setting does that.
+
+## What is AutoMode?
+
+AutoMode is a free, open source Claude Code plugin. For each prompt, it picks a model and an effort. A quick fact can run on Haiku at Low. A security migration moves up to Opus, because code sets a risk floor that the judge cannot lower. [Read how a route is decided](/docs/concepts/routing).
+
+## Can I use both?
+
+The two settings are separate. AutoMode does not change your permission mode, and auto mode does not pick your route. Auto mode does need a supported model, so check Anthropic's list if a session starts in Manual mode.
+
+<InstallCard />

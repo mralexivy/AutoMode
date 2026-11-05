@@ -26,12 +26,12 @@
 
 **A free, open source model router for Claude Code. It picks the right model and the right effort for every prompt.**
 
-**On the website:** [the docs](https://mralexivy.github.io/AutoMode/docs/) · [the benchmark](https://mralexivy.github.io/AutoMode/benchmark/) · [how to reduce Claude Code costs](https://mralexivy.github.io/AutoMode/reduce-claude-code-costs/) · [install guide](https://mralexivy.github.io/AutoMode/install/) · [Claude Code routers compared](https://mralexivy.github.io/AutoMode/compare/) · [AutoMode vs effortless](https://mralexivy.github.io/AutoMode/automode-vs-effortless/) · [AutoMode vs Claude Code Router](https://mralexivy.github.io/AutoMode/automode-vs-claude-code-router/) · [does switching models waste the cache?](https://mralexivy.github.io/AutoMode/prompt-cache/)
+**On the website:** [the docs](https://mralexivy.github.io/AutoMode/docs/) · [the benchmark](https://mralexivy.github.io/AutoMode/docs/benchmarks/results/) · [how to reduce Claude Code costs](https://mralexivy.github.io/AutoMode/docs/guides/reduce-claude-code-costs/) · [install guide](https://mralexivy.github.io/AutoMode/docs/getting-started/install/) · [Claude Code routers compared](https://mralexivy.github.io/AutoMode/docs/compare/) · [AutoMode vs effortless](https://mralexivy.github.io/AutoMode/docs/guides/automode-vs-effortless/) · [AutoMode vs Claude Code Router](https://mralexivy.github.io/AutoMode/docs/guides/automode-vs-claude-code-router/) · [does switching models waste the cache?](https://mralexivy.github.io/AutoMode/docs/concepts/prompt-cache/)
 
 Quick questions stay cheap. Hard jobs get the strongest model. Risky changes always get a review.
 Install it and it starts. You never touch the model or the Effort control again.
 
-<sub>A community project. It is not Claude Code's built-in auto permission mode, and Anthropic does not make it. [See the difference](https://mralexivy.github.io/AutoMode/auto-mode-vs-automode/).</sub>
+<sub>A community project. It is not Claude Code's built-in auto permission mode, and Anthropic does not make it. [See the difference](https://mralexivy.github.io/AutoMode/docs/guides/auto-mode-vs-automode/).</sub>
 
 **Paste these into Claude Code, one at a time, then run `/reload-plugins`:**
 

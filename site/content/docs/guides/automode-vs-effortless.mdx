@@ -1,0 +1,42 @@
+---
+title: "AutoMode vs effortless"
+description: "AutoMode and effortless both route effort in Claude Code. In the same five sessions, AutoMode cost $2.01 and effortless $3.87, both passing 20 of 20."
+seoTitle: "AutoMode vs effortless: Which Claude Code Router? (2026)"
+---
+
+**effortless picks the effort for each prompt. AutoMode picks the effort and the model.** In the same five mixed Claude Code sessions, AutoMode cost $2.01 and effortless, running on Opus, cost $3.87. Both passed all 20 steps. effortless is simpler and does one job well. AutoMode's effort rules are ported from it, so the two are related, not rivals from scratch.
+
+## The difference at a glance
+
+| Feature | AutoMode | [effortless](https://github.com/HeyCubit/effortless) |
+| --- | --- | --- |
+| Effort per prompt | Yes | Yes |
+| Model per prompt | Yes, on by default | Off by default, experimental |
+| Quality floor for risky work | Yes, set by code | Not described |
+| Review for risky work | Yes | Not described |
+| Plan, build, verify and review workflow | Yes | Not described |
+| Prompt cache | Countdown, cost check before a switch | Countdown, compact and handoff offers |
+| Extra credential | None | None |
+| Cost in our 5 mixed sessions | **$2.01**, 20/20 | $3.87, 20/20 |
+
+*Feature rows come from each project's README. "Not described" means the README does not mention it. Cost rows come from our own run, with effortless at its pinned commit.*
+
+## Why is AutoMode cheaper in these sessions?
+
+Most of the gap is the model, not the effort. effortless leaves the session on Opus by default, so questions and coding tasks both run there. AutoMode sends questions to Haiku and coding to Sonnet: questions cost $0.08 against effortless's $0.43, and coding tasks $1.93 against $3.44.
+
+## When should I pick effortless?
+
+- You want effort routing and nothing else.
+- You want to keep the model you picked. AutoMode can do this too: set **Route models** to `off`.
+- You prefer the smallest possible mod.
+
+## When should I pick AutoMode?
+
+- You run Claude Code on Opus and want to cut the bill without losing tasks.
+- You ask quick questions between coding tasks.
+- You want risky work, such as security or migrations, held to a quality floor and reviewed.
+
+[Compare all Claude Code routers](/docs/compare) or [read the benchmark](/docs/benchmarks/results).
+
+<InstallCard />
