@@ -11,8 +11,9 @@ const config = {
   trailingSlash: true,
   images: { unoptimized: true },
   reactStrictMode: true,
-  // site/ has its own lockfile, apart from the mod's dev tools.
-  turbopack: { root: import.meta.dirname },
+  // The repository root, so the site can import the mod's pure cost code from hooks/lib/ (the payback chart).
+  // site/ keeps its own lockfile and node_modules.
+  turbopack: { root: new URL('..', import.meta.url).pathname },
 };
 
 export default withMDX(config);
