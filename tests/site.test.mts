@@ -128,7 +128,7 @@ test('every scene has a rendered video and poster, and every page plays a real s
   assert.match(read(new URL('app/docs/[[...slug]]/page.tsx', site)), /videoObject/)
 })
 
-test('the payback chart runs the mod's own savings code, and every dropdown uses the site style', () => {
+test("the payback chart runs the mod's own savings code, and every dropdown uses the site style", () => {
   assert.match(read(new URL('lib/mod.ts', site)), /from '\.\.\/\.\.\/hooks\/lib\/savings\.ts'/)
   assert.match(read(new URL('components/payback.tsx', site)), /from '@\/lib\/mod'/)
   assert.match(read(new URL('content/docs/guides/calculator.mdx', site)), /<Payback \/>/)
