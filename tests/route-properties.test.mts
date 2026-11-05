@@ -108,9 +108,8 @@ test('assess: a critical text with no hard evidence and no judge gives level ele
 // Varies: the judge evidence, the running route (none, or any family and effort, warm with a 30k prefix) and the
 // allowed set. Fixed: consequence critical, complexity complex, no ladder step, no command, no pins, default economics.
 // Precondition: some non-Haiku model is allowed, so the floor (Sonnet high or Opus medium, band 2) can be met. Excluded:
-// the Haiku hold hole above, pinned by its own test. The band holds, but the family can leave the allowed set. Where a
-// failed judge fixes Haiku as the candidate, resolve() lifts the T0 candidate to the T2 floor. routeFor(T2) names
-// Sonnet whether or not Sonnet is allowed. That is the one way out of the allowed set, and the test pins it.
+// the Haiku hold hole above, pinned by its own test. The route never leaves the allowed set (issue #95): a T2 lift with
+// Sonnet out takes the next allowed tier up.
 test('floor: critical consequence keeps the route at band 2 or more and off Haiku', () => {
   let walked = 0
   let lifted = 0
@@ -121,20 +120,19 @@ test('floor: critical consequence keeps the route at band 2 or more and off Haik
     const where = () => JSON.stringify({ e, running, allowed, route: named(r), owner: r.owner })
     assert.notEqual(r.family, 'haiku', `critical leaves Haiku: ${where()}`)
     assert.ok(bandOfRoute(r) >= 2, `critical holds band 2: ${where()}`)
-    if (!allowed.includes(r.family)) {
-      assert.deepEqual([named(r), r.owner, result.choice.best.family], ['sonnet/high', 'quality-escalation', 'haiku'], `only the T2 lift of a fixed Haiku leaves the allowed set: ${where()}`)
-      lifted++
-    }
+    if (allowed.length) assert.ok(allowed.includes(r.family), `the route stays in the allowed set: ${where()}`)
+    if (result.choice.best.family === 'haiku' && allowed.length && !allowed.includes('sonnet')) lifted++
     walked++
   }
-  assert.ok(lifted > 0, 'the T2 lift of a fixed Haiku is in the domain')
+  assert.ok(lifted > 0, 'the T2 lift of a fixed Haiku with Sonnet out is in the domain')
   assert.ok(walked > 10_000, `walked ${walked}`)
 })
 
-test('floor: critical consequence with only Haiku allowed routes to Sonnet high, outside the allowed set', () => {
+test('floor: critical consequence with only Haiku allowed stays on Haiku and records the unmet floor (#95)', () => {
   for (const e of evidence()) for (const running of [null, ...RUNNING.filter((x) => x.family === 'haiku')]) {
     const r = routeAuto(input(given(e, { current: running ? named(running) : undefined, allowed: ['haiku'], risk: 'critical' }))).route
-    assert.deepEqual([named(r), r.owner], ['sonnet/high', 'quality-escalation'], JSON.stringify({ e, running }))
+    assert.equal(r.family, 'haiku', JSON.stringify({ e, running, route: named(r) }))
+    assert.ok(r.overridden.some((o) => /floor unmet/.test(o.reason)), JSON.stringify({ e, running, overridden: r.overridden }))
   }
 })
 
