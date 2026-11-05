@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-05
+
 ### Added
 
 - Agent `automode:builder`: it takes one task from a brief and works until the checks pass or a real blocker stops it. The caller sets its model. The v6c rescue and builder mode use it. The plan implementer, which stops after two fix attempts, did not fit.
