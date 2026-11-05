@@ -13,6 +13,7 @@ One quiet line above the prompt, in your theme's colors. It reports what actuall
 | **High · Opus** | The effort and the model for this prompt. `Deciding…` while the judge thinks. |
 | **◔ 38%** | How full the chat's context is. |
 | **cache 58:12** | Time until the prompt cache goes cold. After that, the next message pays full price to re-read the chat. |
+| **saved ~$0.38** | The estimated saving against the model the session started on. Right after a switch it reads **↺ $0.07 to pay back**. |
 | *a refactor across modules* | Why the route was chosen. |
 | **Auto** | Switches routing on or off for this session. |
 | **⚙** | Settings. |
@@ -26,7 +27,31 @@ Run `/plugin configure automode@automode`:
 | **Layout** | `expanded`: the bar above the prompt. `minimal`: one short line. | `expanded` |
 | **Theme** | `native` follows your Claude Code and editor theme. `automode`: blue routing, violet effort, teal guardian. `mono`: neutral accents. `contrast`: stronger text and edges. | `native` |
 | **Appearance** | `auto` follows your Claude Code theme. `dark` and `light` fix it. | `auto` |
-| **Bar metrics** | Any of `pending`, `context`, `cache`, `cost`, `guardian`, `stage`. The mode, model and effort always show. | all six |
+| **Bar metrics** | Any of `pending`, `context`, `cache`, `cost`, `saved`, `guardian`, `stage`. The mode, model and effort always show. | all seven |
+
+## Live savings
+
+The bar shows what AutoMode saved in this session once a prompt runs on another model than the session's own. It is honest about a switch: a new model must first write the whole chat into its own prompt cache, so the bar reads `↺ $0.07 to pay back` until cheaper requests pay that off. Then it reads `saved ~$0.38`.
+
+<Steps>
+  <Step>
+    ### Price the real tokens twice
+
+    Each main-session request is priced as it ran, cache writes included. Then the same tokens are priced on the session's model, the one your `/model` or Claude Code's default picked.
+  </Step>
+  <Step>
+    ### Keep the baseline's cache warm
+
+    The baseline keeps its own prompt cache while requests come within the cache lifetime. So it reads what it already cached and writes only what is new, as it really would.
+  </Step>
+  <Step>
+    ### Subtract AutoMode's own calls
+
+    The judges, extracts and compaction calls count against the saving.
+  </Step>
+</Steps>
+
+It is an estimate, so it shows a `~`. A different model would write different replies and might need a different number of turns, and nobody can measure that inside one session. Effort savings on the same model and subagents are left out. On the five benchmark sessions, it estimated a 56% saving against Opus, where the measured Opus runs showed 52%, within $0.18 per session. `/automode details` shows every part of the sum.
 
 ## Without the bar
 

@@ -224,8 +224,8 @@ function tipOf(r: RouterSnap, g: GuardSnap, ctx: View['context'], facts: Facts):
 
 // ---------------------------------------------------------------- fitting the bar
 
-export type Metric = 'context' | 'cache' | 'cost' | 'guardian' | 'stage' | 'pending'
-export const METRICS: readonly Metric[] = ['pending', 'context', 'cache', 'cost', 'guardian', 'stage']
+export type Metric = 'context' | 'cache' | 'cost' | 'saved' | 'guardian' | 'stage' | 'pending'
+export const METRICS: readonly Metric[] = ['pending', 'context', 'cache', 'cost', 'saved', 'guardian', 'stage']
 
 // barSegments: the bar's words, minimal and most needed first, fitted to `columns` cells. Auto is the normal state and says
 // nothing; another mode names itself. A healthy guardian is silent. The reason goes last and is the first to drop, then the
@@ -241,6 +241,8 @@ export function barSegments(v: View, columns: number, now: number, shown: readon
   if (has('context')) all.push({ key: 'context', text: v.context.percent === null ? '—' : `${Math.round(v.context.percent)}%`, tone: v.context.level === 'ok' ? 'text' : 'warn', drop: 4 })
   if (has('cache') && v.cache.state !== 'unknown') all.push({ key: 'cache', text: cacheText(v.cache.until, now), tone: v.cache.state === 'cold' ? 'dim' : 'dim', drop: 3 })
   if (has('cost')) all.push({ key: 'cost', text: usdText(v.cost.session), tone: v.cost.session === null ? 'dim' : 'text', drop: 2 })
+  const sv = savedSegment(v.router.savings)
+  if (has('saved') && sv) all.push({ ...sv, drop: 2 })
   if (has('guardian') && v.guardian.on && v.guardian.tone === 'warn') all.push({ key: 'guardian', text: `${v.guardian.glyph} ${v.guardian.state}`, tone: 'warn', drop: 98 })
   if (has('stage') && v.stage) all.push({ key: 'stage', text: v.stage, tone: 'dim', drop: 1 })
   if (v.why) all.push({ key: 'why', text: v.why, tone: 'dim', sep: ' — ', drop: 0 })
@@ -257,6 +259,26 @@ export function barSegments(v: View, columns: number, now: number, shown: readon
   ]
   for (const step of steps) { if (width(list) <= columns) break; list = step(list) }
   return list.map(({ drop: _d, ...s }) => s)
+}
+
+// savedSegment: the live saving against the session's starting model, read from the router's snapshot. Nothing shows
+// until a request runs on another model. While a switch's cache rewrite is not paid off, it says so instead of a saving.
+export function savedSegment(s: RouterSnap['savings'] | undefined): Segment | null {
+  if (!s || s.phase === 'none') return null
+  if (s.phase === 'paying-back') return { key: 'saved', text: `↺ ${usdText(-s.netUsd)} to pay back`, tone: 'dim' }
+  return { key: 'saved', text: `saved ~${usdText(s.netUsd)}`, tone: 'guard' }
+}
+
+// savingsLine: the saving as one sentence for /automode and the details view, with what it compares and leaves out.
+export function savingsLine(s: RouterSnap['savings'] | undefined): string | null {
+  if (!s || !s.baseline || s.requests === 0) return null
+  const base = FAMILY_NAME[s.baseline]
+  if (s.phase === 'none') return `Saved: nothing yet. Every request ran on ${base}, the session's model.`
+  const pct = s.share === null ? '' : ` (${Math.round(s.share * 100)}%)`
+  const head = s.phase === 'paying-back'
+    ? `Saved: ${usdText(-s.netUsd)} still to pay back. A switch wrote the chat into a new cache; cheaper requests pay it off.`
+    : `Saved: about ${usdText(s.netUsd)}${pct} against ${base}.`
+  return `${head}\n  estimate: the same tokens on ${base} with its own warm cache ${usdText(s.baselineUsd)}, actual ${usdText(s.actualUsd)}, AutoMode's judges ${usdText(s.overheadUsd)}, cache rewrites ${usdText(s.rewriteUsd)}`
 }
 
 // barText: the bar as one line, the way a terminal reads it and the way /automode status prints it.

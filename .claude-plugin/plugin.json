@@ -326,8 +326,8 @@
     "metrics": {
       "type": "string",
       "title": "AutoMode: Bar metrics",
-      "description": "Comma-separated bar items: pending, context, cache, cost, guardian, stage. The mode, model and effort always show.",
-      "default": "pending,context,cache,cost,guardian,stage"
+      "description": "Comma-separated bar items: pending, context, cache, cost, saved, guardian, stage. saved is the estimated saving against the model the session started on. The mode, model and effort always show.",
+      "default": "pending,context,cache,cost,saved,guardian,stage"
     }
   }
 }

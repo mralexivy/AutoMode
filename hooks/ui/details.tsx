@@ -2,7 +2,7 @@
 // agents that ran), subagents, the guardian, and usage. Every figure is read from the view; a cost is "measured" when a
 // priced response stands behind it, and the session total is the engine's own.
 import type { View, WorkflowStage } from '../../types/index.d.ts'
-import { cacheText, tokensText, usdText } from './view.ts'
+import { cacheText, savingsLine, tokensText, usdText } from './view.ts'
 
 const STAGE_GLYPH: Record<WorkflowStage['state'], string> = { done: '●', active: '◉', failed: '✕', required: '◇' }
 
@@ -17,6 +17,7 @@ export function detailsText(v: View, now: number): string {
     r.learned?.tasks ? `Learned: ${r.learned.tasks} tasks in this project${r.learned.opusFirst.length ? ` · starts on Opus: ${r.learned.opusFirst.join(', ')}` : ''}` : null,
     v.workflow.length ? `Workflow: ${v.workflow.map((s) => `${STAGE_GLYPH[s.state]} ${s.name}`).join(' ─ ')}` : null,
     `Guardian: ${g.enabled ? `${v.guardian.glyph} ${v.guardian.state} (mode ${g.mode})` : 'off'}${g.checkpoint ? ` · checkpoint ${g.checkpoint.sum}` : ''}`,
+    savingsLine(r.savings),
     `Usage: ${usdText(v.cost.session)} this session${r.ledger.requests ? ` · judges ${usdText(r.ledger.judgeUsd)} · subagents ${usdText(r.ledger.subagentUsd)} (measured)` : ''}`,
   ]
   return lines.filter(Boolean).join('\n')

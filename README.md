@@ -147,6 +147,7 @@ One quiet line above the prompt, in your theme's colors. It reports what actuall
 | **High · Opus** | The effort and the model for this prompt. `Deciding…` while the judge thinks. |
 | **◔ 38%** | How full the chat's context is. |
 | **cache 58:12** | Time until the prompt cache goes cold. After that, the next message pays full price to re-read the chat. |
+| **saved ~$0.38** | The estimated saving against the model the session started on. Right after a switch it reads **↺ $0.07 to pay back**, until cheaper requests pay off the new model's cache rewrite. |
 | *a refactor across modules* | Why the route was chosen. |
 | **Auto** | Switches routing on or off for this session. |
 | **⚙** | Settings. |
