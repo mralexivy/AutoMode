@@ -1,0 +1,212 @@
+{
+  "why": "Every place AutoMode is listed or will be submitted, with its rules and what it did. Read it before any submission, so nothing is sent twice. The growth skill updates it.",
+  "checked": "2026-11-05",
+  "statuses": ["planned", "open", "listed", "merged", "closed", "skipped"],
+  "entries": [
+    {
+      "id": "anthropic-directory",
+      "name": "Anthropic plugin directory",
+      "url": "https://code.claude.com/docs/en/plugins/publish",
+      "kind": "form",
+      "tier": "A",
+      "rules": "Official submission form. Anthropic reviews quality and security. The `directory` branch passed validation in #16.",
+      "status": "planned",
+      "notes": "Submission state unknown. `claude plugin list --available` did not show AutoMode on 2026-10-31."
+    },
+    {
+      "id": "hesreallyhim",
+      "name": "hesreallyhim/awesome-claude-code",
+      "url": "https://github.com/hesreallyhim/awesome-claude-code",
+      "reach": 57302,
+      "kind": "form",
+      "tier": "A",
+      "rules": "Web issue form only, never a PR and never gh. A human must submit. The repo must be 14 days old (from 2026-11-10) or have 100 stars. One resource at a time. One descriptive line, no sales pitch, no emoji.",
+      "status": "planned",
+      "planned": "2026-11-19"
+    },
+    {
+      "id": "karanb192-catalogue",
+      "name": "karanb192/awesome-claude-code-mods (catalogue)",
+      "url": "https://github.com/karanb192/awesome-claude-code-mods",
+      "reach": 875,
+      "kind": "seed-pr",
+      "tier": "A",
+      "rules": "A scanner finds repos with the claude-code-mod topic. A seed PR is only for repos it misses.",
+      "status": "listed",
+      "submissions": [
+        { "url": "https://github.com/karanb192/awesome-claude-code-mods/pull/444", "opened": "2026-10-30", "status": "open" },
+        { "url": "https://github.com/karanb192/awesome-claude-code-mods/pull/446", "opened": "2026-10-30", "status": "open" }
+      ],
+      "notes": "Already in data/repos.txt and catalogue.md through the scanner. Both seed PRs are duplicates and should be closed."
+    },
+    {
+      "id": "karanb192-featured",
+      "name": "karanb192/awesome-claude-code-mods (Featured)",
+      "url": "https://github.com/karanb192/awesome-claude-code-mods/issues/new?template=featured-nomination.yml",
+      "reach": 875,
+      "kind": "nomination",
+      "tier": "A",
+      "rules": "Nomination issue: mod URL, the task it helps with, a real recording, install steps, access notes, Claude Code version and platform. Disclose authorship.",
+      "status": "planned",
+      "planned": "2026-11-09"
+    },
+    {
+      "id": "quemsah",
+      "name": "quemsah/awesome-claude-plugins",
+      "url": "https://github.com/quemsah/awesome-claude-plugins",
+      "reach": 1544,
+      "kind": "pr",
+      "tier": "A",
+      "rules": "Read CONTRIBUTING before the PR. Merged 16 of its last 30 closed PRs.",
+      "status": "planned",
+      "planned": "2026-11-09"
+    },
+    {
+      "id": "composio",
+      "name": "composio-community/awesome-claude-plugins",
+      "url": "https://github.com/composio-community/awesome-claude-plugins",
+      "reach": 1980,
+      "kind": "pr",
+      "tier": "B",
+      "rules": "Read CONTRIBUTING before the PR. Merged 1 of its last 30 closed PRs, so expect little.",
+      "status": "planned",
+      "planned": "2026-11-10"
+    },
+    {
+      "id": "claude-market",
+      "name": "claude-market/marketplace",
+      "url": "https://github.com/claude-market/marketplace",
+      "kind": "pr",
+      "tier": "B",
+      "rules": "Add the plugin as a top-level directory and generate its manifest entry. Check its README first.",
+      "status": "planned",
+      "planned": "2026-11-10"
+    },
+    {
+      "id": "hamzafer",
+      "name": "hamzafer/claude-code-mods",
+      "url": "https://github.com/hamzafer/claude-code-mods",
+      "reach": 444,
+      "kind": "pr",
+      "tier": "B",
+      "status": "merged",
+      "submissions": [{ "url": "https://github.com/hamzafer/claude-code-mods/pull/164", "opened": "2026-10-30", "status": "merged", "closed": "2026-11-01" }],
+      "result": "No referral visits by 2026-11-05."
+    },
+    {
+      "id": "jqueryscript",
+      "name": "jqueryscript/awesome-claude-code",
+      "url": "https://github.com/jqueryscript/awesome-claude-code",
+      "reach": 544,
+      "kind": "pr",
+      "tier": "B",
+      "rules": "The maintainer adds resources in batch commits and merged none of the last 30 closed PRs.",
+      "status": "open",
+      "submissions": [{ "url": "https://github.com/jqueryscript/awesome-claude-code/pull/889", "opened": "2026-10-30", "status": "open" }],
+      "notes": "Leave it alone. Do not ping."
+    },
+    {
+      "id": "wh000wh000",
+      "name": "wh000wh000/awesome-claude-mods",
+      "url": "https://github.com/wh000wh000/awesome-claude-mods",
+      "reach": 268,
+      "kind": "issue",
+      "tier": "C",
+      "status": "open",
+      "submissions": [{ "url": "https://github.com/wh000wh000/awesome-claude-mods/issues/25", "opened": "2026-10-30", "status": "open" }]
+    },
+    {
+      "id": "whyashthakker",
+      "name": "whyashthakker/awesome-claude-code-mods",
+      "url": "https://github.com/whyashthakker/awesome-claude-code-mods",
+      "reach": 112,
+      "kind": "pr",
+      "tier": "C",
+      "status": "open",
+      "submissions": [{ "url": "https://github.com/whyashthakker/awesome-claude-code-mods/pull/27", "opened": "2026-10-30", "status": "open" }],
+      "notes": "Last push 2026-10-03. No merges in its last 30 closed PRs."
+    },
+    {
+      "id": "lycfyi",
+      "name": "lycfyi/awesome-claude-code-mods",
+      "url": "https://github.com/lycfyi/awesome-claude-code-mods",
+      "reach": 0,
+      "kind": "pr",
+      "tier": "C",
+      "status": "open",
+      "submissions": [{ "url": "https://github.com/lycfyi/awesome-claude-code-mods/pull/10", "opened": "2026-10-30", "status": "open" }]
+    },
+    {
+      "id": "saksham10arora",
+      "name": "saksham10arora-dotcom/awesome-claude-mods",
+      "url": "https://github.com/saksham10arora-dotcom/awesome-claude-mods",
+      "reach": 2,
+      "kind": "pr",
+      "tier": "C",
+      "status": "open",
+      "submissions": [{ "url": "https://github.com/saksham10arora-dotcom/awesome-claude-mods/pull/1", "opened": "2026-10-30", "status": "open" }]
+    },
+    {
+      "id": "sahiti",
+      "name": "SahitiMulagada/awesome-ai-coding-agents",
+      "url": "https://github.com/SahitiMulagada/awesome-ai-coding-agents",
+      "reach": 1,
+      "kind": "pr",
+      "tier": "C",
+      "status": "open",
+      "submissions": [{ "url": "https://github.com/SahitiMulagada/awesome-ai-coding-agents/pull/10", "opened": "2026-10-30", "status": "open" }],
+      "notes": "Last push 2026-05-28."
+    },
+    {
+      "id": "singh-ap",
+      "name": "Singh-AP/awesome-claude-mods",
+      "url": "https://github.com/Singh-AP/awesome-claude-mods",
+      "reach": 4,
+      "kind": "issue",
+      "tier": "C",
+      "status": "open",
+      "submissions": [{ "url": "https://github.com/Singh-AP/awesome-claude-mods/issues/6", "opened": "2026-10-30", "status": "open" }]
+    },
+    {
+      "id": "krou4",
+      "name": "KROU4/claude-code-mod-showroom",
+      "url": "https://github.com/KROU4/claude-code-mod-showroom",
+      "reach": 0,
+      "kind": "issue",
+      "tier": "C",
+      "status": "listed",
+      "submissions": [{ "url": "https://github.com/KROU4/claude-code-mod-showroom/issues/25", "status": "open" }],
+      "notes": "Its weekly discovery issue mentions AutoMode. We did not submit it."
+    },
+    {
+      "id": "hn",
+      "name": "Show HN",
+      "url": "https://news.ycombinator.com/submit",
+      "kind": "community",
+      "tier": "A",
+      "rules": "The maintainer posts by hand and stays for the comments. Never coordinate votes.",
+      "status": "planned",
+      "planned": "2026-11-17"
+    },
+    {
+      "id": "r-claudeai",
+      "name": "r/ClaudeAI",
+      "url": "https://www.reddit.com/r/ClaudeAI/",
+      "kind": "community",
+      "tier": "A",
+      "rules": "Read the subreddit rules on self-promotion before posting. State authorship.",
+      "status": "planned",
+      "planned": "2026-11-17"
+    },
+    {
+      "id": "r-claudecode",
+      "name": "r/ClaudeCode",
+      "url": "https://www.reddit.com/r/ClaudeCode/",
+      "kind": "community",
+      "tier": "B",
+      "rules": "Read the subreddit rules first. State authorship.",
+      "status": "planned",
+      "planned": "2026-11-20"
+    }
+  ]
+}

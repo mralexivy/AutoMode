@@ -35,6 +35,7 @@ Change all of them in the same PR. Never one now and the rest later.
 | `site/content/docs/benchmarks/results.mdx`, `site/content/docs/compare.mdx` | The tables, "Where AutoMode does not win" and the byline dates |
 | `site/content/docs/guides/*.mdx`, `faq.mdx`, `concepts/prompt-cache.mdx` | Any number, and any claim about reviews or models. The calculator's per-step costs live in `site/components/calculator.tsx` |
 | `bench/experiments/<report>.md` | The results section, the fixes and the limits |
+| `marketing/posts/*.md` | Every post that is not `sent`. `tests/marketing.test.mts` fails on a number that left the README or `headline.json` |
 | `CHANGELOG.md` | A line under `[Unreleased]` when the shipped behavior changed |
 
 ## 3. Keep it honest
