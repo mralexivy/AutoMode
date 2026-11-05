@@ -7,12 +7,12 @@
 import json, os, pty, select, sys, time, glob
 
 plugin, ws = sys.argv[1], sys.argv[2]
-profile = os.path.expanduser('~/.claude-ectest')
+profile = os.environ.get('CLAUDE_BENCH_PROFILE') or os.path.expanduser('~/.claude-ectest')
 data = os.path.join(profile, 'plugins', 'data', 'automode', 'guardian')
 cfg = {'mode': 'auto', 'everySession': True, 'autoCompact': True, 'minContextTokens': 1, 'horizon': 1000, 'coldReturnRate': 0, 'margin': 0, 'compactStaleShare': 0.2}
 env = {k: v for k, v in os.environ.items() if k not in ('CLAUDECODE', 'CLAUDE_CODE_CHILD_SESSION', 'CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_SSE_PORT')}  # a child of this session would not save its transcript
 env = dict(env, CLAUDE_CONFIG_DIR=profile, CLAUDE_CODE_USE_VERTEX='0', AUTOMODE_GUARDIAN_CONFIG=json.dumps(cfg), TERM='xterm-256color')
-claude = os.path.expanduser('~/.local/bin/claude')
+claude = os.environ.get('CLAUDE_BIN') or 'claude'
 args = [claude, '--model', 'claude-haiku-5-5', '--plugin-dir', plugin, '--permission-mode', 'acceptEdits', '--allowedTools', 'Bash,Read,Edit,Write', '--setting-sources', 'project', '--strict-mcp-config']
 proj = os.path.join(profile, 'projects', os.path.realpath(ws).replace('/', '-').replace('.', '-'))
 

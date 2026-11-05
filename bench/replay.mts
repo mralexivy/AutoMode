@@ -32,6 +32,7 @@ import { DEFAULT_PARAMS } from '../hooks/lib/policy.ts'
 import { FOLLOW_UP } from '../hooks/lib/classify.ts'
 import { keepsRoute } from '../hooks/lib/effort.ts'
 import { TIERS } from '../hooks/lib/types.ts'
+import { BENCH_PROFILE } from './lib/local.mts'
 
 const here = path.dirname(new URL(import.meta.url).pathname)
 const args = process.argv.slice(2)
@@ -43,8 +44,8 @@ for (let i = 0; i < args.length; i++) {
   else if (args[i] === '--decisions') decisionFiles.push(args[++i].replace(/^~/, os.homedir()))
   else if (args[i] === '--out') out = args[++i]
 }
-if (!roots.length) roots.push(path.join(os.homedir(), '.claude', 'projects'), path.join(os.homedir(), '.claude-ectest', 'projects'))
-if (!decisionFiles.length) decisionFiles.push(path.join(os.homedir(), '.claude-ectest', 'plugins', 'data', 'automode', 'decisions.jsonl'))
+if (!roots.length) roots.push(path.join(os.homedir(), '.claude', 'projects'), path.join(BENCH_PROFILE, 'projects'))
+if (!decisionFiles.length) decisionFiles.push(path.join(BENCH_PROFILE, 'plugins', 'data', 'automode', 'decisions.jsonl'))
 
 const JUDGE_USD = 0.00019 // measured p50 per in-mod judge call (A7, docs/automode-v4-audit.md)
 const TTL = 300_000

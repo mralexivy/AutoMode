@@ -18,10 +18,11 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { ensure as ledgerEnsure, add as ledgerAdd } from './lib/ledger.mts'
+import { BENCH_PROFILE, CLAUDE_BIN } from './lib/local.mts'
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
-const PROFILE = path.join(os.homedir(), '.claude-ectest')
-const CLAUDE = path.join(os.homedir(), '.local', 'bin', 'claude')
+const PROFILE = BENCH_PROFILE
+const CLAUDE = CLAUDE_BIN
 const DATA = path.join(PROFILE, 'plugins', 'data', 'automode')
 const MODEL = 'claude-haiku-5-5'
 const argv = process.argv.slice(2)

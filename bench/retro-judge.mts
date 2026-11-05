@@ -26,6 +26,7 @@ import { judgeInputFor, contextOf } from '../hooks/lib/effortless-adapt.ts'
 import { firstCalls, secondCall, shortcutApplies } from '../hooks/lib/auto.ts'
 import { tierOf } from '../hooks/lib/optimizer.ts'
 import { DEFAULT_PARAMS } from '../hooks/lib/policy.ts'
+import { BENCH_PROFILE, CLAUDE_BIN } from './lib/local.mts'
 
 const args = process.argv.slice(2)
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d }
@@ -38,8 +39,8 @@ export const VERDICTS = path.join(path.dirname(new URL(import.meta.url).pathname
 const DEFAULT_EFFORT = { haiku: 'medium', sonnet: 'high', opus: 'medium' }
 const HOUR = 3_600_000
 const EST = 0.0006 // per call, from the ledger's earlier judge batches (0.0003 to 0.0005)
-const CLAUDE = path.join(os.homedir(), '.local', 'bin', 'claude')
-const PROFILE = path.join(os.homedir(), '.claude-ectest')
+const CLAUDE = CLAUDE_BIN
+const PROFILE = BENCH_PROFILE
 const PLAN_EXIT_NOTE = (acceptance) => `[The plan was approved and implementation starts. Judge the IMPLEMENTATION work the plan starts, not the planning. Acceptance: ${acceptance}]`
 
 const textOf = (r) => { const c = r.message?.content; return typeof c === 'string' ? c : Array.isArray(c) ? c.filter((b) => b?.type === 'text').map((b) => b.text).join('\n') : '' }

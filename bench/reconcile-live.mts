@@ -11,8 +11,9 @@ import os from 'node:os'
 import path from 'node:path'
 import { listTranscripts, loadSession, readRecords } from './lib/transcripts.mts'
 import { ANTHROPIC, familyOf, usageUsd } from '../hooks/lib/prices.ts'
+import { BENCH_PROFILE } from './lib/local.mts'
 
-const P = path.join(os.homedir(), '.claude-ectest')
+const P = BENCH_PROFILE
 const recs = readRecords(path.join(P, 'plugins', 'data', 'automode'))
 const files = new Map(listTranscripts([path.join(P, 'projects')]).map((f) => [path.basename(f, '.jsonl'), f]))
 const ids = process.argv.slice(2).length ? process.argv.slice(2) : [...new Set(recs.filter((r) => r.kind === 'request').map((r) => r.sessionId))].filter((id) => files.has(id))
