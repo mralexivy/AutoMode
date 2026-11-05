@@ -28,6 +28,20 @@ export function routeFor(tier: Tier, ladder: Ladder = DEFAULT_LADDER, effort?: E
   return { tier, family: t.family, model: ladder.models[t.family], effort: effort ?? t.effort }
 }
 
+// allowedRoute keeps a lifted route inside the allowed set: the next allowed tier up, or, when no allowed model reaches
+// the floor, the strongest allowed one, recorded as an unmet floor. A family is out while its circuit breaker is open, so
+// a route outside the set would go to a model that is failing (issue #95).
+export function allowedRoute(r: Route, allowed: Family[], ladder: Ladder, overridden: { owner: Owner; reason: string }[]): Route {
+  if (!allowed.length || allowed.includes(r.family)) return r
+  const tiers = Object.keys(ladder.tiers) as Tier[]
+  const up = tiers.find((t) => tierRank(t) > tierRank(r.tier) && allowed.includes(ladder.tiers[t].family))
+  const down = [...tiers].reverse().find((t) => tierRank(t) < tierRank(r.tier) && allowed.includes(ladder.tiers[t].family))
+  const t = up ?? down
+  if (!t) return r
+  overridden.push({ owner: 'quality-escalation', reason: up ? `${r.family} is not allowed: ${t} instead` : `${r.family} is not allowed and no allowed model reaches ${r.tier}: floor unmet, ${t}` })
+  return routeFor(t, ladder)
+}
+
 export interface AuthorityInput {
   override?: { tier?: Tier; effort?: Effort; reason: string }
   workflowRole?: { tier: Tier; reason: string }
@@ -39,6 +53,7 @@ export interface AuthorityInput {
   effortCost?: { output: (r: Route) => number; steps: (r: Route) => number }
   currentInadequate?: boolean               // policy auto: a floor, an escalation or a provider limit rules out the running model, so the switch is mandatory
   current: Route | null
+  allowed?: Family[]                        // the families routing may pick now; empty or absent means no limit
   switchInput: Omit<SwitchInput, 'current' | 'candidate' | 'target' | 'floor' | 'mandatory'>
   ladder?: Ladder
 }
@@ -67,7 +82,7 @@ export function resolve(i: AuthorityInput, resetSinceLastRequest = false): Effec
   // A floor that names its own effort (an escalation step, policy auto) lifts to that effort, not the ladder's.
   const tierEffort = lifted === i.floor.tier && i.floor.effort ? i.floor.effort : ladder.tiers[lifted].effort
   const effort = lifted !== i.candidate.tier ? tierEffort : i.effortHint ?? tierEffort
-  const target = routeFor(lifted, ladder, effort)
+  const target = allowedRoute(routeFor(lifted, ladder, effort), i.allowed ?? [], ladder, overridden)
   const priced = i.effortCost && i.current
     ? { expectedOutputTokens: i.effortCost.output(i.current), targetOutputTokens: i.effortCost.output(target), targetStepRatio: i.effortCost.steps(target) / i.effortCost.steps(i.current) }
     : {}

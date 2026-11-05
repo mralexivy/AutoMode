@@ -338,7 +338,7 @@ export function routeAuto(i: AutoRouteInput): AutoRouteResult {
   const sw = i.switching
   const effortCost = { output: (r: Route) => e.outputPerStep[r.family] * e.effortOutput[r.effort], steps: (r: Route) => e.effortSteps[r.effort] }
   const resolved = resolve({
-    override: commandRoute, floor: tier, candidate, effortHint: choice.best.effort, heldEffort, ...(currentInadequate ? { currentInadequate } : {}), effortCost, current: i.usable,
+    override: commandRoute, floor: tier, candidate, effortHint: choice.best.effort, heldEffort, ...(currentInadequate ? { currentInadequate } : {}), effortCost, current: i.usable, allowed: i.allowed,
     switchInput: {
       cache: sw.cache, now: i.now, votes: votes.n, requestsSinceSwitch: sw.requestsSinceSwitch, verifiedSinceSwitch: sw.verifiedSinceSwitch,
       sameTask: !i.boundary && !i.planExited, risk: i.floor.risk, expectedOutputTokens: e.outputPerStep[cur?.family ?? 'sonnet'],
