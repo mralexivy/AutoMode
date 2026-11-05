@@ -8,7 +8,7 @@
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-22d3ee"></a>
   <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-34d399"></a>
   <a href="https://github.com/mralexivy/AutoMode/issues?q=is%3Aopen+label%3A%22good+first+issue%22"><img alt="Good first issues" src="https://img.shields.io/badge/good%20first-issues-8b5cf6"></a>
-  <img alt="Version 0.9.0" src="https://img.shields.io/badge/version-0.9.0-fbbf24">
+  <img alt="Version 0.9.1" src="https://img.shields.io/badge/version-0.9.1-fbbf24">
   <img alt="Claude Code 2.1.287 or later" src="https://img.shields.io/badge/Claude%20Code-2.1.287%2B-38bdf8">
 </p>
 
@@ -24,6 +24,8 @@
 # AutoMode for Claude Code
 
 **A free, open source model router for Claude Code. It picks the right model and the right effort for every prompt.**
+
+**On the website:** [the benchmark](https://mralexivy.github.io/AutoMode/benchmark/) · [how to reduce Claude Code costs](https://mralexivy.github.io/AutoMode/reduce-claude-code-costs/) · [install guide](https://mralexivy.github.io/AutoMode/install/) · [Claude Code routers compared](https://mralexivy.github.io/AutoMode/compare/) · [AutoMode vs effortless](https://mralexivy.github.io/AutoMode/automode-vs-effortless/) · [AutoMode vs Claude Code Router](https://mralexivy.github.io/AutoMode/automode-vs-claude-code-router/) · [does switching models waste the cache?](https://mralexivy.github.io/AutoMode/prompt-cache/)
 
 Quick questions stay cheap. Hard jobs get the strongest model. Risky changes always get a review.
 Install it and it starts. You never touch the model or the Effort control again.
@@ -170,7 +172,7 @@ Each prompt takes one of four paths:
 
 - **Chat and non-code requests:** answered directly.
 - **Code changes with a clear goal:** Sonnet does them itself and must show a passing test or build before it says done.
-- **High-risk changes:** after the checks pass, one Opus reviewer checks the diff.
+- **High-risk changes:** after the checks pass, one independent reviewer checks the diff. It runs on Opus when the diff shows critical risk, and on Sonnet otherwise.
 - **Open-ended work:** run `am:run <request>` for the `automode:run` workflow. Automatic entry is off by default (`autoWorkflow`).
 
 <p align="center">
@@ -186,7 +188,7 @@ Each prompt takes one of four paths:
 | **Verify** | Sonnet runs the commands. Code decides pass or fail from the exit codes. At most 2 rounds. |
 | **Review** | Opus reads the diff. It is mandatory for S2 and S3, failed checks, unfinished work and incomplete evidence. If the router leaves review out, size alone does not force it. Sonnet fixes blockers and major correctness or security defects. The verifier checks evidence gaps. |
 
-**The S3 rule.** If a prompt matches security or credentials, migrations or destructive operations, concurrency, external contracts, or payments and sensitive data, the Opus review is mandatory.
+**The S3 rule.** If a prompt matches security or credentials, migrations or destructive operations, concurrency, external contracts, or payments and sensitive data, the review is mandatory. It runs on Opus when the diff shows critical risk.
 
 **One-prompt overrides:** `am:direct <request>` skips the workflow. `am:run <request>` forces it. `am:opus`, `am:high` and `am:reset` set or clear the route.
 
@@ -224,7 +226,7 @@ Defaults live in [`config.json`](config.json). To override them, put a `config.j
 | `autoWorkflow` | `false` | `true` lets the router enter the workflow by itself. `am:run` works either way. Decision records show what entry would have done |
 | `reachHaiku` | `true` | T0 to T2 work without critical risk can run on Haiku. `false`: Haiku needs T0 and a Haiku verdict |
 | `learning` | `true` | A kind of task that needed rescue in this project starts on Opus next time. It only raises a route |
-| `reviewPolicy` | `risk` | `always` adds an Opus review to every change |
+| `reviewPolicy` | `risk` | `always` adds a review to every change |
 | `maxConcurrency` | `1` | Workstreams built at once (maximum 2) |
 | `blockGitWritesWhenActive` | `true` | Deny git writes from subagents |
 | `delegation` | `off` | `on`: a full read of a large file stops once, with an outline and a cheap `extract` tool. `shadow`: records what the gate would do |

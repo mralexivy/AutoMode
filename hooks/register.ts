@@ -1,4 +1,4 @@
-// Generated from hooks/ at commit 670448cf39c24db72e742c4f25bd730259646986 by tools/release.mts. The readable source is hooks/ on the main branch.
+// Generated from hooks/ at commit c745e51ec7f2a03a4d20b4fa200e0c29f0c39fc7 by tools/release.mts. The readable source is hooks/ on the main branch.
 // hooks/lib/io.ts
 function sid($) {
   return $.session.id();
@@ -1841,6 +1841,16 @@ function routeFor(tier, ladder = DEFAULT_LADDER, effort) {
   const t = ladder.tiers[tier];
   return { tier, family: t.family, model: ladder.models[t.family], effort: effort ?? t.effort };
 }
+function allowedRoute(r, allowed, ladder, overridden) {
+  if (!allowed.length || allowed.includes(r.family)) return r;
+  const tiers = Object.keys(ladder.tiers);
+  const up = tiers.find((t2) => tierRank(t2) > tierRank(r.tier) && allowed.includes(ladder.tiers[t2].family));
+  const down = [...tiers].reverse().find((t2) => tierRank(t2) < tierRank(r.tier) && allowed.includes(ladder.tiers[t2].family));
+  const t = up ?? down;
+  if (!t) return r;
+  overridden.push({ owner: "quality-escalation", reason: up ? `${r.family} is not allowed: ${t} instead` : `${r.family} is not allowed and no allowed model reaches ${r.tier}: floor unmet, ${t}` });
+  return routeFor(t, ladder);
+}
 function resolve(i, resetSinceLastRequest = false) {
   const ladder = i.ladder ?? DEFAULT_LADDER;
   const overridden = [];
@@ -1859,7 +1869,7 @@ function resolve(i, resetSinceLastRequest = false) {
   if (lifted !== i.candidate.tier) overridden.push({ owner: i.candidate.source === "judge" ? "judge" : i.candidate.source, reason: `${i.candidate.tier} lifted to floor ${i.floor.tier}` });
   const tierEffort = lifted === i.floor.tier && i.floor.effort ? i.floor.effort : ladder.tiers[lifted].effort;
   const effort = lifted !== i.candidate.tier ? tierEffort : i.effortHint ?? tierEffort;
-  const target = routeFor(lifted, ladder, effort);
+  const target = allowedRoute(routeFor(lifted, ladder, effort), i.allowed ?? [], ladder, overridden);
   const priced = i.effortCost && i.current ? { expectedOutputTokens: i.effortCost.output(i.current), targetOutputTokens: i.effortCost.output(target), targetStepRatio: i.effortCost.steps(target) / i.effortCost.steps(i.current) } : {};
   const check = switchCheck({ ...i.switchInput, ...priced, current: i.current, candidate: i.candidate, target, floor: i.floor, mandatory }, resetSinceLastRequest);
   if (check.verdict === "switch") {
@@ -2281,6 +2291,7 @@ function routeAuto(i) {
     ...currentInadequate ? { currentInadequate } : {},
     effortCost: effortCost2,
     current: i.usable,
+    allowed: i.allowed,
     switchInput: {
       cache: sw.cache,
       now: i.now,
