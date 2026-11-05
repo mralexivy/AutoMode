@@ -6,6 +6,8 @@ description: "How AutoMode picks a model and effort for each Claude Code prompt:
 AutoMode decides each route in four steps, in about a second. First, two short Haiku judges read the prompt. One rates the effort it needs, and one rates the tier, T0 to T4, and the model the work needs. Second, code sets quality floors: security, credentials, migrations, destructive operations, concurrency, external contracts and payments raise the floor, and a floor only goes up. Third, the optimizer picks the cheapest model that is still eligible, at that model's own effort. Quick facts go to Haiku, everyday edits to Sonnet, and design and risky work to Opus. Fourth, a user override such as /model or am:opus is final, the floor lifts the candidate, and a switch check holds the model when a switch would cost more in prompt cache rewrites than it saves. Effort can change on every prompt for free on the 5.5 models. A routing error falls back to Claude Code's own choice, so a failed judge never blocks a prompt.
 </Callout>
 
+<Motion id="route-demo" />
+
 Every prompt takes the cheapest route that is still adequate. Code sets a floor for risky work, and the judge never lowers it.
 
 ![The ladder: T0 Haiku low, T1 Sonnet medium, T2 Sonnet high, T3 Opus high, T4 Opus max](/img/ladder.svg)

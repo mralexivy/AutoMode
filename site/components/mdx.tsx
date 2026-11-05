@@ -7,6 +7,7 @@ import { File, Files, Folder } from 'fumadocs-ui/components/files';
 import type { MDXComponents } from 'mdx/types';
 import { Calculator } from './calculator';
 import { InstallCard } from './install-card';
+import { Motion } from './motion';
 
 export function getMDXComponents(components?: MDXComponents) {
   return {
@@ -23,6 +24,7 @@ export function getMDXComponents(components?: MDXComponents) {
     Folder,
     Calculator,
     InstallCard,
+    Motion,
     ...components,
   } satisfies MDXComponents;
 }

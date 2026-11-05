@@ -114,6 +114,20 @@ test('the sitemap lists each page with its images and date', () => {
   assert.match(read(new URL('app/docs/[[...slug]]/page.tsx', site)), /'@type': 'FAQPage'/)
 })
 
+test('every scene has a rendered video and poster, and every page plays a real scene', () => {
+  const meta = read(new URL('remotion/meta.ts', site))
+  const ids = [...meta.matchAll(/^  '([\w-]+)': \{/gm)].map((m) => m[1])
+  assert.ok(ids.length >= 4)
+  const script = read(new URL('scripts/render-video.mjs', site))
+  for (const id of ids) {
+    assert.ok(script.includes(`'${id}'`), `scripts/render-video.mjs does not render ${id}`)
+    for (const ext of ['mp4', 'jpg']) assert.ok(existsSync(new URL(`public/video/${id}.${ext}`, site)), `public/video/${id}.${ext} is missing: run npm run video:render`)
+  }
+  const used = [...pages.map((p) => read(new URL(p, content))), read(new URL('app/(home)/page.tsx', site))].join('\n')
+  for (const [, id] of used.matchAll(/<Motion id="([\w-]+)"/g)) assert.ok(ids.includes(id), `a page plays ${id}, which is not a scene`)
+  assert.match(read(new URL('app/docs/[[...slug]]/page.tsx', site)), /videoObject/)
+})
+
 test('the site is dark only', () => {
   assert.match(read(new URL('components/provider.tsx', site)), /forcedTheme: 'dark'/)
   assert.match(read(new URL('lib/layout.shared.tsx', site)), /themeSwitch: \{ enabled: false \}/)

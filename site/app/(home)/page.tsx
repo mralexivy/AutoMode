@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CopyCommand } from '@/components/copy-command';
+import { Motion } from '@/components/motion';
+import { videoObject } from '@/lib/seo';
 import { basePath, repoUrl, siteUrl } from '@/lib/shared';
 
 const title = 'AutoMode: Automatic Model and Effort Router for Claude Code';
@@ -86,6 +88,7 @@ const jsonLd = {
       author: { '@type': 'Person', name: 'Alex Ivy', url: 'https://github.com/mralexivy' },
       sameAs: [repoUrl],
     },
+    ...(['route-demo', 'benchmark-race', 'workflow-flow', 'cache-check'] as const).map(videoObject),
     {
       '@type': 'FAQPage',
       mainEntity: FAQ.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
@@ -151,14 +154,10 @@ export default function HomePage() {
           </p>
         </div>
         <figure>
-          <img
-            src={`${basePath}/img/demo.gif`}
-            alt="A real session: a quick question runs on Haiku at Low, then a JWT migration moves up to Opus because the risk floor rules out Haiku"
-            width={1240}
-            height={680}
-            className="w-full rounded-2xl border shadow-[0_30px_80px_-30px_rgba(70,50,200,0.7)]"
-          />
-          <figcaption className="mt-2 text-center text-sm text-fd-muted-foreground">A real session on Claude Code 2.1.308, sped up 1.6 times.</figcaption>
+          <Motion id="route-demo" className="my-0" />
+          <figcaption className="mt-2 text-center text-sm text-fd-muted-foreground">
+            How a session routes. <Link href="#demo" className="text-fd-primary underline">Watch a real recording</Link>.
+          </figcaption>
         </figure>
       </section>
 
@@ -206,6 +205,10 @@ export default function HomePage() {
           </Link>
           .
         </p>
+      </Section>
+
+      <Section id="race">
+        <Motion id="benchmark-race" />
       </Section>
 
       <Section id="fit">
@@ -270,9 +273,31 @@ export default function HomePage() {
             </div>
           ))}
         </div>
-        <Link href="/docs/concepts/workflow" className="mt-6 inline-block text-fd-primary underline">
+        <Motion id="workflow-flow" className="mt-8" />
+        <Link href="/docs/concepts/workflow" className="mt-2 inline-block text-fd-primary underline">
           Read about the workflow
         </Link>
+      </Section>
+
+      <Section id="cache">
+        <p className={kicker}>Prompt cache</p>
+        <h2 className={h2}>No surprise bills from a model switch</h2>
+        <p className={sub}>Each model keeps its own cache. AutoMode prices every switch against the cache rewrite, and holds the model when the switch does not pay.</p>
+        <Motion id="cache-check" className="mt-8" />
+      </Section>
+
+      <Section id="demo">
+        <p className={kicker}>A real recording</p>
+        <h2 className={h2}>See a real session</h2>
+        <p className={sub}>Claude Code 2.1.308, sped up 1.6 times. A quick question runs on Haiku at Low. A JWT migration moves up to Opus, because the risk floor rules out Haiku.</p>
+        <img
+          src={`${basePath}/img/demo.gif`}
+          alt="A real session: a quick question runs on Haiku at Low, then a JWT migration moves up to Opus because the risk floor rules out Haiku"
+          width={1240}
+          height={680}
+          loading="lazy"
+          className="mt-8 w-full rounded-2xl border"
+        />
       </Section>
 
       <Section id="trust">

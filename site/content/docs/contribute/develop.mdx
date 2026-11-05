@@ -50,3 +50,7 @@ npm run build    # static files in site/out/
 ```
 
 The home page is `site/app/(home)/page.tsx`. Docs pages are MDX files in `site/content/docs/`, and each folder's `meta.json` sets the sidebar order. The site is dark only. The `pages` workflow builds it and publishes it under `/AutoMode/`. An old address redirects through the `moved` list in `site/lib/shared.ts`.
+
+### Videos
+
+The animated scenes are [Remotion](https://www.remotion.dev) compositions in `site/remotion/`. The site plays them live with the Remotion Player. `npm run video:studio` opens them in Remotion Studio. After you change a scene, run `npm run video:render` to update the MP4 and poster in `site/public/video/`, which search engines index.
