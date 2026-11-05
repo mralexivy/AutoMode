@@ -32,3 +32,6 @@ td:first-child { color: var(--text); font-weight: 600; }
 li { margin-bottom: 6px; }
 footer { border-top: 1px solid var(--line); margin-top: 64px; padding: 24px 0 40px; color: var(--faint); font-size: 14px; }
 footer a { color: inherit; }
+.calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 24px 0; }
+.calc label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 15px; }
+.calc input, .calc select { font: 16px var(--sans); color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }

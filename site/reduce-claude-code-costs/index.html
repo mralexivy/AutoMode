@@ -40,10 +40,10 @@
     <p>Run <code>/usage</code>. On a subscription plan it shows what counts against your limits, with recommendations for anything behind 10% or more of recent usage. It also reports how much of your input came from the prompt cache.</p>
 
     <h2>2. Match the model to the job</h2>
-    <p>Anthropic's guidance is to use Sonnet for most coding and keep Opus for complex architecture and multi-step reasoning. Use <code>/model</code> to switch, and set <code>model: haiku</code> for simple subagent tasks. Quick factual questions rarely need more than Haiku: in our runs, Haiku answered ten questions for $0.08, against $0.50 on Opus.</p>
+    <p><a href="../haiku-vs-sonnet-vs-opus/">Compare Haiku, Sonnet and Opus</a>. Anthropic's guidance is to use Sonnet for most coding and keep Opus for complex architecture and multi-step reasoning. Use <code>/model</code> to switch, and set <code>model: haiku</code> for simple subagent tasks. Quick factual questions rarely need more than Haiku: in our runs, Haiku answered ten questions for $0.08, against $0.50 on Opus.</p>
 
     <h2>3. Lower the effort on simple tasks</h2>
-    <p>Thinking tokens bill as output tokens. For simple work, lower the effort with <code>/effort</code> or in <code>/model</code>. Raise it again for a hard problem.</p>
+    <p>Thinking tokens bill as output tokens. <a href="../effort-levels/">See what each effort level does</a>. For simple work, lower the effort with <code>/effort</code> or in <code>/model</code>. Raise it again for a hard problem.</p>
 
     <h2>4. Clear between unrelated tasks</h2>
     <p>Claude Code sends your whole conversation with every request. Run <code>/clear</code> when you switch to unrelated work. It costs nothing, and <code>/resume</code> brings an old session back.</p>
@@ -84,7 +84,7 @@
     <p>It is free. It needs no key and no server, and it starts on its own. <a href="../install/">Read the install guide</a>.</p>
 </article></main>
 <footer><div class="wrap">
-  <p><a href="../">Home</a> · <a href="../benchmark/">Benchmark</a> · <a href="../reduce-claude-code-costs/">Reduce Claude Code costs</a> · <a href="../install/">Install</a> · <a href="../how-it-works/">How it works</a> · <a href="../compare/">Compare routers</a> · <a href="../automode-vs-effortless/">AutoMode vs effortless</a> · <a href="../automode-vs-claude-code-router/">AutoMode vs Claude Code Router</a> · <a href="../prompt-cache/">Prompt cache</a> · <a href="../auto-mode-vs-automode/">AutoMode vs auto mode</a> · <a href="https://github.com/mralexivy/AutoMode">GitHub</a></p>
+  <p><a href="../">Home</a> · <a href="../benchmark/">Benchmark</a> · <a href="../calculator/">Cost calculator</a> · <a href="../reduce-claude-code-costs/">Reduce Claude Code costs</a> · <a href="../effort-levels/">Effort levels</a> · <a href="../haiku-vs-sonnet-vs-opus/">Haiku vs Sonnet vs Opus</a> · <a href="../install/">Install</a> · <a href="../how-it-works/">How it works</a> · <a href="../compare/">Compare routers</a> · <a href="../automode-vs-effortless/">AutoMode vs effortless</a> · <a href="../automode-vs-claude-code-router/">AutoMode vs Claude Code Router</a> · <a href="../prompt-cache/">Prompt cache</a> · <a href="../auto-mode-vs-automode/">AutoMode vs auto mode</a> · <a href="https://github.com/mralexivy/AutoMode">GitHub</a></p>
   <p>AutoMode is a community project, MIT licensed, and not made by Anthropic. Claude and Claude Code are trademarks of Anthropic.</p>
 </div></footer>
 </body>
