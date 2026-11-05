@@ -76,6 +76,21 @@ test('the structured data names no stale version', () => {
   assert.doesNotMatch(read('index.html'), /"softwareVersion"/)
 })
 
+test('every breadcrumb list has a name', () => {
+  for (const url of sitemapUrls.slice(1)) {
+    const ld = JSON.parse(read(fileFor(url)).match(/<script type="application\/ld\+json">(.*?)<\/script>/)[1])
+    const crumbs = ld['@graph'].find((n: { '@type': string }) => n['@type'] === 'BreadcrumbList')
+    assert.ok(crumbs.name, url)
+  }
+})
+
+test('the README links every article page', () => {
+  const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
+  for (const p of ['benchmark/', 'reduce-claude-code-costs/', 'install/', 'compare/', 'automode-vs-effortless/', 'automode-vs-claude-code-router/', 'prompt-cache/']) {
+    assert.ok(readme.includes(`${SITE_URL}${p}`), p)
+  }
+})
+
 test('the 404 page stays out of the index', () => {
   assert.ok(read('404.html').includes('<meta name="robots" content="noindex">'))
 })
