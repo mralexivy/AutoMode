@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-05
+
 ### Fixed
 
 - A floor lift stays inside the allowed set. With Sonnet out, a T2 lift takes the next allowed tier up. With no allowed model at the floor, the strongest allowed one runs, and the route records the unmet floor. A family is out while its circuit breaker is open, so the route used to go to a model that was failing (#95).
