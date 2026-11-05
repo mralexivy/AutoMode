@@ -32,12 +32,12 @@
       "kind": "seed-pr",
       "tier": "A",
       "rules": "A scanner finds repos with the claude-code-mod topic. A seed PR is only for repos it misses.",
-      "status": "listed",
+      "status": "open",
       "submissions": [
-        { "url": "https://github.com/karanb192/awesome-claude-code-mods/pull/444", "opened": "2026-10-30", "status": "open" },
+        { "url": "https://github.com/karanb192/awesome-claude-code-mods/pull/444", "opened": "2026-10-30", "status": "closed", "closed": "2026-11-05" },
         { "url": "https://github.com/karanb192/awesome-claude-code-mods/pull/446", "opened": "2026-10-30", "status": "open" }
       ],
-      "notes": "Already in data/repos.txt and catalogue.md through the scanner. Both seed PRs are duplicates and should be closed."
+      "notes": "Not in data/repos.txt or catalogue.md on 2026-11-05. A search for 'automode' matches the unrelated mod 'automodel', so search for 'mralexivy'. #446 is the one seed PR. #444 was closed as its duplicate."
     },
     {
       "id": "karanb192-featured",
@@ -47,8 +47,8 @@
       "kind": "nomination",
       "tier": "A",
       "rules": "Nomination issue: mod URL, the task it helps with, a real recording, install steps, access notes, Claude Code version and platform. Disclose authorship.",
-      "status": "planned",
-      "planned": "2026-11-09"
+      "status": "open",
+      "submissions": [{ "url": "https://github.com/karanb192/awesome-claude-code-mods/issues/467", "opened": "2026-11-05", "status": "open" }]
     },
     {
       "id": "quemsah",
@@ -57,9 +57,9 @@
       "reach": 1544,
       "kind": "pr",
       "tier": "A",
-      "rules": "Read CONTRIBUTING before the PR. Merged 16 of its last 30 closed PRs.",
-      "status": "planned",
-      "planned": "2026-11-09"
+      "rules": "A crawler indexes every plugin repository (54,226 on 2026-11-01) and the README shows the top 100 by stars. All merged PRs are the owner's own. There is no submission path.",
+      "status": "skipped",
+      "notes": "AutoMode enters the top 100 only by stars. Its site, awesomeclaudeplugins.com, lists indexed repos."
     },
     {
       "id": "composio",
@@ -68,9 +68,9 @@
       "reach": 1980,
       "kind": "pr",
       "tier": "B",
-      "rules": "Read CONTRIBUTING before the PR. Merged 1 of its last 30 closed PRs, so expect little.",
-      "status": "planned",
-      "planned": "2026-11-10"
+      "rules": "It hosts each plugin's code in its own repository and merged 1 of its last 30 closed PRs.",
+      "status": "skipped",
+      "notes": "Not a list of outside repositories."
     },
     {
       "id": "claude-market",
@@ -78,9 +78,10 @@
       "url": "https://github.com/claude-market/marketplace",
       "kind": "pr",
       "tier": "B",
-      "rules": "Add the plugin as a top-level directory and generate its manifest entry. Check its README first.",
-      "status": "planned",
-      "planned": "2026-11-10"
+      "reach": 27,
+      "rules": "A submission copies the plugin's code into its repository as a top-level directory.",
+      "status": "skipped",
+      "notes": "A copied mod would go stale on every release, and the list has 27 stars."
     },
     {
       "id": "hamzafer",

@@ -17,6 +17,8 @@ Report the stars, unique visitors and top referrers against last week. A new ref
 
 ## 2. Check every submission
 
+To check whether a list includes AutoMode, search it for `mralexivy`, never `automode`: that word also matches the unrelated mod `automodel`.
+
 For each entry in `marketing/registry.json` with `open` submissions, read the PR or issue with `gh`. Update its status, and quote any maintainer request in `notes`. Answer a maintainer question in the next draft, and never with a bump comment.
 
 ## 3. Find new places
