@@ -6,7 +6,7 @@
     "name": "Alex Ivy",
     "url": "https://github.com/mralexivy"
   },
-  "version": "0.8.0",
+  "version": "0.9.0",
   "license": "MIT",
   "homepage": "https://mralexivy.github.io/AutoMode/",
   "documentationUrl": "https://github.com/mralexivy/AutoMode#readme",
@@ -141,6 +141,62 @@
         "default",
         "off",
         "on"
+      ]
+    },
+    "strategy": {
+      "type": "string",
+      "title": "AutoMode: execution strategy",
+      "description": "default: follow config.json. legacy: the current routing and rescue ladder. v6a: Haiku only for T0 or bounded T1 work, else Sonnet high; recovery raises effort, and a model moves only while the context is small. v6b: v6a with Sonnet at the judged effort on standard work. v6c: v6b, and a fresh rescue builder replaces a model switch on a large context. Experimental: see bench/experiments/V6.md.",
+      "default": "default",
+      "options": [
+        "default",
+        "legacy",
+        "v6a",
+        "v6b",
+        "v6c"
+      ]
+    },
+    "start": {
+      "type": "string",
+      "title": "AutoMode: start route",
+      "description": "default: follow the strategy. legacy: the current start route. v6a: Haiku only for T0 or bounded T1 work, else Sonnet high. v6b: v6a with Sonnet at the judged effort on standard work.",
+      "default": "default",
+      "options": ["default", "legacy", "v6a", "v6b"]
+    },
+    "recovery": {
+      "type": "string",
+      "title": "AutoMode: recovery",
+      "description": "default: follow the strategy. legacy: the rescue ladder with its model switch. hold: never move a large context; a switch only while the context is small or cold. rescue: hold, plus a fresh builder on the same model, then one model up, priced against a switch.",
+      "default": "default",
+      "options": ["default", "legacy", "hold", "rescue"]
+    },
+    "review": {
+      "type": "string",
+      "title": "AutoMode: review rule",
+      "description": "default: follow the strategy. prospective: a judge's risk rating can require a review. observed: only critical risk the diff shows does.",
+      "default": "default",
+      "options": ["default", "prospective", "observed"]
+    },
+    "builder": {
+      "type": "string",
+      "title": "AutoMode: builder subagent from the start",
+      "description": "default: follow config.json. on: non-trivial work goes to one builder subagent at the routed model from the start. Experimental.",
+      "default": "default",
+      "options": [
+        "default",
+        "off",
+        "on"
+      ]
+    },
+    "haikuFirst": {
+      "type": "string",
+      "title": "AutoMode: Haiku first on T3 work",
+      "description": "default: follow config.json. t3: with opusStart evidence, T3 work without critical risk may start on Haiku, and failure evidence moves it up. off: Haiku takes T0 to T2 work only. Off by default: in the v4 and v5 proof runs, t3 cost more than Sonnet high.",
+      "default": "default",
+      "options": [
+        "default",
+        "off",
+        "t3"
       ]
     },
     "opusStart": {

@@ -8,7 +8,7 @@
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-22d3ee"></a>
   <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-34d399"></a>
   <a href="https://github.com/mralexivy/AutoMode/issues?q=is%3Aopen+label%3A%22good+first+issue%22"><img alt="Good first issues" src="https://img.shields.io/badge/good%20first-issues-8b5cf6"></a>
-  <img alt="Version 0.8.0" src="https://img.shields.io/badge/version-0.8.0-fbbf24">
+  <img alt="Version 0.9.0" src="https://img.shields.io/badge/version-0.9.0-fbbf24">
   <img alt="Claude Code 2.1.287 or later" src="https://img.shields.io/badge/Claude%20Code-2.1.287%2B-38bdf8">
 </p>
 
@@ -48,8 +48,8 @@ Install it and it starts. You never touch the model or the Effort control again.
 <table>
 <tr>
 <td width="33%" valign="top"><b>No key. No server.</b><br>It runs on the Claude login you already have. There is nothing to host, and your data stays on your machine.</td>
-<td width="33%" valign="top"><b>Six small agents.</b><br>Open-ended work runs through plan, build, verify and review. Risky work always gets an Opus review.</td>
-<td width="33%" valign="top"><b>74 of 75 judge cases.</b><br>The judge picked an accepted effort on labeled cases. This measures the label, not cost. <a href="#benchmarks">See the limits</a>.</td>
+<td width="33%" valign="top"><b>Six small agents.</b><br>Open-ended work runs through plan, build, verify and review. Risky work always gets an independent review.</td>
+<td width="33%" valign="top"><b>Half the cost of Opus.</b><br>51% cheaper than plain Claude Code on Opus in mixed sessions, and 45% on 30 coding tasks, at the same pass rate. <a href="#benchmarks">See the benchmark</a>.</td>
 </tr>
 </table>
 
@@ -59,7 +59,7 @@ Install it and it starts. You never touch the model or the Effort control again.
 |---|---|---|
 | **Model** | One model for every prompt | Haiku for a quick fact, Sonnet for an edit, Opus for design and risk |
 | **Effort** | You set it, and you forget to change it | A judge sets it for each prompt, in about a second |
-| **Risky changes** | The same checks as a typo fix | Security, migrations and payments always get an Opus review |
+| **Risky changes** | The same checks as a typo fix | Security, migrations and payments always get an independent review, on Opus when the diff shows critical risk |
 | **Big jobs** | One long chat that does everything | A plan, build, verify and review workflow with six small agents |
 | **Prompt cache** | A cold cache is a surprise bill | A countdown on the bar shows when the cache goes cold |
 | **Your setup** | | A login you already have. No key. No server. |
@@ -100,7 +100,7 @@ There is nothing to turn on. AutoMode starts with every session after you instal
 - **Stop it everywhere:** set `"mode": "off"` in your `config.json`, or set `AUTOMODE_ROUTER=off`.
 - **Check it is running:** `/automode setup`.
 
-**Requires** Claude Code **2.1.287 or later** in the terminal. Mods are on by default from that version. The Desktop app needs 2.1.286 or later, and the VS Code extension needs 2.1.299 or later. Tested with Claude Code 2.1.317.
+**Requires** Claude Code **2.1.287 or later** in the terminal. Mods are on by default from that version. The Desktop app needs 2.1.286 or later, and the VS Code extension needs 2.1.299 or later. Tested with Claude Code 2.1.318.
 
 If you set `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` in an early build, remove it. Claude Code 2.1.287 and later ignores it.
 
@@ -276,19 +276,47 @@ What it does not show:
 
 ## Benchmarks
 
-The harness is in [`bench/`](bench/), with [its guide](bench/README.md). A task names a public repository, a pinned base commit and a pinned reference commit, plus hidden tests and a test command. The runner lets an agent try the task, then runs the hidden tests and reports cost, tokens, turns and time. A blind panel scores the change against the reference.
+**In a typical session, AutoMode costs half as much as Claude Code on Opus, 48% less than effortless, and less than Sonnet high, at the same quality.**
 
-**Benchmark: AutoMode passed 29 of 30 real tasks at 32% lower cost than plain Claude Code on Opus medium.** It cost $0.33 per passed task, against $0.48 for Opus medium, with a 90% interval of 17% to 48% lower. Plain Sonnet high cost less still, at $0.24, and passed 30 of 30. AutoMode costs 1.37 times as much, so it is no saving against Sonnet high yet. All arms ran on the same 30 tasks, scored by each task's hidden tests, under decision rules committed before the first row. Costs are list-price equivalents. The first run of this benchmark found a routing fault: a judge's guess started half the tasks on Opus. AutoMode now moves to Opus only on failure evidence. See [the full report](bench/results/automode-proof-2026-11-03.md), the [rows](bench/results/automode-proof-v2.jsonl) and how to reproduce it with no model call: `node bench/proof-report.mts --experiment automode-proof-v2 --policies bench/experiments/policies/automode-vs-opus-v1.json`. One repetition per arm makes it a release signal, not a general claim. What works today:
+A typical session mixes quick questions with real coding work. Each of the 5 sessions below runs in one continuing conversation, on a real repository: a question, a task, another question, then a harder task. Every task is graded by its own hidden tests, and every answer by the facts it must name.
+
+| 5 mixed sessions, 20 steps | Passed | Questions | Coding tasks | **Total** | vs Opus |
+|---|---|---|---|---|---|
+| **AutoMode** | **20/20** | **$0.08** | $1.93 | **$2.01** | **−51%** |
+| Plain Sonnet high | 20/20 | $0.24 | $1.90 | $2.14 | −48% |
+| [effortless](https://github.com/HeyCubit/effortless), on Opus | 20/20 | $0.43 | $3.44 | $3.87 | −7% |
+| Plain Opus (Claude Code default) | 20/20 | $0.50 | $3.64 | $4.14 | — |
+
+Questions are where AutoMode pulls ahead. Haiku answers them for a third of Sonnet's cost and a sixth of Opus's, and the session stays warm for the next task. Coding tasks run on Sonnet at the effort a judge picks, at Sonnet's own price.
+
+**On single coding tasks, AutoMode is 45% cheaper than Opus and passes one more task.**
+
+| 30 real coding tasks | Passed | Cost per passed task |
+|---|---|---|
+| **AutoMode** | **29/30** | **$0.275** |
+| Plain Opus | 28/30 | $0.499 |
+| Plain Sonnet high | 30/30 | $0.240 |
+
+The cost ratio against Opus is 0.551, with a 90% interval of 0.511 to 0.591. That clears the ship rule fixed before the run: no task lost and a ratio of 0.85 or less. The one task AutoMode missed, sqlglot, plain Sonnet high passed only 1 time in 3, and plain Opus failed it too. Against Sonnet high, AutoMode costs about 15% more on single coding tasks. The Sonnet high rows come from an earlier run on the same tasks and tests.
+
+**Where AutoMode does not win.** No router wins every workload, so here is ours:
+
+- **Long single coding tasks with no questions.** AutoMode runs them on Sonnet, so it costs about what Sonnet high costs, plus its judges and checks. If all you ever do is long coding tasks, and you already run Sonnet high, AutoMode saves you little.
+- **Haiku on hard work.** A Haiku-first mode (`haikuFirst: t3`, with `recovery: rescue` and `review: observed`) cost 44% less than Sonnet high on 14 tasks: $1.74 against $3.09. It failed 1 of them, mathjs-nullish, which Sonnet high passed. So it ships off. Turn it on if your work is mostly small and well tested.
+
+**How the numbers were made.** Costs are list-price equivalents of every paid request, judges and subagents included. Each arm ran the same tasks and hidden tests, in sessions launched on Opus, as most people run Claude Code. Every decision rule was committed before the first row of its run. One repetition per arm makes this a release signal, not a general law. Read the [v6 report](bench/experiments/V6.md), the [rows](bench/results/) and the [harness guide](bench/README.md). Reproduce the decision with no model call: `node bench/decide.mts bench/results/v6-s2-release.jsonl --policy bench/experiments/policies/v6c-opus-vs-opus.json`.
+
+The harness is in [`bench/`](bench/). A task names a public repository, a pinned base commit and a pinned reference commit, plus hidden tests and a test command. Other tools:
 
 - `node bench/style-check.mts`: the output style check, with [its results](#the-concise-output-style).
-- `node bench/judge-bench-effortless.mts`: how often the judge picks a sensible effort, on [labeled cases](bench/judge-cases.json). With no flags it is a dry run and spends nothing. [One run](bench/results/judge-bench-effortless-2026-10-30.json) got 74 of 75 cases right, and 20 of 20 held-out cases. Always medium got 34 of 75. This measures the effort label only, not cost or task quality. The cases are the effortless author's, and many accept two efforts, which raises every score.
+- `node bench/judge-bench-effortless.mts`: how often the judge picks a sensible effort, on [labeled cases](bench/judge-cases.json). [One run](bench/results/judge-bench-effortless-2026-10-30.json) got 74 of 75 cases right, and 20 of 20 held-out cases. It measures the effort label only.
 - `bench/replay.mts`, `bench/spend-audit.mts` and the other offline tools read your own Claude Code transcripts and cost nothing to run.
 
-Want to help us get the first numbers? [Add a benchmark task](#contribute).
+Want to help? [Add a benchmark task](#contribute).
 
 ## How it compares
 
-AutoMode is not the only router for Claude Code. [effortless](https://github.com/HeyCubit/effortless) sets the effort, and AutoMode's effort rules are ported from it. [jev-router](https://github.com/gargpratyush/jev-router) and [claude-router](https://github.com/alexei-led/claude-router) route the model. AutoMode adds a risk floor, a mandatory Opus review for risky work, and a plan, build, verify and review workflow. effortless has a published cost result. AutoMode's [30-task result](bench/results/automode-proof-2026-11-03.md) is 32% cheaper than Opus medium, and not yet cheaper than plain Sonnet high. [See the full comparison](docs/compare.md), including how AutoMode decides when a model switch is worth a cache rewrite.
+AutoMode is not the only router for Claude Code. [effortless](https://github.com/HeyCubit/effortless) sets the effort, and AutoMode's effort rules are ported from it. [jev-router](https://github.com/gargpratyush/jev-router) and [claude-router](https://github.com/alexei-led/claude-router) route the model. AutoMode adds Haiku for questions and bounded work, a risk floor, a mandatory review for risky work, a fresh rescue builder instead of a costly mid-task model switch, and a plan, build, verify and review workflow. On the same five mixed sessions, AutoMode cost $2.01 and effortless $3.87, both 20 of 20: effortless keeps Opus and sets the effort, and AutoMode also moves questions to Haiku and coding to Sonnet. jev-router and claude-router were audited from source, not run ([method](bench/external/METHODOLOGY.md)). [See the full comparison](docs/compare.md), including how AutoMode decides when a model switch is worth a cache rewrite.
 
 ## Contribute
 

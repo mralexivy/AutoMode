@@ -8,10 +8,11 @@
 // An obligation holds the request's own words, so it stays in memory. A record takes `publicObligations`: id, kind and
 // status, never the text.
 import { classify, fnv1a } from './failures.ts'
+import { tools } from './shell.ts'
 
 export type ObligationStatus = 'open' | 'attempted' | 'satisfied' | 'contradicted'
 export interface Obligation { id: string; kind: 'example' | 'semantic'; input?: string; expected?: string; status: ObligationStatus }
-export type CompletionState = 'none' | 'unverified' | 'partially_verified' | 'failed' | 'verified'
+export type CompletionState = 'none' | 'unverified' | 'partially_verified' | 'failed' | 'verified' | 'budget_exhausted'
 export type CompletionGate = 'off' | 'report' | 'block'
 
 const MAX_EXAMPLES = 16
@@ -24,7 +25,6 @@ const CLIP = 120
 const STATED = /\s(?:(?:must|should|will)\s+)?(?:generates?|gives?|becomes?|returns?|outputs?|yields?|produces?|prints?)(?:,\s*in\s+\w+,)?\s+|\s(?:->|=>|→)\s|\s(?:must|should)\s+be\s+/
 const UNCHANGED = /\s(?:stays|remains|is left|is kept)\s+(?:unchanged|as is)\b/
 // A lead-in clause before the example: "Reading as Oracle, SQLite or Hive, SELECT 1 ...".
-const LEAD_IN = /^(?:reading|when|if|with|for|given|on|in|generating)\b.*,\s+/i
 const REQUIREMENT = /\b(?:must|should|needs? to|has to|have to)\b/
 const SENTENCE = /(?<=[.!?])\s+|\n{2,}/
 const QUOTES = /^['"`]+|['"`]+$/g
@@ -40,7 +40,40 @@ function literal(s: string): boolean {
 // Plain words before the example: "Fix parse so parse('a') ...". An example starts at a symbol or an upper-case keyword.
 const LEAD_WORDS = /^(?:[A-Za-z]*[a-z][A-Za-z]*\s+)+(?=\S*[^A-Za-z\s]|[A-Z]{2,})/
 
-const inputOf = (before: string) => tidy((before.split(/:\s+/).pop() ?? before).replace(LEAD_IN, '').replace(LEAD_WORDS, ''))
+const PROSE = /^(?:[A-Za-z]*[a-z][A-Za-z]*\s+){2,}/
+// top: which positions of a text sit outside quotes and brackets. Code holds `: ` and `, ` of its own, and a split
+// there cut qs's examples in half: "with arr = ['x'], qs.parse({ a: arr, 'a[]': 'y' }) must return ..." became the
+// input `y' })`, and every check that named it read as a contradiction ($1.99 against $0.16 for Sonnet high). A quote
+// opens only after a non-letter, so the apostrophe in "today's" stays prose.
+function top(s: string): boolean[] {
+  const out: boolean[] = []
+  let depth = 0
+  let quote = ''
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i]
+    if (quote) { out.push(false); if (c === quote) quote = ''; continue }
+    if (`'"\``.includes(c) && !/[A-Za-z0-9]/.test(s[i - 1] ?? '')) { quote = c; out.push(false); continue }
+    if ('([{'.includes(c)) depth++
+    out.push(depth === 0 && !')]}'.includes(c))
+    if (')]}'.includes(c)) depth = Math.max(0, depth - 1)
+  }
+  return out
+}
+// The end of the last top-level match, or the start of the first one.
+const lastEnd = (s: string, re: RegExp) => { const t = top(s); let at = -1; for (const m of s.matchAll(re)) if (t[m.index!]) at = m.index! + m[0].length; return at }
+const firstAt = (s: string, re: RegExp) => { const t = top(s); for (const m of s.matchAll(re)) if (t[m.index!]) return m.index!; return -1 }
+const LEAD_IN_WORD = /^(?:reading|when|if|with|for|given|on|in|generating)\b/i
+function inputOf(before: string): string {
+  const label = lastEnd(before, /:\s+/g)
+  let s = label >= 0 ? before.slice(label) : before
+  if (LEAD_IN_WORD.test(s)) { const comma = lastEnd(s, /,\s+/g); if (comma >= 0) s = s.slice(comma) }
+  return tidy(s.replace(LEAD_WORDS, ''))
+}
+// The expected value ends where a new clause starts: "{ a: ['x', 'y'] }, and arr must stay ['x']".
+function expectedOf(after: string): string {
+  const end = firstAt(after, /,\s+(?:and|but|while|so|which|then|or)\b|;\s/g)
+  return tidy(end >= 0 ? after.slice(0, end) : after)
+}
 const obligation = (kind: Obligation['kind'], input?: string, expected?: string): Obligation =>
   ({ id: fnv1a(`${kind}|${input ?? ''}|${expected ?? ''}`), kind, ...(input ? { input } : {}), ...(expected ? { expected } : {}), status: 'open' })
 
@@ -53,8 +86,11 @@ function exampleIn(sentence: string): Obligation | null {
   const m = sentence.match(STATED)
   if (!m) return null
   const input = inputOf(sentence.slice(0, m.index))
-  const expected = tidy(sentence.slice(m.index! + m[0].length))
-  // A literal input can state a bare value: foo(1) returns 2.
+  const expected = expectedOf(sentence.slice(m.index! + m[0].length))
+  // A literal input can state a bare value: foo(1) returns 2. An expected value that opens with prose describes the
+  // result, and no program prints it: "x must be a separate list equal to ['foo']" had every check that named x read
+  // as a contradiction, and the gate blocked a finished task (jinja, in the benchmark).
+  if (PROSE.test(expected)) return null
   return input && expected && literal(input) && (literal(expected) || !/\s/.test(expected)) ? obligation('example', input, expected) : null
 }
 
@@ -80,7 +116,10 @@ const VIEWER = /^\s*(?:cat|head|tail|less|more|grep|rg|sed|awk|ls|find|echo|prin
 // the code as it stands. Two examples can share an input and differ by dialect. A command that printed one of them says
 // nothing against the other.
 export function observeRun(obligations: Obligation[], run: CommandRun): Obligation[] {
-  if (VIEWER.test(run.command)) return obligations
+  // Only a line of viewers alone: `find . -name x; python3 check.py` runs a program, and its output counts (found live:
+  // sqlglot printed the stated result after a `find`, and the gate ignored it).
+  const parts = tools(run.command)
+  if ((parts.length ? parts : [run.command]).every((t) => VIEWER.test(t))) return obligations
   const command = flat(run.command)
   const output = flat(run.output)
   const shown = (o: Obligation) => !!o.expected && output.includes(flat(o.expected))
@@ -101,9 +140,15 @@ export function observeRun(obligations: Obligation[], run: CommandRun): Obligati
 // reopen: an edit changed the code, so what the earlier runs showed no longer stands.
 export const reopen = (obligations: Obligation[]): Obligation[] => obligations.map((o) => (o.status === 'open' ? o : { ...o, status: 'open' as const }))
 
-export interface CompletionEvidence { edited: boolean; editedSinceCheck: boolean; lastCheckPassed: boolean | null; obligations: Obligation[] }
+export interface CompletionEvidence { edited: boolean; editedSinceCheck: boolean; lastCheckPassed: boolean | null; obligations: Obligation[]; budgetExhausted?: boolean }
 
 export function assessCompletion(e: CompletionEvidence): CompletionState {
+  const state = assessWork(e)
+  // A spent budget ends the task short of done, unless the evidence already showed it done.
+  return e.budgetExhausted && e.edited && state !== 'verified' ? 'budget_exhausted' : state
+}
+
+function assessWork(e: CompletionEvidence): CompletionState {
   if (!e.edited) return 'none'
   if (e.obligations.some((o) => o.status === 'contradicted')) return 'failed'
   if (e.lastCheckPassed === null || e.editedSinceCheck) return 'unverified'

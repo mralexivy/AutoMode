@@ -4,6 +4,57 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-05
+
+### Added
+
+- Agent `automode:builder`: it takes one task from a brief and works until the checks pass or a real blocker stops it. The caller sets its model. The v6c rescue and builder mode use it. The plan implementer, which stops after two fix attempts, did not fit.
+- v6 execution switches, each off by default (`hooks/lib/execution.ts`, measured in `bench/experiments/V6.md`):
+  - `start: v6a | v6b` keeps Haiku for T0 and bounded T1 work, and starts everything else on Sonnet: high under v6a, the judged effort under v6b.
+  - `recovery: hold | rescue` never moves a large context to another model in the middle of a task. A switch stays allowed while the context is small or the cache is cold. `rescue` instead starts a fresh `automode:builder` on the same model, then one model up, priced against a switch. It runs once per model, in repair mode or in restart mode. A pin allows only a fresh builder on the pinned model.
+  - `review: observed` asks for a review only on critical risk the diff shows.
+  - A watchdog acts on an attempt that burns context without a pass, long before Haiku's limit.
+  - `strategy: v6a | v6b | v6c` presets the three switches.
+  - Each recovery records its prices. Haiku's price step and each same-model effort change are recorded.
+- Setting `builder`, off by default: when on, non-trivial work goes to one builder subagent at the routed model from the start. Experimental.
+- A task budget, `taskBudgetUsd` in `config.json`, off by default. It counts every paid request of a task: the main session, subagents, forks, consults and judges. Once it is spent, the ladder buys no more rungs, the model is told once to stop and report, and the task ends as `budget_exhausted`, never as done (`hooks/lib/budget.ts`).
+
+### Fixed
+
+- A rescue the model declined mid-turn comes back once at the stop, when the work is not verified. The model follows a stop block where it declines a note in a tool result. On held-out mathjs-nullish, Haiku declined the rescue at its context limit and stopped with the work partly verified ($0.56, failed), while plain Sonnet high passed it for $0.70.
+- The rescue note names AutoMode as its source and makes no claim about the work. On sqlglot, a note that called the edits "not progress" read as false to Haiku, which declined it as an injected instruction.
+- A rescue in restart mode asks for one builder call and no git steps. On sqlglot in the v6d pilot, the note asked for a worktree, a stash and a patch, and Haiku declined it as an injected instruction. A declined rescue is not forced: a switch after 10 unanswered requests was tried and never helped. qs, pyflakes and five sqlglot runs paid $0.57 to $2.50 each with it, and sqlglot failed every time.
+- Under the v6 recovery, Haiku past its 100k price step keeps the task unless its next request costs more than on Sonnet. Moving the task off Haiku there was tried and made things worse. Across the v6d runs, every task Haiku kept passed cheaply up to 130k, except sqlglot, which plain Sonnet high fails 2 times in 3. Every failure and every costly pass came after a rescue or a switch moved the task off Haiku mid-way.
+- Under the v6 recovery, a revert alone no longer climbs the ladder. In the v6d pilot, Haiku had solved marshmallow, then checked out its change to redo it cleanly, and "the task reverted its own work" moved it to Sonnet: $0.22 against $0.02 in v5. A real failure still shows in the checks and at the stop.
+- Under `review: observed`, a judge's predicted risk no longer asks for a reviewer. The S3 hard rules, the change and its checks still do: critical risk in the diff, a large change, or a failed or missing check. In W1, a judge's "public API change" rating bought a $0.29 Sonnet review on a task plain Sonnet high passed with none.
+- Under the v6 recovery, an effort step stops at high. In S1, five raises to Sonnet xhigh cost $0.84, and plain Sonnet high passed each of those tasks with no raise. A repeat failure now holds, and a failing stop goes to the priced recovery.
+- Under the v6 start rule, a first prompt whose AutoMode judge failed takes the need's model, not the model the session was launched on. In S1, the judge timed out in a session launched on Opus, and a task the need rated Sonnet high ran on Opus.
+- Under the v6 recovery, a task's first failed stop holds: the model fixes the check, or says why it does not apply. A rescue needs the check to fail again after new work. In S1, dnspython's network test fails on this machine whatever the code, and the first stop started a fresh builder at once ($0.85, against $0.69 for plain Opus).
+- A failed AutoMode judge no longer leaves a hard task on Haiku. When its reply does not parse and the other judge's need names a stronger model, that model is a floor: Sonnet, or Opus where a judge may start Opus. In W1, a question had moved the session to Haiku, and a hard migration both effortless calls rated Opus high then ran on Haiku, at Opus's cost.
+- A running model that a floor excludes is ruled out even when it is not a candidate. A fixed family used to leave it unpriced, and the vote gate held it below the floor. This closes the known Haiku-hold hole in `tests/route-properties.test.mts`.
+- AutoMode keeps session snapshots for the 40 newest sessions only. It kept one per session and never removed any, so after some 350 sessions the plugin store passed its 4 MiB limit. Every save was then refused, and no resumed session could restore its route or its cache.
+- The routing state is saved after the turn's last request too. A print-mode process (`claude -p`, `--resume`) can exit before the turn completes, so the next process routed from a stale cache. On the W1 smoke it took a warm Sonnet session for Haiku, moved a question there, and paid the move back.
+- The completion gate skips only a line made of file viewers alone. A line such as `find . -name x; python3 check.py` runs a program, and its output now counts as evidence.
+- A stop with no edit since the last stop rung no longer climbs the ladder. The model has checked again and contests the failure, so a pricier model would only read the same evidence. On dnspython, three stops in 29 seconds bought a fork, an Opus consult and an Opus switch, on a network test that failed before any change: $1.51, against $0.45 for Sonnet high.
+- A check run in a copy under `/tmp` is no check of the work. On tomlkit, the model copied its new tests next to the original code to show that they fail there, and that read as a regression, which moved Haiku to Sonnet. A test the task added or edited never joins the stash baseline, so it cannot excuse its own later failures.
+- The completion gate reads a stated example written as code whole. It split on `: ` and `, ` inside brackets and quotes, so qs's `qs.parse({ a: arr, 'a[]': 'y' })` became the input `y' })`. A trailing ", and arr must stay ..." clause also became part of the expected value. Every check that named the input then read as a contradiction, and the gate climbed to an Opus consult: $1.99, against $0.16 for Sonnet high.
+- A test that fails on the stashed original code is the repository's own failure. A later run that fails only on such tests no longer fails the completion gate or climbs the ladder, unless the task names the test or asks to fix failing tests. On pyjwt, a TLS test failed on the untouched code, and AutoMode climbed to Opus on it: $1.55, against $0.32 for Sonnet high.
+- A test regression needs evidence in the output: a failing test, a runner's failure line or a compile error. An exit code alone is often a probe script run beside the check. All three regressions the 2026-11-03 run escalated on were that, on xmltodict, cachetools and marked.
+- A test run whose only errors are a program the machine lacks, such as `python` where only `python3` exists, is no verdict on the work. It no longer fails the completion gate or climbs the ladder. On sqlglot, `test_lazy_load` failed this way before and after every edit, and AutoMode climbed four rungs to Opus on it: $2.71 of a $4.93 run that still failed.
+- Under `opusStart: evidence`, a review the model asks for on its own also runs on Sonnet, unless a critical failure was observed. The reviewer agent's own default is Opus, and on cachetools such a review cost $0.46 of a $1.21 run.
+- A failing line whose test runner printed a clean pass is filed under the whole line, not as a failure of the suite. On xmltodict, `pytest | tail; python3 -m doctest x.py` printed `100 passed`, and old doctests failing read as a test regression, which moved Haiku to Sonnet.
+- A check that never started, such as `command not found: python`, is no longer a passed check. A trailing `; echo "exit=$?"` now counts as a masked exit code. In the benchmark, such a run counted as a pass on marshmallow and started a re-route.
+- A file named `schema` is a database schema only as `db/schema*`, `schema.prisma` or `schema.rb`. Editing marshmallow's `schema.py` had made the task critical and moved it from Haiku to Sonnet after its fix was done.
+- The completion gate no longer reads a described result as a printable example. "x must be a separate list equal to ['foo']" had made every check that named x a contradiction, and the gate blocked a finished jinja task, which then bought a fork and an Opus consult.
+- A revert command counts as escalation evidence only when an edited file has lost its change. A model that checks out the old file to prove its new tests fail, then copies its fix back, keeps its work. In the benchmark, findmyway moved from Haiku to Sonnet on exactly that, for $0.27 of its $0.30.
+
+### Changed
+
+- The default execution strategy is now `v6c` (`strategy` in `config.json`). Haiku takes questions and bounded small work, and Sonnet does the rest at the judged effort. A failure brings a fresh builder instead of moving a large context to a pricier model, and a review runs on observed evidence. `legacy` stays available. The release run is in `bench/experiments/V6.md`.
+- Under `opusStart: evidence`, a run on Haiku keeps working through repeated check failures, the write-test, fail, fix loop. It moves to Sonnet on a regression, a revert, a reviewer blocker, or a stop with the last check failing, which is now always sent back once. An escalation no longer adds a review of its own. In the benchmark, Haiku's first repeat had counted as 'failed at the top effort' and moved immer to Sonnet, plus a review: $0.77, against $0.26 for Sonnet high.
+- New setting `haikuFirst`, off by default. With `t3` and `opusStart: evidence`, T3 work without critical risk can start on Haiku, at high effort, and failure evidence moves it up. It stays off because the v4 and v5 proof runs measured it at 2.07× Sonnet high's cost per accepted task. A Haiku miss on T3 work was rescued by a mid-task switch at a large context, and six such switches cost $8.18 more than Sonnet high (`bench/results/automode-proof-v5.jsonl`).
+- The independent review runs on Sonnet unless the diff itself shows critical risk. Before, a prompt rating or a rescue rule bought an Opus review. In the proof run those reviews were all of AutoMode's Opus spend ($2.07 of $9.11), and none changed an outcome.
+
 ## [0.8.0] - 2026-11-03
 
 ### Changed

@@ -9,7 +9,9 @@ import { assess, textConsequence } from './consequence.ts'
 // Consequential surfaces, matched against file paths (named in the task or edited).
 export const RISK_PATHS: { reason: string; level: Risk; path: RegExp }[] = [
   { reason: 'auth or credentials code', level: 'critical', path: /(^|\/)(auth|oauth|login|session|credential|secret|crypto|permission|rbac|acl|sso|saml|jwt)[\w-]*(\/|\.[a-z]+$)/i },
-  { reason: 'migration or schema', level: 'critical', path: /(^|\/)(migrations?|schema|db\/migrate|flyway|alembic|liquibase)(\/|\.[a-z]+$)|\.sql$/i },
+  // A database schema, not any file named schema: marshmallow's schema.py is its core module, and the bare word sent a
+  // routine fix there to critical and to Sonnet in the benchmark.
+  { reason: 'migration or schema', level: 'critical', path: /(^|\/)(migrations?|db\/migrate|flyway|alembic|liquibase)(\/|\.[a-z]+$)|(^|\/)db\/schema\b|(^|\/)schema\.(prisma|rb)$|\.sql$/i },
   { reason: 'public API or wire format', level: 'critical', path: /(^|\/)(api|proto|openapi|swagger|graphql)(\/|\.[a-z]+$)|\.proto$|openapi\.(ya?ml|json)$/i },
   { reason: 'payments or personal data', level: 'critical', path: /(^|\/)(payments?|billing|invoices?|pii|gdpr)[\w-]*(\/|\.[a-z]+$)/i },
   { reason: 'deployment config', level: 'elevated', path: /(^|\/)(helm|k8s|kubernetes|terraform|deploy|\.gitlab-ci\.yml|\.github\/workflows|Dockerfile)/i },
@@ -79,14 +81,21 @@ export function observedRisk(o: ObservedInput, large = DEFAULT_LARGE): RiskAsses
 
 // A judge's word alone buys a Sonnet review. Every other reason to review keeps the Opus reviewer.
 const JUDGE_ONLY = 'judge-only critical'
-export const reviewerFamily = (because: string[]): 'sonnet' | 'opus' => (because.length && because.every((b) => b.startsWith(JUDGE_ONLY)) ? 'sonnet' : 'opus')
+// reviewerFamily: Opus reviews only when the diff itself shows critical risk, or, under `onEvidence: false` (the old
+// rule), any reason a judge alone did not give. In the proof run every Opus review ($2.07 of $9.11) came from a prompt
+// rating or a rescue rule, and none changed an outcome: Sonnet high passed the same tasks with no review at all.
+export const reviewerFamily = (because: string[], onEvidence = false): 'sonnet' | 'opus' =>
+  onEvidence ? (because.some((b) => b.startsWith('observed critical')) ? 'opus' : 'sonnet') : (because.length && because.every((b) => b.startsWith(JUDGE_ONLY)) ? 'sonnet' : 'opus')
 
 // reviewNeeded applies the review rules: critical risk, consequential surfaces, a large change, or a
-// verification that failed or never ran. A passing test never clears rules 1, 3 or 4.
-export function reviewNeeded(prospective: RiskAssessment, observed: RiskAssessment | null, verification: ObservedInput['verification'], large: boolean): string[] {
+// verification that failed or never ran. A passing test never clears rules 1, 3 or 4. Under `prospective: false`
+// (review `observed`), a judge's prediction made before any edit asks for no review; the S3 hard rules, the change and
+// its checks still do.
+export function reviewNeeded(prospective: RiskAssessment, observed: RiskAssessment | null, verification: ObservedInput['verification'], large: boolean, fromPrompt = true): string[] {
   const because: string[] = []
-  if (prospective.level === 'critical') because.push(`prospective critical: ${prospective.reasons.join('; ')}`)
-  else if (prospective.review === 'sonnet') because.push(`${JUDGE_ONLY}: ${prospective.reasons.join('; ')}`)
+  // The S3 hard rules (security, migrations, destructive operations, payments) keep their review under `observed` too.
+  if ((fromPrompt || !!prospective.hard?.length) && prospective.level === 'critical') because.push(`prospective critical: ${prospective.reasons.join('; ')}`)
+  else if (fromPrompt && prospective.review === 'sonnet') because.push(`${JUDGE_ONLY}: ${prospective.reasons.join('; ')}`)
   if (observed && observed.level === 'critical') because.push(`observed critical: ${observed.reasons.join('; ')}`)
   if (large) because.push('large change')
   if (verification === 'fail' || verification === 'unverified') because.push(`verification ${verification}`)

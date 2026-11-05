@@ -22,7 +22,7 @@ export function acceptanceFrom(text: string): Acceptance[] {
   return out.slice(0, 20)
 }
 
-export function newEnvelope(taskId: string, promptId: string, text: string, now: number, complexity: Complexity, prospective: RiskAssessment): TaskEnvelope {
+export function newEnvelope(taskId: string, promptId: string, text: string, now: number, complexity: Complexity, prospective: RiskAssessment, fromPrompt = true): TaskEnvelope {
   const env: TaskEnvelope = {
     taskId, revision: 1, createdAt: now, promptIds: [promptId], spec: { promptId, text },
     summary: '', acceptance: acceptanceFrom(text), complexity,
@@ -30,11 +30,11 @@ export function newEnvelope(taskId: string, promptId: string, text: string, now:
     reviewRequired: { value: false, because: [] }, verified: false, workflow: {}, discovery: [], failures: [],
     escalations: 0, editedPaths: [], status: 'open', injectedRevision: 0,
   }
-  return withReview(env, 'none', false)
+  return withReview(env, 'none', false, fromPrompt)
 }
 
-export function withReview(env: TaskEnvelope, verification: 'pass' | 'fail' | 'unverified' | 'none', large: boolean): TaskEnvelope {
-  const because = reviewNeeded(env.risk.prospective, env.risk.observed, verification, large)
+export function withReview(env: TaskEnvelope, verification: 'pass' | 'fail' | 'unverified' | 'none', large: boolean, fromPrompt = true): TaskEnvelope {
+  const because = reviewNeeded(env.risk.prospective, env.risk.observed, verification, large, fromPrompt)
   if (!because.length) return env
   const merged = [...new Set([...env.reviewRequired.because, ...because])]
   return { ...env, reviewRequired: { value: true, because: merged }, revision: env.revision + (merged.length === env.reviewRequired.because.length ? 0 : 1) }
