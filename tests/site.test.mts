@@ -66,6 +66,16 @@ test('the deploy publishes the alternate sitemaps', () => {
   assert.ok(workflow.includes('> site/sitemap.txt'))
 })
 
+test('llms.txt lists every page in the sitemap', () => {
+  const llms = read('llms.txt')
+  assert.match(llms, /^# AutoMode\n\n> /)
+  for (const url of sitemapUrls) assert.ok(llms.includes(`(${url})`), url)
+})
+
+test('the structured data names no stale version', () => {
+  assert.doesNotMatch(read('index.html'), /"softwareVersion"/)
+})
+
 test('the 404 page stays out of the index', () => {
   assert.ok(read('404.html').includes('<meta name="robots" content="noindex">'))
 })
@@ -75,7 +85,7 @@ test('the Search Console verification file stays in place', () => {
 })
 
 test('the IndexNow key file names its own key, as the deploy step expects', () => {
-  const keyFiles = readdirSync(siteFile('')).filter((f) => f.endsWith('.txt'))
+  const keyFiles = readdirSync(siteFile('')).filter((f) => /^[0-9a-f]{32}\.txt$/.test(f))
   assert.equal(keyFiles.length, 1)
   assert.match(keyFiles[0], /^[0-9a-f]{32}\.txt$/)
   assert.equal(read(keyFiles[0]), keyFiles[0].replace('.txt', ''))
