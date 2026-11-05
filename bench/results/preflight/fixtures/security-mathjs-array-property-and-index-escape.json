@@ -1,0 +1,12 @@
+{
+ "id": "security-mathjs-array-property-and-index-escape",
+ "task_hash": "b6138ea6579bf011",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-04T15:51:37.654Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

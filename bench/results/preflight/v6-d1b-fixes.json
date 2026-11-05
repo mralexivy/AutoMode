@@ -1,0 +1,129 @@
+{
+ "experiment": "v6-d1b-fixes",
+ "plan_hash": "61a2003936615350",
+ "at": "2026-11-04T15:12:21.312Z",
+ "pass": true,
+ "checks": [
+  {
+   "name": "experiment",
+   "ok": true,
+   "detail": "4 tasks x 2 arms x 1; policy bench/experiments/policies/v6d-vs-sonnet.json",
+   "blocking": true
+  },
+  {
+   "name": "split",
+   "ok": true,
+   "detail": "no held-out task",
+   "blocking": true
+  },
+  {
+   "name": "tree",
+   "ok": true,
+   "detail": "clean at 1e337fe",
+   "blocking": true
+  },
+  {
+   "name": "budget",
+   "ok": true,
+   "detail": "8 slots: 0 done, 4 reused, 0 unknown, 0 stale, 4 new; new paid slots expected $2.53 of $6",
+   "blocking": true
+  },
+  {
+   "name": "lock",
+   "ok": true,
+   "detail": "free",
+   "blocking": true
+  },
+  {
+   "name": "fixtures",
+   "ok": true,
+   "detail": "4 valid on machine 14caf2f4dce9ad6e, agent environment included",
+   "blocking": true
+  },
+  {
+   "name": "history",
+   "ok": true,
+   "detail": "1120 saved sessions, 859 failed checks replayed, 453 would escalate now; misread: 0; crashed: 0",
+   "blocking": true
+  },
+  {
+   "name": "tests",
+   "ok": true,
+   "detail": "npm run check: ℹ pass 780, ℹ fail 0",
+   "blocking": true
+  },
+  {
+   "name": "plugin-tests",
+   "ok": true,
+   "detail": "493 pass, 0 fail",
+   "blocking": true
+  }
+ ],
+ "slots": [
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__v6d-opus__r1__e2757f28061a7ec4",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__sonnet-high__r1__fed39d586f934e89",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__v6d-opus__r1__3a22b56315c6416b",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__sonnet-high__r1__369d9ce173210545",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__v6d-opus__r1__089df885b9a56f6e",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__sonnet-high__r1__d39c15d810761946",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__v6d-opus__r1__3cbc2011353d658d",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__sonnet-high__r1__09cca49eecd922d3",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  }
+ ],
+ "estimate_usd": 2.53
+}

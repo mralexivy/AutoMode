@@ -105,7 +105,11 @@ export function parseForkFacts(text: string): { constraints: Fact[]; unknowns: F
 export const withFork = (h: Handoff, f: { constraints: Fact[]; unknowns: Fact[] }): Handoff => ({ ...h, constraints: [...h.constraints, ...f.constraints], unknowns: [...h.unknowns, ...f.unknowns] })
 
 // renderHandoff: the packet as text, each fact with its source, under MAX_CHARS.
-export function renderHandoff(h: Handoff, gaps: string[] = []): string {
+// CONSULT_ASK closes a packet for an architect; a rescue builder gets BUILD_ASK, since it implements, not advises.
+export const CONSULT_ASK = 'Find the underlying cause. Read only what you need. Return the cause, the fix plan, and the files to change. Put every fact you needed and did not have in missing_evidence.'
+export const BUILD_ASK = 'Implement the objective. Run the checks named here, the full suite and not a subset, and fix what fails until they pass. Report each file you changed and each check with its result.'
+
+export function renderHandoff(h: Handoff, gaps: string[] = [], ask = CONSULT_ASK): string {
   const facts = (title: string, xs: Fact[]) => (xs.length ? `${title}:\n${xs.map((x) => `- ${x.text} [${x.from}]`).join('\n')}` : '')
   const parts = [
     `Objective [${h.objective.from}]: ${h.objective.text}`,
@@ -117,7 +121,7 @@ export function renderHandoff(h: Handoff, gaps: string[] = []): string {
     facts('Tried so far', h.attempts),
     facts('Unknowns', h.unknowns),
     gaps.length ? `Not in this packet: ${gaps.join('; ')}.` : '',
-    'Find the underlying cause. Read only what you need. Return the cause, the fix plan, and the files to change. Put every fact you needed and did not have in missing_evidence.',
+    ask,
   ].filter(Boolean)
   return cut(parts.join('\n\n'), MAX_CHARS)
 }

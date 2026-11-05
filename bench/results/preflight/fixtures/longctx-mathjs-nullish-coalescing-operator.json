@@ -1,0 +1,12 @@
+{
+ "id": "longctx-mathjs-nullish-coalescing-operator",
+ "task_hash": "e233ed2a9b6adcea",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-04T15:51:00.965Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

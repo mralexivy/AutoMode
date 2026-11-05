@@ -6,7 +6,7 @@
 import { atom, update } from 'claude-code'
 import type { EngineInterface } from 'claude-code'
 import { buildView, type Facts, type GuardSnap, type RouterSnap, type UsageSnap, type View } from './view.ts'
-import { sid, fsRead, sessionModel, sessionUsage } from '../lib/io.ts'
+import { sid, fsRead, sessionModel, sessionUsage, sGet, sSet } from '../lib/io.ts'
 
 export const viewAtom = atom({ plugin: 'automode', key: 'view' } as const, null as View | null)
 
@@ -45,13 +45,13 @@ async function gateTip($: EngineInterface, v: View, now: number): Promise<View> 
   const cand = v.tip
   if (!cand) { tipNow = { key: '', until: 0 }; return v }
   if (tipNow.key !== cand.key) {
-    if (tipCounts === null) { try { tipCounts = ((await $.store.get(TIPS_KEY)) as Record<string, number>) ?? {} } catch { tipCounts = {} } }
+    if (tipCounts === null) { try { tipCounts = ((await sGet($, TIPS_KEY)) as Record<string, number>) ?? {} } catch { tipCounts = {} } }
     const n = tipCounts[cand.key] ?? 0
     if (n >= TIP_MAX) tipNow = { key: cand.key, until: 0 }
     else {
       tipNow = { key: cand.key, until: now + TIP_MS }
       tipCounts = { ...tipCounts, [cand.key]: n + 1 }
-      try { await $.store.set(TIPS_KEY, tipCounts) } catch {}
+      try { await sSet($, TIPS_KEY, tipCounts) } catch {}
     }
   }
   return { ...v, tip: tipNow.until > 0 ? { ...cand, until: tipNow.until } : null }

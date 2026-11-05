@@ -25,6 +25,11 @@ export const FIELDS = {
   forkRung: { title: 'Fork diagnosis rung', options: ['default', 'off', 'on'], default: 'default', applies: 'next prompt', section: 'router' },
   opusStart: { title: 'Opus at the start', options: ['default', 'judge', 'evidence'], default: 'default', applies: 'next prompt', section: 'router' },
   haikuFirst: { title: 'Haiku first on T3 work', options: ['default', 'off', 't3'], default: 'default', applies: 'next prompt', section: 'router' },
+  strategy: { title: 'Execution strategy', options: ['default', 'legacy', 'v6a', 'v6b', 'v6c'], default: 'default', applies: 'next prompt', section: 'router' },
+  builder: { title: 'Builder subagent from the start', options: ['default', 'off', 'on'], default: 'default', applies: 'next prompt', section: 'router' },
+  start: { title: 'Start route', options: ['default', 'legacy', 'v6a', 'v6b'], default: 'default', applies: 'next prompt', section: 'router' },
+  recovery: { title: 'Recovery', options: ['default', 'legacy', 'hold', 'rescue'], default: 'default', applies: 'next prompt', section: 'router' },
+  review: { title: 'Review rule', options: ['default', 'prospective', 'observed'], default: 'default', applies: 'next prompt', section: 'router' },
   executor: { title: 'Executor', options: ['default', 'judge', 'sonnet'], default: 'default', applies: 'next prompt', section: 'router' },
   subagentsEverySession: { title: 'Subagents in every session', options: ONOFF, default: 'default', applies: 'next prompt', section: 'subagents' },
   guardianMode: { title: 'Guardian', options: ['default', 'off', 'observe', 'recommend', 'assist', 'auto'], default: 'default', applies: 'next prompt', section: 'guardian' },
@@ -76,6 +81,11 @@ export function routerOverrides(options: Options, stored: Options = {}): Record<
   if (opusStart !== 'default') out.opusStart = opusStart
   const haikuFirst = valueOf('haikuFirst', options, stored)
   if (haikuFirst !== 'default') out.haikuFirst = haikuFirst
+  const strategy = valueOf('strategy', options, stored)
+  if (strategy !== 'default') out.strategy = strategy
+  const builder = valueOf('builder', options, stored)
+  if (builder !== 'default') out.builder = builder
+  for (const k of ['start', 'recovery', 'review'] as const) { const v = valueOf(k, options, stored); if (v !== 'default') out[k] = v }
   const forkRung = valueOf('forkRung', options, stored)
   if (forkRung !== 'default') out.forkRung = forkRung
   const packet = valueOf('packet', options, stored)

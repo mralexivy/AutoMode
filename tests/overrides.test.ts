@@ -297,6 +297,16 @@ describe('The ladder', () => {
     expect(JSON.stringify(out)).toContain('automode:architect')
   })
 
+  test('v6: a revert alone holds; the checks and the stop decide', async ($, on) => {
+    const h = harness(on, { ...sonnetAt('high'), config: { recovery: 'rescue' }, bash: () => ({ result: 'ok', isError: false, text: '' }) })
+    await h.submit($, 'fix the parser')
+    await h.step($)
+    await $.tool.call(edit())
+    const out = await $.tool.call({ tool: 'Bash', command: 'git checkout -- src/a.ts' })
+    expect(JSON.stringify(out)).not.toContain('automode:')
+    expect(escalations(h.writes)).toEqual([])
+  })
+
   test('a revert that keeps the work is no evidence', async ($, on) => {
     // A model proves its tests catch the bug: it checks out the old file, runs the tests, then copies its fix back.
     let status = '## main\n M src/a.ts\n'

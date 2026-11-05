@@ -1,0 +1,33 @@
+{
+  "id": "v6-w1-mixed-smoke",
+  "description": "v6.1 W1 smoke: one realistic mixed session, the way people work. One repository, one continuing conversation launched on Opus: a quick question, a small fix, a question about the code, a hard migration. Plain Opus at its default effort (what most people run), plain Sonnet high, and AutoMode v6c launched on Opus. Questions are graded by whether the answer names the right file and method, from the source at the task's base; tasks by their hidden tests. If this smoke shows the mechanism working, W1 runs on five sessions.",
+  "arms": [
+    "opus",
+    "sonnet-high",
+    "v6c-opus"
+  ],
+  "sessions": {
+    "marked": [
+      {
+        "ask": "Where does this repository tokenize fenced code blocks? Name the file and the method.",
+        "expect": [
+          "Tokenizer\\.ts",
+          "fences"
+        ],
+        "base": "trivial-marked-empty-code-block-v2"
+      },
+      "trivial-marked-empty-code-block-v2",
+      {
+        "ask": "Which renderer method turns a list token into HTML? Name the file and the method.",
+        "expect": [
+          "Renderer\\.ts",
+          "\\blist\\b"
+        ],
+        "base": "migration-marked-list-tokens-from-lexer"
+      },
+      "migration-marked-list-tokens-from-lexer"
+    ]
+  },
+  "budget_usd": 6,
+  "run_cap_usd": 4
+}

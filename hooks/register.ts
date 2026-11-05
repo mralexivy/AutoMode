@@ -16,7 +16,7 @@
 // The model never changes mid-chat: each model keeps its own prompt cache, so a switch rewrites the
 // whole chat into a new cache (effortless measured 5-10x the cost). Inactive sessions (any other
 // model) pass every event straight through: no judge, no context, no state, no files.
-import { fsRead, fsWrite, sessionUsage } from './lib/io.ts'
+import { fsRead, fsWrite, sessionUsage, agents, status } from './lib/io.ts'
 import type { EngineInterface, Register } from 'claude-code'
 import { COMPACT_SYSTEM, transcriptOf } from './lib/compact.ts'
 import { guardianPromptSubmit, guardianSessionEnd, guardianSessionStart, guardianSnapshot, guardianStep, guardianToolCall, guardianTurnComplete, guardianTurnStart } from './guardian.ts'
@@ -228,7 +228,7 @@ async function coldHint($: EngineInterface): Promise<string | null> {
     const usage = await sessionUsage($)
     const tokens = usage.context.tokens ?? 0
     if (tokens < cfg.heavyChatTokens) return null
-    const live = (await $.agent.list()).filter((a) => a.status === 'pending' || a.status === 'running' || a.status === 'waiting')
+    const live = (await agents($)).filter((a) => a.status === 'pending' || a.status === 'running' || a.status === 'waiting')
     if (live.length) return null
     coldHintAt = now
     return `AutoMode: the prompt cache went cold (${Math.round(idleMin)} min idle), so this message re-writes about ${Math.round(tokens / 1000)}k tokens. Next time, /compact before a long break.`
@@ -278,7 +278,7 @@ async function routePrompt($: EngineInterface, e: any, next: any) {
     v = { ...v, effort: capped }
   }
   current = v
-  $.ui.status(`AutoMode: ${v.path} · ${autoEffort ? v.effort : 'your effort'}`)
+  status($, `AutoMode: ${v.path} · ${autoEffort ? v.effort : 'your effort'}`)
   await debug($, { ev: 'verdict', path: v.path, effort: v.effort, why: v.why, by: v.by, risks, midTurn, attachments })
 
   const context = contextFor(v, cfg, risks, sourceVersion)

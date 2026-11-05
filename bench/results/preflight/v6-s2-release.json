@@ -1,0 +1,545 @@
+{
+ "experiment": "v6-s2-release",
+ "plan_hash": "8b386849363fc61b",
+ "at": "2026-11-04T19:38:09.869Z",
+ "pass": true,
+ "checks": [
+  {
+   "name": "experiment",
+   "ok": true,
+   "detail": "30 tasks x 2 arms x 1; policy bench/experiments/policies/v6c-opus-vs-opus.json",
+   "blocking": true
+  },
+  {
+   "name": "split",
+   "ok": true,
+   "detail": "no held-out task",
+   "blocking": true
+  },
+  {
+   "name": "tree",
+   "ok": true,
+   "detail": "clean at 9459283",
+   "blocking": true
+  },
+  {
+   "name": "budget",
+   "ok": true,
+   "detail": "60 slots: 0 done, 30 reused, 0 unknown, 30 stale, 0 new; new paid slots expected $8.40 of $16",
+   "blocking": true
+  },
+  {
+   "name": "lock",
+   "ok": true,
+   "detail": "free",
+   "blocking": true
+  },
+  {
+   "name": "fixtures",
+   "ok": true,
+   "detail": "30 valid on machine 14caf2f4dce9ad6e, agent environment included",
+   "blocking": true
+  },
+  {
+   "name": "history",
+   "ok": true,
+   "detail": "1172 saved sessions, 940 failed checks replayed, 472 would escalate now; misread: 0; crashed: 0",
+   "blocking": true
+  },
+  {
+   "name": "tests",
+   "ok": true,
+   "detail": "npm run check: ℹ pass 780, ℹ fail 0",
+   "blocking": true
+  },
+  {
+   "name": "plugin-tests",
+   "ok": true,
+   "detail": "494 pass, 0 fail",
+   "blocking": true
+  }
+ ],
+ "slots": [
+  {
+   "run_id": "feature-boltons-mapping-type-fixes__opus__r1__d2ac5f19fbc30427",
+   "task": "feature-boltons-mapping-type-fixes",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "feature-boltons-mapping-type-fixes__v6c-opus__r1__49e9219f288ed131",
+   "task": "feature-boltons-mapping-type-fixes",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (75060dc37c0b6cf7) differs in: code"
+  },
+  {
+   "run_id": "feature-fastxmlparser-stopnode-nested-same-tag__opus__r1__b23f39a9f60bab74",
+   "task": "feature-fastxmlparser-stopnode-nested-same-tag",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "feature-fastxmlparser-stopnode-nested-same-tag__v6c-opus__r1__aa8b1c5f78e47f2d",
+   "task": "feature-fastxmlparser-stopnode-nested-same-tag",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (79a5ede8b2522b54) differs in: code"
+  },
+  {
+   "run_id": "feature-findmyway-regex-param-empty-segment__opus__r1__895d6c3635bc1c38",
+   "task": "feature-findmyway-regex-param-empty-segment",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "feature-findmyway-regex-param-empty-segment__v6c-opus__r1__c77f6fceb3592114",
+   "task": "feature-findmyway-regex-param-empty-segment",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (16f1e97984f27806) differs in: code"
+  },
+  {
+   "run_id": "feature-immer-array-plugin-spread-drafts__opus__r1__c8526ad3cb218f80",
+   "task": "feature-immer-array-plugin-spread-drafts",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "feature-immer-array-plugin-spread-drafts__v6c-opus__r1__9ba1fa674e864e33",
+   "task": "feature-immer-array-plugin-spread-drafts",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (a59eeecbc33d295b) differs in: code"
+  },
+  {
+   "run_id": "feature-jinja-undefined-copy-pickle-state__opus__r1__9ffe7246fc8a8f01",
+   "task": "feature-jinja-undefined-copy-pickle-state",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "feature-jinja-undefined-copy-pickle-state__v6c-opus__r1__b1a854372e74b4ac",
+   "task": "feature-jinja-undefined-copy-pickle-state",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (3e6a109414d013f2) differs in: code"
+  },
+  {
+   "run_id": "feature-markdown-unclosed-markup-in-code-spans__opus__r1__f029fc29513cea6f",
+   "task": "feature-markdown-unclosed-markup-in-code-spans",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "feature-markdown-unclosed-markup-in-code-spans__v6c-opus__r1__3695bd428d9ff384",
+   "task": "feature-markdown-unclosed-markup-in-code-spans",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (38ee7b901a8205cd) differs in: code"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__opus__r1__0402dd3563e2a5fc",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__v6c-opus__r1__b60fe73e53e92fdc",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (39339cafb7d9221d) differs in: code"
+  },
+  {
+   "run_id": "feature-nodesemver-diff-prerelease-direction__opus__r1__60efd796be314c7d",
+   "task": "feature-nodesemver-diff-prerelease-direction",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "feature-nodesemver-diff-prerelease-direction__v6c-opus__r1__1173f1777e55761e",
+   "task": "feature-nodesemver-diff-prerelease-direction",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (e60c8a81dfa9b77a) differs in: code"
+  },
+  {
+   "run_id": "feature-picomatch-repeated-extglob-branches__opus__r1__2b5e23e9656cf9d7",
+   "task": "feature-picomatch-repeated-extglob-branches",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "feature-picomatch-repeated-extglob-branches__v6c-opus__r1__1c3be8c0e552c7fd",
+   "task": "feature-picomatch-repeated-extglob-branches",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (80e12ebbfb80ac87) differs in: code"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__opus__r1__d87bbb955c918479",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__v6c-opus__r1__a261871db810ce56",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (076579e5d8ff04da) differs in: code"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__opus__r1__3dc63af354f997dd",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__v6c-opus__r1__af77b0ce37d1a4b8",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (b19952c212a295c8) differs in: code"
+  },
+  {
+   "run_id": "feature-sqlparse-begin-end-block-semicolons__opus__r1__283f9a483dc47350",
+   "task": "feature-sqlparse-begin-end-block-semicolons",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "feature-sqlparse-begin-end-block-semicolons__v6c-opus__r1__c022605c9d69e49f",
+   "task": "feature-sqlparse-begin-end-block-semicolons",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (453a6167277fd530) differs in: code"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__opus__r1__4b93c7333155bde0",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__v6c-opus__r1__c8229b192230418f",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (e30cccb51a2e8b1a) differs in: code"
+  },
+  {
+   "run_id": "feature-xmltodict-selective-cdata__opus__r1__527c918fcac03902",
+   "task": "feature-xmltodict-selective-cdata",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus-pilot"
+  },
+  {
+   "run_id": "feature-xmltodict-selective-cdata__v6c-opus__r1__e13ed11bc38b7a61",
+   "task": "feature-xmltodict-selective-cdata",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (dd3210b7a49cff87) differs in: code"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__opus__r1__81c12e4d077c5677",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus-pilot"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__v6c-opus__r1__e14c2b342d824baf",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (ea56fcf45dc87b2a) differs in: code"
+  },
+  {
+   "run_id": "longctx-mistune-toc-heading-id-collisions__opus__r1__7326077c64030be5",
+   "task": "longctx-mistune-toc-heading-id-collisions",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus-pilot"
+  },
+  {
+   "run_id": "longctx-mistune-toc-heading-id-collisions__v6c-opus__r1__fee76a90a5bb0e96",
+   "task": "longctx-mistune-toc-heading-id-collisions",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (42025a95ca6335af) differs in: code"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__opus__r1__eb7f870df0da6309",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus-pilot"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__v6c-opus__r1__36c10061fcc46758",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (50ab45bbec8f16d3) differs in: code"
+  },
+  {
+   "run_id": "longctx-tornado-body-parse-errors-v2__opus__r1__f0aeeb8059c9fa9f",
+   "task": "longctx-tornado-body-parse-errors-v2",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "longctx-tornado-body-parse-errors-v2__v6c-opus__r1__366075fc710bd9cd",
+   "task": "longctx-tornado-body-parse-errors-v2",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (3dca41b23dd517bc) differs in: code"
+  },
+  {
+   "run_id": "migration-cachetools-cachedmethod-instance-attributes__opus__r1__cbd97d07ed529ff4",
+   "task": "migration-cachetools-cachedmethod-instance-attributes",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "migration-cachetools-cachedmethod-instance-attributes__v6c-opus__r1__3b657da2e39b8ea5",
+   "task": "migration-cachetools-cachedmethod-instance-attributes",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (cdc09171f2d0cb35) differs in: code"
+  },
+  {
+   "run_id": "migration-marked-list-tokens-from-lexer__opus__r1__9c13f0a15a445db6",
+   "task": "migration-marked-list-tokens-from-lexer",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus-pilot"
+  },
+  {
+   "run_id": "migration-marked-list-tokens-from-lexer__v6c-opus__r1__a26e5bfae4b03ef0",
+   "task": "migration-marked-list-tokens-from-lexer",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (9edb41357ae6f2fd) differs in: code"
+  },
+  {
+   "run_id": "refactor-pymarkdown-block-level-v2__opus__r1__2cbd440f598fccfe",
+   "task": "refactor-pymarkdown-block-level-v2",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus-pilot"
+  },
+  {
+   "run_id": "refactor-pymarkdown-block-level-v2__v6c-opus__r1__671e0e651afa9d61",
+   "task": "refactor-pymarkdown-block-level-v2",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (bc9b60adeb350402) differs in: code"
+  },
+  {
+   "run_id": "security-findmyway-absolute-form-targets__opus__r1__79f7f65626354a3e",
+   "task": "security-findmyway-absolute-form-targets",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus-pilot"
+  },
+  {
+   "run_id": "security-findmyway-absolute-form-targets__v6c-opus__r1__dc15345bfb8bb1d1",
+   "task": "security-findmyway-absolute-form-targets",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (20e04e46ac492b57) differs in: code"
+  },
+  {
+   "run_id": "security-markdownit-reference-continuation-quadratic__opus__r1__69d85228c5d50e04",
+   "task": "security-markdownit-reference-continuation-quadratic",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "security-markdownit-reference-continuation-quadratic__v6c-opus__r1__6b1a84f507c8fa29",
+   "task": "security-markdownit-reference-continuation-quadratic",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (d982ee2dfe45fed8) differs in: code"
+  },
+  {
+   "run_id": "security-pyjwt-key-family-validation__opus__r1__a9a851f6ea46ce9e",
+   "task": "security-pyjwt-key-family-validation",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus-pilot"
+  },
+  {
+   "run_id": "security-pyjwt-key-family-validation__v6c-opus__r1__ba28752ad17b706b",
+   "task": "security-pyjwt-key-family-validation",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (9972e173379da9ea) differs in: code"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__opus__r1__890c6ecacda8389b",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus-pilot"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__v6c-opus__r1__12795ef73ba6762e",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (b67c973f2e83a2a7) differs in: code"
+  },
+  {
+   "run_id": "security-toughcookie-cookie-name-token-validation__opus__r1__612d341d73d83045",
+   "task": "security-toughcookie-cookie-name-token-validation",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "security-toughcookie-cookie-name-token-validation__v6c-opus__r1__b4b246f198ed0345",
+   "task": "security-toughcookie-cookie-name-token-validation",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (6eea333378aafd5a) differs in: code"
+  },
+  {
+   "run_id": "security-toughcookie-secure-cookie-origin__opus__r1__71b7ec4825d10eb4",
+   "task": "security-toughcookie-secure-cookie-origin",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus-pilot"
+  },
+  {
+   "run_id": "security-toughcookie-secure-cookie-origin__v6c-opus__r1__986a468b48455bda",
+   "task": "security-toughcookie-secure-cookie-origin",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (fba9c979fbc55c22) differs in: code"
+  },
+  {
+   "run_id": "security-yaml-recursive-merge-alias-limit__opus__r1__c198ad6c9ee2078c",
+   "task": "security-yaml-recursive-merge-alias-limit",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "security-yaml-recursive-merge-alias-limit__v6c-opus__r1__9c7e3d9f56c0e992",
+   "task": "security-yaml-recursive-merge-alias-limit",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (139408a6714fbea6) differs in: code"
+  },
+  {
+   "run_id": "trivial-bottle-if-none-match-v2__opus__r1__bc4aab01a0cee639",
+   "task": "trivial-bottle-if-none-match-v2",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "trivial-bottle-if-none-match-v2__v6c-opus__r1__1bcef0250c7ee4ae",
+   "task": "trivial-bottle-if-none-match-v2",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (10b18d31bbd59530) differs in: code"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__opus__r1__dfe7817ccd391447",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "opus",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in v6-s1-opus"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__v6c-opus__r1__9b0cd45a6b2044e1",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "v6c-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (c0a4bf471aea63b1) differs in: code"
+  }
+ ],
+ "estimate_usd": 8.4
+}

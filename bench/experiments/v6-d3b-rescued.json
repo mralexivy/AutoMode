@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "v6-d3b-rescued",
+  "track": "automode-system",
+  "description": "v6d final, part 2 (bench/experiments/V6.md): the 2 D3 tasks other than sqlglot whose rows hit the code the last fix changed (a Haiku price-step rescue and its note): qs and dnspython, rerun on the final code. The other 7 D3 rows never reached that code, so they stand. Sonnet high rows are reused. Fixed before any row.",
+  "arms": [
+    "v6d-opus",
+    "sonnet-high"
+  ],
+  "tasks": [
+    "feature-qs-object-input-immutable",
+    "longctx-dnspython-edns-padding"
+  ],
+  "repeats": 1,
+  "parallel": 2,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 4,
+  "budget_usd": 4,
+  "window_usd": 0,
+  "reuse_from": [
+    "bench/results/v6-e1-recovery.jsonl",
+    "bench/results/automode-proof-v2.jsonl"
+  ],
+  "decision": "bench/experiments/policies/v6d-vs-sonnet.json"
+}

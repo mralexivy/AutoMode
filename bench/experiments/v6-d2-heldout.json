@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "v6-d2-heldout",
+  "track": "automode-system",
+  "description": "v6d held-out confirmation (bench/experiments/V6.md): AutoMode v6d launched on Opus against plain Sonnet high and plain Opus, all three fresh, on the 5 confirm tasks of bench/experiments/heldout.json. No v6 change was tuned on them, and none has ever run. Fixed before the v6d pilot finished and before any row of this run. Rerun of the v6d arm on the final code: the Sonnet high and Opus rows stand. Two of its tasks (pyflakes, mathjs-nullish) informed the last fix, so they are no longer fully held out.",
+  "arms": [
+    "v6d-opus",
+    "sonnet-high",
+    "opus"
+  ],
+  "tasks": [
+    "feature-pyflakes-unused-global-nonlocal",
+    "longctx-mathjs-nullish-coalescing-operator",
+    "feature-acorn-using-in-switch-case-and-for",
+    "security-mathjs-array-property-and-index-escape",
+    "longctx-acorn-commonjs-source-type"
+  ],
+  "repeats": 1,
+  "parallel": 2,
+  "prompt_template": "repo-change-v1",
+  "run_cap_usd": 4,
+  "budget_usd": 14,
+  "window_usd": 0,
+  "reuse_from": [],
+  "decision": "bench/experiments/policies/v6d-vs-sonnet-heldout.json"
+}

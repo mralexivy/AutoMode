@@ -36,6 +36,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { ARMS } from './arms.mts'
 import { loadExperiment } from './lib/experiment.mts'
+import { behaviorFiles, filesHash } from './lib/identity.mts'
 import { add, entries, LEDGER, total } from './lib/ledger.mts'
 import { waitMs } from './lib/pacer.mts'
 import { admit, expectedUsd, resetAt, savedHistory } from './lib/admission.mts'
@@ -142,6 +143,11 @@ async function paced() {
   }
 }
 
+// The behavior files the plugin arms run, hashed at the start. An edit while the run is live means the sessions after
+// it ran other code: in v5, 3 rows did, and only a person noticed. AUTOMODE_BENCH_CODE_ROOT is for the runner's test.
+const CODE_ROOT = process.env.AUTOMODE_BENCH_CODE_ROOT || REPO
+const codeAtStart = filesHash(behaviorFiles(CODE_ROOT))
+
 async function worker() {
   while (queue.length && !stopped) {
     if (!(await paced())) return
@@ -157,6 +163,7 @@ async function worker() {
     appendEvent(events, { run_id: id, state: 'RUNNING', attempt, reason: adm.reason })
     const row: any = await oneRun(t, a, r, ctx).catch((e) => ({ run_id: id, task_id: t.id, cohort: t.cohort, arm: a, repeat: r, harness_error: String(e.message || e), at: new Date().toISOString() }))
     inFlight.delete(id)
+    if (filesHash(behaviorFiles(CODE_ROOT)) !== codeAtStart) row.contaminated = true
     const charge = chargedUsd(row.cost_usd_api_equiv, runCap)
     spent += charge.usd
     add({ batch, what: row.run_id, usd: charge.usd, source: charge.known ? 'cli total_cost_usd' : 'run cap: no cost reported' })
@@ -164,14 +171,15 @@ async function worker() {
     const fd = fs.openSync(out, 'a'); fs.writeSync(fd, JSON.stringify(row) + '\n'); fs.fsyncSync(fd); fs.closeSync(fd)
     const quota = row.exit_reason === 'quota'
     const reset = quota ? resetAt(`${row.limit_message ?? ''}\n${row.stderr_tail?.join('\n') ?? ''}`, new Date()) : null
-    const terminal = row.harness_error ? 'INVALID' : quota ? 'QUOTA_PAUSED' : row.exit_reason === 'setup_error' ? 'INVALID' : 'COMPLETED'
-    appendEvent(events, { run_id: id, state: terminal, attempt, cost_usd: row.cost_usd_api_equiv ?? null, session_id: row.session_id ?? null, reset_at: reset, reason: row.harness_error ?? row.exit_reason })
+    const terminal = row.harness_error || row.contaminated ? 'INVALID' : quota ? 'QUOTA_PAUSED' : row.exit_reason === 'setup_error' ? 'INVALID' : 'COMPLETED'
+    appendEvent(events, { run_id: id, state: terminal, attempt, cost_usd: row.cost_usd_api_equiv ?? null, session_id: row.session_id ?? null, reset_at: reset, reason: row.contaminated ? 'contaminated: a behavior file changed during the run' : row.harness_error ?? row.exit_reason })
     console.log(`${row.run_id}: ${row.harness_error ? 'HARNESS ERROR ' + row.harness_error : quota ? 'USAGE LIMIT, paused' : row.exit_reason === 'setup_error' ? 'SETUP FAILED' : (row.accepted ? 'accepted' : 'rejected')} ` +
       `$${row.cost_usd_api_equiv?.toFixed?.(2) ?? '?'} ${row.wall_s ?? '?'}s`)
     // A usage limit pauses everything at once. A setup failure or harness fault is an integrity defect: the plan
     // passed preflight and still broke, so no more money goes into it until someone looks.
     if (quota) lastReset = reset ?? lastReset
-    if (quota) stopped = { code: 75, why: `usage limit; ${reset ? `the CLI says it resets at ${reset}` : 'no reset time stated: resume by hand'}` }
+    if (row.contaminated) stopped = { code: 5, why: `a behavior file changed during the run, so ${id} and every row after it ran other code. Revert the edit and resume, or start a new run` }
+    else if (quota) stopped = { code: 75, why: `usage limit; ${reset ? `the CLI says it resets at ${reset}` : 'no reset time stated: resume by hand'}` }
     else if (terminal === 'INVALID') stopped = { code: 4, why: `integrity defect on ${id}: ${row.harness_error ?? 'setup failed'}` }
   }
 }

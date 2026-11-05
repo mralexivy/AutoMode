@@ -10,10 +10,15 @@
 //   fixture_invalid   the task failed its preflight: no slot should exist; listed so it cannot hide
 export type RowClass = 'accepted' | 'product_failure' | 'infra_interrupted' | 'harness_invalid' | 'grader_error' | 'fixture_invalid'
 
-export interface GradedRow { run_id: string; task_id: string; cohort?: string; arm: string; exit_reason?: string; accepted?: boolean | null; harness_error?: string; cost_usd_api_equiv?: number | null; fixture_invalid?: boolean }
+export interface GradedRow { run_id: string; task_id: string; cohort?: string; arm: string; exit_reason?: string; accepted?: boolean | null; harness_error?: string; cost_usd_api_equiv?: number | null; fixture_invalid?: boolean; contaminated?: boolean; judge?: { usd?: number | null } | null }
+
+// rowUsd: what one attempt cost, all of it. The CLI's total leaves out AutoMode's judge calls (Haiku, measured in its
+// records), so they are added here; a fixed arm has none.
+export const rowUsd = (r: Pick<GradedRow, 'cost_usd_api_equiv' | 'judge'>) => (r.cost_usd_api_equiv ?? 0) + (r.judge?.usd ?? 0)
 
 export function rowClass(r: GradedRow): RowClass {
   if (r.fixture_invalid) return 'fixture_invalid'
+  if (r.contaminated) return 'harness_invalid'
   if (r.harness_error === 'accept command did not finish') return 'grader_error'
   if (r.harness_error || r.exit_reason === 'setup_error') return 'harness_invalid'
   if (r.exit_reason === 'quota' || r.exit_reason === 'unknown') return 'infra_interrupted'
@@ -40,7 +45,7 @@ export interface Decision {
 function stats(rows: GradedRow[]): ArmStats {
   const classes = { accepted: 0, product_failure: 0, infra_interrupted: 0, harness_invalid: 0, grader_error: 0, fixture_invalid: 0 } as Record<RowClass, number>
   for (const r of rows) classes[rowClass(r)]++
-  const paid = rows.reduce((a, r) => a + (r.cost_usd_api_equiv ?? 0), 0)
+  const paid = rows.reduce((a, r) => a + rowUsd(r), 0)
   return { rows: rows.length, paid_usd: Math.round(paid * 1e4) / 1e4, accepted: classes.accepted, valid: classes.accepted + classes.product_failure, classes, usd_per_accepted: classes.accepted ? Math.round((paid / classes.accepted) * 1e4) / 1e4 : null }
 }
 
@@ -52,7 +57,7 @@ export function decide(rows: GradedRow[], p: Policy, next = 'repeat the discorda
   const verdict = (a: string) => { const m = new Map<string, GradedRow>(); for (const r of arm(a)) if (valid(rowClass(r))) m.set(r.task_id, r); return m }
   const vt = verdict(p.treatment), vc = verdict(p.control)
   const tasks = [...vt.keys()].filter((k) => vc.has(k)).sort()
-  const costOf = (a: string, task: string) => arm(a).filter((r) => r.task_id === task).reduce((x, r) => x + (r.cost_usd_api_equiv ?? 0), 0)
+  const costOf = (a: string, task: string) => arm(a).filter((r) => r.task_id === task).reduce((x, r) => x + rowUsd(r), 0)
   const tOnly = tasks.filter((k) => vt.get(k)!.accepted && !vc.get(k)!.accepted)
   const cOnly = tasks.filter((k) => !vt.get(k)!.accepted && vc.get(k)!.accepted)
   const passLoss = cOnly.length - tOnly.length

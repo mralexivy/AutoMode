@@ -109,3 +109,12 @@ test('review: a judge-only critical task asks for a Sonnet reviewer; any other r
   assert.equal(reviewerFamily([]), 'opus')
   assert.deepEqual(reviewNeeded(prospectiveRisk('add roles to the footer', null), null, 'none', false), [], 'text alone buys no review')
 })
+
+test('review observed: a prompt prediction asks for no reviewer; the change and its checks still do', () => {
+  const judged = prospectiveRisk('change the public API', { risk: 'critical', why: 'public API change' })
+  assert.deepEqual(reviewNeeded(judged, null, 'none', false, false), [], 'W1 marked: a $0.29 Sonnet review on a judge rating alone')
+  assert.equal(reviewNeeded(prospectiveRisk('Run `git push --force`', null), null, 'none', false, false).length, 1, 'an S3 hard rule keeps its review')
+  const obs = { level: 'critical' as const, reasons: ['auth path'], source: 'diff' as const }
+  assert.equal(reviewNeeded(judged, obs, 'none', false, false).length, 1)
+  assert.deepEqual(reviewNeeded(judged, null, 'fail', true, false), ['large change', 'verification fail'])
+})

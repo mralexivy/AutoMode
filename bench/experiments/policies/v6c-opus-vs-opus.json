@@ -1,0 +1,27 @@
+{
+  "id": "v6c-opus-vs-opus",
+  "fixed": "2026-11-04, before any S1 row exists.",
+  "question": "Does AutoMode, launched on Opus as most people run Claude Code, pass at least as many single tasks as plain Opus at its default effort, at a cost per accepted task at least 15% lower? Ship at no task lost net and a cost ratio of 0.85 or less, interval upper bound under 1.0.",
+  "treatment": "v6c-opus",
+  "control": "opus",
+  "oracle": "the task's accept command with its hidden tests: the full suite, never a subset the agent chose",
+  "cost": "list-price-equivalent USD of every paid attempt of an arm, accepted or not, interrupted included, divided by its accepted tasks",
+  "pairs": "a task counts when both arms have a valid row. A row is valid when the run finished (done, timeout or agent_error) and the grader gave a verdict.",
+  "min_valid_pairs": 8,
+  "max_pass_loss": 0,
+  "max_cost_ratio": 0.85,
+  "cost_ratio_ci_upper_for_ship": 1.0,
+  "cost_ratio_ci_lower_for_no_ship": 1.0,
+  "pass_loss_for_no_ship": 2,
+  "critical_cohorts": [
+    "security"
+  ],
+  "max_critical_regressions": 0,
+  "max_invalid_share": 0.15,
+  "bootstrap": {
+    "resamples": 4000,
+    "seed": 20261104,
+    "level": 0.9
+  },
+  "inconclusive_next": "independent repetitions of the discordant tasks only (one arm passes, the other fails) and of the tasks whose cost differs by more than 2x, for both arms"
+}

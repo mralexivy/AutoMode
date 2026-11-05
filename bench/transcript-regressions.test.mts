@@ -97,3 +97,22 @@ test('the old reading of the same sessions never escalated: whole Bash lines as 
   }
   assert.equal(escalation([], { ...EMPTY_LADDER, effortCapped: false }).level, 'none')
 })
+
+test('sqlglot v5: the session never showed the bug the hidden test caught, so the stop must not read as verified', async () => {
+  // The model's own new test errored at one point, then passed; the full suite then failed only on test_lazy_load (a
+  // program the machine lacks). The hidden test still failed on ORDER BY ... NULLS LAST. Across 98 AutoMode rows of
+  // the v2 to v5 proof runs, the gate never called a rejected task verified; this pins that for the case closest to it.
+  const { assessCompletion, extractObligations, observeRun, reopen } = await import('../hooks/lib/completion.ts')
+  const spec = JSON.parse(fs.readFileSync(path.join('bench', 'tasks', 'longctx-sqlglot-intersect-precedence-across-dialects.json'), 'utf8')).task
+  let obligations = extractObligations(spec)
+  let lastCheckPassed: boolean | null = null
+  let editedSinceCheck = false
+  for (const e of load('sqlglot-v5-own-test-errored')) {
+    if (['Edit', 'Write', 'MultiEdit'].includes(e.tool) || (e.tool === 'Bash' && writesFiles(e.cmd))) { obligations = reopen(obligations); editedSinceCheck = true }
+    if (e.tool !== 'Bash' || !e.out) continue
+    obligations = observeRun(obligations, { command: e.cmd, output: e.out, exit: e.err ? 1 : 0 })
+    if (isCheck(e.cmd)) { lastCheckPassed = !e.err; editedSinceCheck = false }
+  }
+  const state = assessCompletion({ edited: true, editedSinceCheck, lastCheckPassed, obligations })
+  assert.notEqual(state, 'verified')
+})

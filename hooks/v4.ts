@@ -33,6 +33,9 @@ import { DEFAULT_LADDER, resolve, routeFor } from './lib/authority.ts'
 import { choose, consultOrSwitch, workFromFiles, workflowValue, type StrategyChoice, type WorkflowValue } from './lib/strategy.ts'
 import { compactInstructions, injection, isBoundary, newEnvelope, observe, requireReview, summaryOf, withReview } from './lib/envelope.ts'
 import { assessCompletion, blockReason, extractObligations, observeRun, publicObligations, reopen, type CommandRun, type CompletionGate, type CompletionState, type Obligation } from './lib/completion.ts'
+import { budgetNote, budgetState, recordUsd } from './lib/budget.ts'
+import { snapshotsToDrop } from './lib/snapshots.ts'
+import { builderNote, haikuPriceStep, priceRecovery, recovery, rescueMode, rescueNote, resolveExecution, unproductive, v6RaiseAllowed } from './lib/execution.ts'
 import { checkKey, checkPassed, EMPTY_LADDER, escalation, evidencePacket, failKey, failingTests, failureOf, failureStep, isScratchRun, isStashRun, normalize, onlyPreexisting, ownTest, fnv1a, isCheck, isRevert, markFlaky, notRun, onlyMissingTools, reviewerBlocked, scopeGrew, withPipefail, workLost, writesFiles } from './lib/failures.ts'
 import { classifyOperation } from './lib/operations.ts'
 import { applyPins, commandChoice, readAppChoice, turnAxes, type Pins } from './lib/pins.ts'
@@ -54,8 +57,8 @@ import { routerOverrides } from './lib/settings.ts'
 import { currentOptions, storedOptions } from './options.ts'
 import { publish } from './ui/publish.ts'
 import type { AgentSnap, Ledger, RouterSnap } from './ui/view.ts'
-import { sid, fsRead, sessionModel, fsWrite, fsExists, fork } from './lib/io.ts'
-import { FORK_PROMPT, buildHandoff, completeness, forkWorth, parseForkFacts, renderHandoff, withFork } from './lib/handoff.ts'
+import { sid, fsRead, sessionModel, fsWrite, fsExists, fork, proc, sDel, sGet, sKeys, sSet, agents, status } from './lib/io.ts'
+import { BUILD_ASK, FORK_PROMPT, buildHandoff, completeness, forkWorth, parseForkFacts, renderHandoff, withFork } from './lib/handoff.ts'
 import { cacheNote, closeEpisodes, consultOutcome, durationsFrom, effortFirst, episodeBase, openEpisode, patchEpisode, influence, planFiles, priceConsult, RECUR_PRIOR } from './lib/rescue.ts'
 import { EMPTY_LEARNED, bucketOf, noteTask, opusBuckets, parseLearned, type Learned } from './lib/learn.ts'
 import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence, type DelegationMode } from './lib/delegation.ts'
@@ -99,6 +102,18 @@ const V4_DEFAULTS = {
   opusStart: 'judge' as 'judge' | 'evidence',
   // With opusStart evidence: t3 lets T3 work start on Haiku. Off by default, on the v4 and v5 proof runs (lib/auto.ts).
   haikuFirst: 'off' as 'off' | 't3',
+  // v6 (bench/experiments/V6.md): the execution strategy. legacy is main's routing; v6a, v6b and v6c start and rescue
+  // differently (lib/strategy.ts executionRules). builder: on hands non-trivial work to one builder subagent at once.
+  strategy: 'legacy' as 'legacy' | 'v6a' | 'v6b' | 'v6c',
+  // Each part of a strategy on its own (lib/execution.ts resolveExecution); 'default' takes the preset's.
+  start: 'default' as 'default' | 'legacy' | 'v6a' | 'v6b',
+  recovery: 'default' as 'default' | 'legacy' | 'hold' | 'rescue',
+  review: 'default' as 'default' | 'prospective' | 'observed',
+  builder: 'off' as 'off' | 'on',
+  // A model switch in the middle of a task moves the whole context. Below this prefix it costs little and stays allowed.
+  rescueSwitchTokens: 30_000,
+  // The task budget in list-price USD, every paid request of the task included (lib/budget.ts). 0 is off.
+  taskBudgetUsd: 0,
   effortJudgeTimeoutMs: JUDGE_CALL.timeoutMs,
 }
 type V4Config = typeof V4_DEFAULTS
@@ -174,6 +189,18 @@ const S = {
   appPlan: false,             // plan mode at the last main request: leaving it changes the app's model too
   ladderNote: null as string | null, // an escalation note for the next main tool result or prompt
   stopMark: null as number | null, // editsSeen at the last stop rung (v4Stop)
+  taskUsd: 0, // this task's spend so far (lib/budget.ts), summed as its records flush
+  budgetTold: false, // the budget note went out for this task
+  rescues: {} as Partial<Record<Family, number>>, // fresh rescue builders started for this task, by model (v6c)
+  rescueBrief: null as string | null, // the last rescue note of this task, until a builder takes it or a stop delivers it
+  watchdogFired: false, // the watchdog acted on this task (lib/execution.ts unproductive)
+  stopHeld: false, // v6: this task's first failed stop held instead of buying a rung
+  prefixAtFirstEdit: null as number | null, // the running prefix when the task's first edit landed
+  contextHandled: false, // v6 acted once on Haiku's context limit for this task
+  taskCauses: [] as string[], // the escalation causes this task met, for a rescue's failed approaches
+  priceStepNoted: false, // Haiku's price step was priced and recorded for this task
+  lastRecoveryAt: null as number | null, // when v6Recover last acted, so the watchdog never acts twice on one check
+  lastMain: null as { family: Family; effort: string | null } | null, // the last main request sent, for the effort-cache record
   editsSeen: 0, // every edit-tool edit the session saw; it only counts up (Bash writes are bashEdits)
   judgeRiskTask: undefined as string | undefined, // the task whose risk a failed judge raised, until a judge answers
   toldPolicy: false,
@@ -405,12 +432,12 @@ async function spawnOutsideAutoMode($: EngineInterface, e: any, next: any) {
 
 // Persistence: a headless --resume or a plugin reload starts a new module, but the session's cache
 // and task do not reset. The routing state is saved per session after each turn and read back once.
-const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'appModel', 'sessionModel', 'pinFamily', 'pinEffort', 'judgeRiskTask', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'dropped', 'rent', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier', 'editedSinceCheck', 'lastCheck', 'obligations', 'obligationsTask', 'completionBlocks', 'completionState'] as const
+const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'appModel', 'sessionModel', 'pinFamily', 'pinEffort', 'judgeRiskTask', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'dropped', 'rent', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier', 'editedSinceCheck', 'lastCheck', 'obligations', 'obligationsTask', 'completionBlocks', 'completionState', 'taskUsd', 'budgetTold', 'rescues', 'rescueBrief', 'editsSeen', 'stopMark', 'baseline', 'watchdogFired', 'stopHeld', 'prefixAtFirstEdit', 'contextHandled', 'priceStepNoted'] as const
 async function restore($: EngineInterface) {
   S.restored = true
   try { S.sessionId = await sid($) } catch {}
   try {
-    const snap = (await $.store.get(`hm4:${S.sessionId}`)) as Record<string, unknown> | undefined
+    const snap = (await sGet($, `hm4:${S.sessionId}`)) as Record<string, unknown> | undefined
     if (!snap || typeof snap !== 'object') return
     for (const k of SNAPSHOT_KEYS) if (k in snap) (S as Record<string, unknown>)[k] = snap[k]
     S.lastReply = String(snap.lastReply ?? '')
@@ -419,11 +446,20 @@ async function restore($: EngineInterface) {
     S.resetPending = snap.compactedPending === true
   } catch {}
 }
+// The store holds 4 MiB of JSON in all, and one session's snapshot is about 14 KB. One kept per session and never removed
+// filled it after some 350 sessions; every set was then refused, and no resumed session could restore its route or its
+// cache (found in W1: 376 snapshots, 5.2 MB). The newest SNAPSHOTS_KEPT stay (lib/snapshots.ts).
 async function persist($: EngineInterface) {
   if (S.sessionId === 'unknown') return
   const snap: Record<string, unknown> = { lastReply: S.lastReply.slice(0, 600) }
   for (const k of SNAPSHOT_KEYS) snap[k] = (S as Record<string, unknown>)[k]
-  try { await $.store.set(`hm4:${S.sessionId}`, snap) } catch {}
+  const key = `hm4:${S.sessionId}`
+  try {
+    for (const k of snapshotsToDrop(await sKeys($), key)) await sDel($, k)
+    // Delete, then set: the store keeps insertion order, so this session moves to the newest end.
+    await sDel($, key)
+    await sSet($, key, snap)
+  } catch {}
 }
 
 async function now($: EngineInterface): Promise<number> { try { return await $.clock.now() } catch { return Date.now() } }
@@ -478,6 +514,8 @@ function flush($: EngineInterface): Promise<void> {
   return flushing
 }
 async function flushNow($: EngineInterface) {
+  // The task's spend, before the records go: a request of this task, or a judge call (lib/budget.ts).
+  for (const r of S.records) if ((r as { taskId?: string }).taskId === S.envelope?.taskId || (r as { kind?: string }).kind === 'model-call') S.taskUsd += recordUsd(r)
   if (!S.cfg.recordDecisions || !S.records.length) return
   const lines = S.records.map((r) => JSON.stringify(r)).join('\n') + '\n'
   S.records = []
@@ -532,13 +570,23 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
     settleConsults(at, { taskEnded: true, verified: S.completionState === 'verified' })
     const risk = prospectiveRisk(text, answer ? { risk: maxRisk(answer.risk, answer.consequence ?? 'none'), why: answer.riskWhy } : null)
     S.taskSeq += 1
-    S.envelope = newEnvelope(`task-${at}-${S.taskSeq}`, `turn-${at}`, text, at, answer?.complexity ?? 'standard', risk)
+    S.envelope = newEnvelope(`task-${at}-${S.taskSeq}`, `turn-${at}`, text, at, answer?.complexity ?? 'standard', risk, promptReview())
     S.editLog = []
     S.consulted = []
     S.consultLog = []
     S.taskPrompts = []
     S.bashEdits = 0
     S.baseline = []
+    S.taskUsd = 0
+    S.budgetTold = false
+    S.rescues = {}
+    S.rescueBrief = null
+    S.watchdogFired = false
+    S.stopHeld = false
+    S.prefixAtFirstEdit = null
+    S.contextHandled = false
+    S.priceStepNoted = false
+    S.taskCauses = []
     S.consultCounts = {}
     S.resolvedCounts = {}
     S.switchesThisTask = 0
@@ -551,7 +599,7 @@ function taskBoundary($: EngineInterface, text: string, answer: JudgeAnswer | nu
     const judged = answer ? maxRisk(answer.risk, answer.consequence ?? 'none') : 'none'
     const risk = prospectiveRisk(text, answer && judged !== 'none' ? { risk: judged, why: answer.riskWhy } : null)
     const routing = risk.routing ?? risk.level
-    if (judged !== 'none' || routing === 'critical') S.envelope = withReview({ ...S.envelope, risk: { ...S.envelope.risk, prospective: risk, effective: routing === 'critical' ? 'critical' : S.envelope.risk.effective } }, 'none', false)
+    if (judged !== 'none' || routing === 'critical') S.envelope = withReview({ ...S.envelope, risk: { ...S.envelope.risk, prospective: risk, effective: routing === 'critical' ? 'critical' : S.envelope.risk.effective } }, 'none', false, promptReview())
   }
   if (answer && S.envelope && S.judgeRiskTask === S.envelope.taskId) {
     if (S.envelope.risk.effective === 'elevated') S.envelope = { ...S.envelope, risk: { ...S.envelope.risk, effective: maxRisk(S.envelope.risk.prospective.level, S.envelope.risk.observed?.level ?? 'none') } }
@@ -996,7 +1044,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
     complexity, stage, previousStage, boundary, riskChanged, planBoundary: req.why.includes('planExited') || req.why.includes('planEntered'), planExited: S.planExited,
     floor: floorFacts(env), current: S.current ? { route: S.current, running: runningEffort()! } : null, usable: usableCurrent(at), appEffort: S.appEffort,
     executor: { on: executorOn(), taskRoute: td && !boundary && !S.compactedPending && cacheFresh(at) ? td : null },
-    reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning ? opusBuckets(S.learned, at) : [] },
+    reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), ...(execution().start !== 'legacy' ? { start: execution().start } : {}), learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning ? opusBuckets(S.learned, at) : [] },
     votes: S.votes,
     switching: {
       cache: cacheState(), reset: S.resetPending, requestsSinceSwitch: S.requestsSinceSwitch, verifiedSinceSwitch: S.verifiedSinceSwitch, switchesThisTask: S.switchesThisTask, remainingTable: remainingTable(),
@@ -1095,7 +1143,7 @@ function reoptimizeAuto(t: Trigger, event: string, at: number, turnId: string | 
   const td = S.taskDecision && S.taskDecision.taskId === env.taskId ? S.taskDecision : null
   const executed = executorInput(executorOn(), S.lastAuto.verdicts, baseFloors, !reset && td && cacheFresh(at) ? td : null)
   const floors = executed?.floors ?? baseFloors
-  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), floors, current, cost: autoCost(complexity, at) })
+  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), ...(execution().start !== 'legacy' ? { start: execution().start } : {}), floors, current, cost: autoCost(complexity, at) })
   let floor = mq.tier
   if (t.mandatory) { const lift = tierOf(choice.best.family, choice.best.effort); if (tierRank(lift) > tierRank(floor.tier)) floor = { tier: lift, effort: choice.best.effort, because: [t.reason] } }
   const own = S.current ? choice.candidates.find((c) => c.family === S.current!.family) : undefined
@@ -1215,7 +1263,10 @@ function routeHeader(d: Decision, env: TaskEnvelope): string {
     lines.push(`This is open-ended multi-module work. Run Workflow({ name: "${S.cfg.workflowName}", args: ${JSON.stringify(args)} }) and do not implement it yourself until it returns. Then follow its next_action: report the result, and change code only if next_action says the checks failed.`)
   }
   if (d.strategy !== 'engineering-workflow' && (env.complexity !== 'trivial' || env.risk.effective !== 'none')) lines.push('Before you call a change done, run the relevant tests or build and show that they pass.')
-  if (env.reviewRequired.value && d.strategy !== 'engineering-workflow') lines.push(`After your checks pass, call the Agent tool with subagent_type "automode:reviewer" (${reviewerFamily(env.reviewRequired.because, S.cfg.opusStart === 'evidence') === 'sonnet' ? 'Sonnet' : 'Opus'}, read-only) and wait for it. Give it the original request, the acceptance criteria, each check with its output, and the changed files. Fix every blocker, run the checks again, and do not call it a second time.`)
+  // v6: a review only on observed critical risk (V6.md defect 4); a judge's rating alone buys none.
+  const reviewNow = env.reviewRequired.value && (execution().review === 'prospective' || reviewerFamily(env.reviewRequired.because, true) === 'opus')
+  if (S.cfg.builder === 'on' && r.family !== 'haiku' && d.strategy !== 'engineering-workflow') lines.push(builderNote(r.family))
+  if (reviewNow && d.strategy !== 'engineering-workflow') lines.push(`After your checks pass, call the Agent tool with subagent_type "automode:reviewer" (${reviewerFamily(env.reviewRequired.because, S.cfg.opusStart === 'evidence') === 'sonnet' ? 'Sonnet' : 'Opus'}, read-only) and wait for it. Give it the original request, the acceptance criteria, each check with its output, and the changed files. Fix every blocker, run the checks again, and do not call it a second time.`)
   if (env.failures.length && failureStep(env.failures, r.tier).action === 'report') lines.push(`The last check failed for an environment reason (${env.failures[env.failures.length - 1].command}). Tell the user what is missing instead of changing code.`)
   if (failureStep(env.failures, r.tier).action === 'diagnose') lines.push(delegation('diagnose', env))
   lines.push('Commit or push only when the user asks you to.')
@@ -1572,7 +1623,7 @@ const INADEQUATE_REVIEW = 'no available model met the need for this task'
 
 // barLine: the route in the status row, with plan mode and a pending review.
 function barLine($: EngineInterface, r: Route) {
-  $.ui.status(`AutoMode · ${r.family} ${r.effort}${S.planMode ? ' · plan' : S.policy === 'auto' && S.workStage !== 'implement' ? ` · ${S.workStage === 'plan-approved' ? 'approved' : S.workStage}` : ''}${S.envelope?.reviewRequired.value ? ' · review pending' : ''}${S.completionState === 'none' ? '' : ` · ${S.completionState.replace('_', ' ')}`}`)
+  status($, `AutoMode · ${r.family} ${r.effort}${S.planMode ? ' · plan' : S.policy === 'auto' && S.workStage !== 'implement' ? ` · ${S.workStage === 'plan-approved' ? 'approved' : S.workStage}` : ''}${S.envelope?.reviewRequired.value ? ' · review pending' : ''}${S.completionState === 'none' ? '' : ` · ${S.completionState.replace('_', ' ')}`}`)
 }
 
 // capOf places a route on the optimizer's capability scale, for mid-turn comparisons.
@@ -1607,6 +1658,14 @@ function pushRequest(e: any, sent: { model: string; effort: unknown }, owner: st
   const answered = res?.usage?.model ?? null
   const price = u ? usdOf(answered ?? sent.model, u) : null
   if (u && price) noteLedger(answered ?? sent.model, u, price.value, e.agentId)
+  // v6b: an effort change on the same model, and what the next request read from cache. It checks, per provider,
+  // model and version, that an effort change keeps the cache (V6.md, E3).
+  const fam = familyOf(sent.model)
+  if (e.agentId === undefined && fam && u && (execution().start !== 'legacy' || execution().recovery !== 'legacy')) {
+    const effort = sent.effort === undefined || sent.effort === null ? null : String(sent.effort)
+    if (S.lastMain && S.lastMain.family === fam && S.lastMain.effort !== effort) S.records.push({ v: 1, kind: 'effort-cache', at, sessionId: S.sessionId, taskId: S.envelope?.taskId ?? 'none', family: fam, from: S.lastMain.effort, to: effort, cacheRead: u.cacheRead, cacheWrite: u.cacheWrite5m + u.cacheWrite1h, input: u.input })
+    S.lastMain = { family: fam, effort }
+  }
   S.records.push(requestRecord({
     at, sessionId: S.sessionId, turnId: e.turnId, index: e.index, agentId: e.agentId, taskId: S.envelope?.taskId ?? 'none',
     app: { model: e.model, effort: e.effort ?? null }, sent: { model: sent.model, effort: (sent.effort as Effort | number | undefined) ?? null },
@@ -1763,9 +1822,22 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
   pushRequest(e, { model, effort: ef.sent }, r.owner, ef.applied, ef.why, res, t, application)
   // The turn's last step (no tool call follows): flush now. A print-mode process can exit right after
   // the turn, before a later flush, and the last request would be lost from the ledger.
-  if (res?.stopReason && res.stopReason !== 'tool_use') await flush($)
+  // The turn's last request: save the state too. A print-mode process (claude -p, --resume) can exit before the turn
+  // completes, and the next process would route from a stale cache: on the W1 smoke it took a warm Sonnet session for
+  // Haiku, moved a question there, and paid the move back.
+  if (res?.stopReason && res.stopReason !== 'tool_use') { await flush($); await persist($) }
   const ctx = trigger(trigState(), { kind: 'context', prefixTokens: S.cache?.prefixTokens ?? 0, family: r.family })
-  if (ctx.action === 'reoptimize') reoptimize(ctx, 'context-growth', t, e.turnId)
+  if (r.family === 'haiku' && execution().recovery !== 'legacy') await haikuGuards($, t)
+  // A rescue the model does not take is not forced. A forced switch after 10 unanswered requests never helped: qs, pyflakes
+  // and five sqlglot runs paid $0.57 to $2.50 each, and sqlglot failed every time. Without it, Haiku finished tomlkit and
+  // dnspython for $0.11 and $0.13, and failed sqlglot for $1.33.
+  if (ctx.action === 'reoptimize' && execution().recovery !== 'legacy' && r.family === 'haiku') {
+    // v6: past Haiku's limit the session keeps its model unless v6Recover prices a switch in.
+    if (!S.contextHandled && S.envelope && !S.ladderNote) {
+      S.contextHandled = true
+      if (!(await v6Recover($, 'sonnet', `the context passed Haiku's limit (${S.cache?.prefixTokens ?? 0} tokens)`, S.envelope.createdAt, 'context', t, true, 'context'))) reoptimize(ctx, 'context-growth', t, e.turnId)
+    }
+  } else if (ctx.action === 'reoptimize') reoptimize(ctx, 'context-growth', t, e.turnId)
   // With no compaction noted since the last request nothing proves a reset, so the shrink is priced and gated as a warm switch.
   else if (shrank) reoptimize(trigger(trigState(), { kind: 'compacted' }), 'compacted', t, e.turnId, compactedHere)
   if (res?.answer) S.lastReply = res.answer
@@ -1881,6 +1953,7 @@ export async function v4TurnComplete($: EngineInterface, e: any, next: any) {
 }
 
 export async function v4AgentSpawn($: EngineInterface, e: any, next: any) {
+  if (e.subagentType === 'automode:builder') S.rescueBrief = null
   if (e.workflow && String(e.subagentType).startsWith(`${S.cfg.workflowName.split(':')[0]}:`)) noteWorkflowCall()
   if (S.mode === 'off') return next(e)
   if (!(await activeV4($))) return S.cfg.subagentsEverySession && S.mode === 'auto' ? spawnOutsideAutoMode($, e, next) : next(e)
@@ -1947,6 +2020,7 @@ export async function v4ToolCall($: EngineInterface, e: any, next: any) {
   const out = await guarded($, e, next)
   if (S.mode !== 'auto') return out
   await noteToolResult($, e, out)
+  if (e.agentId === undefined && S.envelope) budgetSpent(await now($))
   if (e.agentId !== undefined || !S.ladderNote || out?.deny) return out
   // A note on a tool result is new input, so a per-message effort change takes effect at the next request.
   const note = S.ladderNote
@@ -1989,7 +2063,7 @@ function settleConsults(at: number, ev: { episode?: string; switched?: boolean; 
 
 // consultPacket builds the rich packet (lib/handoff.ts): the diff from git, and a same-model fork only behind the gate.
 // Each step fails open to the deterministic packet. The record keeps the source, the size and what the fork cost.
-async function consultPacket($: EngineInterface, env: TaskEnvelope, because: string, openedAt: number, episode: string, cache: ReturnType<typeof cacheNote>, advisorUsd?: number): Promise<string> {
+async function consultPacket($: EngineInterface, env: TaskEnvelope, because: string, openedAt: number, episode: string, cache: ReturnType<typeof cacheNote>, advisorUsd?: number, ask?: string): Promise<string> {
   const paths = [...new Set(env.editedPaths)].slice(0, 8)
   const diffStat = paths.length ? await git($, ['git', 'diff', '--stat', '--', ...paths]) : ''
   const diffHunks = diffStat ? await git($, ['git', 'diff', '-U2', '--', ...paths]) : ''
@@ -2009,7 +2083,7 @@ async function consultPacket($: EngineInterface, env: TaskEnvelope, because: str
       if (facts) { h = withFork(h, facts); source = 'fork' }
     }
   }
-  const text = renderHandoff(h, source === 'fork' ? gaps.gaps.filter((g) => !gaps.conversational.includes(g)) : gaps.gaps)
+  const text = renderHandoff(h, source === 'fork' ? gaps.gaps.filter((g) => !gaps.conversational.includes(g)) : gaps.gaps, ask)
   S.records.push({ v: 1, kind: 'handoff', at: await now($), sessionId: S.sessionId, taskId: env.taskId, episode, source, tokens: Math.ceil(text.length / 3.5), gaps: gaps.gaps.length, conversational: gaps.conversational.length, diff: !!diffStat, fork: forked })
   await flush($)
   return text
@@ -2018,7 +2092,7 @@ async function consultPacket($: EngineInterface, env: TaskEnvelope, because: str
 // git runs one read-only git command for the packet; a failure is an empty answer. The name matches guardian.ts's own
 // git helper, so the validator's calls line names it once.
 async function git($: EngineInterface, argv: string[]): Promise<string> {
-  try { const r = await $.process.run(argv, { timeoutMs: 5_000 }); return r.exitCode === 0 ? String(r.stdout ?? '') : '' } catch { return '' }
+  try { const r = await proc($, argv, { timeoutMs: 5_000 }); return r.exitCode === 0 ? String(r.stdout ?? '') : '' } catch { return '' }
 }
 
 // Four rungs after a failed stop: effort, fork, consult, then the switch. With three, the final run on sqlglot spent the
@@ -2026,6 +2100,8 @@ async function git($: EngineInterface, argv: string[]): Promise<string> {
 const MAX_LADDER_STOPS = 4
 
 // The rescue settings past their old values turn on the review rule: a consult or a strong-evidence raise ran.
+// promptReview: under review `observed`, a prompt's predicted risk asks for no reviewer. The change and its checks still do.
+const promptReview = () => execution().review !== 'observed'
 const rescueReview = () => S.cfg.opusStart !== 'evidence' && (S.cfg.strongStep === 'effort-first' || S.cfg.consult === 'priced')
 
 // noteConsultRun records what an architect consult really cost and how long it ran. Its duration feeds the consult
@@ -2056,14 +2132,128 @@ async function noteForkRun($: EngineInterface, e: any) {
 // runLadder acts on the task's evidence once, policy auto. Weak evidence raises the effort. Strong evidence asks an Opus
 // architect first, and moves the model when the same cause comes back. A pin keeps its route, so the notice says that
 // instead of a move. Notes wait in S.ladderNote: the evidence can arrive in a subagent, which cannot act on them.
+// execution: the start, recovery and review rules in force (lib/execution.ts), from the strategy preset and the
+// separate switches.
+const execution = () => resolveExecution({ strategy: S.cfg.strategy, start: S.cfg.start, recovery: S.cfg.recovery, review: S.cfg.review })
+
+// v6Recover (recovery hold | rescue): what replaces a model switch (lib/execution.ts recovery), priced like any switch.
+// It returns false when the switch should go ahead, and records its choice and the prices either way.
+async function v6Recover($: EngineInterface, to: Family, because: string, openedAt: number, episode: string, at: number, effortCapped: boolean, source: string): Promise<boolean> {
+  const env = S.envelope
+  if (!env || !S.current) return false
+  const rule = execution().recovery
+  if (rule === 'legacy') return false
+  const c = cacheState()
+  const cache = cacheNote(c, at)
+  const current = S.current.family
+  const rp = priceRecovery({ current, to, prefixTokens: c.prefixTokens, remainingRequests: S.priors.remainingRequests, outPerRequest: S.priors.outputPerStep[to], packetTokens: 6_000, ttlMs: c.ttlMs, rates: prices().rates })
+  const r = recovery({ rule, current, to, pinned: S.pinFamily !== undefined, warm: cache.warm, prefixTokens: c.prefixTokens, smallContext: S.cfg.rescueSwitchTokens, effortCapped, observedCritical: reviewerFamily(env.reviewRequired.because, true) === 'opus', rescued: S.rescues, prices: rp })
+  S.lastRecoveryAt = at
+  S.records.push({ v: 1, kind: 'recovery', at, sessionId: S.sessionId, taskId: env.taskId, source, rule, action: r.action, why: r.why, from: current, to, prices: rp, cache })
+  if (r.action === 'switch') return false
+  if (r.action === 'hold') S.ladderNote = `[AutoMode: ${because}. The route holds: ${r.why}. Fix the failure on this model, or say why it does not apply.]`
+  else await startRescue($, r.action === 'rescue-same' ? current : to, because, openedAt, episode, cache, at)
+  return true
+}
+
+// startRescue: a fresh builder takes the task with the evidence packet and none of this conversation. Repair keeps
+// the work when a check passed after the first edit; restart runs apart from it, in its own worktree.
+async function startRescue($: EngineInterface, family: Family, because: string, openedAt: number, episode: string, cache: ReturnType<typeof cacheNote>, at: number) {
+  const env = S.envelope!
+  const firstEditAt = S.editLog[0]?.at ?? (S.bashEdits ? 0 : null)
+  const passed = Object.entries(env.ladder?.passed ?? {}).filter(([, t]) => firstEditAt !== null && t > firstEditAt)
+  const mode = rescueMode(firstEditAt, passed.map(([, t]) => t))
+  const packet = await consultPacket($, env, because, openedAt, episode, cache, undefined, BUILD_ASK)
+  const remainingUsd = S.cfg.taskBudgetUsd > 0 ? Math.max(0, S.cfg.taskBudgetUsd - S.taskUsd) : null
+  const count = Object.values(S.rescues).reduce((a, n) => a + (n ?? 0), 0) + 1
+  // What the task already tried: each check that kept failing, each escalation cause, each earlier rescue.
+  const counts = new Map<string, number>()
+  for (const f of env.failures) if (f.class === 'defect') counts.set(f.command, (counts.get(f.command) ?? 0) + 1)
+  const failedApproaches = [
+    ...[...counts].filter(([, n]) => n > 1).map(([cmd, n]) => `\`${cmd.slice(0, 80)}\` failed ${n} times`),
+    ...[...new Set(S.taskCauses)].map((x) => `escalated: ${x}`),
+    ...Object.entries(S.rescues).map(([f, n]) => `a fresh ${f} builder ran ${n} time${n === 1 ? '' : 's'}`),
+  ]
+  S.rescues = { ...S.rescues, [family]: (S.rescues[family] ?? 0) + 1 }
+  S.ladderNote = rescueNote({ family, mode, because, packet, passedChecks: passed.map(([c]) => c), failedApproaches, remainingUsd })
+  S.rescueBrief = S.ladderNote
+  S.records.push({ v: 1, kind: 'rescue', at, sessionId: S.sessionId, taskId: env.taskId, family, mode, episode, because, packetChars: packet.length, prefixTokens: cacheState().prefixTokens, failedApproaches: failedApproaches.length, ...(remainingUsd === null ? {} : { remainingUsd: round6(remainingUsd) }) })
+  $.ui.toast(`AutoMode: ${because}. A fresh ${family} builder takes over (${mode}); this session keeps its model.`)
+}
+
+// watchdog (recovery hold | rescue): an attempt that burns context without a pass gets its recovery early, long
+// before a context limit (lib/execution.ts unproductive). Once per task. Its choice supersedes an effort raise the
+// ladder just made: an attempt that burns context without a pass needs a fresh start more than more thinking.
+async function watchdog($: EngineInterface, at: number) {
+  const env = S.envelope
+  if (execution().recovery === 'legacy' || !env || !S.current || S.watchdogFired || S.lastRecoveryAt === at) return
+  const firstEditAt = S.editLog[0]?.at ?? null
+  if (firstEditAt === null) return
+  // A failure counts when an edit came before it (its own record says so): a check run before any change is the baseline.
+  const failures = env.failures.filter((f) => f.editedSince && f.at >= firstEditAt && f.class === 'defect').length
+  const passes = Object.values(env.ladder?.passed ?? {}).filter((t) => t >= firstEditAt).length
+  const prefix = cacheState().prefixTokens
+  const growth = prefix - (S.prefixAtFirstEdit ?? prefix)
+  if (!unproductive({ failuresSinceFirstEdit: failures, passesSinceFirstEdit: passes, growthSinceFirstEdit: growth, prefixTokens: prefix })) return
+  S.watchdogFired = true
+  const up: Family = S.current.family === 'haiku' ? 'sonnet' : 'opus'
+  const because = `the attempt is not converging: ${failures} failing checks and ${growth} tokens of context since the first edit, with no pass`
+  S.taskCauses = [...S.taskCauses, because].slice(-10)
+  if (await v6Recover($, up, because, firstEditAt, 'watchdog', at, !nextEffort(S.current.family, runningEffort()!), 'watchdog')) {
+    S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: 'strong', floor: null, action: 'recovery', via: 'watchdog', route: up, because, episode: 'watchdog' })
+    await flush($)
+  }
+}
+
+// haikuGuards (recovery hold | rescue): Haiku's next request priced at its long-context step, recorded once per task.
+// The guard leaves Haiku only when that request costs more than the same one on Sonnet (lib/execution.ts).
+async function haikuGuards($: EngineInterface, at: number) {
+  if (S.priceStepNoted || !S.envelope || !S.cache) return
+  const step = haikuPriceStep(prices().rates, S.cache.prefixTokens + S.priors.outputPerStep.haiku, S.priors.outputPerStep.haiku)
+  if (!step.crossed) return
+  S.priceStepNoted = true
+  S.records.push({ v: 1, kind: 'price-step', at, sessionId: S.sessionId, taskId: S.envelope.taskId, nextPrompt: S.cache.prefixTokens + S.priors.outputPerStep.haiku, ...step })
+  // Past the step Haiku keeps the task unless its next request costs more than on Sonnet. Leaving Haiku there was tried
+  // and made things worse: across the v6d runs, every task Haiku kept passed cheaply up to 130k (acorn $0.07, tomlkit
+  // $0.11, dnspython $0.13), except sqlglot, which plain Sonnet high fails 2 times in 3. Every failure and every costly
+  // pass came after a rescue or a switch moved the task off Haiku mid-way (mathjs $1.76 failed, pyflakes $0.57).
+  const because = step.verdict === 'leave' ? `Haiku's next request (${step.haikuUsd}) costs more than the same one on Sonnet (${step.sonnetUsd})` : null
+  if (because && !S.ladderNote) await v6Recover($, 'sonnet', because, S.envelope.createdAt, 'price-step', at, true, 'price-step')
+}
+
+// budgetSpent: the task budget is gone. The first time, the model is told to stop and report, once.
+function budgetSpent(at: number): boolean {
+  const state = budgetState(S.taskUsd, S.cfg.taskBudgetUsd)
+  if (state !== 'exhausted') return false
+  if (!S.budgetTold && S.envelope) {
+    S.budgetTold = true
+    S.ladderNote = budgetNote(S.taskUsd, S.cfg.taskBudgetUsd)
+    S.records.push({ v: 1, kind: 'budget', at, sessionId: S.sessionId, taskId: S.envelope.taskId, spentUsd: round6(S.taskUsd), budgetUsd: S.cfg.taskBudgetUsd })
+  }
+  return true
+}
+
 async function runLadder($: EngineInterface, at: number) {
   const env = S.envelope
   if (!env || !S.current || S.policy !== 'auto') return
+  // A spent budget buys no rung: the task stops and reports.
+  if (budgetSpent(at)) return
   const l = env.ladder ?? EMPTY_LADDER
   const running = { family: S.current.family, effort: runningEffort()! }
   const editedSincePass = (since: number) => [...new Set(S.editLog.filter((x) => x.at > since).map((x) => x.path))]
   const esc = escalation(env.failures, { ...l, editedSincePass, effortCapped: !nextEffort(running.family, running.effort), patient: S.cfg.opusStart === 'evidence' && running.family === 'haiku' })
   if (esc.level === 'none') return
+  // v6: a task's first failed stop holds. The model fixes the check or says why it does not apply; a rescue needs the
+  // check to fail again after new work. Found in S1: dnspython's network test fails on this machine whatever the code,
+  // and the first stop started a fresh builder at once, which then stopped on the same test ($0.85 against Opus $0.69).
+  if (execution().recovery !== 'legacy' && esc.cause === 'stop' && !S.stopHeld) {
+    S.stopHeld = true
+    S.envelope = { ...env, ladder: { ...l, fired: [...l.fired, esc.key] } }
+    S.ladderNote = `[AutoMode: ${esc.because}. Fix the failing check, or say why it does not apply, for example when it fails the same way on the original code. If you change code, run the check again before you stop.]`
+    S.records.push({ v: 1, kind: 'recovery', at, sessionId: S.sessionId, taskId: env.taskId, source: 'stop', rule: execution().recovery, action: 'hold', why: 'a first failed stop: fix it or say why it does not apply' })
+    await flush($)
+    return
+  }
   const count = esc.count ?? (esc.fingerprint ? env.failures.filter((f) => f.fingerprint === esc.fingerprint).length : 0)
   // One episode per failure: what the ladder spent on it, so an unrelated failure gets its own rungs (lib/rescue.ts).
   // A failed stop joins the open episode of the check that is failing, so it climbs from that check's rung, not anew.
@@ -2075,7 +2265,10 @@ async function runLadder($: EngineInterface, at: number) {
   const allowed = allowedFamilies(at)
   const up = ladderStep(running, esc.level as 'weak' | 'strong', allowed)
   const first = effortFirst({ enabled: S.cfg.strongStep === 'effort-first', level: esc.level, episode: ep, critical: env.risk.effective === 'critical', floorBand: l.floor?.band, modelBand: up?.kind === 'model' ? up.band : undefined })
-  const step = first.use ? ladderStep(running, 'strong', allowed, { effortFirst: true }) : up
+  const chosen = first.use ? ladderStep(running, 'strong', allowed, { effortFirst: true }) : up
+  // v6: no effort step above high. Strong evidence takes the model step to v6Recover instead; weak evidence holds.
+  const capped = execution().recovery !== 'legacy' && chosen?.kind === 'effort' && !v6RaiseAllowed(chosen.effort)
+  const step = capped ? (esc.level === 'strong' && up?.kind === 'model' ? up : null) : chosen
   const strongRaise = first.use && step?.kind === 'effort'
   const episodes = strongRaise ? patchEpisode(opened.episodes, episode, { raised: ep.raised + 1 }) : opened.episodes
   const spent = { ...l, fired: [...l.fired, esc.key], raised: esc.fingerprint ? { ...l.raised, [esc.fingerprint]: count } : l.raised, episodes }
@@ -2083,11 +2276,23 @@ async function runLadder($: EngineInterface, at: number) {
   const why = first.why ? { effortFirst: first.why } : {}
   // No step taken (Haiku has no effort rung): mark the cause spent, but record no raise. A raise that never happened must
   // not turn the next repeat into 'failed after an effort raise', which is strong evidence.
-  if (!step) { S.envelope = { ...env, ladder: { ...spent, raised: l.raised } }; if (ep.consulted || ep.forked) settleConsults(at, { episode, recurred: true }); S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because, cache, episode, ...why }); return }
+  if (!step) { S.envelope = { ...env, ladder: { ...spent, raised: l.raised } }; if (ep.consulted || ep.forked) settleConsults(at, { episode, recurred: true }); S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'none', via: 'none', because: esc.because, cache, episode, ...why, ...(capped ? { capped: 'v6: effort stops at high' } : {}) }); return }
+  // v6 (recovery hold | rescue): a model step never moves a large context; v6Recover decides. Fork and consult rungs
+  // are legacy only.
+  if (execution().recovery !== 'legacy' && step.kind === 'model') {
+    S.envelope = { ...env, ladder: spent }
+    S.taskCauses = [...S.taskCauses, esc.because].slice(-10)
+    if (await v6Recover($, step.family, esc.because, ep.openedAt, episode, at, !nextEffort(running.family, running.effort), 'ladder')) {
+      S.envelope = { ...S.envelope!, escalations: env.escalations + 1 }
+      S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: 'recovery', via: execution().recovery, route: `${step.family}/${step.effort}`, because: esc.because, cache, episode, ...why })
+      await flush($)
+      return
+    }
+  }
   const packet = () => evidencePacket(env.spec.text.slice(0, 1500), env.acceptance.map((a) => a.text), env.failures, env.editedPaths, esc.because)
   // Under effort-first the episode, not the cause, remembers the consult: a new failure of the same kind gets its own.
   const consultedBefore = S.cfg.strongStep === 'effort-first' ? ep.consulted : S.consulted.includes(esc.cause)
-  const toOpus = step.kind === 'model' && step.family === 'opus' && !consultedBefore
+  const toOpus = step.kind === 'model' && step.family === 'opus' && !consultedBefore && execution().recovery === 'legacy'
   // forkRung: before the Opus consult, a same-model fork agent diagnoses with the whole conversation on its warm cache.
   if (toOpus && S.cfg.forkRung === 'on' && !ep.forked) {
     S.consultLog = [...S.consultLog, { episode, via: 'fork', ...(esc.fingerprint ? { fingerprint: esc.fingerprint } : {}), at, edits: S.editLog.length }]
@@ -2129,7 +2334,7 @@ async function runLadder($: EngineInterface, at: number) {
   const raised = { ...env, escalations: env.escalations + 1, ladder: { ...spent, ...(moving ? { episodes: patchEpisode(episodes, episode, { switched: true }) } : {}), floor: { family: step.family, effort: step.effort, band: step.band, because: esc.because, ...(esc.fingerprint ? { command: env.failures[env.failures.length - 1].command } : {}) } } }
   // A defect that outlived a repair (and a consult) gets the independent review once it passes.
   // Under evidence routing an escalation needs no review of its own: the failing check it acts on must pass again.
-  const reviewed = esc.check && S.cfg.opusStart !== 'evidence' ? withReview(raised, 'fail', false) : raised
+  const reviewed = esc.check && S.cfg.opusStart !== 'evidence' ? withReview(raised, 'fail', false, promptReview()) : raised
   S.envelope = strongRaise && rescueReview() ? requireReview(reviewed, 'effort rose on strong evidence') : reviewed
   // A consulted episode that escalates again: the consult did not fix it.
   if (ep.consulted || ep.forked) settleConsults(at, { episode, ...(moving ? { switched: true } : { recurred: true }) })
@@ -2158,7 +2363,7 @@ async function guarded($: EngineInterface, e: any, next: any) {
     }
     let w = S.workers.get(e.agentId)
     if (!w) {
-      const info = (await $.agent.list().catch(() => [])).find((a) => a.id === e.agentId)
+      const info = (await agents($).catch(() => [])).find((a) => a.id === e.agentId)
       if (info && READ_ONLY_AGENTS.includes(info.type)) { w = { type: info.type, tokens: 0, stop: false }; S.workers.set(e.agentId, w) }
     }
     if (!w) return trackTool($, e, input, next)
@@ -2281,7 +2486,7 @@ export async function v4Stop($: EngineInterface, e: any, next: any) {
   const out = await next(e)
   if (!gateOn() || S.mode === 'off' || !S.envelope || !(await activeV4($))) return out
   syncObligations()
-  const state = assessCompletion({ edited: S.envelope.editedPaths.length > 0 || S.bashEdits > 0, editedSinceCheck: S.editedSinceCheck, lastCheckPassed: S.lastCheck ? S.lastCheck.passed : null, obligations: S.obligations })
+  const state = assessCompletion({ edited: S.envelope.editedPaths.length > 0 || S.bashEdits > 0, editedSinceCheck: S.editedSinceCheck, lastCheckPassed: S.lastCheck ? S.lastCheck.passed : null, obligations: S.obligations, budgetExhausted: budgetState(S.taskUsd, S.cfg.taskBudgetUsd) === 'exhausted' })
   S.completionState = state
   // The gate's own evidence, the obligations met by real output, is an independent check for a consult's pass.
   if (state === 'verified' && settleConsults(await now($), { verified: true })) await flush($)
@@ -2300,7 +2505,16 @@ export async function v4Stop($: EngineInterface, e: any, next: any) {
   // consult and an Opus switch within seconds, with no edit between, on a test that failed before any change.
   const edits = S.editsSeen + S.bashEdits
   const contested = ladderStops && S.stopMark !== null && edits === S.stopMark
-  if (contested) reason = null
+  if (contested || state === 'budget_exhausted') reason = null
+  // A rescue the model declined mid-turn comes back once at the stop, when the work is not verified. The model follows a
+  // stop block where it declines a note in a tool result. On held-out mathjs-nullish, Haiku declined the rescue at its
+  // limit and stopped with the work partly verified ($0.56, failed); plain Sonnet high passed it for $0.70.
+  if (S.rescueBrief && execution().recovery !== 'legacy' && S.mode === 'auto' && state !== 'verified' && state !== 'budget_exhausted') {
+    reason = `${reason ? `${reason}\n\n` : ''}Before you stop: ${S.rescueBrief}`
+    S.rescueBrief = null
+    S.newInput = true
+    S.records.push({ v: 1, kind: 'recovery', at: await now($), sessionId: S.sessionId, taskId: S.envelope.taskId, source: 'stop', rule: execution().recovery, action: 'rescue-at-stop', why: `a declined rescue, and the stop found the work ${state}` })
+  }
   if (reason && ladderStops && S.policy === 'auto') {
     S.stopMark = edits
     // The stop goes to the ladder as strong evidence, and its next step rides in the block itself.
@@ -2338,10 +2552,14 @@ async function noteRun($: EngineInterface, run: CommandRun, failureKnown: boolea
 async function noteCommand($: EngineInterface, command: string) {
   if (!S.envelope) return
   const op = classifyOperation(command)
-  if (op) S.envelope = withReview(observe(S.envelope, { level: 'critical', reasons: [`operation: ${op.reason}${op.production ? ' in production' : ''}`], source: 'diff' }), 'none', false)
+  if (op) S.envelope = withReview(observe(S.envelope, { level: 'critical', reasons: [`operation: ${op.reason}${op.production ? ' in production' : ''}`], source: 'diff' }), 'none', false, promptReview())
   if (S.envelope.editedPaths.length && isRevert(command)) {
     const answers = await Promise.all(S.envelope.editedPaths.slice(0, 10).map((p) => git($, ['git', 'status', '--porcelain', '--branch', '--', p])))
     if (!workLost(answers)) return
+    // v6: a revert alone is no capability failure. A model that undoes a formatter's noise, or redoes its own fix cleanly,
+    // has not failed: on marshmallow in the v6d pilot, Haiku had passed, then checked out its change to redo it, and the
+    // strong signal moved it to Sonnet ($0.22 against $0.02). A real failure still shows in the checks and at the stop.
+    if (execution().recovery !== 'legacy') { S.records.push({ v: 1, kind: 'recovery', at: await now($), sessionId: S.sessionId, taskId: S.envelope.taskId, source: 'revert', rule: execution().recovery, action: 'hold', why: 'a revert alone: the checks and the stop decide' }); return }
     const l = S.envelope.ladder ?? EMPTY_LADDER
     S.envelope = { ...S.envelope, ladder: { ...l, reverts: l.reverts + 1 } }
     await runLadder($, await now($))
@@ -2357,13 +2575,14 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
     if (p && !out.deny) {
       S.editedSinceCheck = true
       if (gateOn()) { syncObligations(); S.obligations = reopen(S.obligations); S.obligationEdited = true }
+      if (!S.editLog.length && S.prefixAtFirstEdit === null) S.prefixAtFirstEdit = cacheState().prefixTokens
       S.editLog = [...S.editLog, { path: p, at: await now($) }].slice(-200)
       S.editsSeen += 1
       const edited = [...new Set([...S.envelope.editedPaths, p])]
       const lines = (S.envelope.changedLines ?? 0) + changedLines(e.tool, input)
       const ifaces = (S.envelope.interfacesChanged ?? 0) + interfacesOf(e.tool, input)
       S.envelope = observe({ ...S.envelope, editedPaths: edited, changedLines: lines, interfacesChanged: ifaces }, observedRisk({ editedPaths: edited, changedFiles: edited.length, changedLines: lines, verification: 'none', interfacesChanged: ifaces }))
-      S.envelope = withReview(S.envelope, 'none', edited.length > 8 || lines > 400)
+      S.envelope = withReview(S.envelope, 'none', edited.length > 8 || lines > 400, promptReview())
       // Scope change: edits well outside what discovery mapped mean the task is not what was judged.
       const known = new Set(S.envelope.discovery.flatMap((d) => d.paths))
       if (known.size) {
@@ -2431,7 +2650,7 @@ async function trackTool($: EngineInterface, e: any, input: Record<string, unkno
       const f = failureOf(failKey(command, text), exitCode || 1, text.slice(-8000), at, S.editedSinceCheck)
       if (f) {
         S.envelope = { ...S.envelope, failures: [...S.envelope.failures, f].slice(-20), verified: false }
-        if (S.policy === 'auto') await runLadder($, at)
+        if (S.policy === 'auto') { await runLadder($, at); await watchdog($, at) }
         else await legacyEscalation($, f.fingerprint, at)
       }
     }
@@ -2478,7 +2697,7 @@ async function legacyEscalation($: EngineInterface, fp: string, at: number) {
   const applied = pinned(target as Route & { owner: Owner }, S.appModel ?? target.model)
   S.pending = { ...applied, owner: 'quality-escalation', reason: step.because, floor: { tier: step.floor, because: [step.because] }, overridden: [] }
   // A defect that outlived a repair (and a consult) gets the independent review once it passes.
-  S.envelope = withReview({ ...env, escalations: env.escalations + 1 }, 'fail', false)
+  S.envelope = withReview({ ...env, escalations: env.escalations + 1 }, 'fail', false, promptReview())
   const moved = applied.family !== S.current.family || applied.effort !== S.current.effort
   S.records.push({ v: 1, kind: 'escalation', at, sessionId: S.sessionId, taskId: env.taskId, floor: step.floor, action: moved ? step.action : 'held-by-pin', via: 'switch', because: step.because })
   await flush($)
@@ -2754,7 +2973,7 @@ function freshSession() {
     learned: EMPTY_LEARNED, learnedTold: undefined, gatedReads: [], consulted: [], consultCounts: {}, consultMs: [], consultLog: [], taskPrompts: [], forkRuns: new Map(), bashEdits: 0, baseline: [], resolvedCounts: {}, switchesThisTask: 0, dropped: {}, rent: null, lastDemand: null, stage: 'implement', workStage: 'implement', verifiedAfterPlan: false, judgedThisStage: false,
     compactedPending: false, requestsInPrompt: 0, basePrefix: 0, compactedAt: 0, basePrefixMeasured: false, lastMessageCount: 0, workflowPending: null, workflowRanTask: undefined,
     signalSeq: 0, signalCompactAt: 0, compactHookSeen: false, toldUserTier: false, sessionMode: null, ledger: emptyLedger(),
-    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, stopMark: null, editsSeen: 0, judgeRiskTask: undefined,
+    judgeBreaker: {}, lastAuto: null, verdictCache: {}, taskDecision: null, decidedPlanMode: false, lastRisk: 'none', newInput: false, lastEffective: null, appEffort: undefined, appModel: undefined, sessionModel: undefined, pinFamily: undefined, pinEffort: undefined, turnOverride: null, unroutable: false, appPlan: false, ladderNote: null, stopMark: null, editsSeen: 0, taskUsd: 0, budgetTold: false, rescues: {}, rescueBrief: null, watchdogFired: false, stopHeld: false, prefixAtFirstEdit: null, contextHandled: false, priceStepNoted: false, lastMain: null, taskCauses: [], lastRecoveryAt: null, judgeRiskTask: undefined,
     preflight: undefined, breakers: {}, lastNoResponse: null, failures: [], pendingErrors: [], signalErrorAt: 0, signalMode: '', compactionPricedAt: 0, haikuOutUntilCompaction: false, lastWorkBand: undefined, effortUnsupported: false, thinkingRisk: false, toldErrorClass: '', toldBreaker: false, firstPrefixSaved: false, inadequate: null, toldInadequateTask: '',
   }
 }

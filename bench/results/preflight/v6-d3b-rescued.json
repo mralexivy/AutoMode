@@ -1,0 +1,97 @@
+{
+ "experiment": "v6-d3b-rescued",
+ "plan_hash": "abae76953f614778",
+ "at": "2026-11-04T16:40:03.811Z",
+ "pass": true,
+ "checks": [
+  {
+   "name": "experiment",
+   "ok": true,
+   "detail": "2 tasks x 2 arms x 1; policy bench/experiments/policies/v6d-vs-sonnet.json",
+   "blocking": true
+  },
+  {
+   "name": "split",
+   "ok": true,
+   "detail": "no held-out task",
+   "blocking": true
+  },
+  {
+   "name": "tree",
+   "ok": true,
+   "detail": "clean at d56c0c4",
+   "blocking": true
+  },
+  {
+   "name": "budget",
+   "ok": true,
+   "detail": "4 slots: 0 done, 2 reused, 0 unknown, 0 stale, 2 new; new paid slots expected $0.99 of $4",
+   "blocking": true
+  },
+  {
+   "name": "lock",
+   "ok": true,
+   "detail": "free",
+   "blocking": true
+  },
+  {
+   "name": "fixtures",
+   "ok": true,
+   "detail": "2 valid on machine 14caf2f4dce9ad6e, agent environment included",
+   "blocking": true
+  },
+  {
+   "name": "history",
+   "ok": true,
+   "detail": "1134 saved sessions, 879 failed checks replayed, 459 would escalate now; misread: 0; crashed: 0",
+   "blocking": true
+  },
+  {
+   "name": "tests",
+   "ok": true,
+   "detail": "npm run check: ℹ pass 780, ℹ fail 0",
+   "blocking": true
+  },
+  {
+   "name": "plugin-tests",
+   "ok": true,
+   "detail": "494 pass, 0 fail",
+   "blocking": true
+  }
+ ],
+ "slots": [
+  {
+   "run_id": "feature-qs-object-input-immutable__v6d-opus__r1__fb3879171c1f0f3b",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__sonnet-high__r1__369d9ce173210545",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__v6d-opus__r1__1ee02b802311e950",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__sonnet-high__r1__d39c15d810761946",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  }
+ ],
+ "estimate_usd": 0.99
+}

@@ -59,11 +59,12 @@ export const claudeCodeRunner: AgentRunner = {
   async run(req: RunRequest): Promise<AgentRun> {
     const { args, env } = armInvocation(req.armId, req.dir, req.prompt)
     if (req.runCap) args.push('--max-budget-usd', String(req.runCap))
+    if (req.resume) args.push('--resume', req.resume)
     const res = await runClaude(args, workspaceEnv(req.workspace, env, req.accept), req.workspace, req.timeoutMs)
     const j = res.json || {}
     return {
       runner: 'claude-code', exitReason: classifyRun(res), exitCode: res.code, signal: res.signal, isError: j.is_error ?? null, turns: j.num_turns ?? null,
-      costUsd: j.total_cost_usd ?? null, sessionId: j.session_id ?? null, modelMs: j.duration_api_ms ?? null, wallS: res.wall_s, stderrTail: res.stderr_tail, finalStatus: claimOf(j.result), limitMessage: classifyRun(res) === 'quota' ? limitLine(j.result) ?? limitLine(res.stderr_tail.join('\n')) : null,
+      costUsd: j.total_cost_usd ?? null, sessionId: j.session_id ?? null, answer: typeof j.result === 'string' ? j.result : undefined, modelMs: j.duration_api_ms ?? null, wallS: res.wall_s, stderrTail: res.stderr_tail, finalStatus: claimOf(j.result), limitMessage: classifyRun(res) === 'quota' ? limitLine(j.result) ?? limitLine(res.stderr_tail.join('\n')) : null,
       modelUsage: j.modelUsage ? Object.fromEntries(Object.entries<any>(j.modelUsage).map(([m, u]) => [m, {
         input: u.inputTokens ?? null, output: u.outputTokens ?? null, cache_read: u.cacheReadInputTokens ?? null,
         cache_write: u.cacheCreationInputTokens ?? null, cost_usd: u.costUSD ?? null }])) : null,

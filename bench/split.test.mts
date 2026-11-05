@@ -40,8 +40,8 @@ test('the committed split matches its rule, names real tasks, and only its scree
   assert.match(doc.date, /^\d{4}-\d{2}-\d{2}$/)
   const again = splitHeldout(ids.map((id) => ({ id, repo: tasks.get(id).repo })), doc.max_per_repo)
   assert.deepEqual({ screen: doc.screen, confirm: doc.confirm, excluded: doc.excluded }, again)
-  // The confirm half joins no experiment until its confirmation. The screen half joins only the screen it names.
-  const named = namedTasks()
+  // The confirm half joins no experiment but the one confirmation it names. The screen half joins only the screen it names.
+  const named = namedTasks(undefined, doc.confirm_experiment ? [`${doc.confirm_experiment}.json`] : [])
   for (const id of doc.confirm) assert.ok(!named.has(id), `${id} is held out but already in an experiment`)
   const others = namedTasks(undefined, doc.screen_experiment ? [`${doc.screen_experiment}.json`] : [])
   for (const id of doc.screen) assert.ok(!others.has(id), `${id} is in an experiment other than ${doc.screen_experiment}`)

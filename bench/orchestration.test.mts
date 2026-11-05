@@ -209,7 +209,10 @@ test('60-slot simulation: a usage limit, a kill -9 and resumes end with 60 uniqu
   const callsAtKill = calls(dir)
   // The slot in flight when the kill landed. Under load the 400 ms run can finish between the poll and the kill, so the
   // test reads what the ledger shows instead of assuming one (it failed 1 run in 12 that way).
-  const inflight = [...foldEvents(readEvents(eventsFile(path.join(dir, 'r.jsonl'))), () => true).values()].filter((x) => x.state === 'RUNNING').length
+  // A kill between a row's write and its terminal event leaves a row, which counts as finished: in flight means RUNNING
+  // in the ledger and no row yet, the runner's own reading.
+  const written = new Set(rows(dir).map((r) => r.run_id))
+  const inflight = [...foldEvents(readEvents(eventsFile(path.join(dir, 'r.jsonl'))), () => true).entries()].filter(([id, x]) => x.state === 'RUNNING' && !written.has(id)).length
   assert.ok(inflight <= 1, `in flight: ${inflight}`)
   // Resume again: everything but the UNKNOWN slot.
   const second = spawnSync(process.execPath, simArgs(), { encoding: 'utf8', env: e('solve') })
@@ -224,4 +227,48 @@ test('60-slot simulation: a usage limit, a kill -9 and resumes end with 60 uniqu
   assert.ok(calls(dir) <= 62, `sessions: ${calls(dir)}`)
   assert.ok(calls(dir) >= callsAtKill)
   assert.match(spawnSync(process.execPath, simArgs(), { encoding: 'utf8', env: e('solve') }).stdout, /0 to run/)
+})
+
+test('a behavior file edited while the run is live: the row is contaminated, invalid, and the run stops', async () => {
+  // Found live: an edit to hooks/lib/completion.ts during v5 changed what 3 in-flight sessions ran, and nothing noticed.
+  const dir = fresh('contaminated')
+  const code = path.join(dir, 'code')
+  fs.mkdirSync(path.join(code, 'hooks'), { recursive: true })
+  fs.writeFileSync(path.join(code, 'hooks', 'a.ts'), 'export const a = 1\n')
+  fs.writeFileSync(path.join(code, 'config.json'), '{}\n')
+  const child = spawn(process.execPath, args(dir), { env: env(dir, 'slow', { FAKE_CLAUDE_MS: '1500', AUTOMODE_BENCH_CODE_ROOT: code }), stdio: 'ignore' })
+  const ev = eventsFile(path.join(dir, 'r.jsonl'))
+  await until(() => readEvents(ev).some((e) => e.state === 'RUNNING'))
+  fs.writeFileSync(path.join(code, 'hooks', 'a.ts'), 'export const a = 2\n')
+  const exit = await new Promise((r) => child.on('exit', r))
+  assert.equal(exit, 5)
+  const [row] = rows(dir)
+  assert.equal(row.contaminated, true)
+  assert.equal(foldEvents(readEvents(ev)).get(row.run_id)?.state, 'INVALID')
+  assert.equal(rows(dir).length, 1, 'no run starts after the edit')
+  const { rowClass } = await import('./lib/decide.mts')
+  assert.equal(rowClass(row), 'harness_invalid')
+})
+
+test('E5 sessions: two tasks in one continuing session, each graded, the second resumed, a crash resumes', async () => {
+  const dir = fresh('e5')
+  const expFile = path.join(dir, 'e5.json')
+  fs.writeFileSync(expFile, JSON.stringify({ id: 'e5-test', description: 't', arms: ['sonnet-high'], sessions: { pair: ['one', { ask: 'Where is add defined?', expect: ['done'], base: 'two' }, { ask: 'Which file?', expect: ['nowhere\\.js'], base: 'two' }, 'two'] }, budget_usd: 5, run_cap_usd: 3 }))
+  const out = path.join(dir, 'e5.jsonl')
+  const e5 = (more: Record<string, string> = {}) => spawnSync(process.execPath, ['bench/e5-sessions.mts', '--experiment', 'e5-test', '--experiment-file', expFile, '--tasks-dir', tasksDir, '--out', out, '--scratch', path.join(dir, 'scratch')], { encoding: 'utf8', env: env(dir, 'slow', { FAKE_CLAUDE_MS: '0', FAKE_CLAUDE_LOG: path.join(dir, 'args.json'), ...more }) })
+  const first = e5()
+  assert.equal(first.status, 0, first.stderr)
+  const rs = fs.readFileSync(out, 'utf8').trim().split('\n').map((l) => JSON.parse(l))
+  assert.deepEqual(rs.map((r) => [r.step, r.kind, r.task_id, r.accepted]), [[0, 'task', 'one', true], [1, 'question', 'two', true], [2, 'question', 'two', false], [3, 'task', 'two', true]])
+  assert.ok(rs.every((r) => !('text' in r) && !('answer' in r)), 'no reply text is saved')
+  // A resumed session reports a running total; each step records its own share of it.
+  assert.deepEqual(rs.map((r) => r.cost_cumulative_usd), [0.25, 0.25, 0.25, 0.25])
+  assert.deepEqual(rs.map((r) => r.cost_usd_api_equiv), [0.25, 0, 0, 0])
+  const last = JSON.parse(fs.readFileSync(path.join(dir, 'args.json'), 'utf8')).args
+  assert.deepEqual(last.slice(last.indexOf('--resume'), last.indexOf('--resume') + 2), ['--resume', 'fake-session'], 'the second task continues the session')
+  assert.match(last[last.indexOf('-p') + 1], /A new task in the same session/)
+  const again = e5()
+  assert.equal(again.status, 0)
+  assert.equal(fs.readFileSync(out, 'utf8').trim().split('\n').length, 4, 'finished steps are never paid twice')
+  assert.equal(calls(dir), 4)
 })

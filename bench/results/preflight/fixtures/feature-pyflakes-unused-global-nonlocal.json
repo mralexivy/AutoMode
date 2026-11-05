@@ -1,0 +1,12 @@
+{
+ "id": "feature-pyflakes-unused-global-nonlocal",
+ "task_hash": "57d1cea428177f49",
+ "machine": "14caf2f4dce9ad6e",
+ "agent_env_version": 3,
+ "at": "2026-11-04T15:50:43.959Z",
+ "base": "fail",
+ "reference": "pass",
+ "agent_env": "pass",
+ "valid": true,
+ "why": "ok"
+}

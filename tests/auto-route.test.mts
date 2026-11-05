@@ -50,3 +50,21 @@ test('no second call after a fallback, a cached verdict or under the executor', 
   assert.equal(planAuto(input({ ...g, executor: true })).secondJudge, null)
   assert.equal(planAuto(input({ ...g, judge: null })).secondJudge, null)
 })
+
+test('a failed AutoMode judge never leaves a hard task on Haiku when the need names a stronger model', () => {
+  // Found in W1: a question moved the session to Haiku, the next prompt's AutoMode judge reply did not parse, and a hard
+  // migration both effortless calls rated opus/high ran on Haiku at Opus's cost.
+  const r = routeAuto({ ...input({ judge: null, current: 'haiku/high', verdicts: { sonnet: ['opus', 'high'] }, boundary: true }), opusOnEvidence: true })
+  assert.equal(r.route.family, 'sonnet')
+  // A need for Haiku keeps the hold: nothing here asks for more.
+  assert.equal(routeAuto(input({ judge: null, current: 'haiku/high', verdicts: { sonnet: ['haiku', 'low'] }, boundary: true })).route.family, 'haiku')
+})
+
+test('v6: a first prompt with a failed AutoMode judge takes the need, not the model the session was launched on', () => {
+  // Found in S1: the judge timed out in a session launched on Opus, and a task the need rated sonnet/high ran on Opus.
+  const base = input({ judge: null, verdicts: { sonnet: ['sonnet', 'high'] } })
+  const v6 = routeAuto({ ...base, appFamily: 'opus', start: 'v6b', opusOnEvidence: true })
+  assert.equal(v6.route.family, 'sonnet')
+  // The legacy start keeps the app model.
+  assert.equal(routeAuto({ ...base, appFamily: 'opus' }).route.family, 'opus')
+})

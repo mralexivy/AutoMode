@@ -1,0 +1,225 @@
+{
+ "experiment": "v6-d1-pilot",
+ "plan_hash": "4d2669a23396ddee",
+ "at": "2026-11-04T14:22:10.110Z",
+ "pass": true,
+ "checks": [
+  {
+   "name": "experiment",
+   "ok": true,
+   "detail": "10 tasks x 2 arms x 1; policy bench/experiments/policies/v6d-vs-sonnet.json",
+   "blocking": true
+  },
+  {
+   "name": "split",
+   "ok": true,
+   "detail": "no held-out task",
+   "blocking": true
+  },
+  {
+   "name": "tree",
+   "ok": true,
+   "detail": "clean at 2ead53b",
+   "blocking": true
+  },
+  {
+   "name": "budget",
+   "ok": true,
+   "detail": "20 slots: 0 done, 10 reused, 0 unknown, 0 stale, 10 new; new paid slots expected $6.25 of $8",
+   "blocking": true
+  },
+  {
+   "name": "lock",
+   "ok": true,
+   "detail": "free",
+   "blocking": true
+  },
+  {
+   "name": "fixtures",
+   "ok": true,
+   "detail": "10 valid on machine 14caf2f4dce9ad6e, agent environment included",
+   "blocking": true
+  },
+  {
+   "name": "history",
+   "ok": true,
+   "detail": "1110 saved sessions, 831 failed checks replayed, 449 would escalate now; misread: 0; crashed: 0",
+   "blocking": true
+  },
+  {
+   "name": "tests",
+   "ok": true,
+   "detail": "npm run check: ℹ pass 780, ℹ fail 0",
+   "blocking": true
+  },
+  {
+   "name": "plugin-tests",
+   "ok": true,
+   "detail": "489 pass, 0 fail",
+   "blocking": true
+  }
+ ],
+ "slots": [
+  {
+   "run_id": "feature-fastxmlparser-stopnode-nested-same-tag__v6d-opus__r1__3910c4486675bc39",
+   "task": "feature-fastxmlparser-stopnode-nested-same-tag",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-fastxmlparser-stopnode-nested-same-tag__sonnet-high__r1__cb46227ca882c731",
+   "task": "feature-fastxmlparser-stopnode-nested-same-tag",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-findmyway-regex-param-empty-segment__v6d-opus__r1__930d9d5dd3e6d634",
+   "task": "feature-findmyway-regex-param-empty-segment",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-findmyway-regex-param-empty-segment__sonnet-high__r1__6b39c68394f75d08",
+   "task": "feature-findmyway-regex-param-empty-segment",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__v6d-opus__r1__a0d2befc9ce0947c",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-marshmallow-schema-validator-data-key__sonnet-high__r1__fed39d586f934e89",
+   "task": "feature-marshmallow-schema-validator-data-key",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__v6d-opus__r1__87cae34848fa5ef6",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-postcss-inserted-sibling-visit-order__sonnet-high__r1__4bc11146f0fd59e6",
+   "task": "feature-postcss-inserted-sibling-visit-order",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__v6d-opus__r1__c2de5809718141af",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-qs-object-input-immutable__sonnet-high__r1__369d9ce173210545",
+   "task": "feature-qs-object-input-immutable",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__v6d-opus__r1__bcfd45a64855bb56",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "feature-tomlkit-replace-dotted-with-table__sonnet-high__r1__61d5a43d9349c9d9",
+   "task": "feature-tomlkit-replace-dotted-with-table",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__v6d-opus__r1__bc800c62e483ca1f",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-dnspython-edns-padding__sonnet-high__r1__d39c15d810761946",
+   "task": "longctx-dnspython-edns-padding",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__v6d-opus__r1__91b3af0fa5cf34a3",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__sonnet-high__r1__09cca49eecd922d3",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__v6d-opus__r1__260209c12e1fd4b4",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "security-tornado-header-control-chars-v2__sonnet-high__r1__c5759b7db29e101d",
+   "task": "security-tornado-header-control-chars-v2",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__v6d-opus__r1__db7915ba0843ddd3",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "new",
+   "why": "no row yet"
+  },
+  {
+   "run_id": "trivial-cheerio-data-mixed-selection__sonnet-high__r1__64f8140dee96c8ee",
+   "task": "trivial-cheerio-data-mixed-selection",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  }
+ ],
+ "estimate_usd": 6.25
+}

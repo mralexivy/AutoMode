@@ -19,5 +19,6 @@
     "longctx-acorn-commonjs-source-type"
   ],
   "excluded": [],
-  "screen_experiment": "screen-2"
+  "screen_experiment": "screen-2",
+  "confirm_experiment": "v6-d2-heldout"
 }
