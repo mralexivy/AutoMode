@@ -5,6 +5,8 @@ description: "Does switching Claude models mid-session waste the prompt cache? I
 
 **Each model keeps its own prompt cache.** A switch in a warm chat writes the whole chat to the new model's cache. The effortless README reports about 5 times the cost of staying on a warm Opus in an 80k-token chat. For that reason, effortless ships model switching off.
 
+<Motion id="cache-check" />
+
 AutoMode switches models by default, so it checks each switch first. The check is in [`hooks/lib/policy.ts`](https://github.com/mralexivy/AutoMode/blob/main/hooks/lib/policy.ts). The route holds unless the switch passes.
 
 | Situation | Rule |

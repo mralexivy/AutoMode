@@ -14,7 +14,7 @@ import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getBreadcrumbItems } from 'fumadocs-core/breadcrumb';
 import { absolute, docsUrl, getPageImageUrl, getPageMarkdownUrl, gitConfig, siteUrl } from '@/lib/shared';
-import { faqIn, imagesIn, lastModified } from '@/lib/seo';
+import { faqIn, imagesIn, lastModified, videoObject, videosIn } from '@/lib/seo';
 
 type DocPage = NonNullable<ReturnType<typeof source.getPage>>;
 const fileOf = (page: DocPage) => `content/docs/${page.path}`;
@@ -71,7 +71,8 @@ async function jsonLd(page: DocPage) {
   const faqPage = faq.length
     ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }]
     : [];
-  return [article, ...(page.slugs.length ? [breadcrumb] : []), ...faqPage];
+  const videos = videosIn(raw).map((id) => ({ '@context': 'https://schema.org', ...videoObject(id) }));
+  return [article, ...(page.slugs.length ? [breadcrumb] : []), ...faqPage, ...videos];
 }
 
 export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
