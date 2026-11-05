@@ -2,6 +2,9 @@
 title: "AutoMode compared with other routers"
 description: "AutoMode against effortless, jev-router and claude-router for Claude Code: features, how each runs, measured cost on the same sessions, and trade-offs."
 ---
+<Callout title="In short">
+Four open source routers work with Claude Code: AutoMode, effortless, jev-router and claude-router. effortless sets the effort for each prompt and keeps the model you picked. jev-router routes the model through a local proxy and also runs on Codex. claude-router lets you choose the classifier, including a local Ollama model. AutoMode sets both the model and the effort, needs no extra key, adds a quality floor for risky work, always reviews risky changes, and runs a plan, build, verify and review workflow for big jobs. It also checks the prompt cache cost before every model switch. On the same five mixed sessions, AutoMode cost $2.01 and effortless $3.87, and both passed 20 of 20 steps. Plain Opus cost $4.14. jev-router and claude-router were audited from source, not run, and neither publishes a measured saving. AutoMode's effort rules are ported from effortless, so the projects are related.
+</Callout>
 
 Four routers for Claude Code. Feature rows come from each project's README, read on 2026-10-30. The cost rows come from our own benchmark run on 2026-11-04. These projects change quickly, so check their pages too. If a cell is wrong, [open an issue](https://github.com/mralexivy/AutoMode/issues).
 

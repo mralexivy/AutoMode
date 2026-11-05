@@ -107,6 +107,13 @@ test('the home page FAQ schema matches the visible questions', () => {
   assert.ok([...home.matchAll(/^\s+q: '/gm)].length >= 6)
 })
 
+test('the sitemap lists each page with its images and date', () => {
+  const sitemap = read(new URL('app/sitemap.ts', site))
+  assert.match(sitemap, /images: \[/)
+  assert.match(sitemap, /lastModified: lastModified\(/)
+  assert.match(read(new URL('app/docs/[[...slug]]/page.tsx', site)), /'@type': 'FAQPage'/)
+})
+
 test('the site is dark only', () => {
   assert.match(read(new URL('components/provider.tsx', site)), /forcedTheme: 'dark'/)
   assert.match(read(new URL('lib/layout.shared.tsx', site)), /themeSwitch: \{ enabled: false \}/)
@@ -120,6 +127,7 @@ test('the site is a static export under /AutoMode, and the deploy publishes it',
   assert.match(read(new URL('lib/shared.ts', site)), /basePath = '\/AutoMode'/)
   const pagesYml = read(new URL('.github/workflows/pages.yml', root))
   assert.match(pagesYml, /path: site\/out/)
+  assert.match(pagesYml, /fetch-depth: 0/)
   assert.match(pagesYml, /cp site\/out\/sitemap\.xml site\/out\/sitemap-pages\.xml/)
   assert.match(read(new URL('.github/workflows/test.yml', root)), /working-directory: site/)
 })

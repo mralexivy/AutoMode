@@ -3,6 +3,9 @@ title: "How to reduce Claude Code costs"
 description: "Practical ways to cut Claude Code token use and spend: match the model to the job, lower effort, clear context, keep the cache warm, and route each prompt."
 seoTitle: "How to Reduce Claude Code Costs: 9 Ways That Work (2026)"
 ---
+<Callout title="In short">
+Claude Code costs come from three things: the model, the effort and the context each request carries. Sonnet handles most coding for less than Opus, and Haiku answers quick questions for a fraction of either. Lower effort cuts thinking tokens, which bill as output tokens. Clearing the chat between unrelated tasks stops Claude Code from re-sending old context with every request. A model switch in a warm chat rewrites the whole conversation into the new model's prompt cache, so switch at a natural break, such as after /clear. Keep CLAUDE.md short, because it loads in every session, and turn off MCP servers you do not use. Doing all of this by hand on every prompt is tedious, so a router can do it for you. In our benchmark of five mixed sessions, AutoMode cost $2.01 against $4.14 for Claude Code on Opus, 51% less, with all 20 steps passing their hidden tests.
+</Callout>
 
 **Claude Code costs depend mostly on three things: the model, the effort, and how much context each request carries.** Anthropic's own docs say token costs scale with context size, Sonnet handles most coding tasks and costs less than Opus, and lowering effort cuts thinking tokens on simple tasks. In our benchmark, routing each prompt to the right model and effort cost 51% less than running Claude Code on Opus, at the same pass rate.
 
