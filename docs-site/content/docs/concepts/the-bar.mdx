@@ -1,0 +1,34 @@
+---
+title: "What the bar shows"
+description: "Read the AutoMode status bar in Claude Code: effort and model per prompt, context gauge, prompt cache countdown, the route reason, and theme options."
+---
+
+One quiet line above the prompt, in your theme's colors. It reports what actually ran.
+
+![Two prompts in a real session, with the bar under each: Haiku Low, then Opus High](/img/session.png)
+
+| On the bar | Means |
+|---|---|
+| **High · Opus** | The effort and the model for this prompt. `Deciding…` while the judge thinks. |
+| **◔ 38%** | How full the chat's context is. |
+| **cache 58:12** | Time until the prompt cache goes cold. After that, the next message pays full price to re-read the chat. |
+| *a refactor across modules* | Why the route was chosen. |
+| **Auto** | Switches routing on or off for this session. |
+| **⚙** | Settings. |
+
+## Change how it looks
+
+Run `/plugin configure automode@automode`:
+
+| Setting | Options | Default |
+|---|---|---|
+| **Layout** | `expanded`: the bar above the prompt. `minimal`: one short line. | `expanded` |
+| **Theme** | `native` follows your Claude Code and editor theme. `automode`: blue routing, violet effort, teal guardian. `mono`: neutral accents. `contrast`: stronger text and edges. | `native` |
+| **Appearance** | `auto` follows your Claude Code theme. `dark` and `light` fix it. | `auto` |
+| **Bar metrics** | Any of `pending`, `context`, `cache`, `cost`, `guardian`, `stage`. The mode, model and effort always show. | all six |
+
+## Without the bar
+
+- `AUTOMODE_UI=off` hides the bar. Routing goes on.
+- `/automode` prints the same facts as text. `/automode details` adds the workflow, the guardian and usage.
+- The VS Code extension does not draw the band above the prompt. Use `/automode` there. See [Where AutoMode runs](/getting-started/where-it-runs).

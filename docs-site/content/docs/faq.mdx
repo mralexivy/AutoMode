@@ -1,0 +1,37 @@
+---
+title: "FAQ"
+description: "Answers about AutoMode for Claude Code: cost, plans and API keys, quality, the prompt cache, privacy, VS Code, and how it differs from auto mode."
+---
+
+<Accordions type="multiple">
+  <Accordion title="What is AutoMode?">
+    A free, open source Claude Code mod. It picks the model and the effort for every prompt, runs a plan, build, verify and review workflow for big jobs, and always reviews risky changes.
+  </Accordion>
+  <Accordion title="Is it Claude Code's auto mode?">
+    No. Claude Code's auto mode is a permission mode, and Anthropic makes it. AutoMode is a community mod that routes models and effort. [See the difference](https://mralexivy.github.io/AutoMode/auto-mode-vs-automode/).
+  </Accordion>
+  <Accordion title="How much does it save?">
+    In 5 mixed sessions it cost $2.01 against $4.14 on plain Opus, 51% less, with all 20 steps passing. On 30 single coding tasks it was 45% cheaper than Opus. It saves little if you only run long coding tasks on Sonnet high. See [Benchmark results](/benchmarks/results).
+  </Accordion>
+  <Accordion title="I am on a Pro or Max plan. Does it help?">
+    Yes. You pay a flat price, so the saving shows up as usage limits that last longer. Cheaper routes use less of each window.
+  </Accordion>
+  <Accordion title="Do I need an API key?">
+    No. AutoMode runs on the Claude login you already have. It has no key, no server and no account.
+  </Accordion>
+  <Accordion title="Does it lower quality?">
+    In the benchmark, every arm passed all 20 mixed-session steps, and AutoMode passed 29 of 30 single coding tasks against 28 for Opus. Risky work has a quality floor the judge cannot lower, and a mandatory review.
+  </Accordion>
+  <Accordion title="Does switching models waste the prompt cache?">
+    It can, so AutoMode checks every switch against the cache rewrite it costs. Effort changes are free on the 5.5 models. See [Model switches and the prompt cache](/concepts/prompt-cache).
+  </Accordion>
+  <Accordion title="What data does it send?">
+    Only what Claude Code sends: one short Haiku call per prompt for the judge, through your own login. It has no network code of its own. See [Privacy](/security/privacy).
+  </Accordion>
+  <Accordion title="Can I keep my own model?">
+    Yes. Your `/model` is a pin. To route effort only, set **Route models** to `off` in `/plugin configure automode@automode`.
+  </Accordion>
+  <Accordion title="Does it work in VS Code?">
+    Routing and the guardian do. The bar does not, because Claude Code does not draw it there. Use `/automode`. See [Where AutoMode runs](/getting-started/where-it-runs).
+  </Accordion>
+</Accordions>

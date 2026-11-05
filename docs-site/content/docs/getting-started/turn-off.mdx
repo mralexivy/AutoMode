@@ -1,0 +1,28 @@
+---
+title: "Turn it off or remove it"
+description: "Stop AutoMode for one session or everywhere, route effort only, disable every Claude Code mod, or uninstall AutoMode and delete its data."
+---
+
+## Stop routing
+
+| Scope | How |
+|---|---|
+| One session | `/automode off`. Start it again with `/automode on`. Nothing is written to your settings. |
+| Every session | Set `"mode": "off"` in your `config.json`, or set `AUTOMODE_ROUTER=off`. |
+| Model only | Run `/plugin configure automode@automode` and set **Route models** to `off`. AutoMode then routes effort only and keeps the model you picked. |
+| The bar only | `AUTOMODE_UI=off` hides the bar. Routing goes on. |
+| The guardian only | `AUTOMODE_GUARDIAN=off`. The rest of AutoMode is unaffected. |
+
+## Disable the mod
+
+- **AutoMode only:** run `/plugin` and disable it in the **Installed** tab.
+- **Every mod, one session:** start Claude Code with `--safe-mode`.
+- **Every mod, every session:** set `"disableAllHooks": true` in `~/.claude/settings.json`.
+
+## Uninstall
+
+```bash
+claude plugin uninstall automode@automode
+```
+
+State lives in `~/.claude/plugins/data/automode/`. Delete that folder to remove it. See [Privacy](/security/privacy) for what it holds.

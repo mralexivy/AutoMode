@@ -1,0 +1,34 @@
+---
+title: "Report a vulnerability"
+description: "How to report a security problem in AutoMode privately, what counts as in scope, which versions get fixes, and how fast the maintainers reply."
+---
+
+Please do not open a public issue for a security problem.
+
+<Steps>
+  <Step>
+    ### Open a private advisory
+
+    Go to the [Security tab](https://github.com/mralexivy/AutoMode/security) of the repository and choose **Report a vulnerability**. Only the maintainers can read it.
+  </Step>
+  <Step>
+    ### Describe it
+
+    Say what you found, how to reproduce it, and which version you tested. Add the output of `/automode debug`.
+  </Step>
+</Steps>
+
+We aim to reply within seven days. We will tell you when a fix is released, and we will credit you in the release notes if you want that. Only the latest release gets security fixes.
+
+## In scope
+
+- A path where AutoMode writes outside its own folders.
+- A way for a prompt, a tool result or a file to make the guardian store a secret in plain text.
+- A way to make the git guard or the subagent guard allow a destructive command.
+- A secret, a token or private data in the repository.
+
+## Not in scope
+
+- Claude Code's own behavior. Report that to Anthropic.
+- A mod that you installed from another author.
+- The fact that a mod runs with your permissions. That is how mods work.

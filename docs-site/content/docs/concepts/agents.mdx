@@ -1,0 +1,27 @@
+---
+title: "The six agents"
+description: "The Claude Code subagents AutoMode ships, explorer, architect, implementer, verifier, reviewer and diagnoser, with each one's model, tools and job."
+---
+
+The workflow and the rescue path run six small agents. Each has one job and the fewest tools it needs.
+
+| Agent | Model | Tools | Job |
+|---|---|---|---|
+| `explorer` | Haiku | Read, Grep, Glob | Finds files, interfaces and tests. Read only. |
+| `architect` | Opus | Read, Grep, Glob | One bounded planning pass. Read only. |
+| `implementer` | Sonnet | Read, Edit, Write, Grep, Glob, Bash | Builds one workstream. Edits only the files it owns. |
+| `verifier` | Sonnet | Read, Edit, Write, Grep, Glob, Bash | Runs tests, type check and build. Fixes defects the change introduced. |
+| `reviewer` | Opus | Read, Grep, Glob, Bash (git diff only) | Evidence-first review against the task. |
+| `diagnoser` | Haiku, Sonnet when the task carries risk | Read, Grep, Glob | Reads a failing run and finds the cause. Changes nothing. |
+
+A seventh definition, `builder`, is the fresh rescue builder. It takes one task from a brief after a failed attempt, implements it, and runs the checks until they pass or a real blocker stops it. The caller sets its model.
+
+The definitions are in [`agents/`](https://github.com/mralexivy/AutoMode/tree/main/agents).
+
+## Built-in subagents
+
+With `subagentsEverySession` on, as shipped, AutoMode also routes Claude Code's own subagents in every session: `Explore` runs on Haiku, and `general-purpose` runs on Sonnet under an Opus session. A subagent with an explicit model always keeps it.
+
+## What subagents may not do
+
+With `blockGitWritesWhenActive` on, as shipped, the guardian denies git writes and `rm -rf` from subagents. The main session can still commit when you ask. The `agent.spawn` hook sets a subagent's model and effort. It does not change a permission mode.

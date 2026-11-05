@@ -1,0 +1,21 @@
+---
+title: "Organizations and managed settings"
+description: "AutoMode where an organization manages Claude Code: which hooks the built-in guard skips, what still works, and how to run it as an organization mod."
+---
+
+On a machine with managed settings, or in a Team or Enterprise login, Claude Code runs a built-in guard, `cc-plugin-sec-default`, ahead of every mod a user installs. The guard skips some hooks of a user-installed mod.
+
+## What changes
+
+| Hook | Effect when skipped |
+|---|---|
+| `prompt.attachment` | Plan mode detection is limited. |
+| `session.compact`, and the compaction rows of `session.append` | Haiku compaction is limited. |
+
+Routing, the judge and the bar still work.
+
+## Run it as an organization mod
+
+An administrator can run AutoMode as an organization mod, so these hooks run. See [Manage mods for your organization](https://code.claude.com/docs/en/plugins/mods/admin#install-your-organizations-mods).
+
+If the administrator sets `allowManagedModsOnly`, a user-installed AutoMode does not load, and the debug log says so.

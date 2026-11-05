@@ -1,0 +1,39 @@
+---
+title: "How the benchmark works"
+description: "How AutoMode's benchmark works: pinned public repositories, hidden tests, list-price costs with judges included, and rules fixed before each run."
+---
+
+Costs are list-price equivalents of every paid request, judges and subagents included. Each arm ran the same tasks and hidden tests, in sessions launched on Opus, as most people run Claude Code. Every decision rule was committed before the first row of its run. One repetition per arm makes this a release signal, not a general law.
+
+## A task
+
+A task names a public repository, a pinned base commit and a pinned reference commit, plus hidden tests and a test command. See [`bench/tasks/README.md`](https://github.com/mralexivy/AutoMode/blob/main/bench/tasks/README.md).
+
+## Three tracks that never mix
+
+| Track | Question | Runner |
+|---|---|---|
+| `automode-system` | Does AutoMode beat plain Claude Code? | `claude -p` |
+| `neutral-model` | How good is a model under one shared scaffold? | A neutral agent in Docker |
+| `claude-compatible` | Does another vendor's model work inside Claude Code? | `claude -p` through a gateway |
+
+Hidden tests are the primary result. Judge scores are secondary. A report never collapses quality, cost and time into one score.
+
+## What keeps a run honest
+
+- The workspace holds only the tree at `base`, in a new repository. The reference commit is out of reach through git.
+- Hidden tests go in after the agent's change is saved, so the grader never sees them.
+- Each `run_id` hashes the arm, the plugin code that arm runs, the prompt and the task, so a resume never reuses a row from another setup.
+- A usage limit, a failed setup or a test command that never returns is not a result. Those rows stay out of the numbers.
+- A run whose transcript shows the reference commit, the repository cache or another project's memory is left out.
+- Intervals resample tasks, then repeats, stratified by cohort. Under 30 tasks, a report says pilot.
+
+## Reproduce the decision
+
+The release decision needs no model call:
+
+```bash
+node bench/decide.mts bench/results/v6-s2-release.jsonl --policy bench/experiments/policies/v6c-opus-vs-opus.json
+```
+
+Read the [v6 report](https://github.com/mralexivy/AutoMode/blob/main/bench/experiments/V6.md), the [rows](https://github.com/mralexivy/AutoMode/tree/main/bench/results) and the [harness guide](https://github.com/mralexivy/AutoMode/blob/main/bench/README.md).

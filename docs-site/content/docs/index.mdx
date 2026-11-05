@@ -1,0 +1,62 @@
+---
+title: "AutoMode docs"
+description: "AutoMode is a free, open source Claude Code mod that picks the model and effort for every prompt. Install it, learn how it routes, and tune it."
+---
+
+import { Rocket, Route, Settings, ShieldCheck, ChartColumn, Terminal } from 'lucide-react';
+
+**AutoMode is a model router for Claude Code.** It picks the right model and the right effort for every prompt. Quick questions stay cheap on Haiku. Everyday coding runs on Sonnet. Hard and risky work gets Opus, and risky changes always get an independent review.
+
+It is a Claude Code **mod**: a plugin whose TypeScript registers event handlers. It needs no API key and no server. It runs on the Claude login you already have, and your data stays on your machine.
+
+<div className="am-stats">
+  <div><b>−51%</b><span>cost against Claude Code on Opus, in mixed sessions</span></div>
+  <div><b>20/20</b><span>steps passed, the same as Opus</span></div>
+  <div><b>6</b><span>small agents for plan, build, verify and review</span></div>
+  <div><b>0</b><span>keys, servers or accounts to set up</span></div>
+</div>
+
+```text title="Paste into Claude Code, one line at a time"
+/plugin marketplace add mralexivy/AutoMode
+/plugin install automode@automode
+/reload-plugins
+```
+
+![A real session: a quick question runs on Haiku at Low, then a JWT migration moves up to Opus because the risk floor rules out Haiku](/img/demo.gif)
+
+## Start here
+
+<Cards>
+  <Card icon={<Rocket />} title="Install" href="/getting-started/install">
+    Three ways, about a minute each.
+  </Card>
+  <Card icon={<Route />} title="How a route is decided" href="/concepts/routing">
+    Judges, quality floors and the cache check.
+  </Card>
+  <Card icon={<Settings />} title="Settings" href="/reference/settings">
+    Every key, its default and what it does.
+  </Card>
+  <Card icon={<Terminal />} title="Commands" href="/reference/commands">
+    `/automode` and the `am:` prompt commands.
+  </Card>
+  <Card icon={<ShieldCheck />} title="Review it before you install it" href="/security/review">
+    Every mods API call AutoMode makes, and why.
+  </Card>
+  <Card icon={<ChartColumn />} title="Benchmarks" href="/benchmarks/results">
+    The measured cost and pass rates, with the limits.
+  </Card>
+</Cards>
+
+## What changes when you install it
+
+|  | Without AutoMode | With AutoMode |
+|---|---|---|
+| **Model** | One model for every prompt | Haiku for a quick fact, Sonnet for an edit, Opus for design and risk |
+| **Effort** | You set it, and you forget to change it | A judge sets it for each prompt, in about a second |
+| **Risky changes** | The same checks as a typo fix | Security, migrations and payments always get an independent review |
+| **Big jobs** | One long chat that does everything | A plan, build, verify and review workflow with six small agents |
+| **Prompt cache** | A cold cache is a surprise bill | A countdown on the bar shows when the cache goes cold |
+
+<Callout title="Not Claude Code's auto permission mode">
+  AutoMode is a community project. It is not the built-in auto permission mode, and Anthropic does not make it. [See the difference](https://mralexivy.github.io/AutoMode/auto-mode-vs-automode/).
+</Callout>
