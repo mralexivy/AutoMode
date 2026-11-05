@@ -1,0 +1,113 @@
+{
+ "experiment": "v6-d6-sqlglot",
+ "plan_hash": "e47749509d9d7b88",
+ "at": "2026-11-04T18:50:22.126Z",
+ "pass": true,
+ "checks": [
+  {
+   "name": "experiment",
+   "ok": true,
+   "detail": "1 tasks x 2 arms x 3; policy bench/experiments/policies/v6d-vs-sonnet-heldout.json",
+   "blocking": true
+  },
+  {
+   "name": "split",
+   "ok": true,
+   "detail": "no held-out task",
+   "blocking": true
+  },
+  {
+   "name": "tree",
+   "ok": true,
+   "detail": "clean at 244aeea",
+   "blocking": true
+  },
+  {
+   "name": "budget",
+   "ok": true,
+   "detail": "6 slots: 0 done, 3 reused, 0 unknown, 3 stale, 0 new; new paid slots expected $5.72 of $8",
+   "blocking": true
+  },
+  {
+   "name": "lock",
+   "ok": true,
+   "detail": "free",
+   "blocking": true
+  },
+  {
+   "name": "fixtures",
+   "ok": true,
+   "detail": "1 valid on machine 14caf2f4dce9ad6e, agent environment included",
+   "blocking": true
+  },
+  {
+   "name": "history",
+   "ok": true,
+   "detail": "1159 saved sessions, 916 failed checks replayed, 468 would escalate now; misread: 0; crashed: 0",
+   "blocking": true
+  },
+  {
+   "name": "tests",
+   "ok": true,
+   "detail": "npm run check: ℹ pass 780, ℹ fail 0",
+   "blocking": true
+  },
+  {
+   "name": "plugin-tests",
+   "ok": true,
+   "detail": "492 pass, 0 fail",
+   "blocking": true
+  }
+ ],
+ "slots": [
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__v6d-opus__r1__267c8367a0d7212b",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "v6d-opus",
+   "rep": 1,
+   "status": "stale",
+   "why": "an older row (2397398c4c7de129) differs in: code"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__sonnet-high__r1__09cca49eecd922d3",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "sonnet-high",
+   "rep": 1,
+   "status": "reuse",
+   "why": "same run id in automode-proof"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__v6d-opus__r2__eec08a22b1704d52",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "v6d-opus",
+   "rep": 2,
+   "status": "stale",
+   "why": "an older row (9c1ab76bbd581edc) differs in: code"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__sonnet-high__r2__01a2708685c5cf4e",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "sonnet-high",
+   "rep": 2,
+   "status": "reuse",
+   "why": "same run id in v6-d3-sqlglot"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__v6d-opus__r3__47b909cc966a4f2a",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "v6d-opus",
+   "rep": 3,
+   "status": "stale",
+   "why": "an older row (83716defdeb24191) differs in: code"
+  },
+  {
+   "run_id": "longctx-sqlglot-intersect-precedence-across-dialects__sonnet-high__r3__8d3b18ef73b0fe7d",
+   "task": "longctx-sqlglot-intersect-precedence-across-dialects",
+   "arm": "sonnet-high",
+   "rep": 3,
+   "status": "reuse",
+   "why": "same run id in v6-d3-sqlglot"
+  }
+ ],
+ "estimate_usd": 5.72
+}

@@ -13,6 +13,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { listTranscripts, loadSubagents } from './lib/transcripts.mts'
 import { ANTHROPIC, familyOf, usageUsd } from '../hooks/lib/prices.ts'
+import { BENCH_PROFILE } from './lib/local.mts'
 
 const here = path.dirname(new URL(import.meta.url).pathname)
 const args = process.argv.slice(2)
@@ -22,7 +23,7 @@ for (let i = 0; i < args.length; i++) {
   if (args[i] === '--root') roots.push(args[++i].replace(/^~/, os.homedir()))
   else if (args[i] === '--out') out = args[++i]
 }
-if (!roots.length) roots.push(path.join(os.homedir(), '.claude', 'projects'), path.join(os.homedir(), '.claude-ectest', 'projects'))
+if (!roots.length) roots.push(path.join(os.homedir(), '.claude', 'projects'), path.join(BENCH_PROFILE, 'projects'))
 
 const rows = {}
 let total = 0

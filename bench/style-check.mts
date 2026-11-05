@@ -21,10 +21,11 @@ import os from 'node:os'
 import path from 'node:path'
 import { add, ensure } from './lib/ledger.mts'
 import { compareArms, median, scoreCase } from './lib/style-check.mts'
+import { BENCH_PROFILE, CLAUDE_BIN } from './lib/local.mts'
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
-const CLAUDE = process.env.CLAUDE_BIN || path.join(os.homedir(), '.local', 'bin', 'claude')
-const PROFILE = process.env.STYLE_CHECK_PROFILE || path.join(os.homedir(), '.claude-ectest')
+const CLAUDE = CLAUDE_BIN
+const PROFILE = process.env.STYLE_CHECK_PROFILE || BENCH_PROFILE
 const STYLE = 'automode:Concise'
 
 const argv = process.argv.slice(2)
@@ -47,7 +48,7 @@ if (argv.includes('--dry')) {
   process.exit(0)
 }
 if (!(cap > 0)) { console.error('Refusing to spend: pass --approve-usd <amount>. Use --dry to see the plan.'); process.exit(2) }
-if (!fs.existsSync(CLAUDE)) { console.error(`claude CLI not found at ${CLAUDE}. Set CLAUDE_BIN.`); process.exit(2) }
+if (spawnSync(CLAUDE, ['--version'], { stdio: 'ignore' }).status !== 0) { console.error(`claude CLI not found: ${CLAUDE}. Put it on PATH or set CLAUDE_BIN.`); process.exit(2) }
 
 const batch = `style-${new Date().toISOString().slice(0, 10)}`
 const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'style-check-'))

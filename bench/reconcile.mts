@@ -10,6 +10,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { listTranscripts, loadSession, readRecords } from './lib/transcripts.mts'
 import { ANTHROPIC, familyOf, usageUsd } from '../hooks/lib/prices.ts'
+import { BENCH_PROFILE } from './lib/local.mts'
 
 const here = path.dirname(new URL(import.meta.url).pathname)
 const args = process.argv.slice(2)
@@ -19,7 +20,7 @@ for (let i = 0; i < args.length; i++) {
   if (args[i] === '--root') roots.push(args[++i].replace(/^~/, os.homedir()))
   else if (args[i] === '--runs') runFiles.push(args[++i])
 }
-if (!roots.length) roots.push(path.join(os.homedir(), '.claude-ectest', 'projects'))
+if (!roots.length) roots.push(path.join(BENCH_PROFILE, 'projects'))
 if (!runFiles.length) for (const f of fs.readdirSync(path.join(here, 'results'))) if (/^(v4-pilot2?|real-final|real)-2026.*\.jsonl$/.test(f) && !f.includes('grades')) runFiles.push(path.join(here, 'results', f))
 
 export const TOLERANCE = 0.02
@@ -78,7 +79,7 @@ export function reconcileRun(run, session, routerCalls = []) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const files = new Map(listTranscripts(roots).map((f) => [path.basename(f, '.jsonl'), f]))
   // The router's own records of in-mod model calls (judge, compaction), by session: measured usage.
-  const recs = readRecords(path.join(os.homedir(), '.claude-ectest', 'plugins', 'data', 'automode'))
+  const recs = readRecords(path.join(BENCH_PROFILE, 'plugins', 'data', 'automode'))
   const routerCallsBy = new Map()
   for (const r of recs) {
     const usd = r.kind === 'model-call' ? r.usd?.value : r.kind === 'decision' && r.judge?.called ? r.judge.usd : undefined

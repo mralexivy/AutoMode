@@ -23,6 +23,7 @@ import { listTranscripts } from './lib/transcripts.mts'
 import { familyOf } from '../hooks/lib/prices.ts'
 import { isCheck } from '../hooks/lib/failures.ts'
 import { nextSignal } from '../hooks/lib/records.ts'
+import { BENCH_PROFILE } from './lib/local.mts'
 
 const here = path.dirname(new URL(import.meta.url).pathname)
 const args = process.argv.slice(2)
@@ -32,7 +33,7 @@ for (let i = 0; i < args.length; i++) {
   if (args[i] === '--root') roots.push(args[++i].replace(/^~/, os.homedir()))
   else if (args[i] === '--out') out = args[++i]
 }
-if (!roots.length) roots.push(path.join(os.homedir(), '.claude', 'projects'), path.join(os.homedir(), '.claude-ectest', 'projects'))
+if (!roots.length) roots.push(path.join(os.homedir(), '.claude', 'projects'), path.join(BENCH_PROFILE, 'projects'))
 
 const FAIL_TEXT = /Exit code [1-9]|^--- FAIL|^FAIL\b|\b\d+ (failed|failing)\b|error TS\d+|AssertionError/m
 const textOf = (c) => (typeof c === 'string' ? c : Array.isArray(c) ? c.map((b) => b?.text ?? '').join('\n') : '')
