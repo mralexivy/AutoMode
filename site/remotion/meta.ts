@@ -3,6 +3,11 @@ import { FPS } from './timing';
 // The facts about each AutoMode scene that pages and the sitemap need, without the scene code. Each title and
 // description is also the scene's VideoObject in structured data. scenes.ts adds the components.
 export const SCENE_META = {
+  'terminal-demo': {
+    frames: 441,
+    title: 'AutoMode in a Claude Code terminal session',
+    description: 'A Claude Code session with AutoMode: a quick question runs on Haiku at Low, an edit on Sonnet with tests, and a JWT migration moves up to Opus with a review.',
+  },
   'route-demo': {
     frames: 375,
     title: 'How AutoMode routes each Claude Code prompt',

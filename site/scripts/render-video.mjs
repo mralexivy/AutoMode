@@ -4,7 +4,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 
-const SCENES = ['route-demo', 'benchmark-race', 'workflow-flow', 'cache-check'];
+const SCENES = ['terminal-demo', 'route-demo', 'benchmark-race', 'workflow-flow', 'cache-check'];
 const ids = process.argv.slice(2).length ? process.argv.slice(2) : SCENES;
 mkdirSync(new URL('../public/video/', import.meta.url), { recursive: true });
 const run = (args) => execFileSync('npx', ['remotion', ...args], { stdio: 'inherit' });

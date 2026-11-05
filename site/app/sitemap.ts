@@ -6,7 +6,7 @@ import { imagesIn, lastModified, videoEntry, videosIn } from '@/lib/seo';
 export const dynamic = 'force-static';
 
 // The scenes app/(home)/page.tsx plays.
-const SCENES_ON_HOME = ['route-demo', 'benchmark-race', 'workflow-flow', 'cache-check'] as const;
+const SCENES_ON_HOME = ['terminal-demo', 'benchmark-race', 'workflow-flow', 'cache-check'] as const;
 
 // Served at /AutoMode/sitemap.xml, with an image list per page so Google Images finds the pictures and preview cards.
 // Moved addresses are left out: each one redirects to a page listed here.
