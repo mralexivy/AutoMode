@@ -1,7 +1,8 @@
 ---
+url: https://x.com/mr_alexivy/status/2118400494385107363
 channel: x
-status: draft
-date: 2026-11-16
+status: sent
+date: 2026-11-05
 assets: [site/public/video/benchmark-race.mp4]
 ---
 I ran the same 5 Claude Code sessions four ways, every step graded by hidden tests.
