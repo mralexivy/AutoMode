@@ -435,6 +435,30 @@
       "tier": "B",
       "status": "planned",
       "notes": "No signed-in account on 2026-11-06. Repost the Dev.to article with its canonical URL."
+    },
+    {
+      "id": "dailydev",
+      "name": "daily.dev (@alexivy)",
+      "url": "https://app.daily.dev/alexivy",
+      "kind": "community",
+      "tier": "B",
+      "rules": "Squad posts wait for admin approval. Commentary is limited to 250 characters. Post only in Squads that fit the topic, each with its own text.",
+      "status": "open",
+      "submissions": [
+        {
+          "url": "https://app.daily.dev/squads/ai",
+          "opened": "2026-11-06",
+          "status": "open",
+          "note": "Link to the Dev.to article. Waiting for admin review."
+        },
+        {
+          "url": "https://app.daily.dev/squads/agentic",
+          "opened": "2026-11-06",
+          "status": "open",
+          "note": "Link to the repo, focused on the subagent workflow. Waiting for admin review."
+        }
+      ],
+      "notes": "The profile has a headline, a bio and GitHub, X and LinkedIn links. DevOps Daily and Engineering Leadership were skipped as off-topic."
     }
   ]
 }
