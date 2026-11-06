@@ -499,6 +499,312 @@
         }
       ],
       "notes": "A helpful reply in a recent, relevant thread, with the author disclosed."
+    },
+    {
+      "id": "bradagi",
+      "name": "bradAGI/awesome-cli-coding-agents",
+      "url": "https://github.com/bradAGI/awesome-cli-coding-agents",
+      "kind": "pr",
+      "tier": "A",
+      "rules": "README Contributing: CLI or terminal tools only. Name, star badge, 1–2 lines.",
+      "status": "open",
+      "submissions": [
+        {
+          "url": "https://github.com/bradAGI/awesome-cli-coding-agents/pull/619",
+          "opened": "2026-11-06",
+          "status": "open"
+        }
+      ],
+      "notes": "Section Agent infrastructure, sorted by stars. The owner adds PR entries in batches."
+    },
+    {
+      "id": "ai-for-developers",
+      "name": "ai-for-developers/awesome-ai-coding-tools",
+      "url": "https://github.com/ai-for-developers/awesome-ai-coding-tools",
+      "kind": "pr",
+      "tier": "A",
+      "rules": "CONTRIBUTING.md and the PR template checklist.",
+      "status": "open",
+      "submissions": [
+        {
+          "url": "https://github.com/ai-for-developers/awesome-ai-coding-tools/pull/1219",
+          "opened": "2026-11-06",
+          "status": "open"
+        }
+      ],
+      "notes": "End of CLI Tools. Uses an en dash. Merges in batches."
+    },
+    {
+      "id": "claudemods-chat",
+      "name": "claudemods.chat",
+      "url": "https://claudemods.chat/",
+      "kind": "issue",
+      "tier": "A",
+      "rules": "Issue form submit.yml: one sentence of at most 140 characters, up to 5 tags.",
+      "status": "open",
+      "submissions": [
+        {
+          "url": "https://github.com/omarcevi/claudemods/issues/43",
+          "opened": "2026-11-06",
+          "status": "open"
+        }
+      ],
+      "notes": "Asked to add it to their marketplace too."
+    },
+    {
+      "id": "ossradar",
+      "name": "OSS Radar",
+      "url": "https://ossradar.net/",
+      "kind": "issue",
+      "tier": "B",
+      "status": "open",
+      "submissions": [
+        {
+          "url": "https://github.com/yvshpvtil/ossradar/issues/6",
+          "opened": "2026-11-06",
+          "status": "open"
+        }
+      ],
+      "notes": "Approval only starts tracking. The leaderboard needs star growth."
+    },
+    {
+      "id": "nanolist",
+      "name": "Nanolist",
+      "url": "https://list.nanocollective.org/",
+      "kind": "issue",
+      "tier": "B",
+      "status": "open",
+      "submissions": [
+        {
+          "url": "https://github.com/Nano-Collective/nanolist/issues/99",
+          "opened": "2026-11-06",
+          "status": "open"
+        }
+      ],
+      "notes": "Category Coding Assistants. Only the Open source attribute applies, because AutoMode is not local-first."
+    },
+    {
+      "id": "claudecode-directory",
+      "name": "claudecode.directory",
+      "url": "https://claudecode.directory/",
+      "kind": "form",
+      "tier": "B",
+      "status": "open",
+      "notes": "Submitted the repo URL on the form, which answered \"Thanks for the link\". It imports the GitHub description."
+    },
+    {
+      "id": "devhunt",
+      "name": "DevHunt",
+      "url": "https://devhunt.org/tool/automode",
+      "kind": "form",
+      "tier": "B",
+      "status": "listed",
+      "submissions": [
+        {
+          "url": "https://devhunt.org/tool/automode",
+          "opened": "2026-11-06",
+          "status": "listed"
+        }
+      ],
+      "notes": "Free listing in the queue for 2031-10-28, with a nofollow link. A paid launch ($49) gets a chosen week and the newsletter."
+    },
+    {
+      "id": "claudemods-app",
+      "name": "claudemods.app",
+      "url": "https://claudemods.app/",
+      "kind": "email",
+      "tier": "B",
+      "status": "open",
+      "notes": "Emailed hello@claudemods.app from the maintainer Gmail. Category Context, quota, cost. They review within about a week."
+    },
+    {
+      "id": "ithub",
+      "name": "iThub",
+      "url": "https://www.ithub.directory/",
+      "kind": "form",
+      "tier": "B",
+      "status": "open",
+      "notes": "AI & Agents / AI Coding Assistants & Agent Tooling, free listing, pending review. Signed in with Google."
+    },
+    {
+      "id": "claudepluginhub",
+      "name": "ClaudePluginHub",
+      "url": "https://www.claudepluginhub.com/plugins/mralexivy-automode",
+      "kind": "directory",
+      "tier": "B",
+      "status": "listed",
+      "notes": "It indexed AutoMode on its own."
+    },
+    {
+      "id": "buildwithclaude",
+      "name": "Build with Claude",
+      "url": "https://buildwithclaude.com/",
+      "kind": "directory",
+      "tier": "B",
+      "status": "planned",
+      "notes": "It indexes marketplace.json repos and the claude-code-plugins topic on its own. Check that AutoMode appears."
+    },
+    {
+      "id": "aikendra",
+      "name": "AI Kendra",
+      "url": "https://aikendra.com/submit?type=open-source",
+      "kind": "form",
+      "tier": "C",
+      "status": "planned",
+      "notes": "Needs 10 or more stars and topics such as llm or ai-agent. Submit after 10 stars."
+    },
+    {
+      "id": "sourcegraph-awesome-code-ai",
+      "name": "sourcegraph-awesome-code-ai",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "Archived."
+    },
+    {
+      "id": "rohitg00-toolkit",
+      "name": "rohitg00-toolkit",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "No outside merges since May 2026, with 200+ open PRs."
+    },
+    {
+      "id": "ccplugins",
+      "name": "ccplugins",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "Issues and PRs are turned off."
+    },
+    {
+      "id": "helloianneo-skills",
+      "name": "helloianneo-skills",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "The owner adds entries himself, and the list is for skills."
+    },
+    {
+      "id": "langgpt-awesome",
+      "name": "langgpt-awesome",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "The owner adds entries himself."
+    },
+    {
+      "id": "subinium-awesome",
+      "name": "subinium-awesome",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "The owner adds entries himself, and the list is idle."
+    },
+    {
+      "id": "ithiria894-workflows",
+      "name": "ithiria894-workflows",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "The owner adds entries himself, and the list is idle."
+    },
+    {
+      "id": "superpowers-marketplace",
+      "name": "superpowers-marketplace",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "It holds only obra plugins."
+    },
+    {
+      "id": "cc-marketplace",
+      "name": "cc-marketplace",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "No merges in 10 months."
+    },
+    {
+      "id": "mahseema-ai-tools",
+      "name": "mahseema-ai-tools",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "Dead since 2025."
+    },
+    {
+      "id": "eudk-ai-tools",
+      "name": "eudk-ai-tools",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "Dead, and off-topic."
+    },
+    {
+      "id": "cporter202-ai-tools",
+      "name": "cporter202-ai-tools",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "Owner-only, and off-topic."
+    },
+    {
+      "id": "agentoolrank",
+      "name": "agentoolrank",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "Returns 503."
+    },
+    {
+      "id": "devtools-sh",
+      "name": "devtools-sh",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "No way to submit."
+    },
+    {
+      "id": "conduits",
+      "name": "conduits",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "MCP servers and skills only."
+    },
+    {
+      "id": "opensourcestartups",
+      "name": "opensourcestartups",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "Startups and self-hosted alternatives, off-topic."
+    },
+    {
+      "id": "toolshelf",
+      "name": "toolshelf",
+      "url": "",
+      "kind": "directory",
+      "tier": "C",
+      "status": "skipped",
+      "notes": "No Claude Code entries, so low value."
     }
   ]
 }
