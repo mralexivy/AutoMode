@@ -1,5 +1,5 @@
 ---
-note: "Filtered by AutoModerator (new account, low karma). Modmail sent to r/ClaudeAI asking for review."
+note: "Removed by r/ClaudeAI moderators. The account has 1 karma."
 url: https://www.reddit.com/r/ClaudeAI/comments/1xop5sd/i_measured_what_my_claude_code_sessions_cost_on/
 channel: reddit
 status: sent

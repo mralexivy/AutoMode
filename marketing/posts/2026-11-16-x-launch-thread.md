@@ -1,4 +1,5 @@
 ---
+note: "Deleted 2026-11-06 after no engagement. Replaced by 2026-11-06-x-product-thread.md."
 url: https://x.com/mr_alexivy/status/2118400494385107363
 channel: x
 status: sent

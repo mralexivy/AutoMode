@@ -1,4 +1,5 @@
 ---
+note: "Deleted 2026-11-06 after no reactions. Replaced by 2026-11-06-devto-product.md."
 url: https://dev.to/alexivy/my-claude-code-router-cost-more-than-opus-heres-what-the-benchmark-taught-me-2am2
 channel: devto
 status: sent
