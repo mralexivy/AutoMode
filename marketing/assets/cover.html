@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>AutoMode cover</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0d0b1f;--panel:#17142e;--line:#2c2752;--text:#efeaff;--muted:#9b94c4;--haiku:#4ade80;--sonnet:#22d3ee;--opus:#a78bfa}
+*{box-sizing:border-box;margin:0}
+html{background:var(--ink)}
+body{background:radial-gradient(1100px 700px at 90% 0%,rgba(167,139,250,.24),transparent 60%),radial-gradient(900px 600px at 0% 100%,rgba(34,211,238,.13),transparent 60%),var(--ink);width:2000px;height:840px;color:var(--text);font-family:'Bricolage Grotesque',sans-serif;overflow:hidden}
+.wrap{position:relative;width:2000px;height:840px;padding:110px 120px;display:grid;grid-template-columns:1.25fr 1fr;align-items:center;gap:80px}
+.mark{display:flex;align-items:center;gap:18px;font-weight:600;font-size:40px;color:var(--muted)}
+.mark i{width:46px;height:46px;border-radius:13px;background:conic-gradient(from 210deg,var(--haiku),var(--sonnet),var(--opus),var(--haiku))}
+h1{margin-top:48px;font-weight:800;font-size:150px;line-height:.95;letter-spacing:-.04em}
+h1 code{font-family:'JetBrains Mono',monospace;font-weight:500}
+p{margin-top:36px;font-size:52px;line-height:1.15;color:var(--muted);font-weight:600}
+.chips{display:grid;gap:30px}
+.chip{display:flex;justify-content:space-between;align-items:center;border-radius:28px;padding:34px 40px;color:var(--ink);font-weight:800;font-size:68px;letter-spacing:-.02em}
+.chip small{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:34px;letter-spacing:0}
+.h{background:var(--haiku)}.s{background:var(--sonnet)}.o{background:var(--opus)}
+</style></head><body>
+<div class="wrap">
+  <div><div class="mark"><i></i>AutoMode for Claude Code</div>
+  <h1>Stop picking <code>/model</code>.</h1>
+  <p>The model and the effort,<br>picked for every prompt.</p></div>
+  <div class="chips"><div class="chip h">Haiku<small>quick question</small></div><div class="chip s">Sonnet<small>an edit</small></div><div class="chip o">Opus<small>risky work</small></div></div>
+</div></body></html>

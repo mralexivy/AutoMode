@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AutoMode slides</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0d0b1f;
+    --panel: #17142e;
+    --line: #2c2752;
+    --text: #efeaff;
+    --muted: #9b94c4;
+    --haiku: #4ade80;
+    --sonnet: #22d3ee;
+    --opus: #a78bfa;
+    --amber: #fbbf24;
+    --display: 'Bricolage Grotesque', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 1500px; background: var(--ink); color: var(--text); font-family: var(--display); overflow: hidden; }
+  .slide { display: none; position: relative; width: 1200px; height: 1500px; padding: 96px 88px 80px; }
+  .slide.on { display: flex; flex-direction: column; }
+  .glow { position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(900px 600px at 85% 8%, rgba(167,139,250,.20), transparent 60%),
+                radial-gradient(700px 520px at 0% 100%, rgba(34,211,238,.12), transparent 60%); }
+  .mark { display: flex; align-items: center; gap: 14px; font-weight: 600; font-size: 30px; color: var(--muted); position: relative; }
+  .mark i { width: 34px; height: 34px; border-radius: 10px; background: conic-gradient(from 210deg, var(--haiku), var(--sonnet), var(--opus), var(--haiku)); }
+  h1 { font-weight: 800; font-size: 104px; line-height: .98; letter-spacing: -0.035em; margin-top: 56px; position: relative; max-width: 1000px; }
+  h1 .soft { color: var(--muted); font-weight: 600; }
+  .lede { font-size: 34px; line-height: 1.35; color: var(--muted); margin-top: 28px; max-width: 900px; position: relative; }
+  .foot { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; font-size: 26px; color: var(--muted); position: relative; }
+  .foot b { color: var(--text); font-weight: 600; }
+  code, .mono { font-family: var(--mono); }
+
+  /* slide 1: prompt to model */
+  .routes { margin: auto 0; display: grid; gap: 40px; position: relative; }
+  .caption { position: relative; font-size: 30px; color: var(--muted); margin-bottom: 56px; line-height: 1.4; }
+  .route { display: grid; grid-template-columns: 1fr 120px 300px; align-items: center; }
+  .prompt { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 30px 34px; font-family: var(--mono); font-size: 27px; line-height: 1.4; }
+  .prompt::before { content: '❯ '; color: var(--muted); }
+  .wire { height: 4px; border-radius: 4px; }
+  .model { border-radius: 22px; padding: 26px 30px; font-weight: 800; font-size: 44px; letter-spacing: -0.02em; color: var(--ink); }
+  .model small { display: block; font-family: var(--mono); font-weight: 500; font-size: 22px; letter-spacing: 0; margin-top: 4px; opacity: .8; }
+  .h .wire { background: linear-gradient(90deg, var(--line), var(--haiku)); } .h .model { background: var(--haiku); }
+  .s .wire { background: linear-gradient(90deg, var(--line), var(--sonnet)); } .s .model { background: var(--sonnet); }
+  .o .wire { background: linear-gradient(90deg, var(--line), var(--opus)); } .o .model { background: var(--opus); }
+
+  /* slide 2: the bar */
+  .bar { margin-top: 88px; position: relative; border: 2px solid #5b5394; border-radius: 18px; padding: 28px 30px; font-family: var(--mono); font-size: 26px; display: flex; flex-wrap: wrap; row-gap: 14px; column-gap: 16px; align-items: center; background: #120f26; }
+  .bar .why { flex-basis: 100%; color: var(--muted); }
+  .bar .dot { color: #57508a; }
+  .bar .m { color: var(--opus); font-weight: 700; }
+  .bar .why { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+  .legend { margin-top: 80px; display: grid; grid-template-columns: 1fr 1fr; gap: 26px 40px; position: relative; }
+  .legend div { border-left: 4px solid var(--line); padding: 6px 0 6px 24px; }
+  .legend b { display: block; font-size: 38px; font-weight: 700; letter-spacing: -0.01em; }
+  .legend span { display: block; font-size: 29px; line-height: 1.35; color: var(--muted); margin-top: 6px; }
+  .legend .c1 { border-color: var(--opus); } .legend .c2 { border-color: var(--sonnet); } .legend .c3 { border-color: var(--haiku); } .legend .c4 { border-color: var(--amber); }
+
+  /* slide 3: agents */
+  .flow { margin-top: 70px; position: relative; display: grid; gap: 18px; }
+  .step { display: grid; grid-template-columns: 210px 1fr 190px; align-items: center; gap: 26px; background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 24px 30px; }
+  .step .n { font-weight: 800; font-size: 40px; letter-spacing: -0.02em; }
+  .step .d { font-size: 27px; color: var(--muted); line-height: 1.35; }
+  .step .who { justify-self: end; font-family: var(--mono); font-weight: 700; font-size: 25px; padding: 10px 18px; border-radius: 999px; color: var(--ink); }
+  .who.h { background: var(--haiku); } .who.s { background: var(--sonnet); } .who.o { background: var(--opus); }
+  .floor { margin-top: 34px; position: relative; border: 2px solid var(--amber); border-radius: 20px; padding: 26px 30px; font-size: 30px; line-height: 1.35; }
+  .floor b { color: var(--amber); }
+
+  /* slide 4: benchmark */
+  .bench { margin-top: 70px; position: relative; display: grid; gap: 34px; }
+  .row { display: grid; grid-template-columns: 330px 1fr 170px; align-items: center; gap: 26px; font-size: 34px; }
+  .row .lbl { font-weight: 600; }
+  .row .trk { height: 54px; background: #1b1838; border-radius: 14px; overflow: hidden; }
+  .row .fill { height: 100%; border-radius: 14px; background: #4a4479; }
+  .row .amt { font-family: var(--mono); font-weight: 700; font-size: 40px; text-align: right; }
+  .row.win .lbl { font-weight: 800; }
+  .row.win .fill { background: linear-gradient(90deg, var(--haiku), var(--sonnet) 45%, var(--opus)); }
+  .row.win .amt { color: var(--haiku); }
+  .note { font-size: 25px; color: var(--muted); margin-top: 28px; position: relative; line-height: 1.4; }
+  .install { margin-top: 44px; position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 28px 32px; font-family: var(--mono); font-size: 27px; line-height: 1.7; }
+  .install span { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<section class="slide" id="s1">
+  <div class="glow"></div>
+  <div class="mark"><i></i>AutoMode for Claude Code</div>
+  <h1>Stop picking <span class="mono">/model</span>.<br><span class="soft">It picks the model and effort for every prompt.</span></h1>
+  <div class="routes">
+    <div class="route h"><div class="prompt">what does -r do in cp?</div><div class="wire"></div><div class="model">Haiku<small>low effort</small></div></div>
+    <div class="route s"><div class="prompt">rename getUser to fetchUser everywhere</div><div class="wire"></div><div class="model">Sonnet<small>medium effort</small></div></div>
+    <div class="route o"><div class="prompt">move sessions from cookies to signed JWTs</div><div class="wire"></div><div class="model">Opus<small>high effort</small></div></div>
+  </div>
+  <div class="caption">Two Haiku judges read each prompt. A risk floor in code lifts security and migrations to Opus.</div>
+  <div class="foot"><span>Free · MIT · no API key</span><b>github.com/mralexivy/AutoMode</b></div>
+</section>
+
+<section class="slide" id="s2">
+  <div class="glow"></div>
+  <div class="mark"><i></i>AutoMode for Claude Code</div>
+  <h1>Every route,<br><span class="soft">explained above your prompt.</span></h1>
+  <div class="bar"><span class="m">✦ Opus 5.5</span><span class="dot">·</span><span>High ↑</span><span class="dot">·</span><span>14%</span><span class="dot">·</span><span>cache 59m</span><span class="dot">·</span><span style="color:var(--haiku)">saved ~$0.38</span><span class="why">— floor T3: security and migration, so Opus</span></div>
+  <div class="legend">
+    <div class="c1"><b>Model and effort</b><span>Picked fresh for each prompt. Effort can change while the model holds.</span></div>
+    <div class="c2"><b>Cache countdown</b><span>It checks the cache cost before a switch, and holds when a switch would not pay back.</span></div>
+    <div class="c3"><b>Saved so far</b><span>The estimate against the model you started on, judge calls counted.</span></div>
+    <div class="c4"><b>The reason</b><span>Why this route. <span class="mono">/automode details</span> prints every decision.</span></div>
+  </div>
+  <div class="foot"><span>Example bar. Your numbers will differ.</span><b>github.com/mralexivy/AutoMode</b></div>
+</section>
+
+<section class="slide" id="s3">
+  <div class="glow"></div>
+  <div class="mark"><i></i>AutoMode for Claude Code</div>
+  <h1>Big jobs get a team<br><span class="soft">of specialized subagents.</span></h1>
+  <div class="flow">
+    <div class="step"><div class="n">Discover</div><div class="d">Scoped explorers read the codebase in parallel</div><div class="who h">Haiku</div></div>
+    <div class="step"><div class="n">Plan</div><div class="d">An architect splits the work and sets the checks</div><div class="who o">Opus</div></div>
+    <div class="step"><div class="n">Build</div><div class="d">Implementers own only their files</div><div class="who s">Sonnet</div></div>
+    <div class="step"><div class="n">Verify</div><div class="d">Exit codes decide, not the model's word</div><div class="who s">Sonnet</div></div>
+    <div class="step"><div class="n">Review</div><div class="d">An independent reviewer reads the diff</div><div class="who o">Opus</div></div>
+  </div>
+  <div class="floor"><b>Risk floor in code.</b> Auth, migrations and data deletion never land on a small model, and risky work always gets a review.</div>
+  <div class="foot"><span>Start one with <span class="mono">am:run &lt;task&gt;</span></span><b>github.com/mralexivy/AutoMode</b></div>
+</section>
+
+<section class="slide" id="s4">
+  <div class="glow"></div>
+  <div class="mark"><i></i>AutoMode for Claude Code</div>
+  <h1>Cheapest of the four.<br><span class="soft">Every step still passes.</span></h1>
+  <div class="bench">
+    <div class="row win"><div class="lbl">AutoMode</div><div class="trk"><div class="fill" style="width:48.6%"></div></div><div class="amt">$2.01</div></div>
+    <div class="row"><div class="lbl">Sonnet high</div><div class="trk"><div class="fill" style="width:51.7%"></div></div><div class="amt">$2.14</div></div>
+    <div class="row"><div class="lbl">effortless, Opus</div><div class="trk"><div class="fill" style="width:93.5%"></div></div><div class="amt">$3.87</div></div>
+    <div class="row"><div class="lbl">Claude Code, Opus</div><div class="trk"><div class="fill" style="width:100%"></div></div><div class="amt">$4.14</div></div>
+  </div>
+  <div class="note">Five mixed sessions, 20 steps, each graded by hidden tests. List-price cost of every request, judges included. On long tasks alone it costs about what Sonnet high costs.</div>
+  <div class="install"><span># inside Claude Code</span><br>/plugin marketplace add mralexivy/AutoMode<br>/plugin install automode@automode</div>
+  <div class="foot"><span>Rows and method: mralexivy.github.io/AutoMode/benchmark</span></div>
+</section>
+
+<script>
+  const s = new URLSearchParams(location.search).get('s') || '1'
+  document.getElementById('s' + s).classList.add('on')
+</script>
+</body>
+</html>

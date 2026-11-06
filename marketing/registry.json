@@ -1,6 +1,6 @@
 {
   "why": "Every place AutoMode is listed or will be submitted, with its rules and what it did. Read it before any submission, so nothing is sent twice. The growth skill updates it.",
-  "checked": "2026-11-05",
+  "checked": "2026-11-06",
   "statuses": [
     "planned",
     "open",
@@ -264,7 +264,7 @@
       "rules": "The maintainer posts by hand and stays for the comments. Never coordinate votes.",
       "status": "planned",
       "planned": "2026-11-10",
-      "notes": "Account mralexivy has 1 karma. Planned for Tuesday 8:37am ET so a weekday morning gives it a fair start."
+      "notes": "Show HN refused on 2026-11-06: HN restricts Show HNs from new accounts, and mralexivy has 1 karma. Take part in discussions first. Never drop the Show HN label to get around the rule."
     },
     {
       "id": "r-claudeai",
@@ -273,7 +273,7 @@
       "kind": "community",
       "tier": "A",
       "rules": "Read the subreddit rules on self-promotion before posting. State authorship.",
-      "status": "open",
+      "status": "closed",
       "submissions": [
         {
           "url": "https://www.reddit.com/r/ClaudeAI/comments/1xop5sd/i_measured_what_my_claude_code_sessions_cost_on/",
@@ -281,7 +281,7 @@
           "status": "open"
         }
       ],
-      "notes": "AutoModerator filtered the post: the account is new and has 1 karma. A modmail asking for review was sent 2026-11-05. Rules allow Built with Claude posts that say how Claude helped and that the project is free. Use the Built with Claude flair."
+      "notes": "Removed by moderators. The account Previous_Volume_7586 has 1 karma. Build karma with real comments before another post."
     },
     {
       "id": "r-claudecode",
@@ -305,6 +305,12 @@
         {
           "url": "https://dev.to/alexivy/my-claude-code-router-cost-more-than-opus-heres-what-the-benchmark-taught-me-2am2",
           "opened": "2026-11-05",
+          "status": "closed",
+          "closed": "2026-11-06"
+        },
+        {
+          "url": "https://dev.to/alexivy/automode-a-claude-code-mod-that-picks-the-model-and-effort-for-every-prompt-2f0p",
+          "opened": "2026-11-06",
           "status": "listed"
         }
       ],
@@ -321,10 +327,16 @@
         {
           "url": "https://x.com/mr_alexivy/status/2118400494385107363",
           "opened": "2026-11-05",
+          "status": "closed",
+          "closed": "2026-11-06"
+        },
+        {
+          "url": "https://x.com/mr_alexivy/status/2118687636185383355",
+          "opened": "2026-11-06",
           "status": "listed"
         }
       ],
-      "notes": "6-post thread with the benchmark-race video."
+      "notes": "The benchmark-first thread of 2026-11-05 got 19 views and no likes, so it was deleted. The product-first thread carries the 4:5 social video. In the X composer, paste the text with a paste event and post one part at a time, adding parts as replies. fill() drops line breaks there."
     },
     {
       "id": "linkedin",
@@ -350,6 +362,65 @@
       "tier": "B",
       "status": "planned",
       "notes": "No signed-in account on 2026-11-05."
+    },
+    {
+      "id": "r-claudecode-post",
+      "name": "r/ClaudeCode standalone post",
+      "url": "https://www.reddit.com/r/ClaudeCode/",
+      "kind": "community",
+      "tier": "A",
+      "rules": "A standalone Built with Claude Code post must say what was built, how Claude Code was used and what was learned. Simple sharing goes in the weekly showcase thread.",
+      "status": "open",
+      "submissions": [
+        {
+          "url": "https://www.reddit.com/r/ClaudeCode/comments/1xpc7an/i_built_automode_a_claude_code_mod_that_picks_the/",
+          "opened": "2026-11-06",
+          "status": "open"
+        }
+      ],
+      "notes": "Removed on submit because of the account karma. Modmail sent 2026-11-06."
+    },
+    {
+      "id": "r-claudecode-showcase",
+      "name": "r/ClaudeCode weekly showcase thread",
+      "url": "https://www.reddit.com/r/ClaudeCode/comments/1xlurut/weekly_showcase_thread_what_are_you_building_with/",
+      "kind": "community",
+      "tier": "A",
+      "status": "listed",
+      "submissions": [
+        {
+          "url": "https://www.reddit.com/r/ClaudeCode/comments/1xlurut/weekly_showcase_thread_what_are_you_building_with/19s880oecd0w3/",
+          "opened": "2026-11-06",
+          "status": "listed"
+        }
+      ]
+    },
+    {
+      "id": "hashnode",
+      "name": "hashnode",
+      "url": "https://hashnode.com",
+      "kind": "community",
+      "tier": "B",
+      "status": "planned",
+      "notes": "No signed-in account on 2026-11-06. Repost the Dev.to article with its canonical URL."
+    },
+    {
+      "id": "medium",
+      "name": "medium",
+      "url": "https://medium.com",
+      "kind": "community",
+      "tier": "B",
+      "status": "planned",
+      "notes": "No signed-in account on 2026-11-06. Repost the Dev.to article with its canonical URL."
+    },
+    {
+      "id": "hackernoon",
+      "name": "hackernoon",
+      "url": "https://hackernoon.com",
+      "kind": "community",
+      "tier": "B",
+      "status": "planned",
+      "notes": "No signed-in account on 2026-11-06. Repost the Dev.to article with its canonical URL."
     }
   ]
 }
