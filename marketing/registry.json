@@ -398,20 +398,34 @@
     {
       "id": "hashnode",
       "name": "hashnode",
-      "url": "https://hashnode.com",
+      "url": "https://alexivy.hashnode.dev",
       "kind": "community",
       "tier": "B",
-      "status": "planned",
-      "notes": "No signed-in account on 2026-11-06. Repost the Dev.to article with its canonical URL."
+      "status": "listed",
+      "notes": "Republished from Dev.to with the Dev.to canonical URL. 5 tags: claude-code, claude, opensource, developer-tools, ai. 1600x840 cover. Type the canonical URL with the tab in front, because a scripted value does not save.",
+      "submissions": [
+        {
+          "url": "https://alexivy.hashnode.dev/automode-a-claude-code-mod-that-picks-the-model-and-effort-for-every-prompt",
+          "opened": "2026-11-06",
+          "status": "listed"
+        }
+      ]
     },
     {
       "id": "medium",
       "name": "medium",
-      "url": "https://medium.com",
+      "url": "https://medium.com/@ialex.ivy",
       "kind": "community",
       "tier": "B",
-      "status": "planned",
-      "notes": "No signed-in account on 2026-11-06. Repost the Dev.to article with its canonical URL."
+      "status": "listed",
+      "notes": "Republished from Dev.to with the Dev.to canonical URL. 5 topics: Claude, Artificial Intelligence, Open Source, Programming, Software Development. Story settings sit behind a Cloudflare check that the user passes. Next: submit to a publication.",
+      "submissions": [
+        {
+          "url": "https://medium.com/@ialex.ivy/automode-a-claude-code-mod-that-picks-the-model-and-effort-for-every-prompt-b8696a8d8670",
+          "opened": "2026-11-06",
+          "status": "listed"
+        }
+      ]
     },
     {
       "id": "hackernoon",
