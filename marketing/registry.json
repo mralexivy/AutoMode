@@ -314,7 +314,7 @@
           "status": "listed"
         }
       ],
-      "notes": "AI disclosure set to Fully Autonomous, because an agent wrote the article."
+      "notes": "AI disclosure set to Fully Autonomous, because an agent wrote the article. Profile completed on 2026-11-06: summary, website, work, skills."
     },
     {
       "id": "x",
@@ -430,11 +430,19 @@
     {
       "id": "hackernoon",
       "name": "hackernoon",
-      "url": "https://hackernoon.com",
+      "url": "https://hackernoon.com/u/alexivy",
       "kind": "community",
       "tier": "B",
-      "status": "planned",
-      "notes": "No signed-in account on 2026-11-06. Repost the Dev.to article with its canonical URL."
+      "status": "open",
+      "notes": "Import with dev.to/feed/alexivy, and import only once: a second import made a duplicate, which was deleted. Profile username alexivy, with a bio and interests. The social links form resyncs from the server and drops typed values.",
+      "submissions": [
+        {
+          "url": "https://app.hackernoon.com/articles/6aede44ec4356ae3ba81b582",
+          "opened": "2026-11-06",
+          "status": "open",
+          "note": "Imported from the Dev.to RSS feed into the editorial queue. Category AI and ML, TL;DR set, first published on Dev.to."
+        }
+      ]
     },
     {
       "id": "dailydev",
@@ -459,6 +467,38 @@
         }
       ],
       "notes": "The profile has a headline, a bio and GitHub, X and LinkedIn links. DevOps Daily and Engineering Leadership were skipped as off-topic."
+    },
+    {
+      "id": "r-claudeai-delegation-reply",
+      "name": "r/ClaudeAI reply: cheap subagent thread",
+      "url": "https://www.reddit.com/r/ClaudeAI/comments/1xn0e12/",
+      "kind": "community",
+      "tier": "A",
+      "status": "listed",
+      "submissions": [
+        {
+          "url": "https://www.reddit.com/r/ClaudeAI/comments/1xn0e12/comment/19s8b9rt3m6o5/",
+          "opened": "2026-11-06",
+          "status": "listed"
+        }
+      ],
+      "notes": "A helpful reply in a recent, relevant thread, with the author disclosed."
+    },
+    {
+      "id": "r-claudecode-delegation-reply",
+      "name": "r/ClaudeCode reply: delegation experiment thread",
+      "url": "https://www.reddit.com/r/ClaudeCode/comments/1xn18cu/",
+      "kind": "community",
+      "tier": "A",
+      "status": "listed",
+      "submissions": [
+        {
+          "url": "https://www.reddit.com/r/ClaudeCode/comments/1xn18cu/comment/19s8basve4ktd/",
+          "opened": "2026-11-06",
+          "status": "listed"
+        }
+      ],
+      "notes": "A helpful reply in a recent, relevant thread, with the author disclosed."
     }
   ]
 }
