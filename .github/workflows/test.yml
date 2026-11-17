@@ -96,8 +96,11 @@ jobs:
       - name: Check benchmark task files
         run: node bench/validate-fixture.mts --offline
       # These two commands read and test the mod itself. They need no sign-in and no network.
+      # Pinned to the version the README says it is tested with. Claude Code 2.1.326 type-checks the mod's .ts files with
+      # its own compiler options and reports hundreds of warnings, which --strict turns into a failure. Move the pin up
+      # when those warnings are fixed (#166).
       - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
+        run: npm install -g @anthropic-ai/claude-code@2.1.318
       - name: Validate the mod
         run: claude plugin validate . --strict
       - name: Test the mod
