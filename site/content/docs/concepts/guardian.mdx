@@ -6,9 +6,12 @@ description: "The AutoMode guardian redacts secrets, pauses turns that stop conv
 
 The guardian watches the session and its cost. Model and effort stay with the router: the guardian never picks a model.
 
+As shipped, the guardian is on in `auto` mode, in every session, with all three actions below enabled. The Settings table shows how to turn each off.
+
 - Redacts secret-shaped text before it is stored.
-- Pauses a risky turn and waits for `am:continue`.
-- Shortens large tool results and keeps the original on disk.
+- Ends a risky or non-converging turn and waits for `am:continue`.
+- Shortens a Bash or text MCP result over 12,000 characters, and keeps the original on disk.
+- Compacts the chat by itself when that pays. Haiku writes the summary.
 - Saves a task checkpoint, and restores it after `/clear` with `am:handoff`.
 - Denies git writes and `rm -rf` from subagents. The main session can still commit when you ask.
 
@@ -42,7 +45,7 @@ Each mode includes the one before it. The shipped mode is `auto`.
 | `guardian.everySession` | `true` | Run the guardian in every session, not only AutoMode sessions. |
 | `guardian.hardPause` | `true` | In `auto`, a turn that does not converge is ended between requests, never mid-write. |
 | `guardian.autoCompact` | `true` | In `auto`, compact between turns when it pays. Otherwise `/compact` is suggested. |
-| `guardian.reduceOutputs` | `true` | In `auto`, long command output is saved in full and shortened in the chat, with every error line kept. |
+| `guardian.reduceOutputs` | `true` | In `auto`, a Bash or text MCP result over 12,000 characters is saved in full and shortened in the chat. A failed tool call is never cut. |
 
 `AUTOMODE_GUARDIAN=off` turns the guardian off and leaves the rest of AutoMode running. `AUTOMODE_GUARDIAN_CONFIG` takes a JSON object over `config.json`, for a test profile or one machine.
 

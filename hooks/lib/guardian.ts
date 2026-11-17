@@ -40,7 +40,7 @@ export interface GuardianConfig {
   repeatCalls: number                // the same call this many times in a turn is a repeat
   weakOutcomes: boolean              // count every third new file changed as an outcome where no check exists
   turnBudgetUsd: number | null       // an optional hard budget per turn (null: none)
-  hardPause: boolean                 // opt-in, mode auto: end the turn with $.turn.abort at a request boundary (else a note only)
+  hardPause: boolean                 // off here, on in config.json; mode auto: end the turn with $.turn.abort at a request boundary (else a note only)
   // Lifecycle
   minContextTokens: number           // below this, a reset never pays: continue
   handoffTokens: number              // the size of a handoff the new session reads
@@ -51,9 +51,9 @@ export interface GuardianConfig {
   horizon: number                    // requests a route is expected to run (p25 of the first-party route horizon at a prompt)
   coldReturnRate: number             // at a turn end, the chance the next prompt comes after the cache expired: 30 of 330
                                      // large-context turn ends in 30 days of engineering sessions (2026-10-26)
-  autoCompact: boolean               // opt-in, mode auto: call $.session.compact between turns instead of suggesting /compact
+  autoCompact: boolean               // off here, on in config.json; mode auto: call $.session.compact between turns instead of suggesting /compact
   // Output reduction
-  reduceOutputs: boolean             // opt-in
+  reduceOutputs: boolean             // off here, on in config.json
   reduceAboveChars: number          // below Claude Code's own bashOutputMaxChars (30,000 by default), which already moves longer
                                      // Bash output to a file; MCP results have no native spill
 }

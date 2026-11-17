@@ -13,8 +13,9 @@
 //   session.compact Haiku writes the compaction summary instead of the chat's model.
 //   tool.call       Denies git writes and rm -rf from AutoMode subagents.
 //
-// The model never changes mid-chat: each model keeps its own prompt cache, so a switch rewrites the
-// whole chat into a new cache (effortless measured 5-10x the cost). Inactive sessions (any other
+// The classic judge router, below, never changes the model mid-chat. (The shipped v4 router can: see hooks/v4.ts.)
+// Each model keeps its own prompt cache, so a switch rewrites the whole chat into a new cache (effortless measured
+// 5-10x the cost). Inactive sessions (any other
 // model) pass every event straight through: no judge, no context, no state, no files.
 import { fsRead, fsWrite, sessionUsage, agents, status } from './lib/io.ts'
 import type { EngineInterface, Register } from 'claude-code'
