@@ -8,7 +8,7 @@
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-22d3ee"></a>
   <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-34d399"></a>
   <a href="https://github.com/mralexivy/AutoMode/issues?q=is%3Aopen+label%3A%22good+first+issue%22"><img alt="Good first issues" src="https://img.shields.io/badge/good%20first-issues-8b5cf6"></a>
-  <img alt="Version 0.10.0" src="https://img.shields.io/badge/version-0.10.0-fbbf24">
+  <img alt="Version 0.11.0" src="https://img.shields.io/badge/version-0.11.0-fbbf24">
   <img alt="Claude Code 2.1.287 or later" src="https://img.shields.io/badge/Claude%20Code-2.1.287%2B-38bdf8">
 </p>
 
@@ -61,7 +61,7 @@ Install it and it starts. You never touch the model or the Effort control again.
 |  | Without AutoMode | With AutoMode |
 |---|---|---|
 | **Model** | One model for every prompt | Haiku for a quick fact, Sonnet for an edit, Opus for design and risk |
-| **Effort** | You set it, and you forget to change it | A judge sets it for each prompt, in about a second |
+| **Effort** | You set it, and you forget to change it | Two short Haiku judges set it for each prompt, in about a second |
 | **Risky changes** | The same checks as a typo fix | Security, migrations and payments always get an independent review, on Opus when the diff shows critical risk |
 | **Big jobs** | One long chat that does everything | A plan, build, verify and review workflow with six small agents |
 | **Prompt cache** | A cold cache is a surprise bill | A countdown on the bar shows when the cache goes cold |
@@ -102,6 +102,12 @@ There is nothing to turn on. AutoMode starts with every session after you instal
 - **Stop it for one session:** `/automode off`. Start it again with `/automode on`.
 - **Stop it everywhere:** set `"mode": "off"` in your `config.json`, or set `AUTOMODE_ROUTER=off`.
 - **Check it is running:** `/automode setup`.
+
+**It can change the model in the middle of a chat.** AutoMode may move the main session to another model, or to another effort, when the next prompt needs it. To keep a model or an effort, pin it:
+
+- Pick one with `/model` or `/effort`. A pin holds until you type `am:reset`.
+- Type `am:opus`, `am:sonnet`, `am:haiku` or `am:high` at the start of a prompt, or write "use opus" or "effort: high".
+- Turn routing off with `/automode off`, `"mode": "off"` or `AUTOMODE_ROUTER=off`.
 
 **Requires** Claude Code **2.1.287 or later** in the terminal. Mods are on by default from that version. The Desktop app needs 2.1.286 or later, and the VS Code extension needs 2.1.299 or later. Tested with Claude Code 2.1.318.
 
@@ -209,11 +215,16 @@ Each prompt takes one of four paths:
 
 The guardian watches the session. Modes: `off`, `observe`, `recommend`, `assist`, `auto`.
 
+The shipped `config.json` sets the mode to `auto` and turns on every action below. The guardian runs in every session, not only in AutoMode sessions.
+
 - Redacts secret-shaped text before it is stored.
-- Pauses a risky turn and waits for `am:continue`.
-- Shortens large tool results and keeps the original on disk.
+- **Shortens large tool results** (`reduceOutputs`, on). A Bash result, or a text-only MCP result, over 12,000 characters is cut to a short form. The full text is saved in the data folder. Errors are not cut.
+- **Can end a turn** (`hardPause`, on). A risky or non-converging turn is stopped between requests, never right after a write. You continue with `am:continue`.
+- **Compacts by itself** (`autoCompact`, on). When a compaction pays for itself, the guardian queues one after the turn. Haiku writes the summary. Otherwise it shows a toast.
 - Saves a task checkpoint, and restores it after `/clear` with `am:handoff`.
 - Denies git writes and `rm -rf` from subagents. The main session can still commit when you ask.
+
+Turn them off in `/plugin configure automode@automode` (`reduceOutputs`, `hardPause`, `autoCompact`, `guardianEverySession`, `guardianMode`), or set `AUTOMODE_GUARDIAN=off` to switch the guardian off.
 
 ## Settings
 
@@ -365,7 +376,7 @@ The `hooks:` line lists the events AutoMode handles. The `calls:` line lists the
 
 | AutoMode calls | Why |
 |---|---|
-| `$.model.complete` | One short Haiku call per prompt, for the judge. With `delegation: on`, one Haiku call for each `extract`, which sends the named files. It uses your own Claude login. |
+| `$.model.complete` | Haiku calls, on your own Claude login. Each sends the text of the prompt or session it judges or summarises to Anthropic, as a Claude Code request does. A new prompt makes 2 to 4 calls: the AutoMode judge, 1 or 2 effortless judge calls, and sometimes 1 more. A pinned model makes 2. A short follow-up, or a prompt whose verdict is cached, makes none. A subagent spawn makes 1. A plan-mode change makes 2 to 4. Every compaction of the main session, `/compact` included, is written by Haiku. A failed call can be retried once or twice. With `delegation: on`, each `extract` is 1 more call and sends the named files. |
 | `$.fs.read`, `$.fs.write`, `$.fs.exists`, `$.fs.list` | Reads `config.json` and your settings file. Writes its records, checkpoints and caches to its own data folder, `~/.claude/plugins/data/automode/`. With `debugLog` on, it also writes a log in the plugin folder. |
 | `$.process.run` | Four commands. `chmod` and `rm -f` on its own data files. `git rev-parse` and `git status`, both read only, for the task checkpoint. |
 | `$.env.get` | Reads `AUTOMODE_*` switches, your provider variables, and `HOME`. It reads `ANTHROPIC_API_KEY` only to test whether it is set, so it can tell a plan from an API key. It never stores or sends the value. |
@@ -376,6 +387,8 @@ The `hooks:` line lists the events AutoMode handles. The `calls:` line lists the
 **What it writes.** Only files in its own data folder, plus `judge-log.jsonl` in the plugin folder with `debugLog` on. It never edits a build, start-up, settings or instructions file. Paths are computed from those two folders, so the directory cannot read them as fixed text.
 
 **Subagents.** The `agent.spawn` hook sets a subagent's model and effort. It does not change a permission mode.
+
+**Commands.** AutoMode rewrites one kind of Bash command. When a test, lint, build or type-check command has a pipe, such as `go test ./... | tail`, it prepends `set -o pipefail; ` so a failing check is not hidden by the pipe (without it, the pipe reports the last command's exit code). It matches common runners, among them `go test`, `npm test`, `pnpm`, `yarn`, `pytest`, `jest`, `vitest`, `tsc`, `eslint`, `cargo test`, `mvn`, `gradle`, `make test`, `dotnet test`, `swift test` and `node --test`, and skips `--help` and `--version` calls. It leaves a command alone when it already says `pipefail`, or ends the pipe on purpose with `|| true`, `; true` or `exit 0`. It runs only while a task is active. The command's output stays the same. It needs a shell that accepts `set -o pipefail`, such as bash or zsh.
 
 AutoMode does **not** call `$.http.fetch`, `$.mcp.*`, `$.env.set`, `$.prompt.submit` or `$.session.send`. It has no network code of its own: `grep -rnE "fetch\(|https?://" hooks scripts workflows` finds only two comments that credit effortless. It sees every prompt and tool call, because it hooks `prompt.submit` and `tool.call`. That is how routing works. Nothing leaves your machine except through Claude Code.
 
