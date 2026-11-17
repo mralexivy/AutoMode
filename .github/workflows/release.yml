@@ -81,7 +81,7 @@ jobs:
       # The bot never pushes to main. Its version bump reaches main when a person merges this PR.
       - name: Write the release commit
         run: |
-          node tools/release.mts prepare "$VERSION" "$(npm view @anthropic-ai/claude-code version)"
+          node tools/release.mts prepare "$VERSION" 2.1.318
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git switch -C release/next
@@ -145,8 +145,9 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
+      # The same pin as test.yml, so the gate and the "Tested with" line name one version.
       - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
+        run: npm install -g @anthropic-ai/claude-code@2.1.318
       - name: Build and validate the bundle
         run: node tools/release.mts build
       - name: Attest the build
