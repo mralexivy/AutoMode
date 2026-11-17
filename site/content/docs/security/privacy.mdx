@@ -10,8 +10,8 @@ AutoMode runs on your machine. It has no server and no account, and it collects 
 
 AutoMode has no network code of its own. Its model calls go through Claude Code, on your own Claude login, to the same provider as the rest of your session and under the same terms.
 
-- **The judges.** For each prompt, AutoMode calls Haiku to pick a route. The call holds your prompt text, a short part of the last reply, and state lines about the session.
-- **Compaction.** When AutoMode compacts a chat on Haiku, the chat text goes to that model.
+- **The judges.** For each new prompt, AutoMode makes 2 to 4 short Haiku calls to pick a route: the AutoMode judge, 1 or 2 effortless judge calls, and sometimes 1 more. A pinned model makes 2. A short follow-up, or a prompt whose verdict is cached, makes none. A subagent spawn makes 1 call, and a plan-mode change makes 2 to 4. A failed call can be retried once or twice. Each call holds your prompt text, a short part of the last reply, and state lines about the session.
+- **Compaction.** Every compaction of the main session, `/compact` included, is written by Haiku, so the chat text goes to that model. The guardian also queues a compaction by itself when it pays (`autoCompact`, on by default).
 - **Delegated reads.** With `delegation: on`, each `extract` call sends the named files and one question to Haiku. It is off by default, and it reads only files your Read permissions allow.
 - **The workflow agents.** They run as ordinary Claude Code subagents.
 

@@ -16,7 +16,7 @@ The `hooks:` line lists the events AutoMode handles. The `calls:` line lists the
 
 | AutoMode calls | Why |
 |---|---|
-| `$.model.complete` | One short Haiku call per prompt, for the judge. With `delegation: on`, one Haiku call for each `extract`, which sends the named files. It uses your own Claude login. |
+| `$.model.complete` | Haiku calls, on your own Claude login. Each sends the text of the prompt or session it judges or summarises to Anthropic, as a Claude Code request does. A new prompt makes 2 to 4 calls: the AutoMode judge, 1 or 2 effortless judge calls, and sometimes 1 more. A pinned model makes 2. A short follow-up, or a prompt whose verdict is cached, makes none. A subagent spawn makes 1. A plan-mode change makes 2 to 4. Every compaction of the main session, `/compact` included, is written by Haiku. A failed call can be retried once or twice. With `delegation: on`, each `extract` is 1 more call and sends the named files. |
 | `$.fs.read`, `$.fs.write`, `$.fs.exists`, `$.fs.list` | Reads `config.json` and your settings file. Writes its records, checkpoints and caches to its own data folder, `~/.claude/plugins/data/automode/`. With `debugLog` on, it also writes a log in the plugin folder. |
 | `$.process.run` | Four commands. `chmod` and `rm -f` on its own data files. `git rev-parse` and `git status`, both read only, for the task checkpoint. |
 | `$.env.get` | Reads `AUTOMODE_*` switches, your provider variables, and `HOME`. It reads `ANTHROPIC_API_KEY` only to test whether it is set. It never stores or sends the value. |

@@ -27,7 +27,7 @@ description: "Answers about AutoMode for Claude Code: cost, plans and API keys, 
     It can, so AutoMode checks every switch against the cache rewrite it costs. Effort changes are free on the 5.5 models. See [Model switches and the prompt cache](/docs/concepts/prompt-cache).
   </Accordion>
   <Accordion title="What data does it send?">
-    Only what Claude Code sends: one short Haiku call per prompt for the judge, through your own login. It has no network code of its own. See [Privacy](/docs/security/privacy).
+    Only what Claude Code sends, through your own login: 2 to 4 short Haiku calls for each new prompt (the judges), 1 for a subagent spawn, 2 to 4 for a plan-mode change, and 1 for each compaction. A short follow-up or a cached verdict makes none. It has no network code of its own. See [Privacy](/docs/security/privacy).
   </Accordion>
   <Accordion title="Can I keep my own model?">
     Yes. Your `/model` is a pin. To route effort only, set **Route models** to `off` in `/plugin configure automode@automode`.

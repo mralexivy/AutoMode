@@ -18,7 +18,7 @@ Every prompt takes the cheapest route that is still adequate. Code sets a floor 
   <Step>
     ### Two judges give evidence
 
-    Two short Haiku calls read the prompt, a short part of the last reply and a few lines of session state. The **effortless judge** rates the effort the prompt needs. Its rules are ported from [effortless](https://github.com/HeyCubit/effortless). The **AutoMode judge** rates the tier, T0 to T4, and the model the work needs. Each call takes about a second.
+    Two short Haiku judges read the prompt, a short part of the last reply and a few lines of session state. The **effortless judge** rates the effort the prompt needs. Its rules are ported from [effortless](https://github.com/HeyCubit/effortless). The **AutoMode judge** rates the tier, T0 to T4, and the model the work needs. Each call takes about a second. A new prompt makes 2 to 4 calls in all, because the effortless judge asks about the anchor model and sometimes about the running model, and a second effortless call checks a model that could still win. A pinned model makes 2. A short follow-up, or a prompt whose verdict is cached, makes none.
   </Step>
   <Step>
     ### Code sets quality floors

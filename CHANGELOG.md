@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- Docs: the README, PRIVACY.md and the site now state what the code does. A new prompt makes 2 to 4 Haiku calls, a subagent spawn 1, a plan-mode change 2 to 4, and every compaction 1. Piped test and build commands get `set -o pipefail;`. The guardian ships on, and the docs list its actions and how to turn them off. The README says up front that the model can change mid-chat, and how to pin it. Two code comments that called the guardian options opt-in are corrected. No behavior changes.
+
 ## [0.10.0] - 2026-11-05
 
 ### Added
