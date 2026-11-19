@@ -9,7 +9,7 @@ export function sid($: EngineInterface) { return $.session.id() }
 export function sessionModel($: EngineInterface) { return $.session.model() }
 export function fsRead($: EngineInterface, ...args: Parameters<EngineInterface['fs']['read']>) { return $.fs.read(...args) }
 export function fsWrite($: EngineInterface, ...args: Parameters<EngineInterface['fs']['write']>) { return $.fs.write(...args) }
-export function sessionUsage($: EngineInterface) { return $.session.usage() }
+export function usageNow($: EngineInterface) { return $.session.usage() }
 export function fsExists($: EngineInterface, ...args: Parameters<EngineInterface['fs']['exists']>) { return $.fs.exists(...args) }
 export function fork($: EngineInterface, ...args: Parameters<EngineInterface['model']['fork']>) { return $.model.fork(...args) }
 export function sGet($: EngineInterface, key: string) { return $.store.get(key) }
@@ -19,3 +19,6 @@ export function sDel($: EngineInterface, key: string) { return $.store.delete(ke
 export function proc($: EngineInterface, ...args: Parameters<EngineInterface['process']['run']>) { return $.process.run(...args) }
 export function agents($: EngineInterface) { return $.agent.list() }
 export function status($: EngineInterface, ...args: Parameters<EngineInterface['ui']['status']>) { return $.ui.status(...args) }
+export function ask($: EngineInterface, ...args: Parameters<EngineInterface['ui']['ask']>) { return $.ui.ask(...args) }
+export function compact($: EngineInterface) { return $.session.compact() }
+export function toast($: EngineInterface, ...args: Parameters<EngineInterface['ui']['toast']>) { return $.ui.toast(...args) }

@@ -4,6 +4,14 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- Cache keeper (#170). The cache lifetime is now measured from request usage (5 or 60 minutes) instead of assumed; `cacheKeeper.ttl` in `config.json` or an env switch pins it. A cold-send guard asks before a person's prompt rewrites a context of 150,000 tokens or more after the cache expired, and falls through to send when no dialog can answer. `/automode keepwarm <hours>` is an opt-in, cost-gated keepalive that pings before expiry. Pings never reach the router, the ledger or route learning. Ideas from the cache-keeper mod (MIT). No saving is claimed yet: `bench/cache-opportunity.mts` sizes the ceiling from local transcripts.
+
+### Changed
+
+- Three internal helper names were shortened so the validator's `calls:` line stays under its 1,000-character cut (`usageNow`, `uiStart`, `v4Start`). No behavior change.
+
 ## [0.11.0] - 2026-11-17
 
 ### Changed

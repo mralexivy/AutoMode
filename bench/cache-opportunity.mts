@@ -19,7 +19,7 @@ import path from 'node:path'
 import { sessionsOf, costOf, sum, rateOf, familyOf } from './spend-audit.mts'
 
 const args = process.argv.slice(2)
-const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d }
+const opt = (k: string, d?: string | number) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d }
 const DAYS = Number(opt('--days', 30))
 const MARGIN_MS = Number(opt('--margin-min', 8)) * 60_000
 const CAP_MS = Number(opt('--cap-hours', 4)) * 3_600_000
@@ -30,7 +30,7 @@ const PING_OUTPUT = 5
 
 const promptOf = (t) => t.input + t.cacheRead + t.cacheWrite5m + t.cacheWrite1h
 const ttlOf = (t) => (t.cacheWrite1h > t.cacheWrite5m ? 3_600_000 : 300_000)
-const BUCKETS = [[5, 15], [15, 60], [60, 240], [240, 1440], [1440, Infinity]]
+const BUCKETS: [number, number][] = [[5, 15], [15, 60], [60, 240], [240, 1440], [1440, Infinity]]
 const bucketOf = (min) => BUCKETS.findIndex(([a, b]) => min >= a && min < b)
 const label = ([a, b]) => (b === Infinity ? `>${a}m` : `${a}-${b}m`)
 
