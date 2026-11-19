@@ -1,0 +1,82 @@
+{
+  "window": {
+    "days": 30,
+    "marginMin": 8,
+    "capHours": 4
+  },
+  "basis": "calculated (recorded usage x list price); counterfactual, not billed",
+  "sessions": 1328,
+  "spendUsd": 2402.09,
+  "expiryRewrites": 65,
+  "rewriteUsd": 123.86,
+  "rewriteShareOfSpendPct": 5.16,
+  "keepwarm": {
+    "coveredRewrites": 44,
+    "pings": 596,
+    "pingUsd": 23.42,
+    "netSavingUsd": 83.48,
+    "netNegativeRewrites": 1
+  },
+  "guardBoundUsd": 61.93,
+  "byGap": {
+    "5-15m": {
+      "n": 0,
+      "rewriteUsd": 0,
+      "keepSaveUsd": 0,
+      "pingUsd": 0
+    },
+    "15-60m": {
+      "n": 0,
+      "rewriteUsd": 0,
+      "keepSaveUsd": 0,
+      "pingUsd": 0
+    },
+    "60-240m": {
+      "n": 44,
+      "rewriteUsd": 89.91,
+      "keepSaveUsd": 83.48,
+      "pingUsd": 4.24
+    },
+    "240-1440m": {
+      "n": 18,
+      "rewriteUsd": 30.9,
+      "keepSaveUsd": 0,
+      "pingUsd": 9.99
+    },
+    ">1440m": {
+      "n": 3,
+      "rewriteUsd": 3.05,
+      "keepSaveUsd": 0,
+      "pingUsd": 9.18
+    }
+  },
+  "byTtl": {
+    "5m": {
+      "n": 0,
+      "rewriteUsd": 0,
+      "keepSaveUsd": 0
+    },
+    "60m": {
+      "n": 65,
+      "rewriteUsd": 123.86,
+      "keepSaveUsd": 83.48
+    }
+  },
+  "byFamily": {
+    "opus": {
+      "n": 37,
+      "rewriteUsd": 80.62,
+      "guardBoundUsd": 40.31
+    },
+    "sonnet": {
+      "n": 28,
+      "rewriteUsd": 43.24,
+      "guardBoundUsd": 21.62
+    },
+    "haiku": {
+      "n": 0,
+      "rewriteUsd": 0,
+      "guardBoundUsd": 0
+    }
+  }
+}
