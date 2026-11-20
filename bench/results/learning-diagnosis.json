@@ -58,14 +58,19 @@
       },
       {
         "id": "router-cost",
-        "summary": "In stage-c the auto arm cost $0.44 a task against $0.21 for Sonnet high: $0.32 of it was Opus (72%), $0.13 Sonnet, and the Haiku judges $0.001. All arms accepted 36 of 36, so on those tasks the Opus spend bought no extra accepted task. That Opus spend, and the effort floor on Sonnet (medium was 28% cheaper at equal acceptance), are the routing decisions with measured room."
+        "summary": "The auto-arm numbers above ($0.44 a task against $0.21 for Sonnet high, 72% of it Opus) come from stage-c and the early proof runs, which predate the shipped router. On the shipped v6c (bench/experiments/V6.md, committed rows) the router costs about what plain Sonnet high costs and half of plain Opus: W2 $2.01 against $2.14 and $4.14 (20 of 20 each); S2 $0.275 a pass against $0.240 for Sonnet high and $0.499 for Opus (29 of 30, 30 of 30, 28 of 30). So the shipped router has no measured room against always-Sonnet-high, and a new benchmark would not find any."
       },
       {
         "id": "selection",
         "summary": "Comparing a model's pass rate across tasks the router chose for it is biased: the router sent each task where it expected it to pass. Only randomized starts (a probe) can separate the model from the task, and they are not built yet."
+      },
+      {
+        "id": "what-is-left",
+        "summary": "The one routing decision with measured room is a Haiku start: v6d cost $1.74 against $3.09 for Sonnet high on 14 tasks (minus 44%, 13 of 14 passed), and failed one held-out task on every Haiku path tried. Which tasks are safe on Haiku differs by person and by task, which is what a learner could settle, but it needs randomized probes on a person's own tasks, and the volume of a person's easy tasks bounds the saving. The effort floor (Sonnet medium against high) was 36 of 36 accepted in every arm of an old run, so those tasks cannot tell the two apart."
       }
     ],
     "built": "/automode learned now reports, per tier and starting model, the tasks, cost per task, checked failures with an interval and the share with no check, and says in the report that it does not prove one model better.",
-    "notBuilt": "a randomized probe that starts a fraction of eligible tasks one model cheaper (or one effort lower) with the ladder as the safety net, and the posterior that would adopt it. It needs a paid benchmark to measure, and none was run."
+    "notBuilt": "a randomized probe for a Haiku start (or one effort lower) with the ladder as the safety net. It is not needed to answer whether the router is wasteful: the committed v6 results already answer that it is not.",
+    "decision": "No new paid benchmark. The committed results already show the shipped router at Sonnet-high cost, and the measured Opus overuse was a property of older versions."
   }
 }
