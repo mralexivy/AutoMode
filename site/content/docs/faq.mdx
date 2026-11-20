@@ -23,6 +23,9 @@ description: "Answers about AutoMode for Claude Code: cost, plans and API keys, 
   <Accordion title="Does it lower quality?">
     In the benchmark, every arm passed all 20 mixed-session steps, and AutoMode passed 29 of 30 single coding tasks against 28 for Opus. Risky work has a quality floor the judge cannot lower, and a mandatory review.
   </Accordion>
+  <Accordion title="Does AutoMode learn from how I work?">
+    Yes, by default, and only on your machine. It starts from tested rules, tries a cheaper start on a small share of your own tasks, keeps it only where your results show it holds up, and backs out where they do not. When you are away it reviews what happened and chooses what to test next. It never changes safety floors or the model you pick. You can make it manual or turn it off in `config.json`. See [How AutoMode learns](/docs/concepts/learning).
+  </Accordion>
   <Accordion title="Does switching models waste the prompt cache?">
     It can, so AutoMode checks every switch against the cache rewrite it costs. Effort changes are free on the 5.5 models. See [Model switches and the prompt cache](/docs/concepts/prompt-cache).
   </Accordion>
