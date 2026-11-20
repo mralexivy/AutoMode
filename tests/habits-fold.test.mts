@@ -24,5 +24,5 @@ test('the streaming script and the library agree, and neither prints text', () =
   const out = execFileSync('node', [new URL('../scripts/habits-fold.mjs', import.meta.url).pathname, file], { encoding: 'utf8' })
   assert.deepEqual(JSON.parse(out), JSON.parse(JSON.stringify(compactOf(foldTranscript(text)))))
   assert.ok(!out.includes('SECRET'))
-  assert.equal(JSON.parse(out).prompts, 2)
+  assert.equal(JSON.parse(out).interactive, true)
 })

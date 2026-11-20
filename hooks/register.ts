@@ -25,7 +25,7 @@ import { useV4, v4AgentSpawn, v4Append, v4Attachment, v4CommandRun, v4Compact, v
 import { setOptions } from './options.ts'
 import { setSources } from './ui/publish.ts'
 import { registerUi, uiStart } from './ui/register-ui.tsx'
-import { ckAfter, ckBefore, ckInit, ckPinging, ckPromptSubmit, ckTurn } from './cachekeeper.ts'
+import { ckAfter, ckBefore, ckEnd, ckInit, ckPromptSubmit, ckTurn } from './cachekeeper.ts'
 
 export { COMPACT_SYSTEM, transcriptOf }
 
@@ -300,10 +300,9 @@ export const register: Register = (on, options) => {
   on('prompt.submit', async ($, e, next) => ckPromptSubmit($, e, (e1: any) => guardianPromptSubmit($, e1, (e2: any) => routePrompt($, e2, next)))).catch(($, e, next) => next(e))
 
   on('turn.step', async function* ($, e, next) {
-    if (ckPinging()) return yield* next(e) // a keep-alive ping is not a task: no routing, no ledger
     try { await gStep($, e) } catch {} // the guardian counts the request; it never blocks one
     if (await useV4($)) {
-      const before = ckBefore(e)
+      const before = await ckBefore($, e)
       const res = yield* v4TurnStep($, e, next)
       await ckAfter($, e, before, res)
       return res
@@ -377,7 +376,7 @@ export const register: Register = (on, options) => {
   // Session and cost guardian (hooks/guardian.ts): its own hooks, each falling through to the engine on any error.
   // Off with AUTOMODE_GUARDIAN=off or config.json "guardian": { "mode": "off" }; the router above is unaffected.
   on('classic.Stop', async ($, e, next) => ((await useV4($)) ? v4Stop($, e, next) : next(e))).catch(($, e, next) => next(e))
-  on('session.end', ($, e, next) => guardianSessionEnd($, e, next)).catch(($, e, next) => next(e))
+  on('session.end', async ($, e, next) => { await ckEnd($); return guardianSessionEnd($, e, next) }).catch(($, e, next) => next(e))
   // The presentation layer (hooks/ui): drawings, the /automode command and the controls. It reads the view atom only.
   registerUi(on)
   on('turn.start', ($, e, next) => { ckTurn(e, true); return guardianTurnStart($, e, next) }).catch(($, e, next) => next(e))

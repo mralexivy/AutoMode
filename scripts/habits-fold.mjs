@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Streams one Claude Code transcript (.jsonl) and prints the numbers AutoMode's habits need, as JSON: typed prompts, each idle gap of
-// three minutes or more with the request before it, and the last request. It prints no prompt text, reply text or path.
+// Streams one Claude Code transcript (.jsonl) and prints the numbers AutoMode's habits need, as JSON: whether a person typed in it, each
+// idle gap of three minutes or more with the request before it, and the last request. It prints no prompt text, reply text or path.
 // It repeats hooks/lib/scan.ts (foldTranscript + compactOf) for files too big to read whole; tests/habits-fold.test.mts keeps them equal.
 // Runs in the person's own node, so it uses nothing newer than node 18.
 import fs from 'node:fs'
@@ -16,11 +16,13 @@ const typed = (r) => {
 
 const by = new Map()
 let prompts = 0
+let entry = null
 const rl = readline.createInterface({ input: fs.createReadStream(process.argv[2], { encoding: 'utf8' }), crlfDelay: Infinity })
 for await (const line of rl) {
   if (!line) continue
   let r
   try { r = JSON.parse(line) } catch { continue }
+  if (entry === null && typeof r.entrypoint === 'string') entry = r.entrypoint
   if (typed(r)) { prompts += 1; continue }
   if (r.type !== 'assistant' || r.isSidechain || !r.message || !r.message.usage || !r.requestId) continue
   const u = r.message.usage
@@ -34,7 +36,7 @@ const reqs = [...by.values()].filter((q) => Number.isFinite(q.at)).sort((a, b) =
 const gaps = []
 for (let i = 1; i < reqs.length; i++) {
   const gapMin = (reqs[i].at - reqs[i - 1].at) / 60000
-  if (gapMin >= 3) gaps.push([reqs[i].at, gapMin, reqs[i - 1].tokens, reqs[i - 1].family, reqs[i - 1].acted])
+  if (gapMin >= 3) gaps.push([reqs[i].at, gapMin, reqs[i - 1].tokens, reqs[i - 1].acted])
 }
 const l = reqs[reqs.length - 1]
-process.stdout.write(JSON.stringify({ prompts, gaps, last: l ? { at: l.at, tokens: l.tokens, family: l.family, acted: l.acted } : null }))
+process.stdout.write(JSON.stringify({ interactive: prompts >= 2 && entry !== 'sdk-cli', gaps, last: l ? { at: l.at, tokens: l.tokens } : null }))

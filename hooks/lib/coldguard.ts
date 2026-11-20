@@ -28,7 +28,8 @@ export function quote(prefixTokens: number, idleMs: number, ttlMs: number, rate:
 
 export type ColdChoice = 'send' | 'compact' | 'cancel' | 'keep'
 export const CHOICES = ['Send anyway', 'Compact first, then send', 'Cancel', 'Send, and keep chats like this warm'] as const
-export const choiceOf = (answer: unknown): ColdChoice => (answer === CHOICES[0] ? 'send' : answer === CHOICES[1] ? 'compact' : answer === CHOICES[3] ? 'keep' : 'cancel')
+// Only an exact Cancel drops a prompt. A dismissed dialog or an answer we do not know sends it, as typed.
+export const choiceOf = (answer: unknown): ColdChoice => (answer === CHOICES[2] ? 'cancel' : answer === CHOICES[1] ? 'compact' : answer === CHOICES[3] ? 'keep' : 'send')
 
 export const askText = (q: ColdQuote, prefixTokens: number) =>
   `The cache went cold ${q.idleMin} min ago. Sending now rewrites about ${Math.round(prefixTokens / 1000)}k tokens of context, about $${q.rewriteUsd.toFixed(2)}.`

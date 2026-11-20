@@ -51,9 +51,9 @@
     "guard": true,
     "guardTokens": 150000,
     "keepWarm": "ask",
-    "keepWarmHours": 4,
+    "keepWarmHours": 2,
     "budgetUsd": 0.5,
     "minRewriteUsd": 0.3,
-    "learnFromHistory": true
+    "learnFromHistory": false
   }
 }

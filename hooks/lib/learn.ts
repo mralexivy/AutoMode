@@ -6,7 +6,9 @@
 // holds labels, counts and times, and no prompt text.
 import type { Family } from './types.ts'
 
-export interface LearnedTask { id: string; bucket: string; family: Family; outcome: 'ok' | 'bad' | 'open'; at: number; control?: boolean }
+// arm says how the memory treated the task: `memory` followed it, `control` ignored it. `flipped` says the task's bucket was already
+// one the memory starts on Opus. `pinned` marks a model the person chose, which no memory decided. `usd` is what the task cost.
+export interface LearnedTask { id: string; bucket: string; family: Family; outcome: 'ok' | 'bad' | 'open'; at: number; arm?: 'memory' | 'control'; flipped?: boolean; pinned?: boolean; usd?: number }
 export interface Learned { v: 1; tasks: LearnedTask[] }
 
 export const EMPTY_LEARNED: Learned = { v: 1, tasks: [] }
@@ -21,7 +23,7 @@ export function parseLearned(text: string): Learned {
   try {
     const j = JSON.parse(text) as Partial<Learned>
     if (j.v !== 1 || !Array.isArray(j.tasks)) return EMPTY_LEARNED
-    return { v: 1, tasks: j.tasks.filter((t) => typeof t?.id === 'string' && typeof t?.bucket === 'string' && typeof t?.at === 'number' && ['ok', 'bad', 'open'].includes(t?.outcome) && ['haiku', 'sonnet', 'opus'].includes(t?.family)).map((t) => (t.control === true ? t : { ...t, control: undefined })).slice(-KEEP) }
+    return { v: 1, tasks: j.tasks.filter((t) => typeof t?.id === 'string' && typeof t?.bucket === 'string' && typeof t?.at === 'number' && ['ok', 'bad', 'open'].includes(t?.outcome) && ['haiku', 'sonnet', 'opus'].includes(t?.family)).map((t) => ({ id: t.id, bucket: t.bucket, family: t.family, outcome: t.outcome, at: t.at, ...(t.arm === 'memory' || t.arm === 'control' ? { arm: t.arm } : {}), ...(t.flipped === true ? { flipped: true } : {}), ...(t.pinned === true ? { pinned: true } : {}), ...(typeof t.usd === 'number' && t.usd >= 0 ? { usd: t.usd } : {}) })).slice(-KEEP) }
   } catch {
     return EMPTY_LEARNED
   }
@@ -30,7 +32,7 @@ export function parseLearned(text: string): Learned {
 // noteTask keeps the family the task started on, and a bad outcome stands. The same task can be noted on every turn.
 export function noteTask(l: Learned, t: LearnedTask): Learned {
   const old = l.tasks.find((x) => x.id === t.id)
-  const merged: LearnedTask = old ? { ...t, control: old.control ?? t.control, family: old.family, outcome: old.outcome === 'bad' ? 'bad' : t.outcome === 'open' ? old.outcome : t.outcome } : t
+  const merged: LearnedTask = old ? { ...t, arm: old.arm ?? t.arm, flipped: old.flipped ?? t.flipped, family: old.family, outcome: old.outcome === 'bad' ? 'bad' : t.outcome === 'open' ? old.outcome : t.outcome } : t
   return { v: 1, tasks: [...l.tasks.filter((x) => x.id !== t.id), merged].slice(-KEEP) }
 }
 
@@ -51,12 +53,24 @@ export function inControl(taskId: string): boolean {
   return h % CONTROL_SHARE === 0
 }
 
-export interface Lift { bucket: string; applied: { n: number; bad: number }; control: { n: number; bad: number } }
-// liftOf compares, for each bucket the memory now starts on Opus, tasks that started on Opus with the control tasks that did not.
+// Lift: for each bucket the memory now starts on Opus, the tasks that followed the memory against the control tasks that ignored it.
+// Only tasks whose bucket was already flipped when they were routed count, and a model the person pinned counts for neither arm,
+// so the two arms differ in the memory alone. Both are counts of bad outcomes; `usd` adds what each arm cost.
+export interface Arm { n: number; bad: number; usd: number }
+export interface Lift { bucket: string; memory: Arm; control: Arm }
+export const MIN_ARM = 20 // below this many tasks in each arm no comparison is shown
 export function liftOf(l: Learned, now: number): Lift[] {
   return opusBuckets(l, now).map((bucket) => {
-    const done = l.tasks.filter((t) => t.bucket === bucket && t.outcome !== 'open' && now - t.at <= WINDOW_MS)
-    const count = (xs: LearnedTask[]) => ({ n: xs.length, bad: xs.filter((t) => t.outcome === 'bad').length })
-    return { bucket, applied: count(done.filter((t) => !t.control && t.family === 'opus')), control: count(done.filter((t) => t.control && t.family !== 'opus')) }
+    const done = l.tasks.filter((t) => t.bucket === bucket && t.flipped && !t.pinned && t.outcome !== 'open' && now - t.at <= WINDOW_MS)
+    const arm = (xs: LearnedTask[]): Arm => ({ n: xs.length, bad: xs.filter((t) => t.outcome === 'bad').length, usd: xs.reduce((a, t) => a + (t.usd ?? 0), 0) })
+    return { bucket, memory: arm(done.filter((t) => t.arm === 'memory')), control: arm(done.filter((t) => t.arm === 'control')) }
   })
+}
+
+// wilson: a 95% interval for a share, which stays honest at small n.
+export function wilson(bad: number, n: number): [number, number] {
+  if (n === 0) return [0, 1]
+  const z = 1.96, p = bad / n, d = 1 + (z * z) / n
+  const c = (p + (z * z) / (2 * n)) / d, m = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / d
+  return [Math.max(0, c - m), Math.min(1, c + m)]
 }

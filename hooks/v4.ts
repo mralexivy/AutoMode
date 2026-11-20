@@ -153,7 +153,7 @@ const S = {
   turnRequests: new Map<string, number>(), // main requests per turn, for outcome records
   stayUp: 0, redoFloor: null as Tier | null, // effortless stay-up after a redo
   heldRoute: null as EffectiveRoute | null,   // a lower route picked mid-turn waits for the turn to end
-  planMode: false, planExited: false, ttlPinned: false, mainRequests: 0, lastOwner: '' as string,
+  planMode: false, planExited: false, ttlPinned: false, mainRequests: 0, lastOwner: '' as string, lastPingAt: 0, taskArm: 'memory' as 'memory' | 'control', taskFlipped: false,
   editLog: [] as { path: string; at: number }[],
   agents: new Map<string, { type: string; effort?: Effort; routed: boolean; judged?: boolean }>(), // every subagent seen, for the ledger
   // Provider errors are scoped to provider and model, and bounded: a model that did not answer BREAKER_FAILURES requests in
@@ -494,7 +494,7 @@ async function noteLearned($: EngineInterface, corrected: boolean) {
   const start = seen?.family ?? S.current.family
   const rescued = start !== 'opus' && S.current.family === 'opus' && env.escalations > 0
   const outcome = corrected || rescued ? 'bad' : env.verified ? 'ok' : 'open'
-  S.learned = noteTask(S.learned, { id: env.taskId, bucket: bucketOf(a.hm.tier, a.need?.model), family: start, outcome, at: await now($), ...(inControl(env.taskId) ? { control: true } : {}) })
+  S.learned = noteTask(S.learned, { id: env.taskId, bucket: bucketOf(a.hm.tier, a.need?.model), family: start, outcome, at: await now($), arm: S.taskArm, ...(S.taskFlipped ? { flipped: true } : {}), ...(S.lastOwner === 'user-override' || S.pinFamily ? { pinned: true } : {}), usd: Math.round((S.taskUsd ?? 0) * 1e4) / 1e4 })
   await fsWrite($, await learnedFile($), JSON.stringify(S.learned)).catch(() => {})
 }
 
@@ -1108,6 +1108,8 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   const decided = heldBelow ? choice.best : routed
   if (!shortcut && stage !== 'complete' && stage !== 'repo-op' && stage !== 'reconsider') S.taskDecision = { taskId: env.taskId, family: decided.family, effort: decided.effort }
   S.lastAuto = shortcut ? S.lastAuto : { verdicts, need, hm, taskId: env.taskId }
+  // The memory's arm for this task, fixed now at the routing decision: was the bucket already one it starts on Opus, and did this task follow it?
+  if (!shortcut && hm) { S.taskFlipped = !!S.cfg.learning && opusBuckets(S.learned, at).includes(bucketOf(hm.tier, need?.model)); S.taskArm = inControl(env.taskId) ? 'control' : 'memory' }
   S.decidedPlanMode = S.planMode
   S.lastRisk = env.risk.effective
   if (answer) S.lastDemand = demandOf({ ...answer, consequence: env.risk.effective }, S.planMode, substantiveFailures(env))
@@ -1832,7 +1834,8 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
     // The first request of a fresh session: its size is the estimate for the next session's first prompt.
     if (!S.cache && !S.firstPrefixSaved) { S.firstPrefixSaved = true; await saveFirstPrefix($, prefix) }
     // The usage settles the cache lifetime that mode.ts only guessed. A lifetime set by the person stands.
-    if (!S.ttlPinned) {
+    // A ping since the last request keeps the cache alive on its own, so a warm return then proves nothing about the lifetime.
+    if (!S.ttlPinned && !(S.lastPingAt > (S.cache?.lastRequestAt ?? 0))) {
       const w = usageOf(u)
       const proved = inferTtl({ input: w.input, cacheRead: w.cacheRead, cacheWrite: w.cacheWrite5m + w.cacheWrite1h, gapMs: S.cache?.lastRequestAt != null ? t - S.cache.lastRequestAt : null, assumedMs: S.ttl, compacted: compactedHere || shrank })
       if (proved && proved !== S.ttl) {
@@ -2954,7 +2957,9 @@ function noteVerdict(d: Decision) {
 // v4Snapshot: the router's state as the UI reads it. Copies; computes nothing.
 // v4CacheView: what the cache-keeper wiring (hooks/cachekeeper.ts) reads. It owns no state of its own about the cache.
 export function v4CacheView() {
-  return { active: S.mode === 'auto', mainRequests: S.mainRequests, model: S.cache?.model ?? null, prefixTokens: S.cache?.prefixTokens ?? 0, lastRequestAt: S.cache?.lastRequestAt ?? null, ttlMs: S.ttl, provider: S.provider, cfg: S.cfg as unknown }
+  return { active: S.mode === 'auto', mainRequests: S.mainRequests, model: S.cache?.model ?? null, prefixTokens: S.cache?.prefixTokens ?? 0, lastRequestAt: S.cache?.lastRequestAt ?? null, ttlMs: S.ttl, provider: S.provider, cfg: S.cfg as unknown,
+    // A ping would write a new cache when the live model is not the one that was cached, or the context was compacted since.
+    stale: (!!S.current?.model && !!S.cache?.model && S.current.model !== S.cache.model) || (!!S.compactedAt && S.compactedAt >= (S.cache?.lastRequestAt ?? 0)) }
 }
 // v4TaskRaw: the signals that say whether the work is unfinished (lib/keepgate.ts decides).
 export function v4TaskRaw() {
@@ -2968,6 +2973,8 @@ export function v4TaskRaw() {
   }
 }
 export { dataDir as v4DataDir }
+// v4NotePing: a keepalive ping went out at this time.
+export const v4NotePing = (at: number) => { S.lastPingAt = at }
 export const v4Learned = () => ({ learned: S.learned, learning: !!S.cfg.learning })
 export async function v4ResetLearned($: EngineInterface) { S.learned = EMPTY_LEARNED; await fsWrite($, await learnedFile($), JSON.stringify(EMPTY_LEARNED)).catch(() => {}) }
 export function v4Rate(model: string | null) { return prices().rates[familyOf(model ?? '') ?? 'sonnet'] }
@@ -3012,7 +3019,7 @@ export async function setSessionMode($: EngineInterface, m: Mode | null) {
 // freshSession is the per-session routing state; config, mode, provider and priors are per process.
 function freshSession() {
   return {
-    mainRequests: 0, lastOwner: '',
+    mainRequests: 0, lastOwner: '', lastPingAt: 0,
     current: null, pending: null, envelope: null, lastSummary: '', resetPending: true,
     votes: { tier: null, n: 0 }, requestsSinceSwitch: 0, verifiedSinceSwitch: false, cache: null, lastReply: '', lastPromptText: '',
     turnPrompt: new Map(), workers: new Map(), agents: new Map(), lastCheck: null, editedSinceCheck: false,

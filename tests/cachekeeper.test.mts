@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { inferTtl, FIVE_MIN, ONE_HOUR } from '../hooks/lib/ttl.ts'
 import { shouldAsk, quote, choiceOf, askText, CHOICES } from '../hooks/lib/coldguard.ts'
-import { KEEP_OFF, startKeepWarm, tick, afterPing, marginMs, rewriteUsd, pingCostUsd, clampHours } from '../hooks/lib/keepwarm.ts'
+import { KEEP_OFF, startKeepWarm, armKeepWarm, tick, afterPing, marginMs, rewriteUsd, pingCostUsd, pingActualUsd, clampHours } from '../hooks/lib/keepwarm.ts'
 import { ckConfig, CK_DEFAULTS } from '../hooks/lib/cachecfg.ts'
 import { ANTHROPIC } from '../hooks/lib/prices.ts'
 
@@ -48,7 +48,8 @@ test('cold guard: prices the rewrite at 2x input on 1h and 1.25x on 5m, and maps
   assert.equal(choiceOf(CHOICES[1]), 'compact')
   assert.equal(choiceOf(CHOICES[2]), 'cancel')
   assert.equal(choiceOf(CHOICES[3]), 'keep')
-  assert.equal(choiceOf(undefined), 'cancel')
+  assert.equal(choiceOf(undefined), 'send') // a dismissed dialog sends the prompt as typed
+  assert.equal(choiceOf('Cancel'), 'cancel')
   assert.match(askText(q1, 200_000), /200k tokens.*\$1\.60/)
 })
 
@@ -61,13 +62,13 @@ test('keepwarm: pings 8 minutes before a 1h cache expires and 90 s before a 5m o
 })
 test('keepwarm: a cache that already expired is never pinged: that ping would write the prefix again', () => {
   const s = startKeepWarm(0, 4)
-  assert.deepEqual(tick(s, tickIn({ now: ONE_HOUR + 1 })), { action: 'stop', reason: 'the cache already expired' })
+  assert.deepEqual(tick(s, tickIn({ now: ONE_HOUR + 1 })), { action: 'stop', reason: 'the cache already expired', halt: false })
 })
 test('keepwarm: waits while a turn runs or with no prefix, stops at the time limit', () => {
   const s = startKeepWarm(0, 1)
   assert.equal(tick(s, tickIn({ now: 55 * MIN, busy: true })).action, 'wait')
   assert.equal(tick(s, tickIn({ now: 55 * MIN, prefixTokens: 0 })).action, 'wait')
-  assert.deepEqual(tick(s, tickIn({ now: 61 * MIN })), { action: 'stop', reason: 'the keep-warm time ran out' })
+  assert.deepEqual(tick(s, tickIn({ now: 61 * MIN })), { action: 'stop', reason: 'the keep-warm time ran out', halt: false })
   assert.equal(tick(KEEP_OFF, tickIn({ now: 55 * MIN })).action, 'wait')
 })
 test('keepwarm: stops when the pings so far would cost more than one rewrite', () => {
@@ -82,17 +83,35 @@ test('keepwarm: waits until the chat has three requests', () => {
   assert.equal(tick(s, tickIn({ now: 55 * MIN, mainRequests: 2 })).action, 'wait')
   assert.equal(tick(s, tickIn({ now: 55 * MIN, mainRequests: 3 })).action, 'ping')
 })
-test('keepwarm: one ping that wrote is forgiven, two in a row stop it, a read resets the count, no answer stops at once', () => {
+test('keepwarm: on a small prefix one write is forgiven and two stop it; on a big prefix the first write stops it; no answer stops at once', () => {
   const s = startKeepWarm(0, 4)
+  const small = { cacheRead: 30_000, cacheWrite: 20_000 }
   const wrote = { cacheRead: 1000, cacheWrite: 300_000 }
   const read = { cacheRead: 300_000, cacheWrite: 100 }
-  const one = afterPing(s, 1, 0.1, wrote)
+  const one = afterPing(s, 1, 0.1, small)
   assert.equal(one.on, true)
   assert.equal(one.writeStreak, 1)
-  assert.match(afterPing(one, 2, 0.1, wrote).stopped ?? '', /wrote the cache/)
+  assert.match(afterPing(one, 2, 0.1, small).halted ?? '', /wrote the cache/)
   assert.equal(afterPing(one, 2, 0.1, read).writeStreak, 0)
-  assert.match(afterPing(s, 1, 0.1, null).stopped ?? '', /no answer/)
+  assert.match(afterPing(s, 1, 0.1, wrote).halted ?? '', /wrote the cache/) // a big write costs dollars: stop at the first
+  assert.match(afterPing(s, 1, 0.1, null).halted ?? '', /no answer/)
   assert.equal(afterPing(s, 5, 0.25, { cacheRead: 9, cacheWrite: 0 }).pingUsd, 0.25)
+})
+test('keepwarm: a halt survives the mod\'s own restart, and only the person can clear it; the session budget carries over', () => {
+  const halted = afterPing({ ...startKeepWarm(0, 4), pingUsd: 0.2 }, 1, 0.1, { cacheRead: 1000, cacheWrite: 300_000 })
+  assert.equal(armKeepWarm(halted, 99, 4).on, false)
+  const manual = startKeepWarm(99, 4, halted)
+  assert.equal(manual.on, true)
+  assert.equal(manual.halted, null)
+  assert.ok(manual.pingUsd > 0.29) // the spend carries over
+  assert.equal(armKeepWarm({ ...startKeepWarm(0, 1), on: false }, 5, 4).on, true)
+})
+test('keepwarm: a write is priced at the write rate, not the read rate', () => {
+  const rate = { input: 4, output: 20, cacheReadX: 0.05 }
+  const wrote = pingActualUsd({ cacheRead: 0, cacheWrite: 100_000 }, rate, ONE_HOUR)
+  const read = pingActualUsd({ cacheRead: 100_000, cacheWrite: 0 }, rate, ONE_HOUR)
+  assert.ok(wrote > 30 * read, `${wrote} vs ${read}`)
+  assert.ok(marginMs(FIVE_MIN) >= 150_000)
 })
 test('keepwarm: hours are clamped to 24, and junk is zero', () => {
   assert.equal(clampHours(99), 24)
