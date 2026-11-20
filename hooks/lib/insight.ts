@@ -82,6 +82,8 @@ export function learnedText(o: { habits: Habits; learned: Learned; now: number; 
     if (rb.insights.length) lines.push(`  Last: ${rb.insights[rb.insights.length - 1].text}`)
     if (rb.focus.length) lines.push(`  In focus to test next: ${rb.focus.map((f) => `${f.tier}/${f.complexity} ${f.key === 'haiku' ? 'Haiku start' : 'Sonnet medium'}`).join(', ')}.`)
     if (rb.score.proposed) lines.push(`  The model's proposals so far: ${rb.score.proposed} kept, ${rb.score.confirmed} confirmed by your tasks, ${rb.score.refuted} refuted.`)
+    const pl = rb.score.plain, ex = rb.score.extra
+    if (pl && ex && pl.kept + ex.kept) lines.push(`  Against the simple rule (test the costliest untried tiers first): the rule's picks ${pl.kept} kept, ${pl.confirmed} confirmed, ${pl.refuted} refuted; picks only the model made ${ex.kept} kept, ${ex.confirmed} confirmed, ${ex.refuted} refuted.`)
   }
   lines.push('', 'Reset it all with /automode learned reset. Reading history is on only after /automode learned import or cacheKeeper.learnFromHistory; route memory is off with learning, in config.json.')
   return lines.join('\n')

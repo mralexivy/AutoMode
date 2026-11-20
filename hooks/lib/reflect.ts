@@ -12,16 +12,18 @@
 import type { Learned } from './learn.ts'
 import { WARMUP, failed as failedTask, reportOf, statusOf, type ExpKey } from './experiment.ts'
 
-export interface Focus { key: ExpKey; tier: 'T1' | 'T2' | 'T3'; complexity: 'standard' | 'complex'; priority: number; why: string; at: number }
+export interface Focus { key: ExpKey; tier: 'T1' | 'T2' | 'T3'; complexity: 'standard' | 'complex'; priority: number; why: string; at: number; plain?: boolean } // plain: the simple rule (costliest untested tiers first) would have picked it too
+export interface Split { kept: number; confirmed: number; refuted: number }
+export interface Score { proposed: number; confirmed: number; refuted: number; plain?: Split; extra?: Split } // plain: proposals the simple rule agrees with; extra: only the model's
 export interface Run { at: number; usd: number; proposals: number; kept: number; model: boolean }
 export interface Rulebook {
   v: 1
   focus: Focus[]
   insights: { at: number; text: string }[] // the last few passes, newest last
   runs: Run[] // the last passes with what each cost
-  score: { proposed: number; confirmed: number; refuted: number } // how the model's proposals fared against the person's tasks
+  score: Score // how the model's proposals fared against the person's tasks
 }
-export const EMPTY_RULEBOOK: Rulebook = { v: 1, focus: [], insights: [], runs: [], score: { proposed: 0, confirmed: 0, refuted: 0 } }
+export const EMPTY_RULEBOOK: Rulebook = { v: 1, focus: [], insights: [], runs: [], score: { proposed: 0, confirmed: 0, refuted: 0, plain: { kept: 0, confirmed: 0, refuted: 0 }, extra: { kept: 0, confirmed: 0, refuted: 0 } } }
 
 export const FOCUS_MS = 30 * 86_400_000
 export const MAX_PROPOSALS = 3
@@ -37,11 +39,12 @@ export function parseRulebook(text: string): Rulebook {
   try {
     const j = JSON.parse(text) as Partial<Rulebook>
     if (j.v !== 1) return EMPTY_RULEBOOK
-    const focus = (Array.isArray(j.focus) ? j.focus : []).filter((f) => f && KEYS.includes(f.key) && TIERS.includes(f.tier) && ['standard', 'complex'].includes(f.complexity) && Number.isFinite(f.at)).map((f) => ({ key: f.key, tier: f.tier, complexity: f.complexity, priority: Math.min(3, Math.max(1, Math.round(num(f.priority, 2)))), why: String(f.why ?? '').slice(0, 160), at: f.at }))
+    const focus = (Array.isArray(j.focus) ? j.focus : []).filter((f) => f && KEYS.includes(f.key) && TIERS.includes(f.tier) && ['standard', 'complex'].includes(f.complexity) && Number.isFinite(f.at)).map((f) => ({ key: f.key, tier: f.tier, complexity: f.complexity, priority: Math.min(3, Math.max(1, Math.round(num(f.priority, 2)))), why: String(f.why ?? '').slice(0, 160), at: f.at, ...(f.plain === true ? { plain: true } : {}) }))
     const insights = (Array.isArray(j.insights) ? j.insights : []).filter((i) => i && typeof i.text === 'string' && Number.isFinite(i.at)).map((i) => ({ at: i.at, text: i.text.slice(0, 600) })).slice(-5)
     const runs = (Array.isArray(j.runs) ? j.runs : []).filter((r) => r && Number.isFinite(r.at) && Number.isFinite(r.usd)).map((r) => ({ at: r.at, usd: r.usd, proposals: num(r.proposals), kept: num(r.kept), model: r.model === true })).slice(-30)
-    const sc = (j.score ?? {}) as Partial<Rulebook['score']>
-    return { v: 1, focus: focus.slice(-12), insights, runs, score: { proposed: num(sc.proposed), confirmed: num(sc.confirmed), refuted: num(sc.refuted) } }
+    const sc = (j.score ?? {}) as Partial<Score>
+    const split = (x: Partial<Split> | undefined): Split => ({ kept: num(x?.kept), confirmed: num(x?.confirmed), refuted: num(x?.refuted) })
+    return { v: 1, focus: focus.slice(-12), insights, runs, score: { proposed: num(sc.proposed), confirmed: num(sc.confirmed), refuted: num(sc.refuted), plain: split(sc.plain), extra: split(sc.extra) } }
   } catch {
     return EMPTY_RULEBOOK
   }
@@ -136,15 +139,23 @@ export function vet(l: Learned, ps: Focus[], now: number): { kept: Focus[]; drop
 }
 
 // scoreOf: how the model's earlier proposals fared. A proposal is confirmed when its experiment was adopted, refuted when it was reverted.
-export function scoreOf(rb: Rulebook, l: Learned, now: number): Rulebook['score'] {
-  let confirmed = 0, refuted = 0
+export function scoreOf(rb: Rulebook, l: Learned, now: number): Score {
+  const tally = { plain: { confirmed: 0, refuted: 0 }, extra: { confirmed: 0, refuted: 0 } }
   for (const f of rb.focus) {
     const st = statusOf(l, f.key, `${f.tier}/${f.complexity}`, now).state
-    if (st === 'adopted') confirmed += 1
-    else if (st === 'reverted') refuted += 1
+    const side = f.plain ? tally.plain : tally.extra
+    if (st === 'adopted') side.confirmed += 1
+    else if (st === 'reverted') side.refuted += 1
   }
-  return { proposed: rb.score.proposed, confirmed: Math.max(rb.score.confirmed, confirmed), refuted: Math.max(rb.score.refuted, refuted) }
+  const keep = (a: number, b: number) => Math.max(a, b)
+  const p = rb.score.plain ?? { kept: 0, confirmed: 0, refuted: 0 }, x = rb.score.extra ?? { kept: 0, confirmed: 0, refuted: 0 }
+  const plain = { kept: p.kept, confirmed: keep(p.confirmed, tally.plain.confirmed), refuted: keep(p.refuted, tally.plain.refuted) }
+  const extra = { kept: x.kept, confirmed: keep(x.confirmed, tally.extra.confirmed), refuted: keep(x.refuted, tally.extra.refuted) }
+  return { proposed: rb.score.proposed, confirmed: plain.confirmed + extra.confirmed, refuted: plain.refuted + extra.refuted, plain, extra }
 }
+
+// plainPicks: what the simple rule would test next, the three costliest tiers with no cheaper start tried yet.
+export const plainPicks = (fs: Finding[]) => fs.filter((f) => f.id.startsWith('untested:')).sort((a, b) => b.usd - a.usd).slice(0, MAX_PROPOSALS).map((f) => f.id.slice('untested:'.length))
 
 // ---------- when a pass runs ----------
 
@@ -182,10 +193,13 @@ export async function runPass(o: { l: Learned; rb: Rulebook; now: number; extra?
   const { kept, dropped } = reflection ? vet(o.l, reflection.proposals, o.now) : { kept: [], dropped: 0 }
   const live = o.rb.focus.filter((f) => o.now - f.at <= FOCUS_MS && !kept.some((k) => k.key === f.key && k.tier === f.tier && k.complexity === f.complexity))
   const text = reflection ? `${reflection.insight}${kept.length ? ` Next to test: ${kept.map((k) => `${k.tier}/${k.complexity} ${k.key}`).join(', ')}.` : ''}` : local
+  const base = plainPicks(fs)
+  const marked = kept.map((k) => ({ ...k, plain: base.includes(k.tier) }))
+  const nPlain = marked.filter((k) => k.plain).length
   const rb: Rulebook = {
-    v: 1, focus: [...live, ...kept].slice(-12), insights: [...o.rb.insights, { at: o.now, text }].slice(-5),
+    v: 1, focus: [...live, ...marked].slice(-12), insights: [...o.rb.insights, { at: o.now, text }].slice(-5),
     runs: [...o.rb.runs, { at: o.now, usd, proposals: reflection?.proposals.length ?? 0, kept: kept.length, model: !!reflection }].slice(-30),
-    score: { proposed: o.rb.score.proposed + kept.length, confirmed: o.rb.score.confirmed, refuted: o.rb.score.refuted },
+    score: { ...o.rb.score, proposed: o.rb.score.proposed + kept.length, plain: { ...(o.rb.score.plain ?? { kept: 0, confirmed: 0, refuted: 0 }), kept: (o.rb.score.plain?.kept ?? 0) + nPlain }, extra: { ...(o.rb.score.extra ?? { kept: 0, confirmed: 0, refuted: 0 }), kept: (o.rb.score.extra?.kept ?? 0) + kept.length - nPlain } },
   }
   rb.score = scoreOf(rb, o.l, o.now)
   void dropped

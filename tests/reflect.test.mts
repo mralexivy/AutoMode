@@ -110,7 +110,8 @@ test('the score: a proposal the person\'s tasks confirm or refute is counted, an
   const B = bucketOf('T3', 'standard')
   let l = learned(10)
   const rb: Rulebook = { ...EMPTY_RULEBOOK, focus: [{ key: 'haiku', tier: 'T3', complexity: 'standard', priority: 1, why: '', at: NOW }], score: { proposed: 1, confirmed: 0, refuted: 0 } }
-  assert.deepEqual(scoreOf(rb, l, NOW), { proposed: 1, confirmed: 0, refuted: 0 })
+  const sc = scoreOf(rb, l, NOW)
+  assert.deepEqual({ proposed: sc.proposed, confirmed: sc.confirmed, refuted: sc.refuted }, { proposed: 1, confirmed: 0, refuted: 0 })
   for (let i = 0; i < 12; i++) { l = noteTask(l, task({ at: NOW - 5 * DAY + i, usd: 0.1, exp: { k: 'haiku', a: 'probe', b: B } })); l = noteTask(l, task({ at: NOW - 5 * DAY + i, usd: 0.5, exp: { k: 'haiku', a: 'hold', b: B } })) }
   assert.equal(scoreOf(rb, l, NOW).confirmed, 1)
   let bad = learned(10)
@@ -122,7 +123,7 @@ test('the score: a proposal the person\'s tasks confirm or refute is counted, an
 
 test('parseRulebook keeps good fields and drops junk; the report shows the last pass, the focus and the score', () => {
   assert.deepEqual(parseRulebook('nope'), EMPTY_RULEBOOK)
-  const rb: Rulebook = { ...EMPTY_RULEBOOK, focus: [{ key: 'haiku', tier: 'T3', complexity: 'standard', priority: 2, why: 'w', at: 5 }], insights: [{ at: 5, text: 'T3 takes the money.' }], runs: [{ at: 5, usd: 0.003, proposals: 1, kept: 1, model: true }], score: { proposed: 1, confirmed: 0, refuted: 0 } }
+  const rb: Rulebook = { ...EMPTY_RULEBOOK, focus: [{ key: 'haiku', tier: 'T3', complexity: 'standard', priority: 2, why: 'w', at: 5 }], insights: [{ at: 5, text: 'T3 takes the money.' }], runs: [{ at: 5, usd: 0.003, proposals: 1, kept: 1, model: true }], score: { proposed: 1, confirmed: 0, refuted: 0, plain: { kept: 0, confirmed: 0, refuted: 0 }, extra: { kept: 0, confirmed: 0, refuted: 0 } } }
   assert.deepEqual(parseRulebook(JSON.stringify(rb)), rb)
   const junk = parseRulebook(JSON.stringify({ ...rb, focus: [{ key: 'rm', tier: 'T3', complexity: 'standard', at: 1 }, ...rb.focus] }))
   assert.equal(junk.focus.length, 1)
@@ -155,4 +156,16 @@ test('failed: a bad or escalated task counts against the cheaper start unless th
   assert.equal(failed(t({ cause: 'defect' })), true)
   assert.equal(failed(t({ cause: 'environment' })), false)
   assert.equal(failed(t({ cause: 'flaky', esc: true })), false)
+})
+
+test('the score splits proposals into the simple rule\'s picks and the picks only the model made', async () => {
+  const { plainPicks } = await import('../hooks/lib/reflect.ts')
+  const l = learned(10)
+  assert.deepEqual(plainPicks(findings(l, NOW)), ['T3'])
+  const r = await runPass({ l, rb: EMPTY_RULEBOOK, now: NOW, model: true, complete: async () => ({ text: GOOD, usd: 0.001 }) })
+  assert.equal(r.rb.focus[0].plain, true)
+  assert.equal(r.rb.score.plain?.kept, 1)
+  assert.equal(r.rb.score.extra?.kept, 0)
+  assert.equal(parseRulebook(JSON.stringify(r.rb)).focus[0].plain, true)
+  assert.match(learnedText({ learned: l, habits: EMPTY_HABITS, rulebook: r.rb, now: NOW } as any), /Against the simple rule/)
 })

@@ -6,6 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 - Failure causes and task kinds in route learning. A failure caused by the environment or a flaky test no longer counts against a cheaper start, and the learning pass sees cost and failures by kind of task (docs, tests, config, code). A new `bench/learner-leaderboard.mts` plays synthetic people with a hidden truth against the engine, at $0.
+- The learning pass scores the model's proposals against a simple rule (test the costliest untried tiers first), so `/automode learned` shows whether the model adds anything beyond it.
 
 - Cache keeper (#170). The cache lifetime is now measured from request usage (5 or 60 minutes) instead of assumed; `cacheKeeper.ttl` in `config.json` or an env switch pins it. A cold-send guard asks before a person's prompt rewrites a context of 150,000 tokens or more after the cache expired, and offers send, compact first or cancel. `/automode keepwarm <hours>` is an opt-in keepalive: it pings before the cache expires, starts at the chat's third request, and stops at the time limit, at break-even against a rewrite, or when pings keep writing. Pings never reach the router, the ledger or route learning. Ideas from the cache-keeper mod (MIT).
 
