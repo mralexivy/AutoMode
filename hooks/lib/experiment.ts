@@ -56,7 +56,9 @@ const Phi = (z: number) => {
 
 export interface ArmStats { n: number; checked: number; failed: number; usd: number; usd2: number }
 const empty = (): ArmStats => ({ n: 0, checked: 0, failed: 0, usd: 0, usd2: 0 })
-export const failed = (t: LearnedTask) => t.outcome === 'bad' || t.esc === true
+// A task failed the cheaper model when it was corrected or rescued, unless its checks failed for a reason that says nothing about the model:
+// a broken environment, a missing tool or a flaky test.
+export const failed = (t: LearnedTask) => (t.outcome === 'bad' || t.esc === true) && t.cause !== 'environment' && t.cause !== 'flaky'
 
 function add(a: ArmStats, t: LearnedTask): ArmStats {
   const u = t.usd ?? 0

@@ -132,3 +132,27 @@ test('parseRulebook keeps good fields and drops junk; the report shows the last 
   assert.match(text, /In focus to test next: T3\/standard Haiku start/)
   assert.match(text, /1 kept, 0 confirmed/)
 })
+
+test('causeOf and kindOf: a defect outranks flaky and environment; a kind needs every edited path to agree', async () => {
+  const { causeOf, kindOf } = await import('../hooks/lib/learn.ts')
+  assert.equal(causeOf([]), undefined)
+  assert.equal(causeOf([{ class: 'environment' }, { class: 'defect' }]), 'defect')
+  assert.equal(causeOf([{ class: 'environment' }, { class: 'flaky' }]), 'flaky')
+  assert.equal(causeOf([{ class: 'environment' }]), 'environment')
+  assert.equal(causeOf([{ class: 'other' }]), 'unknown')
+  assert.equal(kindOf([]), 'none')
+  assert.equal(kindOf(['README.md', 'docs/a.mdx']), 'docs')
+  assert.equal(kindOf(['tests/a.test.ts']), 'tests')
+  assert.equal(kindOf(['package.json']), 'config')
+  assert.equal(kindOf(['README.md', 'src/a.ts']), 'code')
+})
+
+test('failed: a bad or escalated task counts against the cheaper start unless the environment or a flake caused it', async () => {
+  const { failed } = await import('../hooks/lib/experiment.ts')
+  const t = (x: Partial<LearnedTask>) => ({ id: 'a', bucket: 'T2/sonnet', family: 'haiku', outcome: 'bad', at: 1, ...x }) as LearnedTask
+  assert.equal(failed(t({})), true)
+  assert.equal(failed(t({ outcome: 'ok', esc: true })), true)
+  assert.equal(failed(t({ cause: 'defect' })), true)
+  assert.equal(failed(t({ cause: 'environment' })), false)
+  assert.equal(failed(t({ cause: 'flaky', esc: true })), false)
+})

@@ -63,7 +63,7 @@ import type { AgentSnap, Ledger, RouterSnap } from './ui/view.ts'
 import { sid, fsRead, sessionModel, fsWrite, fsExists, fork, proc, sDel, sGet, sKeys, sSet, agents, status } from './lib/io.ts'
 import { BUILD_ASK, FORK_PROMPT, buildHandoff, completeness, forkWorth, parseForkFacts, renderHandoff, withFork } from './lib/handoff.ts'
 import { cacheNote, closeEpisodes, consultOutcome, durationsFrom, effortFirst, episodeBase, openEpisode, patchEpisode, influence, planFiles, priceConsult, RECUR_PRIOR } from './lib/rescue.ts'
-import { EMPTY_LEARNED, bucketOf, inControl, noteTask, opusBuckets, parseLearned, type Learned } from './lib/learn.ts'
+import { EMPTY_LEARNED, bucketOf, causeOf, inControl, kindOf, noteTask, opusBuckets, parseLearned, type Learned } from './lib/learn.ts'
 import { assign as assignExp, bucketOf as expBucket, pickKey, type ExpArm, type ExpKey } from './lib/experiment.ts'
 import { EMPTY_RULEBOOK, focusFor, parseRulebook, type Rulebook } from './lib/reflect.ts'
 import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence, type DelegationMode } from './lib/delegation.ts'
@@ -503,7 +503,7 @@ async function noteLearned($: EngineInterface, corrected: boolean) {
   const start = seen?.family ?? S.current.family
   const rescued = start !== 'opus' && S.current.family === 'opus' && env.escalations > 0
   const outcome = corrected || rescued ? 'bad' : env.verified ? 'ok' : 'open'
-  S.learned = noteTask(S.learned, { id: env.taskId, bucket: bucketOf(a.hm.tier, a.need?.model), family: start, outcome, at: await now($), arm: S.taskArm, ...(env.escalations > 0 ? { esc: true } : {}), ...(S.taskExp && S.taskExp.taskId === env.taskId ? { exp: { k: S.taskExp.key, a: S.taskExp.arm, b: S.taskExp.bucket } } : {}), ...(S.taskFlipped ? { flipped: true } : {}), ...(S.lastOwner === 'user-override' || S.pinFamily ? { pinned: true } : {}), usd: Math.round((S.taskUsd ?? 0) * 1e4) / 1e4 })
+  S.learned = noteTask(S.learned, { id: env.taskId, bucket: bucketOf(a.hm.tier, a.need?.model), family: start, outcome, at: await now($), arm: S.taskArm, ...(env.escalations > 0 ? { esc: true } : {}), ...(causeOf(env.failures) ? { cause: causeOf(env.failures) } : {}), kind: kindOf(env.editedPaths), ...(S.taskExp && S.taskExp.taskId === env.taskId ? { exp: { k: S.taskExp.key, a: S.taskExp.arm, b: S.taskExp.bucket } } : {}), ...(S.taskFlipped ? { flipped: true } : {}), ...(S.lastOwner === 'user-override' || S.pinFamily ? { pinned: true } : {}), usd: Math.round((S.taskUsd ?? 0) * 1e4) / 1e4 })
   await fsWrite($, await learnedFile($), JSON.stringify(S.learned)).catch(() => {})
 }
 

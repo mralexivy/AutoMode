@@ -10,7 +10,7 @@
 // mod keeps a score of how many of the model's proposals the person's tasks confirmed, so it can tell whether the model helps.
 // Step 1 needs no model, so a pass still gives an account of the gaps when the model is off, out of budget or unavailable.
 import type { Learned } from './learn.ts'
-import { WARMUP, reportOf, statusOf, type ExpKey } from './experiment.ts'
+import { WARMUP, failed as failedTask, reportOf, statusOf, type ExpKey } from './experiment.ts'
 
 export interface Focus { key: ExpKey; tier: 'T1' | 'T2' | 'T3'; complexity: 'standard' | 'complex'; priority: number; why: string; at: number }
 export interface Run { at: number; usd: number; proposals: number; kept: number; model: boolean }
@@ -70,6 +70,12 @@ export function findings(l: Learned, now: number, extra: { pingUsd: number; save
   for (const [k, r] of [...g].sort((a, b) => b[1].usd - a[1].usd).slice(0, 5)) {
     if (r.n >= 3) out.push({ id: `spend:${k}`, usd: r.usd, text: `${k}: ${r.n} tasks, ${usd2(r.usd / r.n)} each, ${usd2(r.usd)} in all (${spend ? Math.round((100 * r.usd) / spend) : 0}% of ${usd2(spend)}); ${r.esc} rescued, ${r.open} unchecked` })
   }
+  // By what the task changed, and why failures happened: a failure caused by the environment or a flaky test says nothing about the model.
+  const byKind = new Map<string, { n: number; usd: number; failed: number }>()
+  for (const t of recent) { if (!t.kind || t.kind === 'none') continue; const r = byKind.get(t.kind) ?? { n: 0, usd: 0, failed: 0 }; r.n += 1; r.usd += t.usd ?? 0; r.failed += failedTask(t) ? 1 : 0; byKind.set(t.kind, r) }
+  for (const [k, r] of [...byKind].sort((a, b) => b[1].usd - a[1].usd)) if (r.n >= 3) out.push({ id: `kind:${k}`, usd: r.usd, text: `${k} tasks: ${r.n}, ${usd2(r.usd / r.n)} each, ${r.failed} failed because of the work` })
+  const noise = recent.filter((t) => (t.esc || t.outcome === 'bad') && (t.cause === 'environment' || t.cause === 'flaky')).length
+  if (noise) out.push({ id: 'noise', usd: 0, text: `${noise} rescued or failed tasks were caused by the environment or a flaky test, and do not count against any model` })
   // What the experiments found.
   for (const s of reportOf(l, now)) out.push({ id: `exp:${s.key}:${s.bucket}`, usd: 0, text: `${s.bucket} ${s.key} experiment: ${s.state} (${s.why}); probe ${s.probe.n} tasks ${usd2(s.probe.n ? s.probe.usd / s.probe.n : 0)} each ${s.probe.failed} failed, hold ${s.hold.n} tasks ${usd2(s.hold.n ? s.hold.usd / s.hold.n : 0)} each ${s.hold.failed} failed` })
   // Kinds of task with no experiment yet, and where failures would go unseen.

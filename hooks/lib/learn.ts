@@ -8,7 +8,30 @@ import type { Family } from './types.ts'
 
 // arm says how the memory treated the task: `memory` followed it, `control` ignored it. `flipped` says the task's bucket was already
 // one the memory starts on Opus. `pinned` marks a model the person chose, which no memory decided. `usd` is what the task cost.
-export interface LearnedTask { id: string; bucket: string; family: Family; outcome: 'ok' | 'bad' | 'open'; at: number; arm?: 'memory' | 'control'; flipped?: boolean; pinned?: boolean; usd?: number; esc?: boolean; exp?: { k: 'haiku' | 'effort'; a: 'hold' | 'probe'; b: string } }
+export interface LearnedTask { id: string; bucket: string; family: Family; outcome: 'ok' | 'bad' | 'open'; at: number; arm?: 'memory' | 'control'; flipped?: boolean; pinned?: boolean; usd?: number; esc?: boolean; exp?: { k: 'haiku' | 'effort'; a: 'hold' | 'probe'; b: string }; cause?: Cause; kind?: Kind }
+// Why a task's checks failed, from the envelope's failure records: a defect in the work, the environment (a missing tool, a broken setup), or a
+// flaky test. Only a defect, or a correction by the person, says anything about whether a cheaper model was enough.
+export type Cause = 'defect' | 'environment' | 'flaky' | 'unknown'
+// What the task changed, from the paths it edited: documentation, tests, configuration, other code, or nothing.
+export type Kind = 'docs' | 'tests' | 'config' | 'code' | 'none'
+export const CAUSES: Cause[] = ['defect', 'environment', 'flaky', 'unknown']
+export const KINDS: Kind[] = ['docs', 'tests', 'config', 'code', 'none']
+
+export function causeOf(failures: { class: string }[]): Cause | undefined {
+  if (!failures.length) return undefined
+  if (failures.some((f) => f.class === 'defect')) return 'defect'
+  if (failures.some((f) => f.class === 'flaky')) return 'flaky'
+  if (failures.some((f) => f.class === 'environment')) return 'environment'
+  return 'unknown'
+}
+export function kindOf(paths: string[]): Kind {
+  if (!paths.length) return 'none'
+  const is = (re: RegExp) => paths.every((p) => re.test(p))
+  if (is(/\.(md|mdx|rst|txt)$/i)) return 'docs'
+  if (is(/(^|[\\/])(tests?|__tests__|spec)[\\/]|[._-](test|spec)\.[a-z]+$|^test_/i)) return 'tests'
+  if (is(/\.(json|ya?ml|toml|ini|cfg|env|lock)$/i)) return 'config'
+  return 'code'
+}
 export interface Learned { v: 1; tasks: LearnedTask[] }
 
 export const EMPTY_LEARNED: Learned = { v: 1, tasks: [] }
@@ -23,7 +46,7 @@ export function parseLearned(text: string): Learned {
   try {
     const j = JSON.parse(text) as Partial<Learned>
     if (j.v !== 1 || !Array.isArray(j.tasks)) return EMPTY_LEARNED
-    return { v: 1, tasks: j.tasks.filter((t) => typeof t?.id === 'string' && typeof t?.bucket === 'string' && typeof t?.at === 'number' && ['ok', 'bad', 'open'].includes(t?.outcome) && ['haiku', 'sonnet', 'opus'].includes(t?.family)).map((t) => ({ id: t.id, bucket: t.bucket, family: t.family, outcome: t.outcome, at: t.at, ...(t.arm === 'memory' || t.arm === 'control' ? { arm: t.arm } : {}), ...(t.flipped === true ? { flipped: true } : {}), ...(t.pinned === true ? { pinned: true } : {}), ...(typeof t.usd === 'number' && t.usd >= 0 ? { usd: t.usd } : {}), ...(t.esc === true ? { esc: true } : {}), ...(t.exp && (t.exp.k === 'haiku' || t.exp.k === 'effort') && (t.exp.a === 'hold' || t.exp.a === 'probe') && typeof t.exp.b === 'string' ? { exp: { k: t.exp.k, a: t.exp.a, b: t.exp.b } } : {}) })).slice(-KEEP) }
+    return { v: 1, tasks: j.tasks.filter((t) => typeof t?.id === 'string' && typeof t?.bucket === 'string' && typeof t?.at === 'number' && ['ok', 'bad', 'open'].includes(t?.outcome) && ['haiku', 'sonnet', 'opus'].includes(t?.family)).map((t) => ({ id: t.id, bucket: t.bucket, family: t.family, outcome: t.outcome, at: t.at, ...(t.arm === 'memory' || t.arm === 'control' ? { arm: t.arm } : {}), ...(t.flipped === true ? { flipped: true } : {}), ...(t.pinned === true ? { pinned: true } : {}), ...(typeof t.usd === 'number' && t.usd >= 0 ? { usd: t.usd } : {}), ...(t.esc === true ? { esc: true } : {}), ...(CAUSES.includes(t.cause as Cause) ? { cause: t.cause } : {}), ...(KINDS.includes(t.kind as Kind) ? { kind: t.kind } : {}), ...(t.exp && (t.exp.k === 'haiku' || t.exp.k === 'effort') && (t.exp.a === 'hold' || t.exp.a === 'probe') && typeof t.exp.b === 'string' ? { exp: { k: t.exp.k, a: t.exp.a, b: t.exp.b } } : {}) })).slice(-KEEP) }
   } catch {
     return EMPTY_LEARNED
   }
@@ -32,7 +55,7 @@ export function parseLearned(text: string): Learned {
 // noteTask keeps the family the task started on, and a bad outcome stands. The same task can be noted on every turn.
 export function noteTask(l: Learned, t: LearnedTask): Learned {
   const old = l.tasks.find((x) => x.id === t.id)
-  const merged: LearnedTask = old ? { ...t, arm: old.arm ?? t.arm, flipped: old.flipped ?? t.flipped, exp: old.exp ?? t.exp, esc: old.esc || t.esc, family: old.family, outcome: old.outcome === 'bad' ? 'bad' : t.outcome === 'open' ? old.outcome : t.outcome } : t
+  const merged: LearnedTask = old ? { ...t, arm: old.arm ?? t.arm, flipped: old.flipped ?? t.flipped, exp: old.exp ?? t.exp, esc: old.esc || t.esc, cause: old.cause ?? t.cause, kind: t.kind ?? old.kind, family: old.family, outcome: old.outcome === 'bad' ? 'bad' : t.outcome === 'open' ? old.outcome : t.outcome } : t
   return { v: 1, tasks: [...l.tasks.filter((x) => x.id !== t.id), merged].slice(-KEEP) }
 }
 

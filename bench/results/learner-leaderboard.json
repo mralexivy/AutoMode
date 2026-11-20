@@ -1,0 +1,115 @@
+{
+  "basis": "synthetic people with a hidden truth; the real experiment engine; $0",
+  "episodes": 150,
+  "length": 240,
+  "report": [
+    {
+      "person": "everything suits",
+      "engine": {
+        "costVsShipped": 0.74,
+        "suitedFound": 0.48,
+        "medianFoundAtTask": 153,
+        "wrongAdopted": 0
+      },
+      "ranked": {
+        "costVsShipped": 0.62,
+        "suitedFound": 0.64,
+        "medianFoundAtTask": 134,
+        "wrongAdopted": 0
+      },
+      "oracle": {
+        "costVsShipped": 0.6,
+        "suitedFound": 0.66,
+        "medianFoundAtTask": 117,
+        "wrongAdopted": 0
+      },
+      "no-causes": {
+        "costVsShipped": 0.74,
+        "suitedFound": 0.48,
+        "medianFoundAtTask": 151,
+        "wrongAdopted": 0
+      }
+    },
+    {
+      "person": "nothing suits",
+      "engine": {
+        "costVsShipped": 0.98,
+        "suitedFound": 0,
+        "medianFoundAtTask": null,
+        "wrongAdopted": 0
+      },
+      "ranked": {
+        "costVsShipped": 0.98,
+        "suitedFound": 0,
+        "medianFoundAtTask": null,
+        "wrongAdopted": 0
+      },
+      "oracle": {
+        "costVsShipped": 0.98,
+        "suitedFound": 0,
+        "medianFoundAtTask": null,
+        "wrongAdopted": 0
+      },
+      "no-causes": {
+        "costVsShipped": 0.98,
+        "suitedFound": 0,
+        "medianFoundAtTask": null,
+        "wrongAdopted": 0
+      }
+    },
+    {
+      "person": "the simple half suits",
+      "engine": {
+        "costVsShipped": 0.84,
+        "suitedFound": 0.63,
+        "medianFoundAtTask": 135,
+        "wrongAdopted": 0
+      },
+      "ranked": {
+        "costVsShipped": 0.79,
+        "suitedFound": 0.73,
+        "medianFoundAtTask": 120,
+        "wrongAdopted": 0
+      },
+      "oracle": {
+        "costVsShipped": 0.78,
+        "suitedFound": 0.74,
+        "medianFoundAtTask": 98,
+        "wrongAdopted": 0
+      },
+      "no-causes": {
+        "costVsShipped": 0.84,
+        "suitedFound": 0.62,
+        "medianFoundAtTask": 134,
+        "wrongAdopted": 0
+      }
+    },
+    {
+      "person": "suits, with a flaky environment",
+      "engine": {
+        "costVsShipped": 0.9,
+        "suitedFound": 0.35,
+        "medianFoundAtTask": 161,
+        "wrongAdopted": 0
+      },
+      "ranked": {
+        "costVsShipped": 0.83,
+        "suitedFound": 0.56,
+        "medianFoundAtTask": 140,
+        "wrongAdopted": 0
+      },
+      "oracle": {
+        "costVsShipped": 0.81,
+        "suitedFound": 0.59,
+        "medianFoundAtTask": 121,
+        "wrongAdopted": 0
+      },
+      "no-causes": {
+        "costVsShipped": 0.95,
+        "suitedFound": 0,
+        "medianFoundAtTask": null,
+        "wrongAdopted": 0
+      }
+    }
+  ]
+}
