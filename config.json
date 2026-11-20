@@ -55,5 +55,6 @@
     "budgetUsd": 0.5,
     "minRewriteUsd": 0.3,
     "learnFromHistory": false
-  }
+  },
+  "adaptive": true
 }

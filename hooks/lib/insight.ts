@@ -3,6 +3,7 @@
 // an interval, or "no conclusion yet".
 import { MIN_RACE, returnProb, type Habits } from './habits.ts'
 import type { Feat } from './model.ts'
+import { MIN_ARM_N, WARMUP, meanUsd, readiness, reportOf } from './experiment.ts'
 import { MIN_ARM, liftOf, opusBuckets, startReport, wilson, type Arm, type Learned } from './learn.ts'
 
 const pct = (x: number) => `${Math.round(x * 100)}%`
@@ -56,6 +57,22 @@ export function learnedText(o: { habits: Habits; learned: Learned; now: number; 
         const [lo, hi] = wilson(r.bad, checked)
         lines.push(`  ${r.tier} on ${r.family}: ${r.n} tasks, $${(r.usd / r.n).toFixed(2)} each; of ${checked} checked, ${r.bad} failed${checked ? ` (${pct(lo)} to ${pct(hi)})` : ''}; ${r.open} had no check.`)
       }
+    }
+  }
+  if (o.learning) {
+    const exp = reportOf(l, now)
+    const kind = { haiku: 'a Haiku start', effort: 'Sonnet at medium effort' } as const
+    lines.push('', 'Adaptive routing. AutoMode tries a cheaper start on a fixed share of eligible tasks (never on risk, a pinned model or a task whose failures nobody would see), compares realized cost and failures against the tasks that followed the shipped rules, and adopts what is cheaper and no worse on your work. It reverts what is worse.')
+    if (!exp.length) {
+      for (const tier of ['T1', 'T2', 'T3']) {
+        const r = readiness(l, `${tier}/x`, now)
+        if (r.total) lines.push(`  ${tier}: ${r.ok ? 'ready, a probe starts soon' : r.why === 'blind' ? `no probes yet: only ${r.checked} of ${r.total} tasks ran a check, so a failure could go unseen` : `warming up: ${r.total} of ${WARMUP} tasks seen`}`)
+      }
+      if (!['T1', 'T2', 'T3'].some((t) => readiness(l, `${t}/x`, now).total)) lines.push('  No tasks yet.')
+    }
+    for (const x of exp) {
+      const f = (a: typeof x.probe) => `${a.n} tasks, $${meanUsd(a).toFixed(2)} each, ${a.failed} failed`
+      lines.push(`  ${x.bucket}, ${kind[x.key]}: ${x.state} (${x.why}). Probe ${f(x.probe)}; hold ${f(x.hold)}${x.state === 'collecting' && (x.probe.n < MIN_ARM_N || x.hold.n < MIN_ARM_N) ? `; needs ${MIN_ARM_N} in each` : ''}.`)
     }
   }
   lines.push('', 'Reset it all with /automode learned reset. Reading history is on only after /automode learned import or cacheKeeper.learnFromHistory; route memory is off with learning, in config.json.')

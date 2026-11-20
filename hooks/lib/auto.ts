@@ -62,6 +62,10 @@ export interface AutoInput {
   reachHaiku?: boolean                                     // low-tier work without critical risk can run on Haiku
   opusOnEvidence?: boolean                                 // T3 starts on Sonnet high; Opus comes from failure evidence
   haikuFirst?: boolean                                     // with opusOnEvidence: T3 work may start on Haiku (setting haikuFirst: t3)
+  // Adaptive routing (lib/experiment.ts): this task is a probe. `haiku` makes Haiku eligible for T1 to T3 work without critical risk;
+  // `sonnetEffort` lowers Sonnet's effort floor to that effort. The caller has already ruled out risk, pins and commands, and every
+  // other floor still applies on top.
+  probe?: { haiku?: boolean; sonnetEffort?: Effort }
   start?: 'v6a' | 'v6b'                                    // v6 start rules (lib/execution.ts); absent is legacy
   current: { family: Family; effort: Effort } | null
   cost: (family: Family, effort: Effort) => number         // one attempt, cache-neutral (optimizer.attemptCost)
@@ -77,8 +81,9 @@ export const hmModel = (t: Tier): Family => (t === 'T0' ? 'haiku' : t === 'T1' |
 export const effortlessFloor = (need: FamilyVerdict | null): number | null => (need ? RANK[need.model] : null)
 
 // effortMinFor: the quality floor for one model, with the hard-work floor for Opus on top of the caller's floors.
-function effortMinFor(family: Family, i: Pick<AutoInput, 'need' | 'hm' | 'floors' | 'opusOnEvidence' | 'start' | 'consequence'>): Effort | undefined {
+function effortMinFor(family: Family, i: Pick<AutoInput, 'need' | 'hm' | 'floors' | 'opusOnEvidence' | 'start' | 'consequence' | 'probe'>): Effort | undefined {
   const floor = i.floors.effortMin?.[family]
+  if (family === 'sonnet' && i.probe?.sonnetEffort) return maxEffort(floor ?? 'low', i.probe.sonnetEffort)
   if (family === 'sonnet' && i.start) return maxEffort(floor ?? 'low', v6SonnetFloor(i.start, i.hm?.tier, i.hm?.complexity, i.consequence))
   const hard = i.hm?.tier === 'T4' || effortlessFloor(i.need) === RANK.fable
   if (family === 'opus' && hard) return maxEffort(floor ?? 'low', 'high')
@@ -87,7 +92,7 @@ function effortMinFor(family: Family, i: Pick<AutoInput, 'need' | 'hm' | 'floors
   return floor
 }
 
-type Evidence = Pick<AutoInput, 'need' | 'hm' | 'consequence' | 'reachHaiku' | 'opusOnEvidence' | 'haikuFirst' | 'start'>
+type Evidence = Pick<AutoInput, 'need' | 'hm' | 'consequence' | 'reachHaiku' | 'opusOnEvidence' | 'haikuFirst' | 'start' | 'probe'>
 
 // opusRequired: why this task rules out every weaker model, or null.
 function opusRequired(i: Evidence): string | null {
@@ -119,6 +124,8 @@ export function eligibilityOf(family: Family, i: Evidence): { eligibility: Eligi
   if (required) return { eligibility: 'ineligible', why: [...why, required] }
   if (family === 'sonnet') return { eligibility: 'eligible', why: [...why, 'sonnet: no rule requires opus'] }
   if (!i.hm) return { eligibility: 'ineligible', why: [...why, 'haiku needs both judges; the automode judge did not answer'] }
+  // Adaptive routing: a probe starts this kind of task on Haiku to learn whether it does as well here.
+  if (i.probe?.haiku && tierRank(i.hm.tier) >= 1 && tierRank(i.hm.tier) <= 3 && i.consequence !== 'critical') return { eligibility: 'eligible', why: [...why, 'adaptive: a probe starts this kind of task on Haiku'] }
   // v6: Haiku only where a miss costs little (lib/execution.ts v6HaikuStart), whatever model a judge's need names.
   if (i.start) return v6HaikuStart(i.hm.tier, i.hm.complexity, i.consequence) ? { eligibility: 'eligible', why: [...why, `${i.start}: bounded work on Haiku`] } : { eligibility: 'ineligible', why: [...why, `${i.start}: Haiku only for T0, or T1 with no risk`] }
   if (i.reachHaiku && tierRank(i.hm.tier) <= 2 && i.need.model !== 'opus' && i.consequence !== 'critical') return { eligibility: 'eligible', why: [...why, 'haiku: low tier, no critical risk'] }
