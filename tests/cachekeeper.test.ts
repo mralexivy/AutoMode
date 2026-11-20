@@ -1,4 +1,5 @@
-// Cache keeper in the mocked engine: the cold-send guard asks before a big cold rewrite. The decisions themselves are in tests/cachekeeper.test.mts.
+// Cache keeper in the mocked engine: the cold-send guard asks before a big cold rewrite, and keep warm pings without
+// becoming a task. The decisions themselves are in tests/cachekeeper.test.mts.
 import { describe, expect, test } from 'claude-code/testing'
 import { harness, judge, records, says } from './harness.ts'
 
@@ -49,5 +50,33 @@ describe('Cold-send guard', () => {
     await h.submit($, 'and the docs')
     await flush($, h)
     expect(guards(h).length).toBe(0)
+  })
+})
+
+describe('Keep warm', () => {
+  const more = async ($: any, h: any, n: number) => { for (let i = 0; i < n; i++) { await h.step($); await h.complete($) } }
+  test('is off until asked, then pings before expiry and stays out of the task ledger', async ($, on) => {
+    on('command.run', () => ({ text: 'unused' }))
+    const h = harness(on, T())
+    await warmChat($, h)
+    await more($, h, 2)
+    const stepsBefore = h.steps.length
+    const off: any = await $.command.run({ command: 'automode', args: 'keepwarm', origin: { kind: 'composer' } })
+    expect(String(off?.text)).toContain('off')
+    expect(h.forks.length).toBe(0)
+    const on1: any = await $.command.run({ command: 'automode', args: 'keepwarm 2', origin: { kind: 'composer' } })
+    expect(String(on1?.text)).toContain('Keep warm is on')
+    await h.clock.advance(HOUR - 7 * 60_000 + 31_000)
+    expect(h.forks.filter((p: string) => /keep-alive ping/.test(p)).length).toBeGreaterThanOrEqual(1)
+    expect(h.steps.length).toBe(stepsBefore)
+  })
+
+  test('waits for the third request before the first ping', async ($, on) => {
+    on('command.run', () => ({ text: 'unused' }))
+    const h = harness(on, T())
+    await warmChat($, h)
+    await $.command.run({ command: 'automode', args: 'keepwarm 2', origin: { kind: 'composer' } })
+    await h.clock.advance(HOUR - 7 * 60_000 + 31_000)
+    expect(h.forks.filter((p: string) => /keep-alive ping/.test(p)).length).toBe(0)
   })
 })

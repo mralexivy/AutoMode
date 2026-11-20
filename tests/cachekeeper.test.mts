@@ -1,8 +1,9 @@
-// The pure cache-keeper modules: measured lifetime, cold-send guard, and the config reader.
+// The pure cache-keeper modules: measured lifetime, cold-send guard, keepalive rules, and the config reader.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { inferTtl, FIVE_MIN, ONE_HOUR } from '../hooks/lib/ttl.ts'
 import { shouldAsk, quote, choiceOf, askText, CHOICES } from '../hooks/lib/coldguard.ts'
+import { KEEP_OFF, startKeepWarm, tick, afterPing, marginMs, rewriteUsd, pingCostUsd, clampHours } from '../hooks/lib/keepwarm.ts'
 import { ckConfig, CK_DEFAULTS } from '../hooks/lib/cachecfg.ts'
 import { ANTHROPIC } from '../hooks/lib/prices.ts'
 
@@ -50,9 +51,54 @@ test('cold guard: prices the rewrite at 2x input on 1h and 1.25x on 5m, and maps
   assert.match(askText(q1, 200_000), /200k tokens.*\$1\.60/)
 })
 
+const tickIn = (over = {}) => ({ mainRequests: 5, now: 0, lastActivityAt: 0, ttlMs: ONE_HOUR, busy: false, prefixTokens: 300_000, rate: opus, ...over })
+test('keepwarm: pings 8 minutes before a 1h cache expires and 90 s before a 5m one', () => {
+  const s = startKeepWarm(0, 4)
+  assert.equal(tick(s, tickIn({ now: ONE_HOUR - marginMs(ONE_HOUR) - 1 })).action, 'wait')
+  assert.equal(tick(s, tickIn({ now: ONE_HOUR - marginMs(ONE_HOUR) })).action, 'ping')
+  assert.equal(tick(s, tickIn({ now: FIVE_MIN - 90_000, ttlMs: FIVE_MIN })).action, 'ping')
+})
+test('keepwarm: waits while a turn runs or with no prefix, stops at the time limit', () => {
+  const s = startKeepWarm(0, 1)
+  assert.equal(tick(s, tickIn({ now: 55 * MIN, busy: true })).action, 'wait')
+  assert.equal(tick(s, tickIn({ now: 55 * MIN, prefixTokens: 0 })).action, 'wait')
+  assert.deepEqual(tick(s, tickIn({ now: 61 * MIN })), { action: 'stop', reason: 'the keep-warm time ran out' })
+  assert.equal(tick(KEEP_OFF, tickIn({ now: 55 * MIN })).action, 'wait')
+})
+test('keepwarm: stops when the pings so far would cost more than one rewrite', () => {
+  const rw = rewriteUsd(300_000, opus, ONE_HOUR)
+  const per = pingCostUsd(300_000, opus)
+  assert.ok(per < rw / 15) // a 1h-cache ping is about a twentieth of a rewrite
+  const spent = { ...startKeepWarm(0, 24), pingUsd: rw - per / 2 }
+  assert.equal(tick(spent, tickIn({ now: 55 * MIN })).action, 'stop')
+})
+test('keepwarm: waits until the chat has three requests', () => {
+  const s = startKeepWarm(0, 4)
+  assert.equal(tick(s, tickIn({ now: 55 * MIN, mainRequests: 2 })).action, 'wait')
+  assert.equal(tick(s, tickIn({ now: 55 * MIN, mainRequests: 3 })).action, 'ping')
+})
+test('keepwarm: one ping that wrote is forgiven, two in a row stop it, a read resets the count, no answer stops at once', () => {
+  const s = startKeepWarm(0, 4)
+  const wrote = { cacheRead: 1000, cacheWrite: 300_000 }
+  const read = { cacheRead: 300_000, cacheWrite: 100 }
+  const one = afterPing(s, 1, 0.1, wrote)
+  assert.equal(one.on, true)
+  assert.equal(one.writeStreak, 1)
+  assert.match(afterPing(one, 2, 0.1, wrote).stopped ?? '', /wrote the cache/)
+  assert.equal(afterPing(one, 2, 0.1, read).writeStreak, 0)
+  assert.match(afterPing(s, 1, 0.1, null).stopped ?? '', /no answer/)
+  assert.equal(afterPing(s, 5, 0.25, { cacheRead: 9, cacheWrite: 0 }).pingUsd, 0.25)
+})
+test('keepwarm: hours are clamped to 24, and junk is zero', () => {
+  assert.equal(clampHours(99), 24)
+  assert.equal(clampHours(-1), 0)
+  assert.equal(clampHours(NaN), 0)
+  assert.equal(startKeepWarm(0, 0).on, false)
+})
+
 test('config: defaults, valid values and junk', () => {
   assert.deepEqual(ckConfig({}), CK_DEFAULTS)
   assert.deepEqual(ckConfig(null), CK_DEFAULTS)
-  assert.deepEqual(ckConfig({ cacheKeeper: { ttl: '5', guard: false, guardTokens: 90000 } }), { ttl: '5', guard: false, guardTokens: 90000 })
-  assert.deepEqual(ckConfig({ cacheKeeper: { ttl: 'x', guardTokens: 'big' } }), CK_DEFAULTS)
+  assert.deepEqual(ckConfig({ cacheKeeper: { ttl: '5', guard: false, guardTokens: 90000, keepWarmHours: 99 } }), { ttl: '5', guard: false, guardTokens: 90000, keepWarmHours: 24 })
+  assert.deepEqual(ckConfig({ cacheKeeper: { ttl: 'x', guardTokens: 'big', keepWarmHours: -3 } }), CK_DEFAULTS)
 })

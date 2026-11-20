@@ -2,6 +2,7 @@
 // is the per-session routing switch, from the bar's toggle or /automode on|off. Every drawing reads the view atom (publish.ts), never a file or a model, and falls back to the
 // engine's own on any error, so a surface that cannot draw, or a drawing that fails, never touches routing or the
 // guardian. AUTOMODE_UI=off turns the layer off alone.
+import { keepWarmCommand } from '../cachekeeper.ts'
 import { fsRead } from '../lib/io.ts'
 import { atom, read } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
@@ -82,7 +83,7 @@ export function registerUi(on: On) {
       const v = await snapshotView($)
       if (!v) return { text: 'AutoMode is starting.' }
       const now = Date.now()
-      const { sub } = cmd.parse(e.args)
+      const { sub, rest } = cmd.parse(e.args)
       const name = cmd.resolve(sub)
       if (!name) return { text: cmd.unknownText(sub) }
       const head = barText(barSegments(v, 200, now))
@@ -91,6 +92,7 @@ export function registerUi(on: On) {
         case 'details': return { text: `${head}\n${detailsText(v, now)}` }
         case 'setup': return { text: cmd.setupText(v, await cmdFacts($)) }
         case 'settings': return { text: cmd.settingsText(v, await cmdFacts($)) }
+        case 'keepwarm': return { text: await keepWarmCommand($, rest) }
         case 'debug': return { text: cmd.debugText(v, await cmdFacts($), now) }
         case 'on':
         case 'off': {

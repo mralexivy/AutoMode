@@ -6,7 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
-- Cache keeper (#170). The cache lifetime is now measured from request usage (5 or 60 minutes) instead of assumed; `cacheKeeper.ttl` in `config.json` or an env switch pins it. A cold-send guard asks before a person's prompt rewrites a context of 150,000 tokens or more after the cache expired, and offers send, compact first or cancel. It falls through to send when no dialog can answer, and never asks for scripted prompts. Ideas from the cache-keeper mod (MIT). No saving is claimed yet: `bench/cache-opportunity.mts` sizes the ceiling from local transcripts. A keepalive built on `$.model.fork` was tried and left out: its ping does not read the chat's message cache.
+- Cache keeper (#170). The cache lifetime is now measured from request usage (5 or 60 minutes) instead of assumed; `cacheKeeper.ttl` in `config.json` or an env switch pins it. A cold-send guard asks before a person's prompt rewrites a context of 150,000 tokens or more after the cache expired, and offers send, compact first or cancel. `/automode keepwarm <hours>` is an opt-in keepalive: it pings before the cache expires, starts at the chat's third request, and stops at the time limit, at break-even against a rewrite, or when pings keep writing. Pings never reach the router, the ledger or route learning. In one real pair of runs (Sonnet, 231k tokens, 10.5 minutes idle) it cut the next prompt from $0.55 to $0.09. Ideas from the cache-keeper mod (MIT).
 
 ### Changed
 

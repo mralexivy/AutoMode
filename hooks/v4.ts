@@ -153,7 +153,7 @@ const S = {
   turnRequests: new Map<string, number>(), // main requests per turn, for outcome records
   stayUp: 0, redoFloor: null as Tier | null, // effortless stay-up after a redo
   heldRoute: null as EffectiveRoute | null,   // a lower route picked mid-turn waits for the turn to end
-  planMode: false, planExited: false, ttlPinned: false,
+  planMode: false, planExited: false, ttlPinned: false, mainRequests: 0,
   editLog: [] as { path: string; at: number }[],
   agents: new Map<string, { type: string; effort?: Effort; routed: boolean; judged?: boolean }>(), // every subagent seen, for the ledger
   // Provider errors are scoped to provider and model, and bounded: a model that did not answer BREAKER_FAILURES requests in
@@ -1837,6 +1837,7 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
         S.ttl = proved
       }
     }
+    S.mainRequests += 1
     S.cache = { model: u.model ?? model, effort: sentEffort, prefixTokens: prefix, lastRequestAt: t, ttlMs: S.ttl, effortSharesCache: S.effortShared, outputTokens: u.output_tokens ?? 0 }
   }
   markWarm(r.family, sentEffort, res, t)
@@ -2950,7 +2951,7 @@ function noteVerdict(d: Decision) {
 // v4Snapshot: the router's state as the UI reads it. Copies; computes nothing.
 // v4CacheView: what the cache-keeper wiring (hooks/cachekeeper.ts) reads. It owns no state of its own about the cache.
 export function v4CacheView() {
-  return { active: S.mode === 'auto', model: S.cache?.model ?? null, prefixTokens: S.cache?.prefixTokens ?? 0, lastRequestAt: S.cache?.lastRequestAt ?? null, ttlMs: S.ttl, provider: S.provider, cfg: S.cfg as unknown }
+  return { active: S.mode === 'auto', mainRequests: S.mainRequests, model: S.cache?.model ?? null, prefixTokens: S.cache?.prefixTokens ?? 0, lastRequestAt: S.cache?.lastRequestAt ?? null, ttlMs: S.ttl, provider: S.provider, cfg: S.cfg as unknown }
 }
 export function v4Rate(model: string | null) { return prices().rates[familyOf(model ?? '') ?? 'sonnet'] }
 export function v4NoteCache(rec: Record<string, unknown>) { S.records.push({ v: 1, sessionId: S.sessionId, ...rec }) }

@@ -259,6 +259,7 @@ Type `/automode` and a subcommand. With no subcommand, you get the bar as text.
 | `/automode off` | Turn routing off for this session. Your own model and effort run as set. Nothing is written to your settings. |
 | `/automode setup` | A live checklist: mod loaded, router on, activation, routing mode, bar shown. It ends with the one next step. |
 | `/automode settings` | The settings in force, and where to change each one. |
+| `/automode keepwarm <hours>` (or `off`) | Keep a big chat's cache warm. A small ping before the cache expires reads the cached context and restarts its lifetime. Off by default. It starts at the chat's third request and stops at the time limit (up to 24 hours), when the pings cost more than a cold rewrite, or when pings keep failing. |
 | `/automode debug` | A report to paste into a bug issue. It holds no prompt text, and it masks your home folder. |
 | `/automode help` | The subcommands, the `am:` prompt commands and tips. |
 | `/automode:usage [--trace]` | Model calls, tokens, cache use and estimated API cost for the session. `--trace` adds one row per stage. |
@@ -267,7 +268,7 @@ Type `/automode` and a subcommand. With no subcommand, you get the bar as text.
 
 **Benchmarks run from a terminal,** not from the chat: `node bench/judge-bench-effortless.mts` and `node bench/style-check.mts --dry`. See [Benchmarks](#benchmarks).
 
-**Cache keeper.** Two small guards on the prompt cache, set in `config.json` under `cacheKeeper`. `ttl` (`auto`, `5` or `60`) sets the cache lifetime; `auto` measures it from the usage on each request instead of guessing. `guard` (on by default) asks before your own prompt rewrites a context of `guardTokens` (150,000) or more after the cache expired. It shows the price and offers send, compact first or cancel. A first audit of 30 days of one person's transcripts put idle-expiry rewrites at about 5% of the calculated spend. A benchmark for the saving is still to come.
+**Cache keeper.** Three guards on the prompt cache, set in `config.json` under `cacheKeeper`. `ttl` (`auto`, `5` or `60`) sets the cache lifetime; `auto` measures it from the usage on each request instead of guessing. `guard` (on by default) asks before your own prompt rewrites a context of `guardTokens` (150,000) or more after the cache expired, and shows the price. `/automode keepwarm` is the keepalive above. In one measured pair of runs (Sonnet, 231k tokens, 10.5 minutes idle, 5-minute cache) the cold prompt cost $0.55 and the kept-warm one $0.09, pings included. That is one pair, a mechanism check and not an average. Over 30 days of one person's transcripts, idle-expiry rewrites were about 5% of the calculated spend.
 
 Filing a bug? Run `/automode debug` and paste the result.
 
@@ -441,7 +442,7 @@ AutoMode stands on open source work. All of it is MIT licensed.
 
 - **Effort rules** in `hooks/lib/effort.ts` and the bar techniques in `hooks/ui/` are ported from [effortless](https://github.com/HeyCubit/effortless) by HeyCubit.
 - **Classifier contract and switch payback** are adapted from [claude-router](https://github.com/alexei-led/claude-router) by Alexei Ledenev and from [jev-router](https://github.com/gargpratyush/jev-router).
-- **Cache keeper**: the measured cache lifetime and the cold-send guard follow the ideas in [cache-keeper](https://github.com/nateherkai/claude-code-mods) by Nate Herk. The code is written fresh.
+- **Cache keeper**: the measured cache lifetime, the cold-send guard and the keepalive follow the ideas in [cache-keeper](https://github.com/nateherkai/claude-code-mods) by Nate Herk. The code is written fresh.
 - Upstream copies and checksums are in [`bench/external/`](bench/external/).
 
 ## License
