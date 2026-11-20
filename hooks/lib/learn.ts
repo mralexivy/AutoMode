@@ -74,3 +74,20 @@ export function wilson(bad: number, n: number): [number, number] {
   const c = (p + (z * z) / (2 * n)) / d, m = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / d
   return [Math.max(0, c - m), Math.min(1, c + m)]
 }
+
+// startReport: what the person's own tasks say about the model each task started on, by tier. It is a report and not a test: the
+// router chose each start from the task, so a cheaper start may have met easier tasks. Only the control group and a randomized probe
+// (not built yet) could separate the model from the task. `open` tasks ran no check, so their quality is unknown.
+export interface StartRow { tier: string; family: Family; n: number; ok: number; bad: number; open: number; usd: number }
+export function startReport(l: Learned, now: number): StartRow[] {
+  const g = new Map<string, StartRow>()
+  for (const t of l.tasks) {
+    if (now - t.at > WINDOW_MS || t.pinned) continue
+    const tier = t.bucket.split('/')[0]
+    const k = `${tier}|${t.family}`
+    const r = g.get(k) ?? { tier, family: t.family, n: 0, ok: 0, bad: 0, open: 0, usd: 0 }
+    r.n += 1; r[t.outcome] += 1; r.usd += t.usd ?? 0
+    g.set(k, r)
+  }
+  return [...g.values()].sort((a, b) => a.tier.localeCompare(b.tier) || a.family.localeCompare(b.family))
+}

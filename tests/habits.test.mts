@@ -7,7 +7,7 @@ import { baseAt, compactOf, finishScan, foldTranscript, interactive, observeComp
 import { gate, stateOf, weakestFor, type GateInput } from '../hooks/lib/keepgate.ts'
 import { ANTHROPIC } from '../hooks/lib/prices.ts'
 import { bootstrap, champion, challenger, flat, gapsOf, none, simulate, trainBefore } from '../bench/lib/gap-replay.mts'
-import { EMPTY_LEARNED, inControl, liftOf, noteTask, parseLearned, wilson, MIN_ARM, CONTROL_SHARE } from '../hooks/lib/learn.ts'
+import { EMPTY_LEARNED, inControl, liftOf, noteTask, parseLearned, startReport, wilson, MIN_ARM, CONTROL_SHARE } from '../hooks/lib/learn.ts'
 import { learnedText } from '../hooks/lib/insight.ts'
 
 const opus = ANTHROPIC.rates.opus
@@ -233,4 +233,19 @@ test('replay: pinging a session that never returns loses, covering a return wins
   assert.ok(challenger(EMPTY_HABITS).name.startsWith('challenger'))
   const [lo, hi] = bootstrap(new Map([[0, 1], [1, 3], [2, 2]]))
   assert.ok(lo <= hi)
+})
+
+test('startReport: tasks by tier and starting model, pinned ones left out, with cost and checked outcomes', () => {
+  const now = 1_000_000
+  let l = EMPTY_LEARNED
+  const add = (id: string, tier: string, family: 'haiku' | 'sonnet' | 'opus', outcome: 'ok' | 'bad' | 'open', usd: number, extra: object = {}) => { l = noteTask(l, { id, bucket: `${tier}/sonnet`, family, outcome, at: now, usd, ...extra }) }
+  add('a', 'T3', 'sonnet', 'ok', 0.2); add('b', 'T3', 'sonnet', 'bad', 0.4); add('c', 'T3', 'sonnet', 'open', 0.3); add('d', 'T3', 'opus', 'ok', 2); add('e', 'T3', 'opus', 'ok', 1.8, { pinned: true })
+  const rows = startReport(l, now)
+  assert.deepEqual(rows.map((r) => `${r.tier}/${r.family}/${r.n}`), ['T3/opus/1', 'T3/sonnet/3'])
+  const so = rows.find((r) => r.family === 'sonnet')!
+  assert.deepEqual([so.ok, so.bad, so.open], [1, 1, 1])
+  assert.ok(Math.abs(so.usd - 0.9) < 1e-9)
+  const text = learnedText({ habits: EMPTY_HABITS, learned: l, now, keepWarm: 'ask', learning: true, consent: false })
+  assert.match(text, /T3 on sonnet: 3 tasks, \$0\.30 each; of 2 checked, 1 failed/)
+  assert.match(text, /do not prove that one model is better/)
 })

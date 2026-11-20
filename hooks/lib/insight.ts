@@ -3,7 +3,7 @@
 // an interval, or "no conclusion yet".
 import { MIN_RACE, returnProb, type Habits } from './habits.ts'
 import type { Feat } from './model.ts'
-import { MIN_ARM, liftOf, opusBuckets, wilson, type Arm, type Learned } from './learn.ts'
+import { MIN_ARM, liftOf, opusBuckets, startReport, wilson, type Arm, type Learned } from './learn.ts'
 
 const pct = (x: number) => `${Math.round(x * 100)}%`
 const armText = (a: Arm) => { if (!a.n) return 'no tasks'; const [lo, hi] = wilson(a.bad, a.n); return `${a.bad} bad of ${a.n} (${pct(lo)} to ${pct(hi)}), $${a.usd.toFixed(2)}` }
@@ -45,6 +45,17 @@ export function learnedText(o: { habits: Habits; learned: Learned; now: number; 
       lines.push(x.memory.n >= MIN_ARM && x.control.n >= MIN_ARM
         ? `  ${x.bucket}: followed the memory ${armText(x.memory)}; control (one task in ten, memory ignored) ${armText(x.control)}.`
         : `  ${x.bucket}: no conclusion yet (needs ${MIN_ARM} tasks in each arm; has ${x.memory.n} and ${x.control.n}).`)
+    }
+  }
+  if (o.learning) {
+    const rows = startReport(l, now).filter((r) => r.n >= 3)
+    if (rows.length) {
+      lines.push('', 'Model each task started on (this project, last 30 days). The router chose each start from the task, so these rows describe what happened and do not prove that one model is better:')
+      for (const r of rows) {
+        const checked = r.ok + r.bad
+        const [lo, hi] = wilson(r.bad, checked)
+        lines.push(`  ${r.tier} on ${r.family}: ${r.n} tasks, $${(r.usd / r.n).toFixed(2)} each; of ${checked} checked, ${r.bad} failed${checked ? ` (${pct(lo)} to ${pct(hi)})` : ''}; ${r.open} had no check.`)
+      }
     }
   }
   lines.push('', 'Reset it all with /automode learned reset. Reading history is on only after /automode learned import or cacheKeeper.learnFromHistory; route memory is off with learning, in config.json.')
