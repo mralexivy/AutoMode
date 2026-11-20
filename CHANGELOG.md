@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-20
+
 ### Added
 - Failure causes and task kinds in route learning. A failure caused by the environment or a flaky test no longer counts against a cheaper start, and the learning pass sees cost and failures by kind of task (docs, tests, config, code). A new `bench/learner-leaderboard.mts` plays synthetic people with a hidden truth against the engine, at $0.
 - The learning pass scores the model's proposals against a simple rule (test the costliest untried tiers first), so `/automode learned` shows whether the model adds anything beyond it.
