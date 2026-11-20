@@ -1,8 +1,49 @@
 ---
-title: "Route learning"
-seoTitle: "Route Learning: AutoMode Learns Which Tasks Need Opus"
-description: "How AutoMode learns per project: a kind of task that needed rescue starts on a stronger model next time. It only raises a route and stores no prompt text."
+title: "How AutoMode learns"
+seoTitle: "How AutoMode Learns From Your Own Sessions, On by Default"
+description: "AutoMode learns from your own sessions by default: route memory, adaptive routing, a learning pass when you are away, and a cache keeper. What each does and how to make it manual or turn it off."
 ---
+
+**By default, AutoMode learns from your own sessions and corrects its own routes. You do nothing.** Four things run without being asked. Everything stays in files on your machine, and none of it holds prompt text.
+
+| Part | Key | Default | What it does |
+|---|---|---|---|
+| Route memory | `learning` | `true` | A kind of task that needed rescue in this project starts on a stronger model next time. |
+| Adaptive routing | `adaptive` | `true` | A small share of your tasks start on a cheaper model or lower effort. AutoMode adopts what holds up in your results and reverts what does not. |
+| Learning pass | `reflect` | `auto` | When you have been away, it summarises what happened and sets the next experiments. |
+| Cache keeper | `cacheKeeper` | `keepWarm: ask` | Measures your cache lifetime, asks before a cold send of a large chat, and offers to keep a long chat warm. |
+
+Reading your past transcripts is the one thing that stays off until you agree (`/automode learned import`).
+
+## Adaptive routing
+
+On your own tasks, about one in seven starts a cheaper way: Haiku, or a lower effort on Sonnet. For each kind of task, AutoMode compares the cheaper arm with the held arm on cost and failures, and adopts the cheaper start only when the evidence is strong. It reverts when the cheaper arm fails more or costs more. A failure caused by the environment or a flaky test does not count against it. Safety floors, your `/model` and `/effort` pins, commands and critical-risk work are never touched.
+
+## The learning pass
+
+When you have been away 20 minutes, with at least three new tasks and six hours since the last pass, AutoMode finds the gaps locally and for free: where the money went, which cheaper starts won or lost, and which kinds of task are still untested. Then it asks Haiku once, about $0.001 (capped at $0.02 a pass and $0.20 a week), what to test next. The model sees numbers only. It can name only an experiment the engine already knows, and it only makes a probe start sooner. A score shows how many of its proposals your tasks confirmed, and how that compares with a simple rule (test the costliest untried tier first). Run `/automode learn` for a pass now and `/automode learned` to see what it found.
+
+## Make it manual, or turn it off
+
+Put a `config.json` in the plugin data directory:
+
+```json
+{ "reflect": "manual" }
+```
+
+| You want | Set |
+|---|---|
+| The learning pass only when you ask | `"reflect": "manual"` |
+| No learning pass | `"reflect": "off"` |
+| A pass that costs nothing | `"reflectModel": false` |
+| No cheaper-start experiments | `"adaptive": false` |
+| No route memory | `"learning": false` |
+| No cache keeper prompts or pings | `"cacheKeeper": { "guard": false, "keepWarm": "off" }` |
+| Everything off | `AUTOMODE_ROUTER=off` |
+
+`/automode learned reset` erases what it learned.
+
+## Route memory
 
 AutoMode keeps a small memory per project. A kind of task that needed rescue in this project starts on a stronger model next time.
 
@@ -34,7 +75,7 @@ AutoMode keeps a small memory per project. A kind of task that needed rescue in 
 
 ## Where it lives
 
-`~/.claude/plugins/data/automode/learned-<project hash>.json`. It keeps the last 200 tasks. Delete the file to forget a project.
+`~/.claude/plugins/data/automode/learned-<project hash>.json`. It keeps the last 400 tasks. Delete the file to forget a project.
 
 ## Turn it off
 
