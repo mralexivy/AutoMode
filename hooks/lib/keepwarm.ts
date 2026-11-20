@@ -37,6 +37,8 @@ export function tick(s: KeepWarmState, i: TickInput): { action: 'wait' } | { act
   if (i.now >= s.untilMs) return { action: 'stop', reason: 'the keep-warm time ran out' }
   if (i.busy || i.lastActivityAt === null || i.prefixTokens <= 0 || i.mainRequests < MIN_REQUESTS) return { action: 'wait' }
   const idle = i.now - Math.max(i.lastActivityAt, s.lastPingAt ?? 0)
+  // A cache that already expired is not warmed by a ping: the ping would write the whole prefix again.
+  if (idle >= i.ttlMs) return { action: 'stop', reason: 'the cache already expired' }
   if (idle < i.ttlMs - marginMs(i.ttlMs)) return { action: 'wait' }
   // The pings so far plus this one must still cost less than the rewrite they avoid.
   if (s.pingUsd + pingCostUsd(i.prefixTokens, i.rate) > rewriteUsd(i.prefixTokens, i.rate, i.ttlMs)) return { action: 'stop', reason: 'the pings now cost more than a cold rewrite' }

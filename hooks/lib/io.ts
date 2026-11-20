@@ -22,3 +22,5 @@ export function status($: EngineInterface, ...args: Parameters<EngineInterface['
 export function ask($: EngineInterface, ...args: Parameters<EngineInterface['ui']['ask']>) { return $.ui.ask(...args) }
 export function compact($: EngineInterface) { return $.session.compact() }
 export function toast($: EngineInterface, ...args: Parameters<EngineInterface['ui']['toast']>) { return $.ui.toast(...args) }
+export function lsdir($: EngineInterface, ...args: Parameters<EngineInterface['fs']['list']>) { return $.fs.list(...args) }
+export function later($: EngineInterface, ...args: Parameters<EngineInterface['clock']['after']>) { return $.clock.after(...args) }

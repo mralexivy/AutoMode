@@ -498,13 +498,15 @@ async function noteLearned($: EngineInterface, corrected: boolean) {
   await fsWrite($, await learnedFile($), JSON.stringify(S.learned)).catch(() => {})
 }
 
+// cfgDir: Claude Code's config folder, where the transcripts (projects/) and the plugin data live.
+export async function cfgDir($: EngineInterface): Promise<string> {
+  try { return (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${await $.env.get('HOME')}/.claude` } catch { return '.' }
+}
 async function dataDir($: EngineInterface): Promise<string> {
   let dir: string | undefined
   try { dir = await $.env.get('CLAUDE_PLUGIN_DATA') } catch {}
   if (!dir) {
-    let home: string | undefined
-    try { home = (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${await $.env.get('HOME')}/.claude` } catch {}
-    dir = `${home ?? '.'}/plugins/data/automode`
+    dir = `${await cfgDir($)}/plugins/data/automode`
   }
   return dir
 }
@@ -2457,9 +2459,9 @@ async function readGate($: EngineInterface, input: Record<string, unknown>) {
 
 const extractFailed = (why: string) => ({ result: why, isError: true as const, text: why })
 
-// v4Extract serves the extract tool. A file the person's rules would not let Read run stays unread, and a failure says
+// v4Ext serves the extract tool. A file the person's rules would not let Read run stays unread, and a failure says
 // to read the lines instead, so it never leaves the model without a way forward.
-export async function v4Extract($: EngineInterface, e: any) {
+export async function v4Ext($: EngineInterface, e: any) {
   if (S.cfg.delegation !== 'on') return extractFailed('extract is off. Use Read.')
   const paths = Array.isArray(e.paths) ? [...new Set(e.paths.map(String))] as string[] : []
   const question = String(e.question ?? '').trim()
@@ -2811,9 +2813,9 @@ export async function v4Attachment($: EngineInterface, e: any, next: any) {
   return next(e)
 }
 
-// signalsFile: a fixed path under the config dir, the same one an external signals writer writes. It does not use
+// sigFile: a fixed path under the config dir, the same one an external signals writer writes. It does not use
 // CLAUDE_PLUGIN_DATA: a mod cannot see that variable, and the script's copy of it can name another folder.
-async function signalsFile($: EngineInterface): Promise<string> {
+async function sigFile($: EngineInterface): Promise<string> {
   let home: string | undefined
   // An empty CLAUDE_CONFIG_DIR means the default folder, as in the command hook (`||` there).
   try { home = (await $.env.get('CLAUDE_CONFIG_DIR')) || `${await $.env.get('HOME')}/.claude` } catch {}
@@ -2829,7 +2831,7 @@ async function signalsFile($: EngineInterface): Promise<string> {
 async function syncSignals($: EngineInterface, late?: { turnId: string | undefined }) {
   if (S.mode !== 'auto' || !S.signalsOn || S.sessionId === 'unknown') return
   try {
-    const file = await signalsFile($)
+    const file = await sigFile($)
     if (!(await fsExists($, file))) return
     const sig = JSON.parse(await fsRead($, file))
     // A different seq, not a higher one: a pruned or deleted file starts over at 1. A replay has the same seq.
@@ -2953,6 +2955,17 @@ function noteVerdict(d: Decision) {
 export function v4CacheView() {
   return { active: S.mode === 'auto', mainRequests: S.mainRequests, model: S.cache?.model ?? null, prefixTokens: S.cache?.prefixTokens ?? 0, lastRequestAt: S.cache?.lastRequestAt ?? null, ttlMs: S.ttl, provider: S.provider, cfg: S.cfg as unknown }
 }
+// v4TaskRaw: the signals that say whether the work is unfinished (lib/keepgate.ts decides).
+export function v4TaskRaw() {
+  const consult = S.consultLog.at(-1)
+  return {
+    completionState: S.completionState, editedSinceCheck: S.editedSinceCheck, lastCheckPassed: S.lastCheck ? S.lastCheck.passed : null,
+    planMode: S.planMode, workStage: (S.workStage as string | null) ?? null, openObligations: S.obligations.filter((o) => o.status !== 'satisfied').length,
+    consultOpen: !!consult && !(consult as { outcome?: unknown }).outcome, workersRunning: S.workers.size,
+    tier: (S.lastAuto?.hm?.tier ?? null) as Tier | null, family: (S.current?.family ?? null) as Family | null, reachHaiku: (S.cfg as { reachHaiku?: boolean }).reachHaiku === true,
+  }
+}
+export { dataDir as v4DataDir }
 export function v4Rate(model: string | null) { return prices().rates[familyOf(model ?? '') ?? 'sonnet'] }
 export function v4NoteCache(rec: Record<string, unknown>) { S.records.push({ v: 1, sessionId: S.sessionId, ...rec }) }
 

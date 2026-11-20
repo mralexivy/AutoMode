@@ -26,9 +26,9 @@ export function quote(prefixTokens: number, idleMs: number, ttlMs: number, rate:
   return { rewriteUsd: (prefixTokens * rateAt(rate, prefixTokens).input * cacheWriteX(ttlMs)) / 1e6, idleMin: Math.round(idleMs / 60_000) }
 }
 
-export type ColdChoice = 'send' | 'compact' | 'cancel'
-export const CHOICES = ['Send anyway', 'Compact first, then send', 'Cancel'] as const
-export const choiceOf = (answer: unknown): ColdChoice => (answer === CHOICES[0] ? 'send' : answer === CHOICES[1] ? 'compact' : 'cancel')
+export type ColdChoice = 'send' | 'compact' | 'cancel' | 'keep'
+export const CHOICES = ['Send anyway', 'Compact first, then send', 'Cancel', 'Send, and keep chats like this warm'] as const
+export const choiceOf = (answer: unknown): ColdChoice => (answer === CHOICES[0] ? 'send' : answer === CHOICES[1] ? 'compact' : answer === CHOICES[3] ? 'keep' : 'cancel')
 
 export const askText = (q: ColdQuote, prefixTokens: number) =>
   `The cache went cold ${q.idleMin} min ago. Sending now rewrites about ${Math.round(prefixTokens / 1000)}k tokens of context, about $${q.rewriteUsd.toFixed(2)}.`

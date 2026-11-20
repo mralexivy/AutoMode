@@ -1,10 +1,12 @@
-// The cache-keeper settings in config.json: `"cacheKeeper": { "ttl": "auto", "guard": true, "guardTokens": 150000, "keepWarmHours": 0 }`.
+// The cache-keeper settings in config.json: `"cacheKeeper": { "ttl": "auto", "guard": true, "guardTokens": 150000, "keepWarm": "ask", "keepWarmHours": 4, "budgetUsd": 0.5, "minRewriteUsd": 0.3, "learnFromHistory": true }`.
 // Pure. A missing or odd value falls back to the default, so a bad edit never turns a cost guard into a crash.
 import { GUARD_TOKENS } from './coldguard.ts'
 import { clampHours } from './keepwarm.ts'
 
-export interface CacheKeeperConfig { ttl: 'auto' | '5' | '60'; guard: boolean; guardTokens: number; keepWarmHours: number }
-export const CK_DEFAULTS: CacheKeeperConfig = { ttl: 'auto', guard: true, guardTokens: GUARD_TOKENS, keepWarmHours: 0 }
+// keepWarm: `off` never pings; `ask` pings once the person says yes in the cold-send dialog (or runs /automode keepwarm);
+// `auto` pings on its own where the gate says it pays. learnFromHistory reads the person's local transcripts for counts.
+export interface CacheKeeperConfig { ttl: 'auto' | '5' | '60'; guard: boolean; guardTokens: number; keepWarmHours: number; keepWarm: 'off' | 'ask' | 'auto'; budgetUsd: number; minRewriteUsd: number; learnFromHistory: boolean }
+export const CK_DEFAULTS: CacheKeeperConfig = { ttl: 'auto', guard: true, guardTokens: GUARD_TOKENS, keepWarmHours: 4, keepWarm: 'ask', budgetUsd: 0.5, minRewriteUsd: 0.3, learnFromHistory: true }
 
 export function ckConfig(cfg: unknown): CacheKeeperConfig {
   const raw = ((cfg && typeof cfg === 'object' ? (cfg as Record<string, unknown>).cacheKeeper : null) ?? {}) as Record<string, unknown>
@@ -13,6 +15,10 @@ export function ckConfig(cfg: unknown): CacheKeeperConfig {
     ttl: raw.ttl === '5' || raw.ttl === '60' ? raw.ttl : 'auto',
     guard: raw.guard !== false,
     guardTokens: n(raw.guardTokens, CK_DEFAULTS.guardTokens),
-    keepWarmHours: clampHours(n(raw.keepWarmHours, 0)),
+    keepWarmHours: clampHours(n(raw.keepWarmHours, CK_DEFAULTS.keepWarmHours)) || CK_DEFAULTS.keepWarmHours,
+    keepWarm: raw.keepWarm === 'off' || raw.keepWarm === 'auto' ? raw.keepWarm : 'ask',
+    budgetUsd: n(raw.budgetUsd, CK_DEFAULTS.budgetUsd),
+    minRewriteUsd: n(raw.minRewriteUsd, CK_DEFAULTS.minRewriteUsd),
+    learnFromHistory: raw.learnFromHistory !== false,
   }
 }

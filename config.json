@@ -50,6 +50,10 @@
     "ttl": "auto",
     "guard": true,
     "guardTokens": 150000,
-    "keepWarmHours": 0
+    "keepWarm": "ask",
+    "keepWarmHours": 4,
+    "budgetUsd": 0.5,
+    "minRewriteUsd": 0.3,
+    "learnFromHistory": true
   }
 }

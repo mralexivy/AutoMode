@@ -47,6 +47,7 @@ test('cold guard: prices the rewrite at 2x input on 1h and 1.25x on 5m, and maps
   assert.equal(choiceOf(CHOICES[0]), 'send')
   assert.equal(choiceOf(CHOICES[1]), 'compact')
   assert.equal(choiceOf(CHOICES[2]), 'cancel')
+  assert.equal(choiceOf(CHOICES[3]), 'keep')
   assert.equal(choiceOf(undefined), 'cancel')
   assert.match(askText(q1, 200_000), /200k tokens.*\$1\.60/)
 })
@@ -57,6 +58,10 @@ test('keepwarm: pings 8 minutes before a 1h cache expires and 90 s before a 5m o
   assert.equal(tick(s, tickIn({ now: ONE_HOUR - marginMs(ONE_HOUR) - 1 })).action, 'wait')
   assert.equal(tick(s, tickIn({ now: ONE_HOUR - marginMs(ONE_HOUR) })).action, 'ping')
   assert.equal(tick(s, tickIn({ now: FIVE_MIN - 90_000, ttlMs: FIVE_MIN })).action, 'ping')
+})
+test('keepwarm: a cache that already expired is never pinged: that ping would write the prefix again', () => {
+  const s = startKeepWarm(0, 4)
+  assert.deepEqual(tick(s, tickIn({ now: ONE_HOUR + 1 })), { action: 'stop', reason: 'the cache already expired' })
 })
 test('keepwarm: waits while a turn runs or with no prefix, stops at the time limit', () => {
   const s = startKeepWarm(0, 1)
@@ -99,6 +104,8 @@ test('keepwarm: hours are clamped to 24, and junk is zero', () => {
 test('config: defaults, valid values and junk', () => {
   assert.deepEqual(ckConfig({}), CK_DEFAULTS)
   assert.deepEqual(ckConfig(null), CK_DEFAULTS)
-  assert.deepEqual(ckConfig({ cacheKeeper: { ttl: '5', guard: false, guardTokens: 90000, keepWarmHours: 99 } }), { ttl: '5', guard: false, guardTokens: 90000, keepWarmHours: 24 })
-  assert.deepEqual(ckConfig({ cacheKeeper: { ttl: 'x', guardTokens: 'big', keepWarmHours: -3 } }), CK_DEFAULTS)
+  assert.deepEqual(ckConfig({ cacheKeeper: { ttl: '5', guard: false, guardTokens: 90000, keepWarmHours: 99, keepWarm: 'auto', budgetUsd: 2, minRewriteUsd: 1, learnFromHistory: false } }),
+    { ttl: '5', guard: false, guardTokens: 90000, keepWarmHours: 24, keepWarm: 'auto', budgetUsd: 2, minRewriteUsd: 1, learnFromHistory: false })
+  assert.deepEqual(ckConfig({ cacheKeeper: { ttl: 'x', guardTokens: 'big', keepWarmHours: -3, keepWarm: 'sometimes', budgetUsd: -1 } }), CK_DEFAULTS)
+  assert.equal(CK_DEFAULTS.keepWarm, 'ask')
 })
