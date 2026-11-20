@@ -72,5 +72,19 @@
     "built": "adaptive routing (hooks/lib/experiment.ts): per kind of task, a hash-chosen share of eligible tasks starts one step cheaper (Haiku, or Sonnet at medium effort), cost and failures are compared against the tasks that followed the shipped rules, and the cheaper start is adopted or reverted from the person's own tasks, with the benchmarks as the prior. In simulated people the engine adopts a cheaper start that suits the person within about 50 eligible tasks (cost 40% of the shipped route's) and loses under 15% where it does not suit. In a real Claude Code session a seeded person's adopted Haiku start ran a task on Haiku at $0.015 against $0.20 to $0.27 on Sonnet. It has not been measured on a person's real tasks over time, so no saving is claimed. /automode learned also reports the start model and cost per task.",
     "notBuilt": "learning for the other decisions (consult, review, delegation, guardian thresholds): the engine is generic, but only the start model and the effort floor are wired.",
     "decision": "No new paid benchmark: the committed v6 results show the shipped router at Sonnet-high cost, and the adaptive layer measures its own effect on each person's tasks as it runs."
+  },
+  "adaptiveReplay": {
+    "what": "bench/adaptive-replay.mts replays the adaptive-routing engine on the recorded benchmark outcomes (86 tasks, the same tasks under different starts, hidden-test results). A simulated person works through 300 tasks drawn from the pool. The mod starts on the shipped route, the real engine tries a cheaper start on some tasks and reads what really happened on that task under that start; a failed probe pays for itself and reruns on the shipped route. 300 episodes per scenario.",
+    "results": [
+      "Haiku start, with the shipped rescue (v6d): recorded cost per task $0.31 shipped against $0.32 cheaper, accepted 0.98 against 0.87; the learner adopted in 23% of episodes, cost 1.01x the shipped route (p10 0.98, p90 1.04), failures 0.05 per task against 0.03; on tasks held out from learning 1.01x",
+      "Haiku alone, no rescue: recorded cost per task $0.26 shipped against $0.03 cheaper, accepted 0.99 against 0.99; the learner adopted in 98% of episodes, cost 0.36x the shipped route (p10 0.3, p90 0.55), failures 0.01 per task against 0; on tasks held out from learning 0.31x",
+      "Sonnet at medium instead of high: recorded cost per task $0.26 shipped against $0.19 cheaper, accepted 0.99 against 0.96; the learner adopted in 64% of episodes, cost 0.99x the shipped route (p10 0.91, p90 1.02), failures 0.02 per task against 0.01; on tasks held out from learning 0.95x"
+    ],
+    "reading": [
+      "Where a cheaper start works (plain Haiku on the easy tasks: 0.99 accepted either way at $0.03 against $0.26 a task) it finds it within about 40 tasks and settles near 0.3x the shipped cost with no more failures; the cost over the first 50 tasks is 0.71x and over the last 50 is 0.29x, so it gets cheaper as the tasks teach it, and the rule it learned holds on tasks it never learned from (0.31x, 0 failures).",
+      "Where a cheaper start does not pay (the Haiku-first path with its rescue: $0.32 against $0.31, 0.87 accepted against 0.98) it ends up on the shipped route in 69% of episodes and costs 1.01x, with failures 0.05 against 0.03: the price of finding out.",
+      "Where the cheaper start saves some and loses some (Sonnet medium: 27% cheaper, 3 points less accepted) it stays near neutral (0.99x).",
+      "Limits: the pools are small (15, 71 and 33 tasks), the Haiku pool is made of tasks chosen as easy for Haiku, every benchmark task has a hidden test so every failure is seen, and a person's real tasks may differ. The replay shows the algorithm learns and protects on real recorded outcomes; it does not show what a person will save."
+    ]
   }
 }

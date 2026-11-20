@@ -29,11 +29,12 @@ export const PROMISING_SHARE = 0.4 // while collecting, once the probe looks che
 export const HOLD_SHARE = 0.1 // after adopting: tasks that still follow the shipped rules
 export const WARMUP = 8 // checked tasks of this kind before any probe
 export const CHECK_RATE = 0.5 // below this share with a check, a failure would go unseen
-export const MIN_ARM_N = 8 // tasks in each arm before a decision
+export const MIN_ARM_N = 12 // tasks in each arm before a decision
 export const REVERT_MS = 14 * 86_400_000
 const WINDOW_MS = 60 * 86_400_000
-const SLACK_FAIL = 0.1 // a probe may fail this much more often and still count as no worse
-const BAD_FAIL = 0.15 // and this much more means it is worse
+const SLACK_FAIL = 0.05 // a probe may fail this much more often and still count as no worse
+const BAD_FAIL = 0.1 // and this much more means it is worse
+export const MIN_SAVING = 0.15 // a probe must be at least this much cheaper per task to be worth a change: equal means are noise
 
 export const bucketOf = (tier: string, complexity: string | undefined) => `${tier}/${complexity ?? 'standard'}`
 
@@ -98,7 +99,7 @@ export function statusOf(l: Learned, key: ExpKey, bucket: string, now: number): 
     const worse = pFailMore(probe, hold, BAD_FAIL, PROBE_PRIOR[key], HOLD_PRIOR)
     if (probe.n >= 6 && hold.n >= 3 && (worse >= 0.7 || (probe.n >= MIN_ARM_N && hold.n >= MIN_ARM_N && pCheaper(probe, hold) < 0.3))) {
       state = 'reverted'; since = t.at; why = worse >= 0.7 ? 'the cheaper start failed clearly more often' : 'the cheaper start cost more'
-    } else if (state === 'collecting' && probe.n >= MIN_ARM_N && hold.n >= MIN_ARM_N && pCheaper(probe, hold) >= 0.9 && pFailMore(probe, hold, SLACK_FAIL, PROBE_PRIOR[key], HOLD_PRIOR) < 0.25) {
+    } else if (state === 'collecting' && probe.n >= MIN_ARM_N && hold.n >= MIN_ARM_N && meanUsd(probe) <= (1 - MIN_SAVING) * meanUsd(hold) && pCheaper(probe, hold) >= 0.95 && pFailMore(probe, hold, SLACK_FAIL, PROBE_PRIOR[key], HOLD_PRIOR) < 0.25) {
       state = 'adopted'; since = t.at; why = 'cheaper with confidence and no worse on failures'
     }
   }
