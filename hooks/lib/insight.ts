@@ -3,13 +3,14 @@
 // an interval, or "no conclusion yet".
 import { MIN_RACE, returnProb, type Habits } from './habits.ts'
 import type { Feat } from './model.ts'
+import type { Rulebook } from './reflect.ts'
 import { MIN_ARM_N, WARMUP, meanUsd, readiness, reportOf } from './experiment.ts'
 import { MIN_ARM, liftOf, opusBuckets, startReport, wilson, type Arm, type Learned } from './learn.ts'
 
 const pct = (x: number) => `${Math.round(x * 100)}%`
 const armText = (a: Arm) => { if (!a.n) return 'no tasks'; const [lo, hi] = wilson(a.bad, a.n); return `${a.bad} bad of ${a.n} (${pct(lo)} to ${pct(hi)}), $${a.usd.toFixed(2)}` }
 
-export function learnedText(o: { habits: Habits; learned: Learned; now: number; keepWarm: string; learning: boolean; consent: boolean }): string {
+export function learnedText(o: { habits: Habits; learned: Learned; now: number; keepWarm: string; learning: boolean; consent: boolean; rulebook?: Rulebook }): string {
   const { habits: h, learned: l, now } = o
   const lines = ['What AutoMode has learned from your own use. It stays on this machine and holds counts, never prompt or reply text.', '']
   if (!o.consent) lines.push('Reading your past sessions is off. Run /automode learned import to let AutoMode learn from them (counts only). Until then it learns only from sessions it watches live.')
@@ -74,6 +75,13 @@ export function learnedText(o: { habits: Habits; learned: Learned; now: number; 
       const f = (a: typeof x.probe) => `${a.n} tasks, $${meanUsd(a).toFixed(2)} each, ${a.failed} failed`
       lines.push(`  ${x.bucket}, ${kind[x.key]}: ${x.state} (${x.why}). Probe ${f(x.probe)}; hold ${f(x.hold)}${x.state === 'collecting' && (x.probe.n < MIN_ARM_N || x.hold.n < MIN_ARM_N) ? `; needs ${MIN_ARM_N} in each` : ''}.`)
     }
+  }
+  const rb = o.rulebook
+  if (rb && (rb.runs.length || rb.insights.length)) {
+    lines.push('', `Learning passes (when you are away): ${rb.runs.length} so far.`)
+    if (rb.insights.length) lines.push(`  Last: ${rb.insights[rb.insights.length - 1].text}`)
+    if (rb.focus.length) lines.push(`  In focus to test next: ${rb.focus.map((f) => `${f.tier}/${f.complexity} ${f.key === 'haiku' ? 'Haiku start' : 'Sonnet medium'}`).join(', ')}.`)
+    if (rb.score.proposed) lines.push(`  The model's proposals so far: ${rb.score.proposed} kept, ${rb.score.confirmed} confirmed by your tasks, ${rb.score.refuted} refuted.`)
   }
   lines.push('', 'Reset it all with /automode learned reset. Reading history is on only after /automode learned import or cacheKeeper.learnFromHistory; route memory is off with learning, in config.json.')
   return lines.join('\n')

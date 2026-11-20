@@ -65,6 +65,7 @@ import { BUILD_ASK, FORK_PROMPT, buildHandoff, completeness, forkWorth, parseFor
 import { cacheNote, closeEpisodes, consultOutcome, durationsFrom, effortFirst, episodeBase, openEpisode, patchEpisode, influence, planFiles, priceConsult, RECUR_PRIOR } from './lib/rescue.ts'
 import { EMPTY_LEARNED, bucketOf, inControl, noteTask, opusBuckets, parseLearned, type Learned } from './lib/learn.ts'
 import { assign as assignExp, bucketOf as expBucket, pickKey, type ExpArm, type ExpKey } from './lib/experiment.ts'
+import { EMPTY_RULEBOOK, focusFor, parseRulebook, type Rulebook } from './lib/reflect.ts'
 import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence, type DelegationMode } from './lib/delegation.ts'
 
 const V4_DEFAULTS = {
@@ -108,6 +109,9 @@ const V4_DEFAULTS = {
   haikuFirst: 'off' as 'off' | 't3',
   // Adaptive routing (lib/experiment.ts): learn from this person's own tasks whether a cheaper start does as well.
   adaptive: true,
+  // The learning pass (lib/reflect.ts): `auto` runs it when the person has been idle, `manual` only on /automode learn, `off` never. The model
+  // step costs about half a cent a pass and is capped; `reflectModel` false keeps the pass local and free.
+  reflect: 'auto' as 'auto' | 'manual' | 'off', reflectIdleMin: 20, reflectModel: true,
   // v6 (bench/experiments/V6.md): the execution strategy. legacy is main's routing; v6a, v6b and v6c start and rescue
   // differently (lib/strategy.ts executionRules). builder: on hands non-trivial work to one builder subagent at once.
   strategy: 'legacy' as 'legacy' | 'v6a' | 'v6b' | 'v6c',
@@ -156,7 +160,7 @@ const S = {
   turnRequests: new Map<string, number>(), // main requests per turn, for outcome records
   stayUp: 0, redoFloor: null as Tier | null, // effortless stay-up after a redo
   heldRoute: null as EffectiveRoute | null,   // a lower route picked mid-turn waits for the turn to end
-  planMode: false, planExited: false, ttlPinned: false, mainRequests: 0, lastOwner: '' as string, lastPingAt: 0, taskArm: 'memory' as 'memory' | 'control', taskFlipped: false, taskExp: null as null | { taskId: string; key: ExpKey; arm: ExpArm; bucket: string; adopted: boolean },
+  planMode: false, planExited: false, ttlPinned: false, mainRequests: 0, rulebook: EMPTY_RULEBOOK as Rulebook, lastOwner: '' as string, lastPingAt: 0, taskArm: 'memory' as 'memory' | 'control', taskFlipped: false, taskExp: null as null | { taskId: string; key: ExpKey; arm: ExpArm; bucket: string; adopted: boolean },
   editLog: [] as { path: string; at: number }[],
   agents: new Map<string, { type: string; effort?: Effort; routed: boolean; judged?: boolean }>(), // every subagent seen, for the ledger
   // Provider errors are scoped to provider and model, and bounded: a model that did not answer BREAKER_FAILURES requests in
@@ -299,6 +303,7 @@ async function loadV4($: EngineInterface) {
   if (ck.ttl !== 'auto') S.ttl = ck.ttl === '5' ? FIVE_MIN : ONE_HOUR
   S.priors = await loadPriors($)
   if (S.cfg.learning) S.learned = await loadLearned($)
+  try { S.rulebook = parseRulebook(await fsRead($, await rulebookFile($))) } catch { S.rulebook = EMPTY_RULEBOOK }
   const policyEnv = String((await safe($.env.get('AUTOMODE_POLICY'))) ?? '').trim().toLowerCase()
   const wanted = policyEnv || String((S.cfg as { policy?: string }).policy ?? 'legacy').trim().toLowerCase()
   S.policy = wanted === 'auto' ? 'auto' : 'legacy'
@@ -484,6 +489,7 @@ function cacheState(): CacheState {
 function prices() { return rowFor(S.provider) }
 
 // recordsFile is the plugin data folder the engine gives command hooks, else the default location.
+async function rulebookFile($: EngineInterface) { return `${await dataDir($)}/rulebook-${projectKey(S.cwd)}.json` }
 async function learnedFile($: EngineInterface) { return `${await dataDir($)}/learned-${projectKey(S.cwd)}.json` }
 async function loadLearned($: EngineInterface): Promise<Learned> {
   try { return parseLearned(await fsRead($, await learnedFile($))) } catch { return EMPTY_LEARNED }
@@ -1056,7 +1062,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
     const haikuFits = !(tier === 'T1' && cx !== 'complex') // a simple T1 already starts on Haiku
     const effortFits = tier === 'T3' || cx === 'complex' // the Sonnet floor is high there
     const key = pickKey(S.learned, expBucket(tier, cx), [...(haikuFits ? ['haiku' as const] : []), ...(effortFits ? ['effort' as const] : [])], env.taskId, at)
-    const a = key ? assignExp(S.learned, key, expBucket(tier, cx), env.taskId, at, eligible && S.mode === 'auto') : null
+    const a = key ? assignExp(S.learned, key, expBucket(tier, cx), env.taskId, at, eligible && S.mode === 'auto', focusFor(S.rulebook, key, tier, cx, at)) : null
     S.taskExp = key && a ? { taskId: env.taskId, key, arm: a.arm, bucket: expBucket(tier, cx), adopted: a.adopted } : { taskId: env.taskId, key: 'haiku', arm: 'hold', bucket: '', adopted: false }
     if (S.taskExp.bucket === '') S.taskExp = null
   }
@@ -2997,7 +3003,21 @@ export { dataDir as v4DataDir }
 // v4NotePing: a keepalive ping went out at this time.
 export const v4NotePing = (at: number) => { S.lastPingAt = at }
 export const v4Learned = () => ({ learned: S.learned, learning: !!S.cfg.learning })
-export async function v4ResetLearned($: EngineInterface) { S.learned = EMPTY_LEARNED; await fsWrite($, await learnedFile($), JSON.stringify(EMPTY_LEARNED)).catch(() => {}) }
+export const v4Rulebook = () => S.rulebook
+export async function v4SetRulebook($: EngineInterface, rb: Rulebook) { S.rulebook = rb; await fsWrite($, await rulebookFile($), JSON.stringify(rb)).catch(() => {}) }
+// v4Reflect asks the learning pass's one cheap question and books its cost as overhead. A failed call is a null, never an error.
+export async function v4Reflect($: EngineInterface, system: string, digest: string): Promise<{ text: string; usd: number } | null> {
+  try {
+    const r = await $.model.complete({ model: S.cfg.compactModel, system, prompt: digest, maxTokens: 420, effort: 'low', timeoutMs: 45_000 })
+    if (!r?.isAnswered) return null
+    const usd = usageUsd(usageOf(r.usage), ANTHROPIC.rates.haiku)
+    noteJudge(usd)
+    S.records.push({ v: 1, kind: 'model-call', purpose: 'learning-pass', at: await now($), sessionId: S.sessionId, ok: true, usd: { value: round6(usd), basis: 'measured', source: `${ANTHROPIC.provider} ${ANTHROPIC.checkedAt}` } })
+    return { text: String(r.text ?? ''), usd }
+  } catch { return null }
+}
+export const v4Config = () => S.cfg as unknown as { reflect: 'auto' | 'manual' | 'off'; reflectIdleMin: number; reflectModel: boolean }
+export async function v4ResetLearned($: EngineInterface) { S.learned = EMPTY_LEARNED; S.rulebook = EMPTY_RULEBOOK; await fsWrite($, await rulebookFile($), JSON.stringify(EMPTY_RULEBOOK)).catch(() => {}); await fsWrite($, await learnedFile($), JSON.stringify(EMPTY_LEARNED)).catch(() => {}) }
 export function v4Rate(model: string | null) { return prices().rates[familyOf(model ?? '') ?? 'sonnet'] }
 export function v4NoteCache(rec: Record<string, unknown>) { S.records.push({ v: 1, sessionId: S.sessionId, ...rec }) }
 

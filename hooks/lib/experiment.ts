@@ -26,6 +26,7 @@ export type ExpState = 'warming' | 'blind' | 'collecting' | 'adopted' | 'reverte
 
 export const PROBE_SHARE = 0.15 // while collecting
 export const PROMISING_SHARE = 0.4 // while collecting, once the probe looks cheaper and no worse: resolve it sooner
+export const FOCUS_SHARE = 0.3 // while collecting, for a kind of task the learning pass put in focus
 export const HOLD_SHARE = 0.1 // after adopting: tasks that still follow the shipped rules
 export const WARMUP = 8 // checked tasks of this kind before any probe
 export const CHECK_RATE = 0.5 // below this share with a check, a failure would go unseen
@@ -121,7 +122,7 @@ export interface Assignment { arm: ExpArm; adopted: boolean; state: ExpState }
 
 // assign picks the arm for one task. `eligible` is the caller's safety check (risk, pins, commands, tier). It returns null when the
 // task is outside the experiment, which is the shipped rule and not recorded as a hold.
-export function assign(l: Learned, key: ExpKey, bucket: string, taskId: string, now: number, eligible: boolean): Assignment | null {
+export function assign(l: Learned, key: ExpKey, bucket: string, taskId: string, now: number, eligible: boolean, focus = false): Assignment | null {
   if (!eligible) return null
   const r = readiness(l, bucket, now)
   if (!r.ok) return null
@@ -132,7 +133,9 @@ export function assign(l: Learned, key: ExpKey, bucket: string, taskId: string, 
   // A probe that already looks cheaper, with failures not worse so far, gets more of the tasks, so it is settled sooner. A failed probe is
   // caught by the ladder and its cost counts against it, so this cannot run far ahead of the evidence.
   const promising = st.probe.n >= 3 && st.hold.n >= 3 && pCheaper(st.probe, st.hold) >= 0.9 && pFailMore(st.probe, st.hold, BAD_FAIL, PROBE_PRIOR[key], HOLD_PRIOR) < 0.5
-  return { arm: u < (promising ? PROMISING_SHARE : PROBE_SHARE) ? 'probe' : 'hold', adopted: false, state: 'collecting' }
+  // A kind of task the learning pass put in focus is tried sooner: a larger probe share, never a safety rule changed.
+  const probeShare = promising ? (focus ? 0.5 : PROMISING_SHARE) : focus ? FOCUS_SHARE : PROBE_SHARE
+  return { arm: u < probeShare ? 'probe' : 'hold', adopted: false, state: 'collecting' }
 }
 
 // report: one row per experiment and kind of task that has any tasks.

@@ -15,6 +15,8 @@ import { gate, stateOf } from './lib/keepgate.ts'
 import { KEEP_OFF, TICK_MS, afterPing, armKeepWarm, clampHours, marginMs, pingActualUsd, pingCostUsd, rewriteUsd, startKeepWarm, tick, type KeepWarmState } from './lib/keepwarm.ts'
 import { familyOf } from './lib/prices.ts'
 import { ask, compact, fork, later, toast } from './lib/io.ts'
+import { learnCommand as passCommand, learnPassTick } from './learnpass.ts'
+import { v4Config, v4Rulebook } from './v4.ts'
 
 let kw: KeepWarmState = KEEP_OFF
 let H: Habits = EMPTY_HABITS
@@ -106,6 +108,7 @@ async function learn($: EngineInterface, g: number) {
   } catch {}
 }
 
+const wantsTimer = () => kw.on || ckConfig(v4CacheView().cfg).keepWarm !== 'off' || v4Config().reflect === 'auto'
 function ensureTimer($: EngineInterface) { if (!timer) { timer = true; schedule($, gen) } }
 function schedule($: EngineInterface, g: number) {
   try {
@@ -113,7 +116,7 @@ function schedule($: EngineInterface, g: number) {
       if (g !== gen) return
       await onTick($, g)
       if (g !== gen) return
-      if (kw.on || ckConfig(v4CacheView().cfg).keepWarm !== 'off') schedule($, g); else timer = false
+      if (wantsTimer()) schedule($, g); else timer = false
     })
   } catch { timer = false; kw = { ...kw, on: false, stopped: 'no timer in this engine' } }
 }
@@ -166,7 +169,7 @@ async function settle($: EngineInterface, at: number, v: ReturnType<typeof v4Cac
   skipped = ''
   const c = ckConfig(v.cfg)
   if (v.active && !userOff && !kw.on && (c.keepWarm === 'auto' || (c.keepWarm === 'ask' && H.kw.optIn))) kw = armKeepWarm(kw, at, c.keepWarmHours)
-  if (kw.on || c.keepWarm !== 'off') ensureTimer($)
+  if (kw.on || c.keepWarm !== 'off' || v4Config().reflect === 'auto') ensureTimer($)
 }
 
 // ckPromptSubmit asks before a person's prompt rewrites a big cold cache.
@@ -220,7 +223,12 @@ export async function learnedCommand($: EngineInterface, rest: string): Promise<
     return 'AutoMode will now read your own Claude Code transcripts (~/.claude/projects, every project) in the background, a few files at a time. It keeps counts only: request times, sizes, the model family, whether a request called a tool, and how many prompts you typed. It never stores or sends text. /automode learned shows the result, and /automode learned reset turns this off and clears it.'
   }
   const { learned, learning } = v4Learned()
-  return learnedText({ habits: H, learned, now: await clockNow($), keepWarm: c.keepWarm, learning, consent: c.learnFromHistory || H.scan })
+  return learnedText({ habits: H, learned, now: await clockNow($), keepWarm: c.keepWarm, learning, consent: c.learnFromHistory || H.scan, rulebook: v4Rulebook() })
+}
+
+// learnNowCommand serves `/automode learn [status]`.
+export async function learnNowCommand($: EngineInterface, rest: string): Promise<string> {
+  return passCommand($, rest, { now: await clockNow($), extra: { pingUsd: H.kw.pingUsd, savedUsd: H.kw.savedUsd, chal: H.cc.active } })
 }
 
 // keepWarmCommand serves `/automode keepwarm [hours|off|status]`.
@@ -252,6 +260,8 @@ async function onTick($: EngineInterface, g: number) {
     if (!v.active) return
     const at = await clockNow($)
     if (g !== gen) return
+    // The learning pass rides the same timer: it starts only when the person has been away a while and there is something new to learn from.
+    void learnPassTick($, { now: at, idleMs: at - (lastActivityAt ?? v.lastRequestAt ?? at), busy, extra: { pingUsd: H.kw.pingUsd, savedUsd: H.kw.savedUsd, chal: H.cc.active } })
     const rate = v4Rate(v.model)
     const real = kw.on
     // Without keep warm on, the same timing runs only to keep the race's books (below): nothing is sent.

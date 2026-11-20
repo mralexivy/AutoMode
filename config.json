@@ -56,5 +56,8 @@
     "minRewriteUsd": 0.3,
     "learnFromHistory": false
   },
-  "adaptive": true
+  "adaptive": true,
+  "reflect": "auto",
+  "reflectIdleMin": 20,
+  "reflectModel": true
 }
