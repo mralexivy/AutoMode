@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-20",
+  "basis": "one person's interactive Claude Code sessions (scripted claude -p runs left out), 21 days of transcripts; calculated from recorded usage, not billed; reproduce with node bench/diagnose-learning.mts and node bench/habits-replay.mts",
+  "question": "why is a rule that learns from the person's gaps no better than the simple rule?",
+  "findings": [
+    { "id": "stakes", "text": "Idle-expiry rewrites on interactive sessions cost $32.57 in 21 days (16 rewrites, 13 of them on chats over 150k tokens). A rule that knew every return in advance would net $15.57. In the held-out 16 days it would net $2.93, from 3 pings. No rule, simple or learned, can win more than that, and the 95% interval on any rule's net (about plus or minus $3.5) is wider than the whole prize." },
+    { "id": "events", "text": "The event to learn (a big chat idle past the cache lifetime that then continues) happened 6 times in the training period and 4 times in the test period. Nothing can be learned from 6 examples." },
+    { "id": "economics", "text": "On a 1-hour cache a ping costs about 5% of a read of the prefix per 52 minutes while a cold start costs 2x input, so the break-even chance of a return is a few percent: pinging a big chat is nearly always right, which is what the simple rule does. On a 5-minute cache the break-even over an hour is about 70%, so the decision is hard there, and habits matter more." },
+    { "id": "features", "text": "Best single features for a return after a long idle gap (AUC, 95% interval): chat size 0.74 [0.66, 0.81], session age 0.73 [0.61, 0.79], work done in the last turn 0.72 [0.63, 0.83], prompts so far 0.70 [0.53, 0.76]. The assistant ending on a question returned 78% of the time against 14% otherwise (9 cases). Signals of unfinished work did not predict a return: edits without a test AUC 0.50, any test run 0.54, edits 0.53." },
+    { "id": "table", "text": "The first estimator, a table of counts by chat size, model and tool use, scored no better than one number per chat size (Brier 0.21 against 0.16 on one split), and more sessions did not improve it." },
+    { "id": "prior", "text": "A model learned from scratch on a few dozen sessions scored worse than a hand-set prior alone, and a prior with a small, strongly held update scored best (Brier 0.098 to 0.102 against 0.122 for a flat rate, AUC 0.84 to 0.86). The prior's directions were chosen after seeing this person's univariate results, so that figure is flattered; it is a starting point, not a result." },
+    { "id": "drift", "text": "The same prior scored Brier 0.48 on the earlier part of the data and 0.10 on the later part, so a person's habits change over weeks." }
+  ],
+  "changesMade": [
+    "the table of counts is replaced by a small logistic model that starts from a prior built from the facts above and is held to it by a ridge penalty worth 20 observations, so it learns from a handful of points slowly and from hundreds quickly",
+    "the features are chat size, idle time, session age, prompts so far, the assistant's output since the last prompt, and whether it asked a question",
+    "every settled gap, from past sessions (with the person's say-so) and from sessions watched live, is scored by the model as it stood before it is learned, so /automode learned can show a report card against the starting guess and a flat rate",
+    "the unfinished-work boost, which the data does not support, is removed from the return odds",
+    "the model acts only after it wins a race against the simple rule on the person's own gaps"
+  ],
+  "result": "On this person's data the model ties the simple rule (it makes the same pings): on a 1-hour cache the right answer is almost always to ping a big chat, and there are too few events to refine it. Its report card on 103 training points: model error 0.363, starting guess 0.477, flat base rate 0.297, so it has learned something but is not yet better than a flat rate.",
+  "recommendation": "Keep warm is a small lever for a subscription user and a larger one for someone on a 5-minute cache. The same evidence-gated learning loop (a prior, an online update, a report card, a race against a static rule) should go where decisions are frequent and expensive: which model and effort each prompt gets."
+}

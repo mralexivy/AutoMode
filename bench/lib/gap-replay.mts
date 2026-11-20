@@ -5,10 +5,11 @@
 // (hooks/lib/keepgate.ts), so the replay and the mod agree. Habits are trained only on gaps that ended before the split time.
 import { ANTHROPIC, cacheWriteX, rateAt } from '../../hooks/lib/prices.ts'
 import { EMPTY_HABITS, SURE_ENDED_MS, type Habits } from '../../hooks/lib/habits.ts'
+import type { Base } from '../../hooks/lib/model.ts'
 import { gate, type TaskState } from '../../hooks/lib/keepgate.ts'
-import { compactOf, interactive, observeCompact, type Folded, type Req } from '../../hooks/lib/scan.ts'
+import { baseAt, compactOf, interactive, observeCompact, type Folded, type Req } from '../../hooks/lib/scan.ts'
 
-export interface Gap { a: Req; gapMin: number; ttlMs: number; session: number; endAt: number } // gapMin Infinity: the session ended here
+export interface Gap { a: Req; base: Base; gapMin: number; ttlMs: number; session: number; endAt: number } // gapMin Infinity: the session ended here
 export interface Policy { name: string; keep: (g: Gap, idleMin: number, pings: number) => boolean }
 
 const margin = (ttlMs: number) => (ttlMs >= 3_600_000 ? 8 * 60_000 : 150_000)
@@ -26,10 +27,10 @@ export function gapsOf(sessions: Folded[], now: number, from = 0): Gap[] {
     const ttl = s.reqs.find((q) => q.ttlMs)?.ttlMs ?? 3_600_000
     for (let i = 1; i < s.reqs.length; i++) {
       const gapMin = (s.reqs[i].at - s.reqs[i - 1].at) / 60_000
-      if (gapMin >= 3 && !s.reqs[i - 1].acted && s.reqs[i].at >= from) out.push({ a: s.reqs[i - 1], gapMin: gapMin >= 1440 ? Infinity : gapMin, ttlMs: ttl, session, endAt: s.reqs[i].at })
+      if (gapMin >= 3 && !s.reqs[i - 1].acted && s.reqs[i].at >= from) out.push({ a: s.reqs[i - 1], base: baseAt(s, i - 1), gapMin: gapMin >= 1440 ? Infinity : gapMin, ttlMs: ttl, session, endAt: s.reqs[i].at })
     }
     const last = s.reqs[s.reqs.length - 1]
-    if (now - last.at > SURE_ENDED_MS && last.at >= from) out.push({ a: last, gapMin: Infinity, ttlMs: ttl, session, endAt: last.at })
+    if (now - last.at > SURE_ENDED_MS && last.at >= from) out.push({ a: last, base: baseAt(s, s.reqs.length - 1), gapMin: Infinity, ttlMs: ttl, session, endAt: last.at })
   })
   return out
 }
@@ -64,7 +65,7 @@ export const flat = (hours: number): Policy => ({ name: `flat ${hours}h`, keep: 
 
 const NEUTRAL: TaskState = { unfinished: false, finished: false, aboveNeed: false }
 function verdict(h: Habits, g: Gap, idle: number, capHours: number, minUsd: number) {
-  return gate({ habits: h, state: NEUTRAL, prefixTokens: g.a.tokens, ttlMs: g.ttlMs, idleMin: idle, rate: ANTHROPIC.rates[g.a.family], minRewriteUsd: minUsd, sessionPingUsd: 0, budgetUsd: 1e9, capMin: capHours * 60, stale: false })
+  return gate({ habits: h, state: NEUTRAL, feat: { ...g.base, idleMin: idle }, ttlMs: g.ttlMs, rate: ANTHROPIC.rates[g.a.family], minRewriteUsd: minUsd, sessionPingUsd: 0, budgetUsd: 1e9, capMin: capHours * 60, stale: false })
 }
 // champion: the mod's simple rule. challenger: the mod's habits rule, with the habits it is given.
 export const champion = (capHours = 2, minUsd = 0.3): Policy => ({ name: `champion (floor $${minUsd}, ${capHours}h)`, keep: (g, idle) => verdict(EMPTY_HABITS, g, idle, capHours, minUsd).champion.allow })
@@ -77,8 +78,8 @@ export function trainBefore(sessions: Folded[], T: number): Habits {
   sessions.forEach((s, i) => {
     const c = compactOf(s)
     const gaps = c.gaps.filter((x) => x[0] < T)
-    const last = c.last && c.last.at < T - SURE_ENDED_MS ? c.last : null
-    h = observeCompact(h, { interactive: c.interactive, gaps, last: last ?? (c.last && c.last.at < T ? c.last : null) }, last ? T : c.last ? c.last.at : T, `s${i}`)
+    const last = c.last && c.last[0] < T - SURE_ENDED_MS ? c.last : null // a session still young at T has no end yet
+    h = observeCompact(h, { interactive: c.interactive, gaps, last }, T, `s${i}`)
   })
   return h
 }

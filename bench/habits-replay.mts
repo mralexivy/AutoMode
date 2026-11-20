@@ -35,6 +35,7 @@ const T = times[Math.floor(times.length * 0.6)] ?? now
 const habits = trainBefore(all, T)
 const test = gapsOf(all, now, T)
 const r2 = (x: number) => Math.round(x * 100) / 100
+const r3 = (x: number) => Math.round(x * 1000) / 1000
 const row = (p: ReturnType<typeof flat>) => {
   const r = simulate(test, p)
   const [lo, hi] = bootstrap(r.bySession)
@@ -47,7 +48,7 @@ for (const k of new Set([...chal.keys(), ...champ.keys()])) diff.set(k, (chal.ge
 const [dlo, dhi] = bootstrap(diff)
 const out = {
   basis: 'calculated at the mod price table from recorded usage; counterfactual, not billed; one person',
-  interactiveSessions: all.length, scriptedSessionsLeftOut: scripted, trainGaps: Object.values(habits.cells).reduce((a, c) => a + c!.ends + c!.gaps.reduce((x, y) => x + y, 0), 0), testGaps: test.length,
+  interactiveSessions: all.length, scriptedSessionsLeftOut: scripted, trainPoints: habits.pts.length, modelReportCard: { points: Math.round(habits.ev.n), modelError: r3(habits.ev.bModel / Math.max(1, habits.ev.n)), startingGuessError: r3(habits.ev.bPrior / Math.max(1, habits.ev.n)), baseRateError: r3(habits.ev.bConst / Math.max(1, habits.ev.n)) }, testGaps: test.length,
   testSessions: new Set(test.map((g) => g.session)).size,
   rows: rows.map(({ _by, ...r }) => r),
   habitsMinusSimple: { netUsd: r2([...diff.values()].reduce((a, b) => a + b, 0)), ci95: [r2(dlo), r2(dhi)] },

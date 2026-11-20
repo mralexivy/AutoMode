@@ -2,6 +2,7 @@
 // It says what rests on data and what does not: a number comes with how many observations stand behind it, and a comparison with
 // an interval, or "no conclusion yet".
 import { MIN_RACE, returnProb, type Habits } from './habits.ts'
+import type { Feat } from './model.ts'
 import { MIN_ARM, liftOf, opusBuckets, wilson, type Arm, type Learned } from './learn.ts'
 
 const pct = (x: number) => `${Math.round(x * 100)}%`
@@ -10,22 +11,30 @@ const armText = (a: Arm) => { if (!a.n) return 'no tasks'; const [lo, hi] = wils
 export function learnedText(o: { habits: Habits; learned: Learned; now: number; keepWarm: string; learning: boolean; consent: boolean }): string {
   const { habits: h, learned: l, now } = o
   const lines = ['What AutoMode has learned from your own use. It stays on this machine and holds counts, never prompt or reply text.', '']
-  if (!o.consent) lines.push('Idle time: your history is not read. Run /automode learned import to let AutoMode count your idle gaps from your own transcripts. Until then keep warm follows the simple rule.')
-  else if (!h.sessions) lines.push('Idle time: no history read yet. It reads your past sessions in the background after a session starts.')
+  if (!o.consent) lines.push('Reading your past sessions is off. Run /automode learned import to let AutoMode learn from them (counts only). Until then it learns only from sessions it watches live.')
+  else if (!h.sessions) lines.push('Past sessions: none read yet. It reads them in the background after a session starts.')
+  else lines.push(`Past sessions: counted from ${h.sessions} of yours (scripted runs are left out).`)
+  const profiles: [string, Feat][] = [
+    ['a small, young chat', { tokens: 30_000, idleMin: 30, ageMin: 20, prompts: 3, turnOut: 800, asked: false }],
+    ['a medium chat an hour in', { tokens: 100_000, idleMin: 30, ageMin: 90, prompts: 12, turnOut: 3_000, asked: false }],
+    ['a big chat, long session', { tokens: 250_000, idleMin: 30, ageMin: 240, prompts: 30, turnOut: 6_000, asked: false }],
+    ['the same, after a question to you', { tokens: 250_000, idleMin: 30, ageMin: 240, prompts: 30, turnOut: 6_000, asked: true }],
+  ]
+  lines.push(`Return model, from ${h.pts.length} observed points. After 30 idle minutes, the chance you send another prompt within the hour:`)
+  for (const [name, f] of profiles) lines.push(`  ${name}: ${pct(returnProb(h, f).p)}`)
+  const ev = h.ev
+  if (ev.n < 20) lines.push(`  Its report card needs 20 settled points (has ${Math.round(ev.n)}); until then the numbers above are mostly its starting guess.`)
   else {
-    lines.push(`Idle time: counted from ${h.sessions} of your sessions (scripted runs are left out). After 10 idle minutes, the chance you send another prompt within the hour:`)
-    for (const c of ['big', 'mid', 'small'] as const) {
-      const r = returnProb(h, c, 10, 60)
-      lines.push(`  ${c === 'big' ? 'chats over 150k tokens' : c === 'mid' ? 'chats of 60k to 150k' : 'chats under 60k'}: ${pct(r.p)}${r.seen < 100 ? ` (only ${r.seen} observed, so mostly a starting guess)` : ` (from ${r.seen} observed)`}`)
-    }
+    const m = ev.bModel / ev.n, pr = ev.bPrior / ev.n, c = ev.bConst / ev.n
+    lines.push(`  Report card on your own gaps, each scored before it was learned (prediction error, lower is better): this model ${m.toFixed(3)}, its starting guess ${pr.toFixed(3)}, a flat base rate ${c.toFixed(3)}, over ${Math.round(ev.n)} points. ${m < Math.min(pr, c) * 0.97 ? 'It is predicting you better than either.' : 'It is not yet better than the starting guess.'}`)
   }
   const k = h.kw, cc = h.cc
   lines.push('', `Keep warm (${o.keepWarm}${k.optIn ? ', you said yes' : ''}): over recent weeks its pings cost $${k.pingUsd.toFixed(2)} and avoided $${k.savedUsd.toFixed(2)} of rewrites, as measured on your sessions.`)
   if (k.pingUsd >= 1 && k.savedUsd < 0.5 * k.pingUsd) lines.push('  Pings have not paid for you, so they stay off. The record fades over a month.')
-  if (o.consent) {
+  {
     lines.push(cc.n < MIN_RACE
-      ? `Your habits against the simple rule: the race has ${Math.round(cc.n)} of ${MIN_RACE} gaps it needs. The simple rule acts until then.`
-      : `Your habits against the simple rule, over ${Math.round(cc.n)} gaps: the habits rule would have netted $${cc.chalNet.toFixed(2)} with ${Math.round(cc.chalPings)} pings, the simple rule $${cc.champNet.toFixed(2)} with ${Math.round(cc.champPings)}. ${cc.active === 'challenger' ? 'The habits rule acts now.' : 'The simple rule acts.'}`)
+      ? `The return model against the simple rule: the race has ${Math.round(cc.n)} of ${MIN_RACE} gaps it needs. The simple rule acts until then.`
+      : `The return model against the simple rule, over ${Math.round(cc.n)} gaps: the model would have netted $${cc.chalNet.toFixed(2)} with ${Math.round(cc.chalPings)} pings, the simple rule $${cc.champNet.toFixed(2)} with ${Math.round(cc.champPings)}. ${cc.active === 'challenger' ? 'The model acts now.' : 'The simple rule acts.'}`)
   }
   lines.push('')
   if (!o.learning) lines.push('Route memory is off (learning in config.json).')

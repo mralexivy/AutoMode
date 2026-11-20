@@ -2957,7 +2957,7 @@ function noteVerdict(d: Decision) {
 // v4Snapshot: the router's state as the UI reads it. Copies; computes nothing.
 // v4CacheView: what the cache-keeper wiring (hooks/cachekeeper.ts) reads. It owns no state of its own about the cache.
 export function v4CacheView() {
-  return { active: S.mode === 'auto', mainRequests: S.mainRequests, model: S.cache?.model ?? null, prefixTokens: S.cache?.prefixTokens ?? 0, lastRequestAt: S.cache?.lastRequestAt ?? null, ttlMs: S.ttl, provider: S.provider, cfg: S.cfg as unknown,
+  return { asked: /\?\s*$/.test(String(S.lastReply ?? '').trim()), active: S.mode === 'auto', mainRequests: S.mainRequests, model: S.cache?.model ?? null, prefixTokens: S.cache?.prefixTokens ?? 0, lastRequestAt: S.cache?.lastRequestAt ?? null, ttlMs: S.ttl, provider: S.provider, cfg: S.cfg as unknown,
     // A ping would write a new cache when the live model is not the one that was cached, or the context was compacted since.
     stale: (!!S.current?.model && !!S.cache?.model && S.current.model !== S.cache.model) || (!!S.compactedAt && S.compactedAt >= (S.cache?.lastRequestAt ?? 0)) }
 }
