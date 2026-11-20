@@ -1,4 +1,4 @@
-// Generated from hooks/ at commit c5275de9a73a5a16bdd3573ccf9df4e9a179a1f8 by tools/release.mts. The readable source is hooks/ on the main branch.
+// Generated from hooks/ at commit 2e2148e2e62f7cc6df95f06c6f76359fae2e0a3b by tools/release.mts. The readable source is hooks/ on the main branch.
 // hooks/lib/io.ts
 function sid($) {
   return $.session.id();
@@ -12,7 +12,7 @@ function fsRead($, ...args) {
 function fsWrite($, ...args) {
   return $.fs.write(...args);
 }
-function sessionUsage($) {
+function usageNow($) {
   return $.session.usage();
 }
 function fsExists($, ...args) {
@@ -41,6 +41,21 @@ function agents($) {
 }
 function status($, ...args) {
   return $.ui.status(...args);
+}
+function ask($, ...args) {
+  return $.ui.ask(...args);
+}
+function compact($) {
+  return $.session.compact();
+}
+function toast($, ...args) {
+  return $.ui.toast(...args);
+}
+function lsdir($, ...args) {
+  return $.fs.list(...args);
+}
+function later($, ...args) {
+  return $.clock.after(...args);
 }
 
 // hooks/register.ts
@@ -217,10 +232,10 @@ function lifecycleCosts(i, c) {
   const cont = (1 - p) * keep(i.contextTokens, true) + p * keep(i.contextTokens, false);
   const summarize = (cold ? i.contextTokens * write : i.contextTokens * read2) + c.summaryTokens * r.output / 1e6;
   const compacted = i.baseTokens + c.summaryTokens + Math.max(0, i.contextTokens - i.staleTokens - i.baseTokens) * 0.25;
-  const compact = summarize + keep(compacted, false);
+  const compact2 = summarize + keep(compacted, false);
   const fresh2 = i.baseTokens + c.handoffTokens + c.rebuildTokens;
   const clear = keep(fresh2, false);
-  return { continue: cont, compact, clear };
+  return { continue: cont, compact: compact2, clear };
 }
 function lifecycle(i, c) {
   const costs = lifecycleCosts(i, c);
@@ -238,22 +253,22 @@ function expectedLifecycle(i, c, p = LIFECYCLE_PRIORS) {
   const cold = i.idleMs > i.ttlMs;
   const pCold = cold ? 1 : i.pCold ?? 0;
   const n = Math.max(1, i.horizon);
-  const later = (base) => {
+  const later2 = (base) => {
     let t = 0;
     for (let k = 1; k < n; k++) t += (base + k * p.regrowthTokens) * read2 + p.regrowthTokens * write;
     return t;
   };
   const firstKeep = (1 - pCold) * i.contextTokens * read2 + pCold * i.contextTokens * write;
-  const laterKeep = later(i.contextTokens);
+  const laterKeep = later2(i.contextTokens);
   const summarize = (cold ? i.contextTokens * write : i.contextTokens * read2) + c.summaryTokens * r.output / 1e6;
   const compacted = i.baseTokens + c.summaryTokens + Math.max(0, i.contextTokens - i.staleTokens - i.baseTokens) * 0.25;
   const firstCompact = compacted * write;
-  const laterCompact = later(compacted);
+  const laterCompact = later2(compacted);
   const recovery2 = p.pLoss * c.rebuildTokens * (write + Math.max(0, n - 2) * read2);
   const keep = firstKeep + laterKeep;
-  const compact = summarize + firstCompact + laterCompact + recovery2;
+  const compact2 = summarize + firstCompact + laterCompact + recovery2;
   const r6 = (v) => Math.round(v * 1e6) / 1e6;
-  return { keep: r6(keep), compact: r6(compact), delta: r6(keep - compact), parts: { firstKeep: r6(firstKeep), laterKeep: r6(laterKeep), summarize: r6(summarize), firstCompact: r6(firstCompact), laterCompact: r6(laterCompact), recovery: r6(recovery2) }, basis: "prior" };
+  return { keep: r6(keep), compact: r6(compact2), delta: r6(keep - compact2), parts: { firstKeep: r6(firstKeep), laterKeep: r6(laterKeep), summarize: r6(summarize), firstCompact: r6(firstCompact), laterCompact: r6(laterCompact), recovery: r6(recovery2) }, basis: "prior" };
 }
 function shouldOffer(last2, action, contextTokens, knownCold = false) {
   if (action === "continue") return false;
@@ -261,7 +276,7 @@ function shouldOffer(last2, action, contextTokens, knownCold = false) {
   return contextTokens >= last2.contextTokens * 1.25;
 }
 var KEEP_LINE = /error|fail|exception|traceback|panic|warn|denied|forbidden|fatal|assert|expected|✗|×|\bat .+:\d+/i;
-function reduceOutput(text, aboveChars, savedAt) {
+function reduceOutput(text, aboveChars, savedAt2) {
   if (text.length <= aboveChars) return { text, reduced: false, keptLines: 0, droppedLines: 0 };
   const lines = text.split("\n");
   const keep = /* @__PURE__ */ new Set();
@@ -271,16 +286,16 @@ function reduceOutput(text, aboveChars, savedAt) {
     for (let j = i - 1; j <= i + 1; j++) if (j >= 0 && j < lines.length) keep.add(j);
   }
   const out = [];
-  let gap = 0;
+  let gap2 = 0;
   for (let i = 0; i < lines.length; i++) {
     if (keep.has(i)) {
-      if (gap) out.push(`… ${gap} lines omitted …`);
-      gap = 0;
+      if (gap2) out.push(`… ${gap2} lines omitted …`);
+      gap2 = 0;
       out.push(lines[i].length > 2e3 ? `${lines[i].slice(0, 2e3)} …` : lines[i]);
-    } else gap += 1;
+    } else gap2 += 1;
   }
-  if (gap) out.push(`… ${gap} lines omitted …`);
-  const note = savedAt ? `[AutoMode shortened this output from ${text.length} characters; every error and warning line is kept. The full output is at ${savedAt}: Read it if you need the rest.]` : `[AutoMode shortened this output from ${text.length} characters; every error and warning line is kept.]`;
+  if (gap2) out.push(`… ${gap2} lines omitted …`);
+  const note = savedAt2 ? `[AutoMode shortened this output from ${text.length} characters; every error and warning line is kept. The full output is at ${savedAt2}: Read it if you need the rest.]` : `[AutoMode shortened this output from ${text.length} characters; every error and warning line is kept.]`;
   const body = out.join("\n");
   if (body.length > text.length * 0.7) return { text, reduced: false, keptLines: lines.length, droppedLines: 0 };
   return { text: `${note}
@@ -351,7 +366,7 @@ function openCheckpoint(text) {
   if (typeof sum !== "string" || sum !== hash(JSON.stringify(body))) return { cp: null, problem: "checksum mismatch" };
   return { cp: body, problem: null };
 }
-function reduceMcp(result, aboveChars, savedAt) {
+function reduceMcp(result, aboveChars, savedAt2) {
   const bare = Array.isArray(result);
   const r = bare ? { content: result } : result;
   if (!r || !Array.isArray(r.content) || r.isError || r.structuredContent !== void 0) return null;
@@ -359,7 +374,7 @@ function reduceMcp(result, aboveChars, savedAt) {
   const total = texts.reduce((a, b2) => a + b2.text.length, 0);
   if (total <= aboveChars) return null;
   const joined = texts.map((b2) => b2.text).join("\n");
-  const red = reduceOutput(joined, aboveChars, savedAt);
+  const red = reduceOutput(joined, aboveChars, savedAt2);
   if (!red.reduced) return null;
   const content = [{ type: "text", text: red.text }, ...r.content.filter((b2) => b2?.type !== "text")];
   return { result: bare ? content : { ...r, content }, from: total, to: red.text.length, full: joined };
@@ -442,8 +457,8 @@ function routerOverrides(options2, stored2 = {}) {
   if (policy !== "default") out.policy = policy;
   const rm = bool(valueOf("routeModels", options2, stored2));
   if (rm !== void 0) out.routeModels = rm;
-  const gate = valueOf("completionGate", options2, stored2);
-  if (gate !== "default") out.completionGate = gate;
+  const gate2 = valueOf("completionGate", options2, stored2);
+  if (gate2 !== "default") out.completionGate = gate2;
   const learning = bool(valueOf("learning", options2, stored2));
   if (learning !== void 0) out.learning = learning;
   const delegation2 = valueOf("delegation", options2, stored2);
@@ -773,19 +788,19 @@ var sources = null;
 var setSources = (s) => {
   sources = s;
 };
-var uiOff = null;
-async function uiDisabled($) {
-  if (uiOff === null) {
+var uiOffFlag = null;
+async function isUiOff($) {
+  if (uiOffFlag === null) {
     try {
-      uiOff = ["off", "0", "false"].includes(String(await $.env.get("AUTOMODE_UI") ?? "").trim().toLowerCase());
+      uiOffFlag = ["off", "0", "false"].includes(String(await $.env.get("AUTOMODE_UI") ?? "").trim().toLowerCase());
     } catch {
-      uiOff = false;
+      uiOffFlag = false;
     }
   }
-  return uiOff;
+  return uiOffFlag;
 }
 var facts = { outputStyle: null };
-async function loadFacts($) {
+async function lFacts($) {
   try {
     const home2 = await $.env.get("CLAUDE_CONFIG_DIR") || `${await $.env.get("HOME")}/.claude`;
     const style = JSON.parse(await fsRead($, `${home2}/settings.json`))?.outputStyle;
@@ -828,7 +843,7 @@ async function gateTip($, v, now3) {
 }
 async function usageSnap($) {
   try {
-    const u = await sessionUsage($);
+    const u = await usageNow($);
     const limits = Array.isArray(u?.rateLimits) ? u.rateLimits.filter((r) => Number.isFinite(r?.percentUsed)).map((r) => ({ name: String(r.window ?? r.name ?? "usage"), percent: Number(r.percentUsed) })) : [];
     return {
       costUsd: typeof u?.cost?.usd === "number" ? u.cost.usd : null,
@@ -859,7 +874,7 @@ var last = "";
 var keyOf = (session, v) => `${session}|${JSON.stringify({ ...v, at: 0 })}`;
 async function publish($) {
   try {
-    if (await uiDisabled($)) return;
+    if (await isUiOff($)) return;
     const v = await snapshotView($);
     if (!v) return;
     let session = "";
@@ -1123,7 +1138,7 @@ async function cleanup($) {
 }
 async function readUsage($) {
   try {
-    const u = await sessionUsage($);
+    const u = await usageNow($);
     return { usd: u.cost?.usd ?? null, tokens: u.context?.tokens ?? 0 };
   } catch {
     return { usd: null, tokens: 0 };
@@ -1191,12 +1206,12 @@ async function guardianPromptSubmit($, e, next) {
   }
   let ctx = [];
   try {
-    if (await enabled($)) ctx = await beforePrompt($, e);
+    if (await enabled($)) ctx = await beforeAsk($, e);
   } catch {
   }
   return next(ctx.length ? { ...e, context: [...e.context ?? [], ...ctx] } : e);
 }
-async function beforePrompt($, e) {
+async function beforeAsk($, e) {
   const byPerson = e.origin?.kind === "composer" || e.origin?.kind === "bridge" || e.origin?.kind === "sdk";
   const text = String(e.text ?? "").trim();
   if (!byPerson || e.command || e.isMeta || text.startsWith("/")) return [];
@@ -1278,7 +1293,7 @@ async function guardianTurnStart($, e, next) {
   }
   return next(e);
 }
-async function guardianStep($, e) {
+async function gStep($, e) {
   if (e.agentId !== void 0 || !await enabled($)) return;
   if (!G.turn || G.turn.turnId !== e.turnId) {
     G.turn = newTurn(e.turnId, await now($), G.authorizeNext ? 1 : 0);
@@ -1287,9 +1302,9 @@ async function guardianStep($, e) {
   }
   G.model = e.model ?? G.model;
   const u = await readUsage($);
-  const delta = u.usd !== null && G.lastUsd !== null ? Math.max(0, u.usd - G.lastUsd) : 0;
+  const delta2 = u.usd !== null && G.lastUsd !== null ? Math.max(0, u.usd - G.lastUsd) : 0;
   if (u.usd !== null) G.lastUsd = u.usd;
-  observeRequest(G.turn, delta);
+  observeRequest(G.turn, delta2);
   G.contextTokens = u.tokens || G.contextTokens;
   if (u.tokens > 5e3 && (!G.baseTokens || u.tokens < G.baseTokens)) G.baseTokens = u.tokens;
   G.lastRequestAt = await now($);
@@ -1416,20 +1431,20 @@ async function afterTurn($, e) {
   await publish($);
 }
 async function offer($, action, costs, objective) {
-  const save = `about $${(costs.continue - costs[action]).toFixed(2)} over the next requests`;
-  G.view.offer = { action, at: await now($), contextTokens: G.contextTokens, saves: save };
+  const save2 = `about $${(costs.continue - costs[action]).toFixed(2)} over the next requests`;
+  G.view.offer = { action, at: await now($), contextTokens: G.contextTokens, saves: save2 };
   G.view.last = { kind: action === "clear" ? "handoff advised" : "compact advised", at: G.view.offer.at, why: action === "clear" ? "the task looks done on a large context" : "most of the context is older than the task" };
   if (action === "compact" && G.cfg.autoCompact && automatic()) {
     try {
       const r = await $.session.compact({ instructions: `Keep the objective, the decisions, the files changed, the failing and passing checks, the restrictions, and the next step. Objective: ${objective}` });
       if (!r?.skip) {
         const before = G.contextTokens;
-        await record($, { event: "compacted", contextBefore: before, saves: save });
+        await record($, { event: "compacted", contextBefore: before, saves: save2 });
         G.taskStartTokens = 0;
         G.lastOffer = null;
         G.view.offer = null;
         G.contextTokens = (await readUsage($)).tokens || G.contextTokens;
-        if (notifying()) $.ui.toast(`AutoMode: compacted a ${Math.round(before / 1e3)}k-token context after this turn (saves ${save}). Set guardian.autoCompact false to stop this.`);
+        if (notifying()) $.ui.toast(`AutoMode: compacted a ${Math.round(before / 1e3)}k-token context after this turn (saves ${save2}). Set guardian.autoCompact false to stop this.`);
         return;
       }
       await record($, { event: "compact-vetoed", skip: r.skip });
@@ -1445,7 +1460,7 @@ async function offer($, action, costs, objective) {
       await record($, { event: "suggest-unavailable", action, error: String(err?.message ?? err).slice(0, 200) });
     }
   }
-  $.ui.toast(action === "clear" ? `AutoMode: this task looks done and the context is ${Math.round(G.contextTokens / 1e3)}k tokens. A fresh session saves ${save}; the checkpoint is saved and restored if you continue the task. ${assisting() ? "Tab, Enter to clear." : "Run /clear to start fresh."}` : `AutoMode: most of this ${Math.round(G.contextTokens / 1e3)}k context is old. Compacting saves ${save}. ${assisting() ? "Tab, Enter to compact." : "Run /compact to shrink it."}`);
+  $.ui.toast(action === "clear" ? `AutoMode: this task looks done and the context is ${Math.round(G.contextTokens / 1e3)}k tokens. A fresh session saves ${save2}; the checkpoint is saved and restored if you continue the task. ${assisting() ? "Tab, Enter to clear." : "Run /clear to start fresh."}` : `AutoMode: most of this ${Math.round(G.contextTokens / 1e3)}k context is old. Compacting saves ${save2}. ${assisting() ? "Tab, Enter to compact." : "Run /compact to shrink it."}`);
 }
 async function git($) {
   try {
@@ -1559,6 +1574,8 @@ import { workflowArgs } from "./lib/stages.ts";
 import { subagentEffort, subagentRoute } from "./lib/subagents.ts";
 import { effortFor, helperEffort, takesEffort, looksLikeRedo as looksLikeRedo2, midTurnNote, REDO_STAY_PROMPTS as REDO_STAY_PROMPTS2, thinkingOf } from "./lib/effort.ts";
 import { effortSharesCache, modeOf as modeOf2, providerOf, thinkingRisk, ttlMs } from "./lib/mode.ts";
+import { FIVE_MIN, ONE_HOUR, inferTtl } from "./lib/ttl.ts";
+import { ckConfig } from "./lib/cachecfg.ts";
 import { bounded as bounded2, helperFloor, helperQuestion, JUDGE_CALL, JUDGE_SYSTEM as EFFORTLESS_SYSTEM, keepsEffort, parseVerdict } from "./lib/effortless.ts";
 
 // hooks/lib/effortless.ts
@@ -1800,19 +1817,19 @@ function switchCheck(i, resetSinceLastRequest = false) {
   const pair = modelChange ? continuity(i.current.model, i.target.model, i.provider ?? "anthropic") : null;
   const flag = pair === "lost" && i.compacted ? "cleared" : pair;
   const lostHere = flag === "lost" && i.sameTask;
-  const rentFor = (verdict, gate) => {
+  const rentFor = (verdict, gate2) => {
     if (!modelChange || i.mandatory) return void 0;
     const boundary = boundaryOf(i, low);
     const growth = rem.p25 * (DEFAULT_PRIORS.newInputPerStep + i.expectedOutputTokens);
     const transition = transitionUsd({ cache: i.cache, from: i.current, to: i.target, prices: i.prices, hiUsd: cost, addedTokens: growth, sameTask: i.sameTask, expired: low });
     const rentUsd = i.rent && i.rent.from === i.current.family && i.rent.to === i.target.family ? i.rent.usd : 0;
-    const heldBy = verdict === "hold" && gate !== "votes" && gate !== "payback" ? gate : void 0;
+    const heldBy = verdict === "hold" && gate2 !== "votes" && gate2 !== "payback" ? gate2 : void 0;
     const pays = low && !i.sameTask || boundary !== "none" && rentUsd >= transition.totalUsd;
     return { verdict: !heldBy && pays ? "switch" : "hold", to: i.target.family, boundary, rentUsd: round(rentUsd), stepRatio: i.targetStepRatio ?? 1, transition, ...heldBy ? { heldBy } : {} };
   };
-  const out = (verdict, reason, gate) => {
-    const rent = rentFor(verdict, gate);
-    return { verdict, ...gate ? { gate } : {}, estUsd: cost, basis, lowPenaltyPoint: low, reason, economics, ...flag ? { continuity: flag } : {}, ...rent ? { rent } : {} };
+  const out = (verdict, reason, gate2) => {
+    const rent = rentFor(verdict, gate2);
+    return { verdict, ...gate2 ? { gate: gate2 } : {}, estUsd: cost, basis, lowPenaltyPoint: low, reason, economics, ...flag ? { continuity: flag } : {}, ...rent ? { rent } : {} };
   };
   const sameWindow = !!i.current && i.target.family !== "haiku" && (WINDOW[i.target.family] ?? 0) >= (WINDOW[i.current.family] ?? Infinity);
   if (!fits(i.target, i.cache.prefixTokens, p) && !sameWindow) return out("hold", "the target cannot hold this context", "context");
@@ -1993,6 +2010,7 @@ var hmModel = (t) => t === "T0" ? "haiku" : t === "T1" || t === "T2" ? "sonnet" 
 var effortlessFloor = (need) => need ? RANK2[need.model] : null;
 function effortMinFor(family, i) {
   const floor = i.floors.effortMin?.[family];
+  if (family === "sonnet" && i.probe?.sonnetEffort) return maxEffort2(floor ?? "low", i.probe.sonnetEffort);
   if (family === "sonnet" && i.start) return maxEffort2(floor ?? "low", v6SonnetFloor(i.start, i.hm?.tier, i.hm?.complexity, i.consequence));
   const hard = i.hm?.tier === "T4" || effortlessFloor(i.need) === RANK2.fable;
   if (family === "opus" && hard) return maxEffort2(floor ?? "low", "high");
@@ -2022,14 +2040,15 @@ function eligibilityOf(family, i) {
   if (required) return { eligibility: "ineligible", why: [...why, required] };
   if (family === "sonnet") return { eligibility: "eligible", why: [...why, "sonnet: no rule requires opus"] };
   if (!i.hm) return { eligibility: "ineligible", why: [...why, "haiku needs both judges; the automode judge did not answer"] };
+  if (i.probe?.haiku && tierRank(i.hm.tier) >= 1 && tierRank(i.hm.tier) <= 3 && i.consequence !== "critical") return { eligibility: "eligible", why: [...why, "adaptive: a probe starts this kind of task on Haiku"] };
   if (i.start) return v6HaikuStart(i.hm.tier, i.hm.complexity, i.consequence) ? { eligibility: "eligible", why: [...why, `${i.start}: bounded work on Haiku`] } : { eligibility: "ineligible", why: [...why, `${i.start}: Haiku only for T0, or T1 with no risk`] };
   if (i.reachHaiku && tierRank(i.hm.tier) <= 2 && i.need.model !== "opus" && i.consequence !== "critical") return { eligibility: "eligible", why: [...why, "haiku: low tier, no critical risk"] };
   if (i.reachHaiku && i.opusOnEvidence && i.haikuFirst && tierRank(i.hm.tier) <= 3 && i.consequence !== "critical") return { eligibility: "eligible", why: [...why, "haiku first: no critical risk, failure evidence moves it up"] };
   return i.need.model === "haiku" && i.hm.tier === "T0" ? { eligibility: "eligible", why: [...why, "both judges name haiku"] } : { eligibility: "ineligible", why: [...why, "haiku needs both judges"] };
 }
-function firstCalls(fixedFamily, running) {
+function firstCalls(fixedFamily, running2) {
   if (fixedFamily) return [fixedFamily];
-  return running && running !== NEED_ANCHOR ? [NEED_ANCHOR, running] : [NEED_ANCHOR];
+  return running2 && running2 !== NEED_ANCHOR ? [NEED_ANCHOR, running2] : [NEED_ANCHOR];
 }
 function secondCall(i, anchor) {
   if (i.floors.fixedFamily) return null;
@@ -2261,7 +2280,7 @@ function planAuto(i) {
     reasons.push(`learned: ${taught} starts on opus`);
     learnedBucket = taught;
   }
-  const secondJudge = !i.shortcut && !fallback && !i.judgeCached && !i.executor.on ? secondCall({ allowed: i.allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence: i.floor.risk, reachHaiku: i.reachHaiku, opusOnEvidence: i.opusOnEvidence, haikuFirst: i.haikuFirst, start: i.start, floors, current: null, cost: () => 0 }, i.anchor) : null;
+  const secondJudge = !i.shortcut && !fallback && !i.judgeCached && !i.executor.on ? secondCall({ allowed: i.allowed, verdicts, need: askedNeed, hm: answer ? { tier: answer.tier, complexity: answer.complexity } : null, consequence: i.floor.risk, reachHaiku: i.reachHaiku, opusOnEvidence: i.opusOnEvidence, haikuFirst: i.haikuFirst, probe: i.probe, start: i.start, floors, current: null, cost: () => 0 }, i.anchor) : null;
   return { floors, tier: tierRank(needTier.tier) > tierRank(mq.tier.tier) ? needTier : mq.tier, escalated: mq.escalated, verdicts, notes, ...fallback ? { fallback } : {}, ...ownFallback ? { ownFallback } : {}, ...learnedBucket ? { learnedBucket } : {}, secondJudge, reasons };
 }
 function routeAuto(i) {
@@ -2283,8 +2302,8 @@ function routeAuto(i) {
   const executed = kept ? null : executorInput(i.executor.on, verdicts, floors, i.executor.taskRoute);
   if (executed) reasons.push(`executor: sonnet ${executed.verdicts.sonnet.effort}`);
   const consequence = i.floor.risk;
-  const choice = kept ? optimizeAuto({ allowed: i.allowed, verdicts: { [kept.model]: kept }, need: kept, hm: null, floors: { ...floors, fixedFamily: i.allowed.includes(i.kept.family) ? i.kept.family : void 0 }, current: current2, cost }) : optimizeAuto({ allowed: i.allowed, ...executed ?? { verdicts, floors }, need, hm, consequence, reachHaiku: i.reachHaiku, opusOnEvidence: i.opusOnEvidence, haikuFirst: i.haikuFirst, start: i.start, current: current2, cost });
-  const shadow = executed ? optimizeAuto({ allowed: i.allowed, verdicts, need, hm, consequence, reachHaiku: i.reachHaiku, opusOnEvidence: i.opusOnEvidence, haikuFirst: i.haikuFirst, start: i.start, floors, current: current2, cost }).best : null;
+  const choice = kept ? optimizeAuto({ allowed: i.allowed, verdicts: { [kept.model]: kept }, need: kept, hm: null, floors: { ...floors, fixedFamily: i.allowed.includes(i.kept.family) ? i.kept.family : void 0 }, current: current2, cost }) : optimizeAuto({ allowed: i.allowed, ...executed ?? { verdicts, floors }, need, hm, consequence, reachHaiku: i.reachHaiku, opusOnEvidence: i.opusOnEvidence, haikuFirst: i.haikuFirst, probe: i.probe, start: i.start, current: current2, cost });
+  const shadow = executed ? optimizeAuto({ allowed: i.allowed, verdicts, need, hm, consequence, reachHaiku: i.reachHaiku, opusOnEvidence: i.opusOnEvidence, haikuFirst: i.haikuFirst, probe: i.probe, start: i.start, floors, current: current2, cost }).best : null;
   reasons.push(`optimizer: ${choice.rule} -> ${choice.best.family}/${choice.best.effort}`);
   const own = cur ? choice.candidates.find((c) => c.family === cur.family) : void 0;
   const ownVerdict = cur ? verdicts[cur.family] : null;
@@ -2360,7 +2379,9 @@ function replayOf(input, result, priceBook, flags) {
 import { COMPACT_SYSTEM, transcriptOf } from "./lib/compact.ts";
 import { BUILD_ASK, FORK_PROMPT, buildHandoff, completeness, forkWorth, parseForkFacts, renderHandoff, withFork } from "./lib/handoff.ts";
 import { cacheNote, closeEpisodes, consultOutcome, durationsFrom, effortFirst, episodeBase, openEpisode, patchEpisode, influence, planFiles, priceConsult, RECUR_PRIOR } from "./lib/rescue.ts";
-import { EMPTY_LEARNED, bucketOf as bucketOf2, noteTask, opusBuckets, parseLearned } from "./lib/learn.ts";
+import { EMPTY_LEARNED, bucketOf as bucketOf2, causeOf, inControl, kindOf, noteTask, opusBuckets, parseLearned } from "./lib/learn.ts";
+import { assign as assignExp, bucketOf as expBucket, pickKey } from "./lib/experiment.ts";
+import { EMPTY_RULEBOOK, focusFor, parseRulebook } from "./lib/reflect.ts";
 import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence } from "./lib/delegation.ts";
 var V4_DEFAULTS = {
   router: "classic",
@@ -2417,6 +2438,13 @@ var V4_DEFAULTS = {
   opusStart: "judge",
   // With opusStart evidence: t3 lets T3 work start on Haiku. Off by default, on the v4 and v5 proof runs (lib/auto.ts).
   haikuFirst: "off",
+  // Adaptive routing (lib/experiment.ts): learn from this person's own tasks whether a cheaper start does as well.
+  adaptive: true,
+  // The learning pass (lib/reflect.ts): `auto` runs it when the person has been idle, `manual` only on /automode learn, `off` never. The model
+  // step costs about half a cent a pass and is capped; `reflectModel` false keeps the pass local and free.
+  reflect: "auto",
+  reflectIdleMin: 20,
+  reflectModel: true,
   // v6 (bench/experiments/V6.md): the execution strategy. legacy is main's routing; v6a, v6b and v6c start and rescue
   // differently (lib/strategy.ts executionRules). builder: on hands non-trivial work to one builder subagent at once.
   strategy: "legacy",
@@ -2481,6 +2509,14 @@ var S = {
   // a lower route picked mid-turn waits for the turn to end
   planMode: false,
   planExited: false,
+  ttlPinned: false,
+  mainRequests: 0,
+  rulebook: EMPTY_RULEBOOK,
+  lastOwner: "",
+  lastPingAt: 0,
+  taskArm: "memory",
+  taskFlipped: false,
+  taskExp: null,
   editLog: [],
   agents: /* @__PURE__ */ new Map(),
   // every subagent seen, for the ledger
@@ -2701,9 +2737,18 @@ async function loadV4($) {
   S.penv = penv;
   S.effortShared = effortSharesCache(penv, "claude-sonnet-5-5");
   const onPlan = !await safe($.env.get("ANTHROPIC_API_KEY"));
-  S.ttl = ttlMs({ CLAUDE_CODE_PROMPT_CACHE_TTL: await safe($.env.get("CLAUDE_CODE_PROMPT_CACHE_TTL")), FORCE_PROMPT_CACHING_5M: await safe($.env.get("FORCE_PROMPT_CACHING_5M")), ENABLE_PROMPT_CACHING_1H: await safe($.env.get("ENABLE_PROMPT_CACHING_1H")) }, S.provider, onPlan);
+  const ttlEnv = { CLAUDE_CODE_PROMPT_CACHE_TTL: await safe($.env.get("CLAUDE_CODE_PROMPT_CACHE_TTL")), FORCE_PROMPT_CACHING_5M: await safe($.env.get("FORCE_PROMPT_CACHING_5M")), ENABLE_PROMPT_CACHING_1H: await safe($.env.get("ENABLE_PROMPT_CACHING_1H")) };
+  S.ttl = ttlMs(ttlEnv, S.provider, onPlan);
+  const ck = ckConfig(S.cfg);
+  S.ttlPinned = ck.ttl !== "auto" || Object.values(ttlEnv).some(Boolean);
+  if (ck.ttl !== "auto") S.ttl = ck.ttl === "5" ? FIVE_MIN : ONE_HOUR;
   S.priors = await loadPriors($);
   if (S.cfg.learning) S.learned = await loadLearned($);
+  try {
+    S.rulebook = parseRulebook(await fsRead($, await rulebookFile($)));
+  } catch {
+    S.rulebook = EMPTY_RULEBOOK;
+  }
   const policyEnv = String(await safe($.env.get("AUTOMODE_POLICY")) ?? "").trim().toLowerCase();
   const wanted = policyEnv || String(S.cfg.policy ?? "legacy").trim().toLowerCase();
   S.policy = wanted === "auto" ? "auto" : "legacy";
@@ -2858,7 +2903,7 @@ async function spawnOutsideAutoMode($, e, next) {
   noteAgent(res, e, sr?.model, !!sr);
   return res;
 }
-var SNAPSHOT_KEYS = ["sessionMode", "ledger", "lastAuto", "taskDecision", "decidedPlanMode", "lastRisk", "lastEffective", "appEffort", "appModel", "sessionModel", "pinFamily", "pinEffort", "judgeRiskTask", "inadequate", "haikuOutUntilCompaction", "planExited", "signalMode", "lastWorkBand", "workStage", "breakers", "failures", "signalErrorAt", "effortUnsupported", "current", "cache", "envelope", "votes", "requestsSinceSwitch", "verifiedSinceSwitch", "lastSummary", "taskSeq", "warm", "stayUp", "redoFloor", "planMode", "switchesThisTask", "dropped", "rent", "lastDemand", "stage", "consulted", "pending", "compactedPending", "basePrefix", "compactedAt", "lastMessageCount", "consultCounts", "resolvedCounts", "signalSeq", "signalCompactAt", "compactHookSeen", "toldUserTier", "editedSinceCheck", "lastCheck", "obligations", "obligationsTask", "completionBlocks", "completionState", "taskUsd", "budgetTold", "rescues", "rescueBrief", "editsSeen", "stopMark", "baseline", "watchdogFired", "stopHeld", "prefixAtFirstEdit", "contextHandled", "priceStepNoted", "savings"];
+var SNAPSHOT_KEYS = ["sessionMode", "ledger", "lastAuto", "taskDecision", "decidedPlanMode", "lastRisk", "lastEffective", "appEffort", "appModel", "sessionModel", "pinFamily", "pinEffort", "judgeRiskTask", "inadequate", "haikuOutUntilCompaction", "planExited", "signalMode", "lastWorkBand", "workStage", "breakers", "failures", "signalErrorAt", "effortUnsupported", "current", "cache", "envelope", "votes", "requestsSinceSwitch", "verifiedSinceSwitch", "lastSummary", "taskSeq", "warm", "stayUp", "redoFloor", "planMode", "switchesThisTask", "dropped", "rent", "lastDemand", "stage", "consulted", "pending", "compactedPending", "basePrefix", "compactedAt", "lastMessageCount", "consultCounts", "resolvedCounts", "signalSeq", "signalCompactAt", "compactHookSeen", "toldUserTier", "editedSinceCheck", "lastCheck", "obligations", "obligationsTask", "completionBlocks", "completionState", "taskUsd", "budgetTold", "rescues", "rescueBrief", "editsSeen", "stopMark", "baseline", "watchdogFired", "stopHeld", "prefixAtFirstEdit", "contextHandled", "priceStepNoted", "savings", "taskExp"];
 async function restore2($) {
   S.restored = true;
   try {
@@ -2899,6 +2944,9 @@ function cacheState() {
 function prices() {
   return rowFor(S.provider);
 }
+async function rulebookFile($) {
+  return `${await dataDir2($)}/rulebook-${projectKey(S.cwd)}.json`;
+}
 async function learnedFile($) {
   return `${await dataDir2($)}/learned-${projectKey(S.cwd)}.json`;
 }
@@ -2916,9 +2964,16 @@ async function noteLearned($, corrected) {
   const start = seen?.family ?? S.current.family;
   const rescued = start !== "opus" && S.current.family === "opus" && env.escalations > 0;
   const outcome = corrected || rescued ? "bad" : env.verified ? "ok" : "open";
-  S.learned = noteTask(S.learned, { id: env.taskId, bucket: bucketOf2(a.hm.tier, a.need?.model), family: start, outcome, at: await now2($) });
+  S.learned = noteTask(S.learned, { id: env.taskId, bucket: bucketOf2(a.hm.tier, a.need?.model), family: start, outcome, at: await now2($), arm: S.taskArm, ...env.escalations > 0 ? { esc: true } : {}, ...causeOf(env.failures) ? { cause: causeOf(env.failures) } : {}, kind: kindOf(env.editedPaths), ...S.taskExp && S.taskExp.taskId === env.taskId ? { exp: { k: S.taskExp.key, a: S.taskExp.arm, b: S.taskExp.bucket } } : {}, ...S.taskFlipped ? { flipped: true } : {}, ...S.lastOwner === "user-override" || S.pinFamily ? { pinned: true } : {}, usd: Math.round((S.taskUsd ?? 0) * 1e4) / 1e4 });
   await fsWrite($, await learnedFile($), JSON.stringify(S.learned)).catch(() => {
   });
+}
+async function cfgDir($) {
+  try {
+    return await $.env.get("CLAUDE_CONFIG_DIR") ?? `${await $.env.get("HOME")}/.claude`;
+  } catch {
+    return ".";
+  }
 }
 async function dataDir2($) {
   let dir;
@@ -2927,12 +2982,7 @@ async function dataDir2($) {
   } catch {
   }
   if (!dir) {
-    let home2;
-    try {
-      home2 = await $.env.get("CLAUDE_CONFIG_DIR") ?? `${await $.env.get("HOME")}/.claude`;
-    } catch {
-    }
-    dir = `${home2 ?? "."}/plugins/data/automode`;
+    dir = `${await cfgDir($)}/plugins/data/automode`;
   }
   return dir;
 }
@@ -3227,11 +3277,11 @@ async function effortlessJudge($, family, prompt, o) {
   const fresh2 = !!S.cache?.lastRequestAt && await now2($) - S.cache.lastRequestAt <= S.ttl && !o.newTask;
   const effort = S.current?.family === family && fresh2 ? runningEffort() : DEFAULT_EFFORT[family];
   const inputFor = (closing) => judgeInputFor(prompt, { family, effort, messages: o.messages, midTurnEffort: o.midTurnEffort, attachments: o.attachments, planMode: S.planMode, closing });
-  const ask = (model, closing = false) => $.model.complete({ model, system: EFFORTLESS_SYSTEM, prompt: inputFor(closing), maxTokens: JUDGE_CALL.maxTokens, effort: JUDGE_CALL.effort, timeoutMs: S.cfg.effortJudgeTimeoutMs ?? JUDGE_CALL.timeoutMs }).catch(() => null);
-  let r = await ask(JUDGE_CALL.model);
+  const ask2 = (model, closing = false) => $.model.complete({ model, system: EFFORTLESS_SYSTEM, prompt: inputFor(closing), maxTokens: JUDGE_CALL.maxTokens, effort: JUDGE_CALL.effort, timeoutMs: S.cfg.effortJudgeTimeoutMs ?? JUDGE_CALL.timeoutMs }).catch(() => null);
+  let r = await ask2(JUDGE_CALL.model);
   let attempts = 1;
   if (r && !r.isAnswered && r.reason === "api-error" && r.status != null) {
-    r = await ask(JUDGE_RETRY_MODEL);
+    r = await ask2(JUDGE_RETRY_MODEL);
     attempts = 2;
   }
   let ms = await now2($) - t0;
@@ -3246,7 +3296,7 @@ async function effortlessJudge($, family, prompt, o) {
   noteJudge(usd);
   let v = parseVerdict(r.text);
   if (!v) {
-    const again = await ask(JUDGE_CALL.model, true);
+    const again = await ask2(JUDGE_CALL.model, true);
     attempts += 1;
     if (again?.isAnswered) {
       tokens = usageOf(again.usage);
@@ -3449,6 +3499,16 @@ ${midTurnNote(runningEffort())}` : text, midTurn, attachList.length),
   const previousStage = S.workStage;
   S.workStage = stage;
   const hm = answer ? { tier: answer.tier, complexity: answer.complexity } : null;
+  if (S.cfg.adaptive && hm && (!S.taskExp || S.taskExp.taskId !== env.taskId) && !shortcut) {
+    const tier = hm.tier, cx = hm.complexity;
+    const eligible = !fixedFamily && !override?.tier && !override?.effort && !S.pinFamily && env.risk.effective === "none" && tier !== "T0" && tier !== "T4";
+    const haikuFits = !(tier === "T1" && cx !== "complex");
+    const effortFits = tier === "T3" || cx === "complex";
+    const key = pickKey(S.learned, expBucket(tier, cx), [...haikuFits ? ["haiku"] : [], ...effortFits ? ["effort"] : []], env.taskId, at2);
+    const a = key ? assignExp(S.learned, key, expBucket(tier, cx), env.taskId, at2, eligible && S.mode === "auto", focusFor(S.rulebook, key, tier, cx, at2)) : null;
+    S.taskExp = key && a ? { taskId: env.taskId, key, arm: a.arm, bucket: expBucket(tier, cx), adopted: a.adopted } : { taskId: env.taskId, key: "haiku", arm: "hold", bucket: "", adopted: false };
+    if (S.taskExp.bucket === "") S.taskExp = null;
+  }
   const packet = `Goal: ${env.spec.text.slice(0, 1500)}
 
 The person now asks: ${text.slice(0, 600)}
@@ -3486,8 +3546,9 @@ Files edited so far: ${env.editedPaths.slice(0, 30).join(", ") || "none"}`;
     reachHaiku: S.cfg.reachHaiku,
     opusOnEvidence: S.cfg.opusStart === "evidence",
     ...S.cfg.haikuFirst === "t3" ? { haikuFirst: true } : {},
+    ...probeFlags() ? { probe: probeFlags() } : {},
     ...execution().start !== "legacy" ? { start: execution().start } : {},
-    learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning ? opusBuckets(S.learned, at2) : [] },
+    learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning && !inControl(env.taskId) ? opusBuckets(S.learned, at2) : [] },
     votes: S.votes,
     switching: {
       cache: cacheState(),
@@ -3547,6 +3608,10 @@ Files edited so far: ${env.editedPaths.slice(0, 30).join(", ") || "none"}`;
   const decided = heldBelow ? choice.best : routed;
   if (!shortcut && stage !== "complete" && stage !== "repo-op" && stage !== "reconsider") S.taskDecision = { taskId: env.taskId, family: decided.family, effort: decided.effort };
   S.lastAuto = shortcut ? S.lastAuto : { verdicts, need, hm, taskId: env.taskId };
+  if (!shortcut && hm) {
+    S.taskFlipped = !!S.cfg.learning && opusBuckets(S.learned, at2).includes(bucketOf2(hm.tier, need?.model));
+    S.taskArm = inControl(env.taskId) ? "control" : "memory";
+  }
   S.decidedPlanMode = S.planMode;
   S.lastRisk = env.risk.effective;
   if (answer) S.lastDemand = demandOf({ ...answer, consequence: env.risk.effective }, S.planMode, substantiveFailures(env));
@@ -3597,7 +3662,7 @@ function reoptimizeAuto(t, event, at2, turnId, reset = false) {
   const td = S.taskDecision && S.taskDecision.taskId === env.taskId ? S.taskDecision : null;
   const executed = executorInput(executorOn(), S.lastAuto.verdicts, baseFloors, !reset && td && cacheFresh(at2) ? td : null);
   const floors = executed?.floors ?? baseFloors;
-  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === "evidence", ...S.cfg.haikuFirst === "t3" ? { haikuFirst: true } : {}, ...execution().start !== "legacy" ? { start: execution().start } : {}, floors, current: current2, cost: autoCost(complexity, at2) });
+  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === "evidence", ...S.cfg.haikuFirst === "t3" ? { haikuFirst: true } : {}, ...probeFlags() ? { probe: probeFlags() } : {}, ...execution().start !== "legacy" ? { start: execution().start } : {}, floors, current: current2, cost: autoCost(complexity, at2) });
   let floor = mq.tier;
   if (t.mandatory) {
     const lift = tierOf2(choice.best.family, choice.best.effort);
@@ -3984,7 +4049,7 @@ Use its cause and fix plan.`;
 ${DISCOVERY_REPORT.replace(/\n/g, " ")}
 Then use the report: read a file yourself only for what it did not cover or listed under omitted.`;
 }
-async function v4SessionStart($, e, next) {
+async function v4Start($, e, next) {
   if (typeof e?.cwd === "string") S.cwd = e.cwd;
   await loadV4($);
   S.resetPending = true;
@@ -4233,6 +4298,7 @@ async function* v4TurnStep($, e, next) {
   const sentEffort = typeof ef.sent === "string" ? ef.sent : null;
   const prevModel = S.current?.model;
   const effortOff = S.effortUnsupported || S.thinkingRisk;
+  S.lastOwner = r.owner;
   S.current = { tier: r.tier, family: r.family, model: r.model, effort: sentEffort ?? (effortOff ? S.current?.effort ?? "medium" : r.effort) };
   if (prevModel && prevModel !== r.model) {
     S.requestsSinceSwitch = 0;
@@ -4256,6 +4322,15 @@ async function* v4TurnStep($, e, next) {
       S.firstPrefixSaved = true;
       await saveFirstPrefix($, prefix);
     }
+    if (!S.ttlPinned && !(S.lastPingAt > (S.cache?.lastRequestAt ?? 0))) {
+      const w2 = usageOf(u);
+      const proved = inferTtl({ input: w2.input, cacheRead: w2.cacheRead, cacheWrite: w2.cacheWrite5m + w2.cacheWrite1h, gapMs: S.cache?.lastRequestAt != null ? t - S.cache.lastRequestAt : null, assumedMs: S.ttl, compacted: compactedHere || shrank });
+      if (proved && proved !== S.ttl) {
+        S.records.push({ v: 1, kind: "cache-ttl", at: t, sessionId: S.sessionId, from: S.ttl, to: proved, source: "measured" });
+        S.ttl = proved;
+      }
+    }
+    S.mainRequests += 1;
     S.cache = { model: u.model ?? model, effort: sentEffort, prefixTokens: prefix, lastRequestAt: t, ttlMs: S.ttl, effortSharesCache: S.effortShared, outputTokens: u.output_tokens ?? 0 };
   }
   markWarm(r.family, sentEffort, res, t);
@@ -4477,7 +4552,7 @@ function settleConsults(at2, ev) {
   });
   return changed;
 }
-async function consultPacket($, env, because, openedAt, episode, cache, advisorUsd, ask) {
+async function consultPacket($, env, because, openedAt, episode, cache, advisorUsd, ask2) {
   const paths = [...new Set(env.editedPaths)].slice(0, 8);
   const diffStat = paths.length ? await git2($, ["git", "diff", "--stat", "--", ...paths]) : "";
   const diffHunks = diffStat ? await git2($, ["git", "diff", "-U2", "--", ...paths]) : "";
@@ -4499,7 +4574,7 @@ async function consultPacket($, env, because, openedAt, episode, cache, advisorU
       }
     }
   }
-  const text = renderHandoff(h2, source === "fork" ? gaps.gaps.filter((g) => !gaps.conversational.includes(g)) : gaps.gaps, ask);
+  const text = renderHandoff(h2, source === "fork" ? gaps.gaps.filter((g) => !gaps.conversational.includes(g)) : gaps.gaps, ask2);
   S.records.push({ v: 1, kind: "handoff", at: await now2($), sessionId: S.sessionId, taskId: env.taskId, episode, source, tokens: Math.ceil(text.length / 3.5), gaps: gaps.gaps.length, conversational: gaps.conversational.length, diff: !!diffStat, fork: forked });
   await flush($);
   return text;
@@ -4616,9 +4691,9 @@ async function runLadder($, at2) {
   if (!env || !S.current || S.policy !== "auto") return;
   if (budgetSpent(at2)) return;
   const l = env.ladder ?? EMPTY_LADDER;
-  const running = { family: S.current.family, effort: runningEffort() };
+  const running2 = { family: S.current.family, effort: runningEffort() };
   const editedSincePass = (since) => [...new Set(S.editLog.filter((x) => x.at > since).map((x) => x.path))];
-  const esc = escalation(env.failures, { ...l, editedSincePass, effortCapped: !nextEffort(running.family, running.effort), patient: S.cfg.opusStart === "evidence" && running.family === "haiku" });
+  const esc = escalation(env.failures, { ...l, editedSincePass, effortCapped: !nextEffort(running2.family, running2.effort), patient: S.cfg.opusStart === "evidence" && running2.family === "haiku" });
   if (esc.level === "none") return;
   if (execution().recovery !== "legacy" && esc.cause === "stop" && !S.stopHeld) {
     S.stopHeld = true;
@@ -4635,9 +4710,9 @@ async function runLadder($, at2) {
   const episode = opened.id;
   const ep = opened.episodes[episode];
   const allowed = allowedFamilies(at2);
-  const up = ladderStep(running, esc.level, allowed);
+  const up = ladderStep(running2, esc.level, allowed);
   const first = effortFirst({ enabled: S.cfg.strongStep === "effort-first", level: esc.level, episode: ep, critical: env.risk.effective === "critical", floorBand: l.floor?.band, modelBand: up?.kind === "model" ? up.band : void 0 });
-  const chosen = first.use ? ladderStep(running, "strong", allowed, { effortFirst: true }) : up;
+  const chosen = first.use ? ladderStep(running2, "strong", allowed, { effortFirst: true }) : up;
   const capped = execution().recovery !== "legacy" && chosen?.kind === "effort" && !v6RaiseAllowed(chosen.effort);
   const step = capped ? esc.level === "strong" && up?.kind === "model" ? up : null : chosen;
   const strongRaise = first.use && step?.kind === "effort";
@@ -4654,7 +4729,7 @@ async function runLadder($, at2) {
   if (execution().recovery !== "legacy" && step.kind === "model") {
     S.envelope = { ...env, ladder: spent };
     S.taskCauses = [...S.taskCauses, esc.because].slice(-10);
-    if (await v6Recover($, step.family, esc.because, ep.openedAt, episode, at2, !nextEffort(running.family, running.effort), "ladder")) {
+    if (await v6Recover($, step.family, esc.because, ep.openedAt, episode, at2, !nextEffort(running2.family, running2.effort), "ladder")) {
       S.envelope = { ...S.envelope, escalations: env.escalations + 1 };
       S.records.push({ v: 1, kind: "escalation", at: at2, sessionId: S.sessionId, taskId: env.taskId, level: esc.level, floor: null, action: "recovery", via: execution().recovery, route: `${step.family}/${step.effort}`, because: esc.because, cache, episode, ...why });
       await flush($);
@@ -4695,7 +4770,7 @@ Ask it for the cause and a fix plan. Apply its plan, then run the check again.${
   const floor = { tier, band: step.band, effort: step.effort, because: [esc.because] };
   const target = { ...routeFor2(tier, DEFAULT_LADDER2, step.effort), owner: "quality-escalation", reason: strongRaise ? `${esc.because}; effort first` : esc.because, floor, overridden: [] };
   const applied = pinned(target, S.appModel ?? target.model);
-  const moved = applied.family !== running.family || applied.effort !== running.effort;
+  const moved = applied.family !== running2.family || applied.effort !== running2.effort;
   S.pending = applied;
   const moving = moved && step.kind === "model";
   const raised = { ...env, escalations: env.escalations + 1, ladder: { ...spent, ...moving ? { episodes: patchEpisode(episodes, episode, { switched: true }) } : {}, floor: { family: step.family, effort: step.effort, band: step.band, because: esc.because, ...esc.fingerprint ? { command: env.failures[env.failures.length - 1].command } : {} } } };
@@ -4809,7 +4884,7 @@ async function readGate($, input) {
   }
 }
 var extractFailed = (why) => ({ result: why, isError: true, text: why });
-async function v4Extract($, e) {
+async function v4Ext($, e) {
   if (S.cfg.delegation !== "on") return extractFailed("extract is off. Use Read.");
   const paths = Array.isArray(e.paths) ? [...new Set(e.paths.map(String))] : [];
   const question = String(e.question ?? "").trim();
@@ -4865,10 +4940,10 @@ async function v4Stop($, e, next) {
   if (state === "verified" && settleConsults(await now2($), { verified: true })) await flush($);
   if (state === "none") return out;
   const evidence = S.cfg.opusStart === "evidence";
-  const gate = S.mode === "auto" && !out?.block ? evidence && state === "failed" ? "block" : S.cfg.completionGate : "report";
+  const gate2 = S.mode === "auto" && !out?.block ? evidence && state === "failed" ? "block" : S.cfg.completionGate : "report";
   const ladderStops = (rescueReview() || evidence) && state === "failed";
   const blocks = ladderStops ? Math.max(0, S.completionBlocks - (MAX_LADDER_STOPS - 1)) : S.completionBlocks;
-  let reason = blockReason(state, S.obligations, { gate, stopHookActive: e.stop_hook_active === true && !ladderStops, blocks, backgroundWork: Array.isArray(e.background_tasks) ? e.background_tasks.length : 0 });
+  let reason = blockReason(state, S.obligations, { gate: gate2, stopHookActive: e.stop_hook_active === true && !ladderStops, blocks, backgroundWork: Array.isArray(e.background_tasks) ? e.background_tasks.length : 0 });
   if (reason) S.completionBlocks += 1;
   const edits = S.editsSeen + S.bashEdits;
   const contested = ladderStops && S.stopMark !== null && edits === S.stopMark;
@@ -5130,7 +5205,7 @@ async function v4Attachment($, e, next) {
   }
   return next(e);
 }
-async function signalsFile($) {
+async function sigFile($) {
   let home2;
   try {
     home2 = await $.env.get("CLAUDE_CONFIG_DIR") || `${await $.env.get("HOME")}/.claude`;
@@ -5141,7 +5216,7 @@ async function signalsFile($) {
 async function syncSignals($, late) {
   if (S.mode !== "auto" || !S.signalsOn || S.sessionId === "unknown") return;
   try {
-    const file = await signalsFile($);
+    const file = await sigFile($);
     if (!await fsExists($, file)) return;
     const sig = JSON.parse(await fsRead($, file));
     if (!sig || typeof sig.seq !== "number" || sig.seq === S.signalSeq) return;
@@ -5267,6 +5342,80 @@ function noteVerdict(d) {
   U.verdict = { by, why: chosen?.ok && chosen.why || d.route.reason || "", confidence: d.answer?.confidence ?? null };
   U.candidates = (d.auto?.candidates ?? []).slice(0, 6).map((c) => ({ route: c.route, eligibility: c.eligibility, usd: Number.isFinite(c.usd) ? c.usd : null, why: (c.why ?? []).join("; ") }));
 }
+function probeFlags() {
+  const x = S.taskExp;
+  if (!x || x.arm !== "probe" || x.taskId !== S.envelope?.taskId) return null;
+  return x.key === "haiku" ? { haiku: true } : { sonnetEffort: "medium" };
+}
+function v4CacheView() {
+  return {
+    asked: /\?\s*$/.test(String(S.lastReply ?? "").trim()),
+    active: S.mode === "auto",
+    mainRequests: S.mainRequests,
+    model: S.cache?.model ?? null,
+    prefixTokens: S.cache?.prefixTokens ?? 0,
+    lastRequestAt: S.cache?.lastRequestAt ?? null,
+    ttlMs: S.ttl,
+    provider: S.provider,
+    cfg: S.cfg,
+    // A ping would write a new cache when the live model is not the one that was cached, or the context was compacted since.
+    stale: !!S.current?.model && !!S.cache?.model && S.current.model !== S.cache.model || !!S.compactedAt && S.compactedAt >= (S.cache?.lastRequestAt ?? 0)
+  };
+}
+function v4TaskRaw() {
+  const consult = S.consultLog.at(-1);
+  return {
+    completionState: S.completionState,
+    editedSinceCheck: S.editedSinceCheck,
+    lastCheckPassed: S.lastCheck ? S.lastCheck.passed : null,
+    planMode: S.planMode,
+    workStage: S.workStage ?? null,
+    openObligations: S.obligations.filter((o) => o.status !== "satisfied").length,
+    consultOpen: !!consult && !consult.outcome,
+    workersRunning: S.workers.size,
+    tier: S.lastAuto?.hm?.tier ?? null,
+    family: S.current?.family ?? null,
+    reachHaiku: S.cfg.reachHaiku === true,
+    pinned: !!S.pinFamily || S.lastOwner === "user-override"
+  };
+}
+var v4NotePing = (at2) => {
+  S.lastPingAt = at2;
+};
+var v4Learned = () => ({ learned: S.learned, learning: !!S.cfg.learning });
+var v4Rulebook = () => S.rulebook;
+async function v4SetRulebook($, rb) {
+  S.rulebook = rb;
+  await fsWrite($, await rulebookFile($), JSON.stringify(rb)).catch(() => {
+  });
+}
+async function v4Reflect($, system, digest) {
+  try {
+    const r = await $.model.complete({ model: S.cfg.compactModel, system, prompt: digest, maxTokens: 420, effort: "low", timeoutMs: 45e3 });
+    if (!r?.isAnswered) return null;
+    const usd = usageUsd(usageOf(r.usage), ANTHROPIC2.rates.haiku);
+    noteJudge(usd);
+    S.records.push({ v: 1, kind: "model-call", purpose: "learning-pass", at: await now2($), sessionId: S.sessionId, ok: true, usd: { value: round6(usd), basis: "measured", source: `${ANTHROPIC2.provider} ${ANTHROPIC2.checkedAt}` } });
+    return { text: String(r.text ?? ""), usd };
+  } catch {
+    return null;
+  }
+}
+var v4Config = () => S.cfg;
+async function v4ResetLearned($) {
+  S.learned = EMPTY_LEARNED;
+  S.rulebook = EMPTY_RULEBOOK;
+  await fsWrite($, await rulebookFile($), JSON.stringify(EMPTY_RULEBOOK)).catch(() => {
+  });
+  await fsWrite($, await learnedFile($), JSON.stringify(EMPTY_LEARNED)).catch(() => {
+  });
+}
+function v4Rate(model) {
+  return prices().rates[familyOf2(model ?? "") ?? "sonnet"];
+}
+function v4NoteCache(rec) {
+  S.records.push({ v: 1, sessionId: S.sessionId, ...rec });
+}
 function v4Snapshot(sessionModel2, now3) {
   const r = S.pending;
   return {
@@ -5322,6 +5471,10 @@ async function setSessionMode($, m) {
 }
 function freshSession() {
   return {
+    mainRequests: 0,
+    lastOwner: "",
+    lastPingAt: 0,
+    taskExp: null,
     current: null,
     pending: null,
     envelope: null,
@@ -5446,6 +5599,528 @@ function freshSession() {
 async function useV4($) {
   if (!S.loaded) await loadV4($);
   return S.cfg.router === "v4";
+}
+
+// hooks/habitsio.ts
+import { EMPTY_HABITS, parseHabits, settlePend } from "./lib/habits.ts";
+import { compactOf, finishScan, foldTranscript, observeCompact } from "./lib/scan.ts";
+var DAY = 864e5;
+var WINDOW_DAYS = 90;
+var PASS_MS = 1500;
+var BIG = 1e6;
+var TAIL = 9e5;
+async function habitsLoad($) {
+  try {
+    return parseHabits(await fsRead($, `${await dataDir2($)}/habits.json`));
+  } catch {
+    return EMPTY_HABITS;
+  }
+}
+async function habitsWrite($, h2) {
+  try {
+    const file = `${await dataDir2($)}/habits.json`;
+    await fsWrite($, `${file}.tmp`, JSON.stringify(h2));
+    await proc($, ["mv", "-f", "--", `${file}.tmp`, file], { timeoutMs: 5e3 });
+  } catch {
+  }
+}
+var fid = (path) => {
+  let h2 = 2166136261;
+  for (let i = 0; i < path.length; i++) {
+    h2 ^= path.charCodeAt(i);
+    h2 = Math.imul(h2, 16777619) >>> 0;
+  }
+  return h2.toString(36);
+};
+async function compactFile($, path, size) {
+  if (size <= BIG) return compactOf(foldTranscript(await fsRead($, path)));
+  const script = `${$.plugin.root}/scripts/habits-fold.mjs`;
+  for (const argv of [["nice", "-n", "19", "node", script, path], ["node", script, path]]) {
+    try {
+      const r = await proc($, argv, { timeoutMs: 6e4 });
+      if (r.exitCode === 0) return JSON.parse(String(r.stdout));
+    } catch {
+    }
+  }
+  return compactOf(foldTranscript(String((await proc($, ["tail", "-c", String(TAIL), "--", path], { timeoutMs: 1e4 })).stdout ?? "")));
+}
+var scanStart = (h2) => ({ h: h2, todo: null, newest: 0, done: false, files: 0, failed: 0, seen: 0, err: null });
+async function scanPass($, st, now3) {
+  const t0 = Date.now();
+  try {
+    if (!st.todo) {
+      const root = `${await cfgDir($)}/projects`;
+      const found = [];
+      const top = await lsdir($, root);
+      st = { ...st, seen: top.length, h: settlePend(st.h, now3) };
+      for (const d of top) {
+        if (d.kind !== "dir" && d.kind !== "directory") continue;
+        let files2 = [];
+        try {
+          files2 = await lsdir($, `${root}/${d.name}`);
+        } catch {
+          continue;
+        }
+        for (const f of files2) if (f.kind === "file" && !f.isLink && String(f.name).endsWith(".jsonl") && f.mtimeMs && f.mtimeMs > st.h.watermark && now3 - f.mtimeMs < WINDOW_DAYS * DAY) found.push({ path: `${root}/${d.name}/${f.name}`, at: f.mtimeMs, size: Number(f.size) || 0 });
+      }
+      st = { ...st, todo: found.sort((a, b2) => a.at - b2.at).map((f) => `${f.size}|${f.path}`) };
+    }
+    const todo = st.todo.slice();
+    let { h: h2, newest, files, failed } = st;
+    while (todo.length && Date.now() - t0 < PASS_MS) {
+      const item = todo.shift();
+      const cut = item.indexOf("|");
+      const size = Number(item.slice(0, cut)), path = item.slice(cut + 1);
+      try {
+        const c = await compactFile($, path, size);
+        h2 = observeCompact(h2, c, now3, fid(path));
+        if (c.last) newest = Math.max(newest, c.last.at);
+        files += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    if (!todo.length) return { ...st, h: finishScan(h2, newest, failed), todo, newest, done: true, files, failed };
+    return { ...st, h: h2, todo, newest, done: false, files, failed };
+  } catch (err) {
+    return { ...st, done: true, err: String(err?.name ?? "Error").slice(0, 40) };
+  }
+}
+
+// hooks/cachekeeper.ts
+import { ckConfig as ckConfig2 } from "./lib/cachecfg.ts";
+import { CHOICES, askText, choiceOf, quote, shouldAsk } from "./lib/coldguard.ts";
+import { EMPTY_HABITS as EMPTY_HABITS2, addPoints, decideActive, fadeLedger, noteKeepalive, optIn, raceCost, raceSave } from "./lib/habits.ts";
+import { pointsOf } from "./lib/model.ts";
+import { learnedText } from "./lib/insight.ts";
+import { gate, stateOf } from "./lib/keepgate.ts";
+import { KEEP_OFF, TICK_MS, afterPing, armKeepWarm, clampHours, marginMs, pingActualUsd, pingCostUsd, rewriteUsd, startKeepWarm, tick } from "./lib/keepwarm.ts";
+
+// hooks/learnpass.ts
+import { MAX_PROPOSALS, WEEK_CAP_USD, due, runPass, weekSpend } from "./lib/reflect.ts";
+var running = false;
+async function pass($, now3, extra) {
+  if (running) return null;
+  running = true;
+  try {
+    const { learned } = v4Learned();
+    const cfg2 = v4Config();
+    const res = await runPass({ l: learned, rb: v4Rulebook(), now: now3, extra, model: cfg2.reflectModel !== false, complete: (system, digest) => v4Reflect($, system, digest) });
+    await v4SetRulebook($, res.rb);
+    v4NoteCache({ kind: "learning-pass", at: now3, usd: Math.round(res.usd * 1e5) / 1e5, usedModel: res.used, kept: res.rb.runs[res.rb.runs.length - 1]?.kept ?? 0, skipped: res.skipped });
+    return res;
+  } catch {
+    return null;
+  } finally {
+    running = false;
+  }
+}
+async function learnPassTick($, o) {
+  try {
+    const cfg2 = v4Config();
+    const d = due({ mode: cfg2.reflect ?? "auto", now: o.now, idleMs: o.idleMs, idleMinMs: (cfg2.reflectIdleMin ?? 20) * 6e4, busy: o.busy, rb: v4Rulebook(), l: v4Learned().learned, manual: false });
+    if (d.run) await pass($, o.now, o.extra);
+  } catch {
+  }
+}
+async function learnCommand($, rest, o) {
+  const cfg2 = v4Config();
+  const status2 = () => {
+    const rb = v4Rulebook();
+    return `Learning pass: ${cfg2.reflect ?? "auto"}${cfg2.reflectModel === false ? ", local only" : ""}. ${rb.runs.length} passes so far, $${weekSpend(rb, o.now).toFixed(3)} spent this week of a $${WEEK_CAP_USD.toFixed(2)} cap. The model's proposals: ${rb.score.proposed} kept, ${rb.score.confirmed} confirmed by your tasks, ${rb.score.refuted} refuted.`;
+  };
+  if (rest.trim().toLowerCase() === "status") {
+    const rb = v4Rulebook();
+    return `${status2()}${rb.insights.length ? `
+Last insight: ${rb.insights[rb.insights.length - 1].text}` : ""}`;
+  }
+  const res = await pass($, o.now, o.extra);
+  if (!res) return "A learning pass is already running, or could not run.";
+  return `${res.insight}
+${res.used ? `Asked Haiku, $${res.usd.toFixed(4)}; kept up to ${MAX_PROPOSALS} proposals as the next things to test.` : `Local pass only${res.skipped ? ` (${res.skipped})` : ""}.`}
+${status2()}`;
+}
+
+// hooks/cachekeeper.ts
+var kw = KEEP_OFF;
+var H = EMPTY_HABITS2;
+var zero = () => ({ pingUsd: 0, savedUsd: 0, n: 0, champNet: 0, chalNet: 0, champPings: 0, chalPings: 0 });
+var delta = zero();
+var scanned = false;
+var optSet = null;
+var gen = 0;
+var busy = false;
+var ticking = false;
+var timer = false;
+var userOff = false;
+var lastActivityAt = null;
+var savedAt = 0;
+var sessionStartAt = null;
+var prompts = 0;
+var turnOut = 0;
+var prevActed = false;
+var lastFeat = null;
+var liveNew = [];
+var skipped = "";
+var gap = null;
+async function clockNow($) {
+  try {
+    return await $.clock.now();
+  } catch {
+    return Date.now();
+  }
+}
+var r4 = (n) => Math.round(n * 1e4) / 1e4;
+function ckTurn(e, started) {
+  if (e?.agentId === void 0) busy = started;
+}
+async function ckInit($) {
+  gen += 1;
+  kw = KEEP_OFF;
+  delta = zero();
+  scanned = false;
+  optSet = null;
+  busy = false;
+  ticking = false;
+  timer = false;
+  userOff = false;
+  lastActivityAt = null;
+  gap = null;
+  skipped = "";
+  sessionStartAt = null;
+  prompts = 0;
+  turnOut = 0;
+  prevActed = false;
+  lastFeat = null;
+  liveNew = [];
+  try {
+    H = await habitsLoad($);
+    if (!H.liveFrom) H = { ...H, liveFrom: await clockNow($) };
+    void learn($, gen);
+  } catch {
+  }
+}
+async function ckEnd($) {
+  gen += 1;
+  try {
+    await save($);
+  } catch {
+  }
+}
+async function save($) {
+  const D = await habitsLoad($);
+  const now3 = await clockNow($);
+  const led = fadeLedger(D.kw, now3);
+  const cc = decideActive({
+    n: D.cc.n + delta.n,
+    champNet: D.cc.champNet + delta.champNet,
+    chalNet: D.cc.chalNet + delta.chalNet,
+    champPings: D.cc.champPings + delta.champPings,
+    chalPings: D.cc.chalPings + delta.chalPings,
+    active: D.cc.active
+  });
+  const base = scanned ? H : addPoints(D, liveNew);
+  const merged = { ...base, liveFrom: D.liveFrom || H.liveFrom, scan: H.scan || D.scan, kw: { pingUsd: led.pingUsd + delta.pingUsd, savedUsd: led.savedUsd + delta.savedUsd, optIn: optSet ?? D.kw.optIn, at: now3 }, cc };
+  await habitsWrite($, merged);
+  H = merged;
+  delta = zero();
+  scanned = false;
+  optSet = null;
+  liveNew = [];
+  savedAt = now3;
+}
+async function saveSoon($, at2) {
+  if (at2 - savedAt > 6e4) await save($);
+}
+async function learn($, g) {
+  try {
+    const c = ckConfig2(v4CacheView().cfg);
+    if (!(c.learnFromHistory || H.scan)) return;
+    let st = scanStart(H);
+    const liveAtStart = liveNew.length;
+    const step = async () => {
+      try {
+        if (g !== gen) return;
+        if (busy) {
+          later($, 1e4, step);
+          return;
+        }
+        st = await scanPass($, st, await clockNow($));
+        if (!st.done) {
+          later($, 2e3, step);
+          return;
+        }
+        H = addPoints({ ...st.h, kw: H.kw, cc: H.cc, scan: H.scan, liveFrom: H.liveFrom }, liveNew.slice(liveAtStart));
+        scanned = true;
+        v4NoteCache({ kind: "habits", at: await clockNow($), event: "scan", files: st.files, failed: st.failed, listed: st.seen, sessions: H.sessions, err: st.err });
+        await save($);
+        later($, 3 * 36e5, () => {
+          if (g === gen) void learn($, g);
+        });
+      } catch {
+      }
+    };
+    await step();
+  } catch {
+  }
+}
+var wantsTimer = () => kw.on || ckConfig2(v4CacheView().cfg).keepWarm !== "off" || v4Config().reflect === "auto";
+function ensureTimer($) {
+  if (!timer) {
+    timer = true;
+    schedule($, gen);
+  }
+}
+function schedule($, g) {
+  try {
+    later($, TICK_MS, async () => {
+      if (g !== gen) return;
+      await onTick($, g);
+      if (g !== gen) return;
+      if (wantsTimer()) schedule($, g);
+      else timer = false;
+    });
+  } catch {
+    timer = false;
+    kw = { ...kw, on: false, stopped: "no timer in this engine" };
+  }
+}
+async function ckBefore($, e) {
+  return e?.agentId === void 0 ? { view: v4CacheView(), at: await clockNow($) } : null;
+}
+async function ckAfter($, e, before, res) {
+  try {
+    if (!before || e?.agentId !== void 0 || !res?.usage) return;
+    await settle($, before.at, before.view, Number(res.usage.cache_read_input_tokens ?? 0), Number(res.usage.cache_creation_input_tokens ?? 0));
+    const now3 = await clockNow($);
+    sessionStartAt = sessionStartAt ?? before.at;
+    turnOut += Number(res.usage.output_tokens ?? 0);
+    prevActed = res.stopReason === "tool_use";
+    lastFeat = { tokens: Number(res.usage.input_tokens ?? 0) + Number(res.usage.cache_read_input_tokens ?? 0) + Number(res.usage.cache_creation_input_tokens ?? 0), ageMin: (now3 - sessionStartAt) / 6e4, prompts, turnOut, asked: /\?\s*$/.test(String(res.answer ?? "").trim()) };
+  } catch {
+  }
+}
+async function settle($, at2, v, cacheRead, cacheWrite) {
+  const prevEnd = v.lastRequestAt;
+  lastActivityAt = at2;
+  if (prevEnd !== null && lastFeat && !prevActed && H.liveFrom > 0 && at2 >= H.liveFrom && at2 - prevEnd >= 18e4) {
+    const p = pointsOf(lastFeat, (at2 - prevEnd) / 6e4);
+    H = addPoints(H, p);
+    liveNew.push(...p);
+  }
+  if (gap && prevEnd !== null && v.model) {
+    const g = gap;
+    gap = null;
+    const gapMs = at2 - prevEnd;
+    const rate = v4Rate(v.model), ttl = v.ttlMs;
+    const read2 = pingCostUsd(v.prefixTokens, rate), rw = rewriteUsd(v.prefixTokens, rate, ttl);
+    const every = ttl - marginMs(ttl);
+    const kept = (n) => n > 0 && gapMs > ttl && n * every + ttl >= gapMs ? Math.max(0, rw - read2) : 0;
+    if (g.real > 0) {
+      const warm = cacheWrite < 0.2 * Math.max(1, cacheRead + cacheWrite);
+      const saved = gapMs > ttl && warm ? Math.max(0, rw - read2) : 0;
+      H = noteKeepalive(H, g.realUsd, saved);
+      delta.pingUsd += g.realUsd;
+      delta.savedUsd += saved;
+      v4NoteCache({ kind: "keepwarm", at: at2, event: "settle", gapMin: Math.round(gapMs / 6e4), pings: g.real, pingUsd: r4(g.realUsd), savedUsd: r4(saved), warm });
+    }
+    if (g.champ || g.chal) {
+      const cs = kept(g.champ), hs = kept(g.chal);
+      H = raceSave(H, cs, hs);
+      delta.champNet += cs;
+      delta.chalNet += hs;
+      v4NoteCache({ kind: "keepwarm", at: at2, event: "race", gapMin: Math.round(gapMs / 6e4), champPings: g.champ, chalPings: g.chal, champSavedUsd: r4(cs), chalSavedUsd: r4(hs), active: H.cc.active });
+    }
+    await saveSoon($, at2);
+  }
+  skipped = "";
+  const c = ckConfig2(v.cfg);
+  if (v.active && !userOff && !kw.on && (c.keepWarm === "auto" || c.keepWarm === "ask" && H.kw.optIn)) kw = armKeepWarm(kw, at2, c.keepWarmHours);
+  if (kw.on || c.keepWarm !== "off" || v4Config().reflect === "auto") ensureTimer($);
+}
+async function ckPromptSubmit($, e, next) {
+  try {
+    const v = v4CacheView();
+    const c = ckConfig2(v.cfg);
+    const origin = e.origin?.kind;
+    const at2 = await clockNow($);
+    if (e.turnId === void 0 && (origin === "composer" || origin === "bridge" || origin === "sdk")) {
+      prompts += 1;
+      turnOut = 0;
+    }
+    if (!v.active || !shouldAsk({ guard: c.guard, fromPerson: origin === "composer" || origin === "bridge", midTurn: e.turnId !== void 0, prefixTokens: v.prefixTokens, lastRequestAt: v.lastRequestAt, ttlMs: v.ttlMs, now: at2, bigTokens: c.guardTokens })) return next(e);
+    const q = quote(v.prefixTokens, at2 - (v.lastRequestAt ?? at2), v.ttlMs, v4Rate(v.model));
+    const rec = { kind: "cold-guard", at: at2, prefixTokens: v.prefixTokens, idleMin: q.idleMin, rewriteUsd: r4(q.rewriteUsd) };
+    const options2 = c.keepWarm === "ask" && !H.kw.optIn ? [...CHOICES] : CHOICES.slice(0, 3);
+    let answer;
+    try {
+      answer = await ask($, `${askText(q, v.prefixTokens)} What should happen?`, options2);
+    } catch {
+      v4NoteCache({ ...rec, choice: "unavailable" });
+      return next(e);
+    }
+    const choice = choiceOf(answer);
+    v4NoteCache({ ...rec, choice });
+    if (choice === "cancel") {
+      try {
+        toast($, "AutoMode: cancelled before a cold cache rewrite.");
+      } catch {
+      }
+      ;
+      return { drop: "Cancelled by AutoMode before a cold cache rewrite" };
+    }
+    if (choice === "compact") {
+      try {
+        await compact($);
+      } catch {
+      }
+    }
+    if (choice === "keep") {
+      H = optIn(H, true);
+      optSet = true;
+      await save($);
+      userOff = false;
+      try {
+        toast($, "AutoMode: it will keep big chats warm when that pays. /automode keepwarm off turns it off.");
+      } catch {
+      }
+    }
+    return next(e);
+  } catch {
+    return next(e);
+  }
+}
+async function learnedCommand($, rest) {
+  const c = ckConfig2(v4CacheView().cfg);
+  const arg = rest.trim().toLowerCase();
+  if (arg === "reset") {
+    gen += 1;
+    kw = KEEP_OFF;
+    userOff = false;
+    delta = zero();
+    scanned = false;
+    optSet = null;
+    gap = null;
+    H = EMPTY_HABITS2;
+    await habitsWrite($, H);
+    await v4ResetLearned($);
+    return "Everything AutoMode learned about your use is reset: idle-time counts, the keep-warm ledger and the route memory. Reading your history is off again until you run /automode learned import.";
+  }
+  if (arg === "import") {
+    H = { ...H, scan: true };
+    scanned = true;
+    await save($);
+    void learn($, gen);
+    return "AutoMode will now read your own Claude Code transcripts (~/.claude/projects, every project) in the background, a few files at a time. It keeps counts only: request times, sizes, the model family, whether a request called a tool, and how many prompts you typed. It never stores or sends text. /automode learned shows the result, and /automode learned reset turns this off and clears it.";
+  }
+  const { learned, learning } = v4Learned();
+  return learnedText({ habits: H, learned, now: await clockNow($), keepWarm: c.keepWarm, learning, consent: c.learnFromHistory || H.scan, rulebook: v4Rulebook() });
+}
+async function learnNowCommand($, rest) {
+  return learnCommand($, rest, { now: await clockNow($), extra: { pingUsd: H.kw.pingUsd, savedUsd: H.kw.savedUsd, chal: H.cc.active } });
+}
+async function keepWarmCommand($, rest) {
+  const arg = rest.trim().toLowerCase();
+  const v = v4CacheView();
+  const led = H.kw;
+  const learned = `So far pings cost you $${led.pingUsd.toFixed(2)} and avoided $${led.savedUsd.toFixed(2)} of rewrites.`;
+  if (arg === "off") {
+    userOff = true;
+    kw = { ...kw, on: false, stopped: "turned off" };
+    H = optIn(H, false);
+    optSet = false;
+    await save($);
+    return "Keep warm is off, and it will not start by itself.";
+  }
+  if (arg === "" || arg === "status") {
+    if (!kw.on) return `Keep warm is off${kw.stopped ? ` (${kw.stopped})` : ""}. Turn it on with /automode keepwarm 2 (hours, up to 24). It sends a small ping before the cache expires and costs about $${pingCostUsd(v.prefixTokens, v4Rate(v.model)).toFixed(2)} each at this context. ${learned}`;
+    return `Keep warm is on for ${Math.max(0, Math.round((kw.untilMs - await clockNow($)) / 6e4))} more minutes: ${kw.pings} pings, $${kw.pingUsd.toFixed(2)} spent this session. ${learned}`;
+  }
+  const hours = clampHours(Number(arg));
+  if (!hours) return "Use /automode keepwarm <hours> (up to 24), off, or status.";
+  if (!v.active) return "Keep warm needs AutoMode routing on for this session.";
+  userOff = false;
+  kw = startKeepWarm(await clockNow($), hours, kw);
+  ensureTimer($);
+  return `Keep warm is on for ${hours} h. A ping goes out only while a cold start is dear and the work does not look finished. It stops at the time limit, at the session budget, when pings cost more than a rewrite, or if a ping fails.`;
+}
+async function onTick($, g) {
+  if (ticking) return;
+  ticking = true;
+  try {
+    const v = v4CacheView();
+    if (!v.active) return;
+    const at2 = await clockNow($);
+    if (g !== gen) return;
+    void learnPassTick($, { now: at2, idleMs: at2 - (lastActivityAt ?? v.lastRequestAt ?? at2), busy, extra: { pingUsd: H.kw.pingUsd, savedUsd: H.kw.savedUsd, chal: H.cc.active } });
+    const rate = v4Rate(v.model);
+    const real = kw.on;
+    const probe = real ? kw : { ...KEEP_OFF, on: true, untilMs: at2 + 36e5 };
+    const act = lastActivityAt ?? v.lastRequestAt;
+    const d = tick(probe, { mainRequests: v.mainRequests, now: at2, lastActivityAt: act, ttlMs: v.ttlMs, busy, prefixTokens: v.prefixTokens, rate });
+    if (d.action === "wait") return;
+    if (d.action === "stop") {
+      if (!real) return;
+      kw = { ...kw, on: false, stopped: d.reason, halted: d.halt ? d.reason : kw.halted };
+      v4NoteCache({ kind: "keepwarm", at: at2, event: "stop", reason: d.reason, pings: kw.pings, pingUsd: r4(kw.pingUsd) });
+      if (!/expired|time ran out/.test(d.reason)) {
+        try {
+          toast($, `AutoMode: keep warm stopped: ${d.reason}.`);
+        } catch {
+        }
+      }
+      return;
+    }
+    const c = ckConfig2(v.cfg);
+    const gt = gate({ habits: H, state: stateOf(v4TaskRaw()), feat: { tokens: v.prefixTokens, idleMin: (at2 - (act ?? at2)) / 6e4, ageMin: sessionStartAt === null ? 0 : (at2 - sessionStartAt) / 6e4, prompts, turnOut, asked: v.asked }, ttlMs: v.ttlMs, rate, minRewriteUsd: c.minRewriteUsd, sessionPingUsd: kw.pingUsd, budgetUsd: c.budgetUsd, capMin: c.keepWarmHours * 60, stale: v.stale });
+    if (gt.champion.allow || gt.challenger.allow) {
+      const read2 = pingCostUsd(v.prefixTokens, rate);
+      const a = gt.champion.allow ? 1 : 0, b2 = gt.challenger.allow ? 1 : 0;
+      gap = gap ?? { champ: 0, chal: 0, real: 0, realUsd: 0 };
+      H = raceCost(H, { champPings: a, chalPings: b2, champUsd: a * read2, chalUsd: b2 * read2, newGap: gap.champ + gap.chal === 0 });
+      delta.n += gap.champ + gap.chal === 0 ? 1 : 0;
+      delta.champPings += a;
+      delta.chalPings += b2;
+      delta.champNet -= a * read2;
+      delta.chalNet -= b2 * read2;
+      gap.champ += a;
+      gap.chal += b2;
+    }
+    if (!real) return;
+    if (!gt.use.allow) {
+      const key = `${gt.use.why}|${act}`;
+      if (key !== skipped) {
+        skipped = key;
+        v4NoteCache({ kind: "keepwarm", at: at2, event: "skip", why: gt.use.why, rule: gt.active, net: gt.use.net === null ? null : r4(gt.use.net) });
+      }
+      return;
+    }
+    let r = null;
+    try {
+      r = await fork($, { prompt: "AutoMode keep-alive ping. Reply with only: ok" });
+    } catch {
+      r = null;
+    }
+    if (g !== gen) return;
+    const u = r?.usage ? { cacheRead: Number(r.usage.cache_read_input_tokens ?? 0), cacheWrite: Number(r.usage.cache_creation_input_tokens ?? 0) } : null;
+    const usd = u ? pingActualUsd(u, rate, v.ttlMs) : 0;
+    kw = afterPing(kw, at2, usd, u);
+    lastActivityAt = at2;
+    v4NotePing(at2);
+    gap = gap ?? { champ: 0, chal: 0, real: 0, realUsd: 0 };
+    gap.real += 1;
+    gap.realUsd += usd;
+    v4NoteCache({ kind: "keepwarm", at: at2, event: "ping", cacheRead: u?.cacheRead ?? null, cacheWrite: u?.cacheWrite ?? null, usd: r4(usd), why: gt.use.why, rule: gt.active, stopped: kw.stopped });
+    if (kw.stopped) {
+      try {
+        toast($, `AutoMode: keep warm stopped: ${kw.stopped}.`);
+      } catch {
+      }
+    }
+  } catch {
+  } finally {
+    ticking = false;
+  }
 }
 
 // hooks/ui/register-ui.tsx
@@ -5598,6 +6273,9 @@ var SUBCOMMANDS = [
   { name: "setup", aliases: [], line: "check that AutoMode is on, and show the next step" },
   { name: "settings", aliases: [], line: "the effective settings and where each comes from" },
   { name: "debug", aliases: [], line: "a report to paste in a bug issue, with no prompt text" },
+  { name: "keepwarm", aliases: [], line: "keep a big chat's cache warm: keepwarm <hours> | off" },
+  { name: "learn", aliases: [], line: "run a learning pass now: learn | learn status" },
+  { name: "learned", aliases: ["insights"], line: "what AutoMode learned from your use: learned | learned reset" },
   { name: "help", aliases: ["tips", "commands"], line: "this list, the am: prompt commands and tips" }
 ];
 function parse(args) {
@@ -5731,17 +6409,17 @@ async function themeOf($) {
   }
   return configTheme;
 }
-async function uiSessionStart($) {
+async function uiStart($) {
   try {
     configTheme = void 0;
-    if (await uiDisabled($)) return;
+    if (await isUiOff($)) return;
     await $.command.register({ name: "automode", description: `AutoMode: ${usageLine()}` });
-    await loadFacts($);
+    await lFacts($);
     await publish($);
   } catch {
   }
 }
-async function cmdFacts($) {
+async function cFacts($) {
   const safe = async (p, fallback) => {
     try {
       return await p;
@@ -5773,11 +6451,11 @@ async function cmdFacts($) {
   };
 }
 function scheduleTick($, now3, v) {
-  const due = [];
-  if (v.cache.state === "warm" && v.cache.until !== null && v.cache.until > now3) due.push(now3 + ((v.cache.until - now3) % 6e4 || 6e4) + 20);
-  if (v.tip && v.tip.until > now3) due.push(v.tip.until + 20);
-  if (!due.length) return;
-  const soonest = Math.min(...due);
+  const due2 = [];
+  if (v.cache.state === "warm" && v.cache.until !== null && v.cache.until > now3) due2.push(now3 + ((v.cache.until - now3) % 6e4 || 6e4) + 20);
+  if (v.tip && v.tip.until > now3) due2.push(v.tip.until + 20);
+  if (!due2.length) return;
+  const soonest = Math.min(...due2);
   if (tickDue > now3 && tickDue <= soonest) return;
   tickDue = soonest;
   try {
@@ -5804,7 +6482,7 @@ function registerUi(on) {
       const v = await snapshotView($);
       if (!v) return { text: "AutoMode is starting." };
       const now3 = Date.now();
-      const { sub } = parse(e.args);
+      const { sub, rest } = parse(e.args);
       const name = resolve3(sub);
       if (!name) return { text: unknownText(sub) };
       const head = barText(barSegments(v, 200, now3));
@@ -5815,11 +6493,17 @@ function registerUi(on) {
           return { text: `${head}
 ${detailsText(v, now3)}` };
         case "setup":
-          return { text: setupText(v, await cmdFacts($)) };
+          return { text: setupText(v, await cFacts($)) };
         case "settings":
-          return { text: settingsText(v, await cmdFacts($)) };
+          return { text: settingsText(v, await cFacts($)) };
+        case "keepwarm":
+          return { text: await keepWarmCommand($, rest) };
+        case "learned":
+          return { text: await learnedCommand($, rest) };
+        case "learn":
+          return { text: await learnNowCommand($, rest) };
         case "debug":
-          return { text: debugText(v, await cmdFacts($), now3) };
+          return { text: debugText(v, await cFacts($), now3) };
         case "on":
         case "off": {
           const wantOn = name === "on";
@@ -5837,7 +6521,7 @@ UI: the last drawing fell back to Claude Code's own (${lastUiError})` : ""}` };
   });
   on("ui.render", { component: "AbovePrompt" }, async ($, e, next) => {
     try {
-      if (e.props.hasSurvey || await uiDisabled($)) return next(e);
+      if (e.props.hasSurvey || await isUiOff($)) return next(e);
       const v = await read($, viewAtom2);
       if (!v) {
         try {
@@ -6036,7 +6720,7 @@ async function debug($, entry) {
 }
 async function limitShare($) {
   try {
-    const shares = (await sessionUsage($)).rateLimits.map((r) => r.percentUsed).filter((n) => Number.isFinite(n));
+    const shares = (await usageNow($)).rateLimits.map((r) => r.percentUsed).filter((n) => Number.isFinite(n));
     return shares.length ? Math.max(...shares) : null;
   } catch {
     return null;
@@ -6048,7 +6732,7 @@ async function coldHint($) {
     const now3 = await $.clock.now();
     const idleMin = (now3 - lastAnswerAt) / 6e4;
     if (idleMin < cfg.cacheTtlMinutes || coldHintAt > lastAnswerAt) return null;
-    const usage = await sessionUsage($);
+    const usage = await usageNow($);
     const tokens = usage.context.tokens ?? 0;
     if (tokens < cfg.heavyChatTokens) return null;
     const live = (await agents($)).filter((a) => a.status === "pending" || a.status === "running" || a.status === "waiting");
@@ -6116,18 +6800,24 @@ export const register = (on, options2) => {
   setSources({ router: v4Snapshot, guardian: guardianSnapshot });
   on("session.start", async ($, e, next) => guardianSessionStart($, e, async (e2) => {
     await load2($);
-    return await useV4($) ? v4SessionStart($, e2, next) : next(e2);
+    return await useV4($) ? v4Start($, e2, next) : next(e2);
   }).then(async (res) => {
-    await uiSessionStart($);
+    await uiStart($);
+    await ckInit($);
     return res;
   }));
-  on("prompt.submit", async ($, e, next) => guardianPromptSubmit($, e, (e2) => routePrompt($, e2, next))).catch(($, e, next) => next(e));
+  on("prompt.submit", async ($, e, next) => ckPromptSubmit($, e, (e1) => guardianPromptSubmit($, e1, (e2) => routePrompt($, e2, next)))).catch(($, e, next) => next(e));
   on("turn.step", async function* ($, e, next) {
     try {
-      await guardianStep($, e);
+      await gStep($, e);
     } catch {
     }
-    if (await useV4($)) return yield* v4TurnStep($, e, next);
+    if (await useV4($)) {
+      const before = await ckBefore($, e);
+      const res = yield* v4TurnStep($, e, next);
+      await ckAfter($, e, before, res);
+      return res;
+    }
     if (e.agentId !== void 0 || !await active($)) return yield* next(e);
     if (typeof e.effort === "string") {
       if (appEffort !== void 0 && e.effort !== appEffort && autoEffort) {
@@ -6187,7 +6877,10 @@ Continue from where it left off without asking the user further questions.`,
     if (!BLOCKED.some((re) => re.test(e.command))) return next(e);
     return { deny: "AutoMode agents do not run git writes or destructive commands. Leave the changes in the working tree for the user to review." };
   }).catch(($, e, next) => next.called ? next(e) : { deny: "AutoMode guard failed; the call was not run." });
-  on("turn.complete", async ($, e, next) => guardianTurnComplete($, e, async (e2) => await useV4($) ? v4TurnComplete($, e2, next) : next(e2))).catch(($, e, next) => next(e));
+  on("turn.complete", async ($, e, next) => {
+    ckTurn(e, false);
+    return guardianTurnComplete($, e, async (e2) => await useV4($) ? v4TurnComplete($, e2, next) : next(e2));
+  }).catch(($, e, next) => next(e));
   on("agent.spawn", async ($, e, next) => await useV4($) ? v4AgentSpawn($, e, next) : next(e)).catch(($, e, next) => next(e));
   on("prompt.attachment", async ($, e, next) => await useV4($) ? v4Attachment($, e, next) : next(e)).catch(($, e, next) => next(e));
   on("session.append", async ($, e, next) => await useV4($) ? v4Append($, e, next) : next(e)).catch(($, e, next) => next(e));
@@ -6196,10 +6889,16 @@ Continue from where it left off without asking the user further questions.`,
   for (const tool of ["Agent", "Workflow", "Read", "Grep", "Glob", "Edit", "Write", "MultiEdit", "NotebookEdit", "WebFetch", "WebSearch"]) {
     on("tool.call", { tool }, async ($, e, next) => await useV4($) ? v4ToolCall($, e, next) : next(e)).catch(($, e, next) => next.called ? next(e) : { deny: "AutoMode guard failed; the call was not run." });
   }
-  on("tool.call", { tool: "mcp__automode__extract" }, ($, e) => v4Extract($, e)).catch(() => ({ deny: "AutoMode extract failed. Read the lines you need with offset and limit." }));
+  on("tool.call", { tool: "mcp__automode__extract" }, ($, e) => v4Ext($, e)).catch(() => ({ deny: "AutoMode extract failed. Read the lines you need with offset and limit." }));
   on("classic.Stop", async ($, e, next) => await useV4($) ? v4Stop($, e, next) : next(e)).catch(($, e, next) => next(e));
-  on("session.end", ($, e, next) => guardianSessionEnd($, e, next)).catch(($, e, next) => next(e));
+  on("session.end", async ($, e, next) => {
+    await ckEnd($);
+    return guardianSessionEnd($, e, next);
+  }).catch(($, e, next) => next(e));
   registerUi(on);
-  on("turn.start", ($, e, next) => guardianTurnStart($, e, next)).catch(($, e, next) => next(e));
+  on("turn.start", ($, e, next) => {
+    ckTurn(e, true);
+    return guardianTurnStart($, e, next);
+  }).catch(($, e, next) => next(e));
   on("tool.call", ($, e, next) => guardianToolCall($, e, next)).catch(($, e, next) => next.called ? { deny: "AutoMode guardian failed after the call; its result is lost. Run it again if needed." } : next(e));
 };

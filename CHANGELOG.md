@@ -4,6 +4,27 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-20
+
+### Added
+- Failure causes and task kinds in route learning. A failure caused by the environment or a flaky test no longer counts against a cheaper start, and the learning pass sees cost and failures by kind of task (docs, tests, config, code). A new `bench/learner-leaderboard.mts` plays synthetic people with a hidden truth against the engine, at $0.
+- The learning pass scores the model's proposals against a simple rule (test the costliest untried tiers first), so `/automode learned` shows whether the model adds anything beyond it.
+
+- Cache keeper (#170). The cache lifetime is now measured from request usage (5 or 60 minutes) instead of assumed; `cacheKeeper.ttl` in `config.json` or an env switch pins it. A cold-send guard asks before a person's prompt rewrites a context of 150,000 tokens or more after the cache expired, and offers send, compact first or cancel. `/automode keepwarm <hours>` is an opt-in keepalive: it pings before the cache expires, starts at the chat's third request, and stops at the time limit, at break-even against a rewrite, or when pings keep writing. Pings never reach the router, the ledger or route learning. Ideas from the cache-keeper mod (MIT).
+
+- The learning pass (#172). When you have been away, at the end of enough new work, or on `/automode learn`, AutoMode finds the gaps in your usage locally, asks Haiku once (about a tenth of a cent, numbers only, capped per pass and per week) to rank what to test next, keeps only whitelisted proposals, and lets the experiment engine test them on your tasks. It scores the model's proposals against your results. `reflect` (`auto`, `manual`, `off`), `reflectIdleMin` and `reflectModel` in `config.json`.
+- Adaptive routing (#172). Routing rules that learn from your own tasks. For each kind of task, a fixed hash-chosen share of eligible tasks starts one step cheaper (Haiku, or Sonnet at medium effort); the cheaper start is adopted where it is cheaper with confidence and no worse on failures, and reverted where it fails more. The benchmarks are the prior. Never on risk, pins, commands or tasks nobody would check. `adaptive` in `config.json` turns it off. `/automode learned` shows every experiment.
+- The return model (#172). A small model estimates the chance you send another prompt within the hour from the chat's size, idle time, session age, prompt count, the assistant's recent output and whether it asked a question. It starts from a prior, learns from every settled gap in sessions it watches (and, with your say-so through `/automode learned import`, from your past sessions, locally), and shows a report card scored before each gap was learned. It races the simple keep-warm rule on your own gaps and acts only after it wins. Scripted `claude -p` runs are left out.
+- Each keep-warm ping is gated. A cold start must be dear, the cache must belong to the live model, the work must not look finished, the model must not be above need (a pinned model counts as wanted), and the session must be inside its budget. Pings that wrote the cache, got no answer or cost more than a rewrite stop keep warm for the session.
+- `/automode learned` shows what was learned, the report card, the race, and the route memory with an interval. `learned import` and `learned reset` give you control.
+- `cacheKeeper.keepWarm` is `ask`, `auto` or `off`. `learnFromHistory` is off by default.
+- `bench/habits-replay.mts` replays keep-warm rules over your own sessions at $0, with a time split and a resampled interval. `bench/diagnose-learning.mts` measures the headroom, the features and the event counts behind it.
+- Route memory: each task records which arm it was in, whether its bucket was already flipped, whether you pinned the model, and what it cost. `/automode learned` compares the arms only with 20 tasks in each.
+
+### Changed
+
+- Three internal helper names were shortened so the validator's `calls:` line stays under its 1,000-character cut (`usageNow`, `uiStart`, `v4Start`). No behavior change.
+
 ## [0.11.0] - 2026-11-17
 
 ### Changed
@@ -14,6 +35,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
+- Learning is on by default and documented as such: route memory, adaptive routing, the learning pass (`reflect: auto`) and the cache keeper (`keepWarm: ask`). README has a section with the switches to make it manual or turn it off.
 - Live savings on the bar. Once AutoMode runs a prompt on another model than the session's, the bar shows `saved ~$0.38`. Right after a switch, it shows `↺ $0.07 to pay back` while the new model's cache rewrite is paid off. The estimate prices each main-session request's real tokens on the session's model, with that model's own warm cache, minus AutoMode's own judge calls (`hooks/lib/savings.ts`). `/automode details` shows the parts. Hide it by removing `saved` from **Bar metrics**. On the five benchmark sessions it estimated a 56% saving against Opus, where the measured runs showed 52% (`bench/savings-replay.mts`).
 
 ## [0.9.1] - 2026-11-05

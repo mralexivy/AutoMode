@@ -8,7 +8,7 @@
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-22d3ee"></a>
   <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-34d399"></a>
   <a href="https://github.com/mralexivy/AutoMode/issues?q=is%3Aopen+label%3A%22good+first+issue%22"><img alt="Good first issues" src="https://img.shields.io/badge/good%20first-issues-8b5cf6"></a>
-  <img alt="Version 0.11.0" src="https://img.shields.io/badge/version-0.11.0-fbbf24">
+  <img alt="Version 0.12.0" src="https://img.shields.io/badge/version-0.12.0-fbbf24">
   <img alt="Claude Code 2.1.287 or later" src="https://img.shields.io/badge/Claude%20Code-2.1.287%2B-38bdf8">
 </p>
 
@@ -131,6 +131,33 @@ State lives in `~/.claude/plugins/data/automode/`. Delete that folder to remove 
 - **Every mod, one session:** start Claude Code with `--safe-mode`.
 - **Every mod, every session:** set `"disableAllHooks": true` in `~/.claude/settings.json`.
 
+## It learns on its own, and how to turn that off
+
+**By default, AutoMode learns from your own sessions and corrects its own routes. You do nothing.** Four things run without being asked:
+
+1. **Route memory** (`learning`). A kind of task that needed rescue in this project starts on a stronger model next time.
+2. **Adaptive routing** (`adaptive`). A small share of your tasks start on a cheaper model or lower effort. Per kind of task, AutoMode adopts the cheaper start only when your own results show it holds up, and reverts it when it does not. Failures caused by the environment or a flaky test do not count against it. Safety floors, your `/model` and `/effort` pins, commands and critical-risk work are never touched.
+3. **The learning pass** (`reflect`). When you have been away 20 minutes, with three or more new tasks, it summarises what happened, asks Haiku once (about $0.001, capped at $0.02 a pass and $0.20 a week) what to test next, and puts those tests first. The model sees numbers only, never task text.
+4. **Cache keeper** (`cacheKeeper`). It measures your cache lifetime, asks before a cold send of a large chat, and offers to keep a long chat warm (`keepWarm: ask`, so it asks first and pings only after you say yes).
+
+AutoMode does **not** read your past transcripts unless you agree (`/automode learned import`). Everything it learns stays in files on your machine ([PRIVACY.md](PRIVACY.md)). `/automode learned` shows what it learned, and `/automode learned reset` erases it.
+
+To change this, put a `config.json` in the plugin data directory (see Settings), for example:
+
+```json
+{ "reflect": "manual" }
+```
+
+| You want | Set |
+|---|---|
+| The learning pass only when you ask (`/automode learn`) | `"reflect": "manual"` |
+| No learning pass at all | `"reflect": "off"` |
+| A pass that costs nothing (no Haiku call) | `"reflectModel": false` |
+| No cheaper-start experiments | `"adaptive": false` |
+| No route memory | `"learning": false` |
+| No cache keeper prompts or pings | `"cacheKeeper": { "guard": false, "keepWarm": "off" }` |
+| Everything off at once | `AUTOMODE_ROUTER=off` in the environment |
+
 ## The ladder
 
 Every prompt takes the cheapest route that is still adequate. Code sets a floor for risky work, and the judge never lowers it.
@@ -239,6 +266,12 @@ Defaults live in [`config.json`](config.json). To override them, put a `config.j
 | `autoWorkflow` | `false` | `true` lets the router enter the workflow by itself. `am:run` works either way. Decision records show what entry would have done |
 | `reachHaiku` | `true` | T0 to T2 work without critical risk can run on Haiku. `false`: Haiku needs T0 and a Haiku verdict |
 | `learning` | `true` | A kind of task that needed rescue in this project starts on Opus next time. It only raises a route |
+| `adaptive` | `true` | Adaptive routing: on your own tasks, a small share start on a cheaper model or lower effort, and AutoMode adopts what holds up and reverts what does not. `false` stops the experiments |
+| `reflect` | `auto` | The learning pass. `auto`: it runs when you have been away. `manual`: only on `/automode learn`. `off`: never |
+| `reflectIdleMin` | `20` | Minutes away before an automatic learning pass |
+| `reflectModel` | `true` | The pass asks Haiku once, about a tenth of a cent. `false` keeps the pass local and free |
+| `cacheKeeper.keepWarm` | `ask` | Keep a long chat's cache warm. `ask`: asks first. `auto`: pings on its own where it pays. `off`: never |
+| `cacheKeeper.learnFromHistory` | `false` | Read your past transcripts for counts. Off until you consent (`/automode learned import`) |
 | `reviewPolicy` | `risk` | `always` adds a review to every change |
 | `maxConcurrency` | `1` | Workstreams built at once (maximum 2) |
 | `blockGitWritesWhenActive` | `true` | Deny git writes from subagents |
@@ -259,6 +292,9 @@ Type `/automode` and a subcommand. With no subcommand, you get the bar as text.
 | `/automode off` | Turn routing off for this session. Your own model and effort run as set. Nothing is written to your settings. |
 | `/automode setup` | A live checklist: mod loaded, router on, activation, routing mode, bar shown. It ends with the one next step. |
 | `/automode settings` | The settings in force, and where to change each one. |
+| `/automode learn` (or `learn status`) | Run a learning pass now: find the gaps in your usage, ask Haiku what to test next, and set the next experiments. |
+| `/automode learned` (or `learned import`, `learned reset`) | What AutoMode learned from your own use: your idle-time odds by chat size, what keep-warm pings cost and saved, the race between the simple and the habits rule, and the route memory with its control group. `import` lets it read your own transcripts; `reset` clears it all. |
+| `/automode keepwarm <hours>` (or `off`) | Keep a big chat's cache warm. A small ping before the cache expires reads the cached context and restarts its lifetime. Off by default. It starts at the chat's third request and stops at the time limit (up to 24 hours), when the pings cost more than a cold rewrite, or when pings keep failing. |
 | `/automode debug` | A report to paste into a bug issue. It holds no prompt text, and it masks your home folder. |
 | `/automode help` | The subcommands, the `am:` prompt commands and tips. |
 | `/automode:usage [--trace]` | Model calls, tokens, cache use and estimated API cost for the session. `--trace` adds one row per stage. |
@@ -266,6 +302,18 @@ Type `/automode` and a subcommand. With no subcommand, you get the bar as text.
 **Prompt commands.** Start a prompt with `am:` to steer one prompt: `am:haiku`, `am:sonnet`, `am:opus`, `am:low` to `am:max`, `am:direct`, `am:run`, `am:explore`, `am:new` and `am:reset`. When the guardian pauses a turn, reply `am:continue`. After `/clear`, `am:handoff` restores the task checkpoint.
 
 **Benchmarks run from a terminal,** not from the chat: `node bench/judge-bench-effortless.mts` and `node bench/style-check.mts --dry`. See [Benchmarks](#benchmarks).
+
+**The learning pass.** While you work, AutoMode follows its rules and runs its experiments. When you have been away for a while (20 minutes by default), at least three new tasks have piled up, and no pass has run in six hours, it runs a short pass over what happened, the way sleep consolidates a day. First, locally and for free, it finds the gaps: where the money went by tier and starting model, which cheaper starts won or lost, where tasks were rescued, where a failure would go unseen. Then it asks Haiku once, about a tenth of a cent, to rank the hypotheses worth testing next and say why. The model sees numbers only, never task text. It can only name an experiment the engine already knows, for a kind of task it is allowed to touch, and what it proposes only makes a probe start sooner: the experiment engine, on your own tasks, still decides, and no safety rule changes. A proposal your tasks already adopted or reverted is dropped, and AutoMode keeps a score of how many of the model's proposals your tasks confirmed, split into the picks a simple rule (test the costliest untried tier first) would also make and the picks only the model made, so you can see whether the model adds anything. A failure caused by the environment or a flaky test does not count against a cheaper start. `reflect` in `config.json` is `auto` (when you are away), `manual` (only `/automode learn`) or `off`; `reflectModel: false` keeps the pass local and free; the model step has a cap per pass ($0.02) and per week ($0.20). `/automode learn` runs a pass now and `/automode learn status` shows the spend and the score. `/automode learned` shows what it found.
+
+**Adaptive routing.** The shipped routing rules are a starting belief. AutoMode checks them against your own tasks and changes them where your work says so. For each kind of task (tier and complexity) it tries a cheaper start on a fixed share of eligible tasks, picked by a hash of the task id so the two groups are alike: a Haiku start where the rules start higher, or Sonnet at medium effort where they start at high. It compares the realized cost of each group (every attempt, judge and rescue included) and the failures. A cheaper start that is cheaper with confidence and no worse on failures becomes the start for that kind of task (a tenth still follow the shipped rules, so the comparison goes on). One that fails clearly more often is reverted, and tried again after two weeks. A probe never runs on risk, a pinned or commanded model, a kind of task whose failures nobody would see (too few tasks run a check), or before the kind of task has eight tasks of history. A failed probe is caught by the escalation ladder, and its whole cost counts against it. The benchmarks give the starting prior; your own tasks overtake it. Replayed on the recorded benchmark outcomes (`bench/results/adaptive-replay.json`, 300 simulated people per case), it found the cheaper start where one works and settled near 0.3x the shipped cost with no more failures, stayed on the shipped route where it does not pay (1.01x, a few more failures while finding out), and stayed neutral where it trades cost for quality. Those pools are small and easy for the cheaper start, so this shows the algorithm learns, not what you will save. `adaptive` in `config.json` turns it off, and `/automode learned` shows every experiment, its state and the numbers.
+
+**Cache keeper.** Guards on the prompt cache, set in `config.json` under `cacheKeeper`.
+- `ttl` (`auto`, `5` or `60`) sets the cache lifetime. `auto` measures it from the usage on each request instead of guessing.
+- `guard` (on by default) asks before your own prompt rewrites a context of `guardTokens` (150,000) or more after the cache expired. It shows the price and offers send, compact, cancel, or "keep chats like this warm". A dismissed dialog sends the prompt.
+- `keepWarm` is `ask` (default), `auto` or `off`. A small ping before the cache expires reads the cached context and restarts its lifetime. In `ask` it starts after you say yes in that dialog or run `/automode keepwarm`. A ping goes out only while a cold start costs at least `minRewriteUsd`, the cache belongs to the live model, the work does not look finished, the model is not above what the next task needs (a model you pinned counts as wanted), the chat has been idle less than `keepWarmHours` (2), and the session is under `budgetUsd` ($0.50). Pings that wrote the cache, got no answer, or cost more than a rewrite stop it for the session.
+- The return model. A small model estimates the chance you send another prompt within the hour from the chat's size, its idle time, how long the session has run, how many prompts you typed, how much the assistant wrote since your last prompt, and whether it ended on a question. It starts from a prior and moves away from it only as fast as your own gaps justify, learning from every settled gap in the sessions it watches. It races the simple rule on your gaps and acts only after it wins (30 gaps, fewer pings, no worse net). `learnFromHistory` (off) and `/automode learned import` also let it count gaps in your past sessions, locally. `/automode learned` shows its report card, scored before each gap was learned, with `reset` to clear it.
+
+What is measured, and what is not. In one live run (Sonnet, a 231k-token chat, 8 minutes idle, a 5-minute cache) two pings let the next prompt cost $0.07 where the same scenario cost $0.55 cold. That is one run: it shows the mechanism works, not what you will save. A replay over this machine's own interactive sessions (scripted `claude -p` runs left out, trained on the earlier part and scored on the later part) came out at about zero net, with an interval that includes zero, and the model made the same pings as the simple rule. The reasons are in `bench/results/learning-diagnosis.json`: a rule that knew every return in advance would have netted only about $3 in 16 days, and the event to learn from happened six times in the training period. How much keep warm saves depends on how often you leave big chats idle and then come back; on this machine's real use it is small. The numbers are calculated from recorded usage, not billed cost.
 
 Filing a bug? Run `/automode debug` and paste the result.
 
@@ -439,6 +487,7 @@ AutoMode stands on open source work. All of it is MIT licensed.
 
 - **Effort rules** in `hooks/lib/effort.ts` and the bar techniques in `hooks/ui/` are ported from [effortless](https://github.com/HeyCubit/effortless) by HeyCubit.
 - **Classifier contract and switch payback** are adapted from [claude-router](https://github.com/alexei-led/claude-router) by Alexei Ledenev and from [jev-router](https://github.com/gargpratyush/jev-router).
+- **Cache keeper**: the measured cache lifetime, the cold-send guard and the keepalive follow the ideas in [cache-keeper](https://github.com/nateherkai/claude-code-mods) by Nate Herk. The code is written fresh.
 - Upstream copies and checksums are in [`bench/external/`](bench/external/).
 
 ## License
