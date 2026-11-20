@@ -1,0 +1,228 @@
+{
+  "basis": "real recorded costs and hidden-test outcomes from the committed benchmark rows, resampled; a failed probe reruns on the shipped route; calculated, not billed",
+  "episodes": 300,
+  "report": [
+    {
+      "scenario": "Haiku start, with the shipped rescue (v6d)",
+      "note": "the probe is the recorded Haiku-first path with its own recovery; its cost already includes the rescue",
+      "tasksInPool": 15,
+      "runsPerArm": {
+        "hold": 8.27,
+        "probe": 3.33
+      },
+      "recorded": {
+        "holdCostPerTask": 0.31,
+        "probeCostPerTask": 0.32,
+        "holdAccepted": 0.98,
+        "probeAccepted": 0.87
+      },
+      "streamLength": 300,
+      "episodes": 300,
+      "adoptedIn": {
+        "episodes": 0.23,
+        "medianTask": 48
+      },
+      "finalState": {
+        "collecting": 0.19,
+        "adopted": 0.12,
+        "reverted": 0.69
+      },
+      "costVsShipped": {
+        "median": 1.01,
+        "p10": 0.98,
+        "p90": 1.04
+      },
+      "costVsAlwaysCheaper": 0.98,
+      "costVsOracle": 1.41,
+      "failuresPerTask": {
+        "learned": 0.05,
+        "shipped": 0.03
+      },
+      "probeShare": 0.19,
+      "curve": [
+        {
+          "tasks": "1-50",
+          "costVsShipped": 1,
+          "failuresPerTask": 0.05
+        },
+        {
+          "tasks": "51-100",
+          "costVsShipped": 1.01,
+          "failuresPerTask": 0.05
+        },
+        {
+          "tasks": "101-150",
+          "costVsShipped": 1,
+          "failuresPerTask": 0.05
+        },
+        {
+          "tasks": "151-200",
+          "costVsShipped": 1.01,
+          "failuresPerTask": 0.04
+        },
+        {
+          "tasks": "201-250",
+          "costVsShipped": 1.01,
+          "failuresPerTask": 0.04
+        },
+        {
+          "tasks": "251-300",
+          "costVsShipped": 1.01,
+          "failuresPerTask": 0.04
+        }
+      ],
+      "heldOut": {
+        "costVsShipped": 1.01,
+        "failuresPerTask": 0.05
+      }
+    },
+    {
+      "scenario": "Haiku alone, no rescue",
+      "note": "a harsher test: plain Haiku, and a miss reruns on Sonnet high",
+      "tasksInPool": 71,
+      "runsPerArm": {
+        "hold": 5.23,
+        "probe": 1.23
+      },
+      "recorded": {
+        "holdCostPerTask": 0.26,
+        "probeCostPerTask": 0.03,
+        "holdAccepted": 0.99,
+        "probeAccepted": 0.99
+      },
+      "streamLength": 300,
+      "episodes": 300,
+      "adoptedIn": {
+        "episodes": 0.98,
+        "medianTask": 43
+      },
+      "finalState": {
+        "collecting": 0.02,
+        "adopted": 0.98,
+        "reverted": 0
+      },
+      "costVsShipped": {
+        "median": 0.36,
+        "p10": 0.3,
+        "p90": 0.55
+      },
+      "costVsAlwaysCheaper": 1.9,
+      "costVsOracle": 2.16,
+      "failuresPerTask": {
+        "learned": 0.01,
+        "shipped": 0
+      },
+      "probeShare": 0.76,
+      "curve": [
+        {
+          "tasks": "1-50",
+          "costVsShipped": 0.71,
+          "failuresPerTask": 0.01
+        },
+        {
+          "tasks": "51-100",
+          "costVsShipped": 0.39,
+          "failuresPerTask": 0.01
+        },
+        {
+          "tasks": "101-150",
+          "costVsShipped": 0.35,
+          "failuresPerTask": 0.01
+        },
+        {
+          "tasks": "151-200",
+          "costVsShipped": 0.32,
+          "failuresPerTask": 0.01
+        },
+        {
+          "tasks": "201-250",
+          "costVsShipped": 0.31,
+          "failuresPerTask": 0.01
+        },
+        {
+          "tasks": "251-300",
+          "costVsShipped": 0.29,
+          "failuresPerTask": 0.01
+        }
+      ],
+      "heldOut": {
+        "costVsShipped": 0.31,
+        "failuresPerTask": 0
+      }
+    },
+    {
+      "scenario": "Sonnet at medium instead of high",
+      "note": "the effort floor",
+      "tasksInPool": 33,
+      "runsPerArm": {
+        "hold": 7.06,
+        "probe": 3.27
+      },
+      "recorded": {
+        "holdCostPerTask": 0.26,
+        "probeCostPerTask": 0.19,
+        "holdAccepted": 0.99,
+        "probeAccepted": 0.96
+      },
+      "streamLength": 300,
+      "episodes": 300,
+      "adoptedIn": {
+        "episodes": 0.64,
+        "medianTask": 52
+      },
+      "finalState": {
+        "collecting": 0.05,
+        "adopted": 0.45,
+        "reverted": 0.5
+      },
+      "costVsShipped": {
+        "median": 0.99,
+        "p10": 0.91,
+        "p90": 1.02
+      },
+      "costVsAlwaysCheaper": 1.05,
+      "costVsOracle": 1.23,
+      "failuresPerTask": {
+        "learned": 0.02,
+        "shipped": 0.01
+      },
+      "probeShare": 0.4,
+      "curve": [
+        {
+          "tasks": "1-50",
+          "costVsShipped": 0.98,
+          "failuresPerTask": 0.02
+        },
+        {
+          "tasks": "51-100",
+          "costVsShipped": 0.97,
+          "failuresPerTask": 0.02
+        },
+        {
+          "tasks": "101-150",
+          "costVsShipped": 0.97,
+          "failuresPerTask": 0.02
+        },
+        {
+          "tasks": "151-200",
+          "costVsShipped": 0.97,
+          "failuresPerTask": 0.02
+        },
+        {
+          "tasks": "201-250",
+          "costVsShipped": 0.98,
+          "failuresPerTask": 0.02
+        },
+        {
+          "tasks": "251-300",
+          "costVsShipped": 0.98,
+          "failuresPerTask": 0.02
+        }
+      ],
+      "heldOut": {
+        "costVsShipped": 0.95,
+        "failuresPerTask": 0.01
+      }
+    }
+  ]
+}

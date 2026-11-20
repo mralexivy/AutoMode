@@ -41,6 +41,12 @@ Lowest first. A later source wins.
 | `autoWorkflow` | `false` | `true` lets the router enter the workflow by itself. `am:run` works either way. |
 | `reachHaiku` | `true` | T0 to T2 work without critical risk can run on Haiku. `false`: Haiku needs T0 and a Haiku verdict. |
 | `learning` | `true` | A kind of task that needed rescue in this project starts on Opus next time. It only raises a route. |
+| `adaptive` | `true` | Adaptive routing: a small share of tasks start cheaper, and AutoMode adopts what holds up. `false` stops the experiments. See [How AutoMode learns](/docs/concepts/learning). |
+| `reflect` | `auto` | The learning pass: `auto` runs when you are away, `manual` only on `/automode learn`, `off` never. |
+| `reflectIdleMin` | `20` | Minutes away before an automatic learning pass. |
+| `reflectModel` | `true` | The pass asks Haiku once, about a tenth of a cent. `false` keeps it local and free. |
+| `cacheKeeper.keepWarm` | `ask` | `ask` asks before keeping a chat warm, `auto` pings where it pays, `off` never. |
+| `cacheKeeper.learnFromHistory` | `false` | Read past transcripts for counts. Off until you consent. |
 | `reviewPolicy` | `risk` | `always` adds a review to every change. |
 | `maxConcurrency` | `1` | Workstreams built at once, at most 2. |
 | `blockGitWritesWhenActive` | `true` | Deny git writes from subagents. |

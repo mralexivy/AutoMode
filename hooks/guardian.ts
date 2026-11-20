@@ -318,12 +318,12 @@ export async function guardianPromptSubmit($: EngineInterface, e: any, next: any
   try { await load($, true) } catch {}
   let ctx: string[] = []
   try {
-    if (await enabled($)) ctx = await beforePrompt($, e)
+    if (await enabled($)) ctx = await beforeAsk($, e)
   } catch {}
   return next(ctx.length ? { ...e, context: [...(e.context ?? []), ...ctx] } : e)
 }
 
-async function beforePrompt($: EngineInterface, e: any): Promise<string[]> {
+async function beforeAsk($: EngineInterface, e: any): Promise<string[]> {
   const byPerson = e.origin?.kind === 'composer' || e.origin?.kind === 'bridge' || e.origin?.kind === 'sdk'
   const text = String(e.text ?? '').trim()
   if (!byPerson || e.command || e.isMeta || text.startsWith('/')) return []
@@ -398,9 +398,9 @@ export async function guardianTurnStart($: EngineInterface, e: any, next: any) {
   return next(e)
 }
 
-// guardianStep: one main-loop request is about to be sent. A hard pause, when opted in, ends the turn here: between
+// gStep: one main-loop request is about to be sent. A hard pause, when opted in, ends the turn here: between
 // requests, so no tool is running.
-export async function guardianStep($: EngineInterface, e: any) {
+export async function gStep($: EngineInterface, e: any) {
   if (e.agentId !== undefined || !(await enabled($))) return
   // A turn starts at its first request when turn.start did not reach this plugin.
   if (!G.turn || G.turn.turnId !== e.turnId) { G.turn = newTurn(e.turnId, await now($), G.authorizeNext ? 1 : 0); G.authorizeNext = false; if (G.lastUsd === null) G.lastUsd = (await readUsage($)).usd }

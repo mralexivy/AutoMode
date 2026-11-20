@@ -1,0 +1,83 @@
+{
+  "basis": "calculated at the mod price table from recorded usage; counterfactual, not billed; one person",
+  "interactiveSessions": 84,
+  "scriptedSessionsLeftOut": 882,
+  "trainPoints": 103,
+  "modelReportCard": {
+    "points": 103,
+    "modelError": 0.363,
+    "startingGuessError": 0.477,
+    "baseRateError": 0.297
+  },
+  "testGaps": 82,
+  "testSessions": 29,
+  "rows": [
+    {
+      "policy": "none",
+      "pings": 0,
+      "pingUsd": 0,
+      "savedUsd": 0,
+      "netUsd": 0,
+      "netCI95": [
+        0,
+        0
+      ],
+      "losingGaps": 0
+    },
+    {
+      "policy": "flat 2h",
+      "pings": 74,
+      "pingUsd": 2.68,
+      "savedUsd": 3.05,
+      "netUsd": 0.37,
+      "netCI95": [
+        -2.97,
+        4.01
+      ],
+      "losingGaps": 36
+    },
+    {
+      "policy": "flat 4h",
+      "pings": 143,
+      "pingUsd": 5.05,
+      "savedUsd": 4.04,
+      "netUsd": -1.01,
+      "netCI95": [
+        -5.32,
+        3.19
+      ],
+      "losingGaps": 35
+    },
+    {
+      "policy": "champion (floor $0.3, 2h)",
+      "pings": 66,
+      "pingUsd": 2.64,
+      "savedUsd": 3.05,
+      "netUsd": 0.41,
+      "netCI95": [
+        -2.92,
+        4.12
+      ],
+      "losingGaps": 32
+    },
+    {
+      "policy": "challenger (habits, floor $0.3, 2h)",
+      "pings": 66,
+      "pingUsd": 2.64,
+      "savedUsd": 3.05,
+      "netUsd": 0.41,
+      "netCI95": [
+        -2.92,
+        4.12
+      ],
+      "losingGaps": 32
+    }
+  ],
+  "habitsMinusSimple": {
+    "netUsd": 0,
+    "ci95": [
+      0,
+      0
+    ]
+  }
+}

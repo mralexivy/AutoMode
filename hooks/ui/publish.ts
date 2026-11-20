@@ -17,16 +17,16 @@ let sources: Sources | null = null
 export const setSources = (s: Sources) => { sources = s }
 
 // Off with AUTOMODE_UI=off: nothing is written, and the drawings step aside.
-let uiOff: boolean | null = null
-export async function uiDisabled($: EngineInterface): Promise<boolean> {
-  if (uiOff === null) { try { uiOff = ['off', '0', 'false'].includes(String((await $.env.get('AUTOMODE_UI')) ?? '').trim().toLowerCase()) } catch { uiOff = false } }
-  return uiOff
+let uiOffFlag: boolean | null = null
+export async function isUiOff($: EngineInterface): Promise<boolean> {
+  if (uiOffFlag === null) { try { uiOffFlag = ['off', '0', 'false'].includes(String((await $.env.get('AUTOMODE_UI')) ?? '').trim().toLowerCase()) } catch { uiOffFlag = false } }
+  return uiOffFlag
 }
-export const __resetPublish = () => { uiOff = null; last = ''; tipNow = { key: '', until: 0 }; tipCounts = null; facts = { outputStyle: null } }
+export const __resetPublish = () => { uiOffFlag = null; last = ''; tipNow = { key: '', until: 0 }; tipCounts = null; facts = { outputStyle: null } }
 
 // What the view cannot read from the router: the person's output style (user settings.json, read once per session start).
 let facts: Facts = { outputStyle: null }
-export async function loadFacts($: EngineInterface): Promise<void> {
+export async function lFacts($: EngineInterface): Promise<void> {
   try {
     const home = (await $.env.get('CLAUDE_CONFIG_DIR')) || `${await $.env.get('HOME')}/.claude`
     const style = JSON.parse(await fsRead($, `${home}/settings.json`))?.outputStyle
@@ -90,7 +90,7 @@ const keyOf = (session: string, v: View) => `${session}|${JSON.stringify({ ...v,
 // stop a routing or guardian step that awaits it.
 export async function publish($: EngineInterface): Promise<void> {
   try {
-    if (await uiDisabled($)) return
+    if (await isUiOff($)) return
     const v = await snapshotView($)
     if (!v) return
     let session = ''

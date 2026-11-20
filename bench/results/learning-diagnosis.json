@@ -1,0 +1,90 @@
+{
+  "date": "2026-11-20",
+  "basis": "one person's interactive Claude Code sessions (scripted claude -p runs left out), 21 days of transcripts; calculated from recorded usage, not billed; reproduce with node bench/diagnose-learning.mts and node bench/habits-replay.mts",
+  "question": "why is a rule that learns from the person's gaps no better than the simple rule?",
+  "findings": [
+    {
+      "id": "stakes",
+      "summary": "Idle-expiry rewrites on interactive sessions cost $32.57 in 21 days (16 rewrites, 13 of them on chats over 150k tokens). A rule that knew every return in advance would net $15.57. In the held-out 16 days it would net $2.93, from 3 pings. No rule, simple or learned, can win more than that, and the 95% interval on any rule's net (about plus or minus $3.5) is wider than the whole prize."
+    },
+    {
+      "id": "events",
+      "summary": "The event to learn (a big chat idle past the cache lifetime that then continues) happened 6 times in the training period and 4 times in the test period. Nothing can be learned from 6 examples."
+    },
+    {
+      "id": "economics",
+      "summary": "On a 1-hour cache a ping costs about 5% of a read of the prefix per 52 minutes while a cold start costs 2x input, so the break-even chance of a return is a few percent: pinging a big chat is nearly always right, which is what the simple rule does. On a 5-minute cache the break-even over an hour is about 70%, so the decision is hard there, and habits matter more."
+    },
+    {
+      "id": "features",
+      "summary": "Best single features for a return after a long idle gap (AUC, 95% interval): chat size 0.74 [0.66, 0.81], session age 0.73 [0.61, 0.79], work done in the last turn 0.72 [0.63, 0.83], prompts so far 0.70 [0.53, 0.76]. The assistant ending on a question returned 78% of the time against 14% otherwise (9 cases). Signals of unfinished work did not predict a return: edits without a test AUC 0.50, any test run 0.54, edits 0.53."
+    },
+    {
+      "id": "table",
+      "summary": "The first estimator, a table of counts by chat size, model and tool use, scored no better than one number per chat size (Brier 0.21 against 0.16 on one split), and more sessions did not improve it."
+    },
+    {
+      "id": "prior",
+      "summary": "A model learned from scratch on a few dozen sessions scored worse than a hand-set prior alone, and a prior with a small, strongly held update scored best (Brier 0.098 to 0.102 against 0.122 for a flat rate, AUC 0.84 to 0.86). The prior's directions were chosen after seeing this person's univariate results, so that figure is flattered; it is a starting point, not a result."
+    },
+    {
+      "id": "drift",
+      "summary": "The same prior scored Brier 0.48 on the earlier part of the data and 0.10 on the later part, so a person's habits change over weeks."
+    }
+  ],
+  "changesMade": [
+    "the table of counts is replaced by a small logistic model that starts from a prior built from the facts above and is held to it by a ridge penalty worth 20 observations, so it learns from a handful of points slowly and from hundreds quickly",
+    "the features are chat size, idle time, session age, prompts so far, the assistant's output since the last prompt, and whether it asked a question",
+    "every settled gap, from past sessions (with the person's say-so) and from sessions watched live, is scored by the model as it stood before it is learned, so /automode learned can show a report card against the starting guess and a flat rate",
+    "the unfinished-work boost, which the data does not support, is removed from the return odds",
+    "the model acts only after it wins a race against the simple rule on the person's own gaps"
+  ],
+  "result": "On this person's data the model ties the simple rule (it makes the same pings): on a 1-hour cache the right answer is almost always to ping a big chat, and there are too few events to refine it. Its report card on 103 training points: model error 0.363, starting guess 0.477, flat base rate 0.297, so it has learned something but is not yet better than a flat rate.",
+  "recommendation": "Keep warm is a small lever for a subscription user and a larger one for someone on a 5-minute cache. The same evidence-gated learning loop (a prior, an online update, a report card, a race against a static rule) should go where decisions are frequent and expensive: which model and effort each prompt gets.",
+  "routing": {
+    "scope": "the first diagnosis covered only the cache. This section looks at which model each task starts on, from the router's own records joined to transcripts for the surface (interactive against scripted `claude -p`) and from the repo's paired benchmark runs.",
+    "findings": [
+      {
+        "id": "records",
+        "summary": "Of 1,060 router decisions on this machine, 905 are scripted runs (benchmarks). Interactive: 145 decisions, 130 tasks, 2 escalations, no completion records, and none after 2026-11-01. A learner of the current router has almost nothing of the person's own to learn from."
+      },
+      {
+        "id": "opus-overuse-retracted",
+        "summary": "On those 145 interactive decisions, 69 went to Opus (all T3) and Opus took $77.89 of $94.25 of spend, at $1.25 a task against $0.24 on Sonnet. All of them predate #102 (2026-11-03), which starts T3 work on Sonnet and leaves Opus to evidence. The apparent overuse is already fixed in shipped code, so it is not a finding about today's router."
+      },
+      {
+        "id": "paired-prior",
+        "summary": "On the same tasks (paired runs: stage-c 36, automode-proof 30 per arm), Sonnet and Opus accepted the same tasks (66 of 66, no task solved only by Opus) at one half to one sixth of the cost. Sonnet medium cost $0.15 a task against $0.21 for Sonnet high and $0.96 for Opus high, all 36 of 36 accepted."
+      },
+      {
+        "id": "router-cost",
+        "summary": "The auto-arm numbers above ($0.44 a task against $0.21 for Sonnet high, 72% of it Opus) come from stage-c and the early proof runs, which predate the shipped router. On the shipped v6c (bench/experiments/V6.md, committed rows) the router costs about what plain Sonnet high costs and half of plain Opus: W2 $2.01 against $2.14 and $4.14 (20 of 20 each); S2 $0.275 a pass against $0.240 for Sonnet high and $0.499 for Opus (29 of 30, 30 of 30, 28 of 30). So the shipped router has no measured room against always-Sonnet-high, and a new benchmark would not find any."
+      },
+      {
+        "id": "selection",
+        "summary": "Comparing a model's pass rate across tasks the router chose for it is biased: the router sent each task where it expected it to pass. Only randomized starts (a probe) can separate the model from the task, and they are not built yet."
+      },
+      {
+        "id": "what-is-left",
+        "summary": "The one routing decision with measured room is a Haiku start: v6d cost $1.74 against $3.09 for Sonnet high on 14 tasks (minus 44%, 13 of 14 passed), and failed one held-out task on every Haiku path tried. Which tasks are safe on Haiku differs by person and by task, which is what a learner could settle, but it needs randomized probes on a person's own tasks, and the volume of a person's easy tasks bounds the saving. The effort floor (Sonnet medium against high) was 36 of 36 accepted in every arm of an old run, so those tasks cannot tell the two apart."
+      }
+    ],
+    "built": "adaptive routing (hooks/lib/experiment.ts): per kind of task, a hash-chosen share of eligible tasks starts one step cheaper (Haiku, or Sonnet at medium effort), cost and failures are compared against the tasks that followed the shipped rules, and the cheaper start is adopted or reverted from the person's own tasks, with the benchmarks as the prior. In simulated people the engine adopts a cheaper start that suits the person within about 50 eligible tasks (cost 40% of the shipped route's) and loses under 15% where it does not suit. In a real Claude Code session a seeded person's adopted Haiku start ran a task on Haiku at $0.015 against $0.20 to $0.27 on Sonnet. It has not been measured on a person's real tasks over time, so no saving is claimed. /automode learned also reports the start model and cost per task.",
+    "notBuilt": "learning for the other decisions (consult, review, delegation, guardian thresholds): the engine is generic, but only the start model and the effort floor are wired.",
+    "decision": "No new paid benchmark: the committed v6 results show the shipped router at Sonnet-high cost, and the adaptive layer measures its own effect on each person's tasks as it runs."
+  },
+  "adaptiveReplay": {
+    "what": "bench/adaptive-replay.mts replays the adaptive-routing engine on the recorded benchmark outcomes (86 tasks, the same tasks under different starts, hidden-test results). A simulated person works through 300 tasks drawn from the pool. The mod starts on the shipped route, the real engine tries a cheaper start on some tasks and reads what really happened on that task under that start; a failed probe pays for itself and reruns on the shipped route. 300 episodes per scenario.",
+    "results": [
+      "Haiku start, with the shipped rescue (v6d): recorded cost per task $0.31 shipped against $0.32 cheaper, accepted 0.98 against 0.87; the learner adopted in 23% of episodes, cost 1.01x the shipped route (p10 0.98, p90 1.04), failures 0.05 per task against 0.03; on tasks held out from learning 1.01x",
+      "Haiku alone, no rescue: recorded cost per task $0.26 shipped against $0.03 cheaper, accepted 0.99 against 0.99; the learner adopted in 98% of episodes, cost 0.36x the shipped route (p10 0.3, p90 0.55), failures 0.01 per task against 0; on tasks held out from learning 0.31x",
+      "Sonnet at medium instead of high: recorded cost per task $0.26 shipped against $0.19 cheaper, accepted 0.99 against 0.96; the learner adopted in 64% of episodes, cost 0.99x the shipped route (p10 0.91, p90 1.02), failures 0.02 per task against 0.01; on tasks held out from learning 0.95x"
+    ],
+    "reading": [
+      "Where a cheaper start works (plain Haiku on the easy tasks: 0.99 accepted either way at $0.03 against $0.26 a task) it finds it within about 40 tasks and settles near 0.3x the shipped cost with no more failures; the cost over the first 50 tasks is 0.71x and over the last 50 is 0.29x, so it gets cheaper as the tasks teach it, and the rule it learned holds on tasks it never learned from (0.31x, 0 failures).",
+      "Where a cheaper start does not pay (the Haiku-first path with its rescue: $0.32 against $0.31, 0.87 accepted against 0.98) it ends up on the shipped route in 69% of episodes and costs 1.01x, with failures 0.05 against 0.03: the price of finding out.",
+      "Where the cheaper start saves some and loses some (Sonnet medium: 27% cheaper, 3 points less accepted) it stays near neutral (0.99x).",
+      "Limits: the pools are small (15, 71 and 33 tasks), the Haiku pool is made of tasks chosen as easy for Haiku, every benchmark task has a hidden test so every failure is seen, and a person's real tasks may differ. The replay shows the algorithm learns and protects on real recorded outcomes; it does not show what a person will save."
+    ]
+  }
+}

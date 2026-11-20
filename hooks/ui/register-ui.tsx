@@ -2,7 +2,7 @@
 // is the per-session routing switch, from the bar's toggle or /automode on|off. Every drawing reads the view atom (publish.ts), never a file or a model, and falls back to the
 // engine's own on any error, so a surface that cannot draw, or a drawing that fails, never touches routing or the
 // guardian. AUTOMODE_UI=off turns the layer off alone.
-import { keepWarmCommand } from '../cachekeeper.ts'
+import { keepWarmCommand, learnNowCommand, learnedCommand } from '../cachekeeper.ts'
 import { fsRead } from '../lib/io.ts'
 import { atom, read } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
@@ -10,7 +10,7 @@ import { uiOptions } from '../lib/settings.ts'
 import { currentOptions, storedOptions } from '../options.ts'
 import { appearanceOf, tokensFor } from './tokens.ts'
 import { barSegments, barText, cacheText, type Metric } from './view.ts'
-import { loadFacts, publish, snapshotView, uiDisabled } from './publish.ts'
+import { lFacts, publish, snapshotView, isUiOff } from './publish.ts'
 import { drawAlert, drawBar, drawTip, type Ctx } from './bar.tsx'
 import { detailsText } from './details.tsx'
 import * as cmd from './commands.ts'
@@ -35,15 +35,15 @@ async function themeOf($: EngineInterface): Promise<string | null> {
 export async function uiStart($: EngineInterface) {
   try {
     configTheme = undefined
-    if (await uiDisabled($)) return
+    if (await isUiOff($)) return
     await $.command.register({ name: 'automode', description: `AutoMode: ${cmd.usageLine()}` })
-    await loadFacts($)
+    await lFacts($)
     await publish($)
   } catch {}
 }
 
 // The engine facts the report subcommands print. Each read is best effort: a missing file is a blank, never an error.
-async function cmdFacts($: EngineInterface): Promise<cmd.Facts> {
+async function cFacts($: EngineInterface): Promise<cmd.Facts> {
   const safe = async <T,>(p: Promise<T> | T, fallback: T): Promise<T> => { try { return await p } catch { return fallback } }
   const json = async (file: string) => { try { return JSON.parse(await fsRead($, file)) } catch { return {} } }
   const str = (v: unknown) => (v ? String(v) : null)
@@ -90,10 +90,12 @@ export function registerUi(on: On) {
       switch (name) {
         case 'help': return { text: cmd.helpText() }
         case 'details': return { text: `${head}\n${detailsText(v, now)}` }
-        case 'setup': return { text: cmd.setupText(v, await cmdFacts($)) }
-        case 'settings': return { text: cmd.settingsText(v, await cmdFacts($)) }
+        case 'setup': return { text: cmd.setupText(v, await cFacts($)) }
+        case 'settings': return { text: cmd.settingsText(v, await cFacts($)) }
         case 'keepwarm': return { text: await keepWarmCommand($, rest) }
-        case 'debug': return { text: cmd.debugText(v, await cmdFacts($), now) }
+        case 'learned': return { text: await learnedCommand($, rest) }
+        case 'learn': return { text: await learnNowCommand($, rest) }
+        case 'debug': return { text: cmd.debugText(v, await cFacts($), now) }
         case 'on':
         case 'off': {
           const wantOn = name === 'on'
@@ -109,7 +111,7 @@ export function registerUi(on: On) {
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     try {
-      if (e.props.hasSurvey || (await uiDisabled($))) return next(e)
+      if (e.props.hasSurvey || (await isUiOff($))) return next(e)
       const v = await read($, viewAtom)
       if (!v) { try { $.clock.after(20, () => { void publish($) }) } catch {}; return next(e) }
       const o = uiOptions(currentOptions(), storedOptions())

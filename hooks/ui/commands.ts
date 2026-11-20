@@ -20,6 +20,8 @@ export const SUBCOMMANDS: { name: string; aliases: string[]; line: string }[] = 
   { name: 'settings', aliases: [], line: 'the effective settings and where each comes from' },
   { name: 'debug', aliases: [], line: 'a report to paste in a bug issue, with no prompt text' },
   { name: 'keepwarm', aliases: [], line: 'keep a big chat\'s cache warm: keepwarm <hours> | off' },
+  { name: 'learn', aliases: [], line: 'run a learning pass now: learn | learn status' },
+  { name: 'learned', aliases: ['insights'], line: 'what AutoMode learned from your use: learned | learned reset' },
   { name: 'help', aliases: ['tips', 'commands'], line: 'this list, the am: prompt commands and tips' },
 ]
 

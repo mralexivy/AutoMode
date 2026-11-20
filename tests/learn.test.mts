@@ -44,8 +44,8 @@ test('open tasks do not count', () => {
 })
 
 test('the file stays bounded', () => {
-  const l = fill(...Array.from({ length: 250 }, (_, i) => task(`t${i}`, 'ok')))
-  assert.equal(l.tasks.length, 200)
+  const l = fill(...Array.from({ length: 450 }, (_, i) => task(`t${i}`, 'ok')))
+  assert.equal(l.tasks.length, 400)
   assert.equal(l.tasks[0].id, 't50')
 })
 

@@ -1,6 +1,6 @@
 ---
-description: AutoMode status and tools. /automode status, details, on, off, setup, settings, keepwarm, debug, help.
-argument-hint: status | details | on | off | setup | settings | keepwarm | debug | help
+description: AutoMode status and tools. /automode status, details, on, off, setup, settings, keepwarm, learn, learned, debug, help.
+argument-hint: status | details | on | off | setup | settings | keepwarm | learn | learned | debug | help
 ---
 
 The AutoMode mod answers this command itself, so this text is only read when the mod did not load.

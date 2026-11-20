@@ -1,7 +1,7 @@
 {
   "date": "2026-11-20",
   "basis": "real Claude Code 2.1.308 sessions on one machine, forced 5-minute cache (FORCE_PROMPT_CACHING_5M), usage and cost as the engine reported them. One run per arm: a mechanism and money check, not a statistical claim",
-  "spendUsd": 11,
+  "spendUsd": 17.5,
   "abIdleGap": {
     "setup": "Sonnet, a 231k-token context built over 3 requests, then 10.5 minutes idle, then one small prompt. Each arm had its own unique text, because two runs with the same text share one server-side cache (a first A/B was contaminated that way and is not used)",
     "control": {
@@ -56,7 +56,10 @@
   },
   "bugsFoundByLiveRuns": [
     "a ping right after a chat's first request rewrote the message cache (first requests are shaped differently from later ones), so the old stop rule killed keepalive: pings now start at the third request and forgive one write",
-    "the guard quote ignored Haiku's 5x long-context price above 100k tokens"
+    "the guard quote ignored Haiku's 5x long-context price above 100k tokens",
+    "fs.list reports a directory as kind 'dir', not 'directory'",
+    "fs.read cuts a huge transcript short, which hid 4 in 5 idle gaps and invented session ends: big files now stream through scripts/habits-fold.mjs",
+    "the gate treated a model the person pinned with am: as above need: it now honors the pin"
   ],
   "interactiveKeepwarm": {
     "setup": "real interactive session (pty), Haiku, 3 requests, /automode keepwarm 1, 9 minutes idle, 5-minute cache",
@@ -78,5 +81,71 @@
       "cacheWrite": 160
     },
     "result": "the cache stayed warm for 10 minutes on a 5-minute lifetime"
+  },
+  "autoEndToEnd": {
+    "date": "2026-11-20",
+    "setup": "keepWarm auto, no command; Sonnet pinned with am:sonnet, a 231k-token context built over 3 requests, 8 minutes idle, 5-minute cache, then one small prompt. The gate read the person's real habits file (249 sessions)",
+    "pings": [
+      {
+        "cacheRead": 231819,
+        "cacheWrite": 5,
+        "usd": 0.0232,
+        "why": "a return is likely"
+      },
+      {
+        "cacheRead": 231824,
+        "cacheWrite": 0,
+        "usd": 0.0232,
+        "why": "a return is likely"
+      }
+    ],
+    "finalRequest": {
+      "cacheRead": 231824,
+      "cacheWrite": 112,
+      "costUsd": 0.0701
+    },
+    "coldControl": {
+      "costUsd": 0.5523,
+      "note": "same scenario with the gate refusing (the model was not seen as pinned): cache rewritten"
+    },
+    "ledger": {
+      "pingUsd": 0.0465,
+      "savedUsd": 0.5564
+    },
+    "learnedCommand": "/automode learned printed the idle-time odds (big chats 68% back within the hour), the keep-warm ledger and the route memory"
+  },
+  "honestReplayNote": "the earlier replay (50 percent train, scripted sessions included) showed a net saving of about $50 in 16 days; 194 of 247 sessions in it were scripts and benchmarks. With scripted sessions left out (bench/results/habits-replay.json) the net is about zero with a 95 percent interval that includes zero, so no saving is claimed",
+  "redesignRun": {
+    "date": "2026-11-20",
+    "setup": "keepWarm auto, minRewriteUsd 0.0001, Haiku, 5-minute cache, three requests, /automode learned import, 5.5 minutes idle, one request",
+    "scan": {
+      "files": 1468,
+      "failed": 0,
+      "interactiveSessions": 84,
+      "scriptedLeftOut": "yes"
+    },
+    "pings": [
+      {
+        "cacheRead": 56566,
+        "cacheWrite": 29,
+        "rule": "champion"
+      },
+      {
+        "cacheRead": 56595,
+        "cacheWrite": 0,
+        "rule": "champion"
+      }
+    ],
+    "settle": {
+      "pingUsd": 0.0011,
+      "savedUsd": 0.0065,
+      "warm": true
+    },
+    "race": {
+      "champPings": 2,
+      "chalPings": 0,
+      "active": "champion"
+    },
+    "mergedHabitsFile": "the ledger and the race were merged into the file on save"
   }
 }

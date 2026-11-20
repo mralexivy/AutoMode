@@ -63,7 +63,9 @@ import type { AgentSnap, Ledger, RouterSnap } from './ui/view.ts'
 import { sid, fsRead, sessionModel, fsWrite, fsExists, fork, proc, sDel, sGet, sKeys, sSet, agents, status } from './lib/io.ts'
 import { BUILD_ASK, FORK_PROMPT, buildHandoff, completeness, forkWorth, parseForkFacts, renderHandoff, withFork } from './lib/handoff.ts'
 import { cacheNote, closeEpisodes, consultOutcome, durationsFrom, effortFirst, episodeBase, openEpisode, patchEpisode, influence, planFiles, priceConsult, RECUR_PRIOR } from './lib/rescue.ts'
-import { EMPTY_LEARNED, bucketOf, noteTask, opusBuckets, parseLearned, type Learned } from './lib/learn.ts'
+import { EMPTY_LEARNED, bucketOf, causeOf, inControl, kindOf, noteTask, opusBuckets, parseLearned, type Learned } from './lib/learn.ts'
+import { assign as assignExp, bucketOf as expBucket, pickKey, type ExpArm, type ExpKey } from './lib/experiment.ts'
+import { EMPTY_RULEBOOK, focusFor, parseRulebook, type Rulebook } from './lib/reflect.ts'
 import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence, type DelegationMode } from './lib/delegation.ts'
 
 const V4_DEFAULTS = {
@@ -105,6 +107,11 @@ const V4_DEFAULTS = {
   opusStart: 'judge' as 'judge' | 'evidence',
   // With opusStart evidence: t3 lets T3 work start on Haiku. Off by default, on the v4 and v5 proof runs (lib/auto.ts).
   haikuFirst: 'off' as 'off' | 't3',
+  // Adaptive routing (lib/experiment.ts): learn from this person's own tasks whether a cheaper start does as well.
+  adaptive: true,
+  // The learning pass (lib/reflect.ts): `auto` runs it when the person has been idle, `manual` only on /automode learn, `off` never. The model
+  // step costs about half a cent a pass and is capped; `reflectModel` false keeps the pass local and free.
+  reflect: 'auto' as 'auto' | 'manual' | 'off', reflectIdleMin: 20, reflectModel: true,
   // v6 (bench/experiments/V6.md): the execution strategy. legacy is main's routing; v6a, v6b and v6c start and rescue
   // differently (lib/strategy.ts executionRules). builder: on hands non-trivial work to one builder subagent at once.
   strategy: 'legacy' as 'legacy' | 'v6a' | 'v6b' | 'v6c',
@@ -153,7 +160,7 @@ const S = {
   turnRequests: new Map<string, number>(), // main requests per turn, for outcome records
   stayUp: 0, redoFloor: null as Tier | null, // effortless stay-up after a redo
   heldRoute: null as EffectiveRoute | null,   // a lower route picked mid-turn waits for the turn to end
-  planMode: false, planExited: false, ttlPinned: false, mainRequests: 0,
+  planMode: false, planExited: false, ttlPinned: false, mainRequests: 0, rulebook: EMPTY_RULEBOOK as Rulebook, lastOwner: '' as string, lastPingAt: 0, taskArm: 'memory' as 'memory' | 'control', taskFlipped: false, taskExp: null as null | { taskId: string; key: ExpKey; arm: ExpArm; bucket: string; adopted: boolean },
   editLog: [] as { path: string; at: number }[],
   agents: new Map<string, { type: string; effort?: Effort; routed: boolean; judged?: boolean }>(), // every subagent seen, for the ledger
   // Provider errors are scoped to provider and model, and bounded: a model that did not answer BREAKER_FAILURES requests in
@@ -296,6 +303,7 @@ async function loadV4($: EngineInterface) {
   if (ck.ttl !== 'auto') S.ttl = ck.ttl === '5' ? FIVE_MIN : ONE_HOUR
   S.priors = await loadPriors($)
   if (S.cfg.learning) S.learned = await loadLearned($)
+  try { S.rulebook = parseRulebook(await fsRead($, await rulebookFile($))) } catch { S.rulebook = EMPTY_RULEBOOK }
   const policyEnv = String((await safe($.env.get('AUTOMODE_POLICY'))) ?? '').trim().toLowerCase()
   const wanted = policyEnv || String((S.cfg as { policy?: string }).policy ?? 'legacy').trim().toLowerCase()
   S.policy = wanted === 'auto' ? 'auto' : 'legacy'
@@ -442,7 +450,7 @@ async function spawnOutsideAutoMode($: EngineInterface, e: any, next: any) {
 
 // Persistence: a headless --resume or a plugin reload starts a new module, but the session's cache
 // and task do not reset. The routing state is saved per session after each turn and read back once.
-const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'appModel', 'sessionModel', 'pinFamily', 'pinEffort', 'judgeRiskTask', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'dropped', 'rent', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier', 'editedSinceCheck', 'lastCheck', 'obligations', 'obligationsTask', 'completionBlocks', 'completionState', 'taskUsd', 'budgetTold', 'rescues', 'rescueBrief', 'editsSeen', 'stopMark', 'baseline', 'watchdogFired', 'stopHeld', 'prefixAtFirstEdit', 'contextHandled', 'priceStepNoted', 'savings'] as const
+const SNAPSHOT_KEYS = ['sessionMode', 'ledger', 'lastAuto', 'taskDecision', 'decidedPlanMode', 'lastRisk', 'lastEffective', 'appEffort', 'appModel', 'sessionModel', 'pinFamily', 'pinEffort', 'judgeRiskTask', 'inadequate', 'haikuOutUntilCompaction', 'planExited', 'signalMode', 'lastWorkBand', 'workStage', 'breakers', 'failures', 'signalErrorAt', 'effortUnsupported', 'current', 'cache', 'envelope', 'votes', 'requestsSinceSwitch', 'verifiedSinceSwitch', 'lastSummary', 'taskSeq', 'warm', 'stayUp', 'redoFloor', 'planMode', 'switchesThisTask', 'dropped', 'rent', 'lastDemand', 'stage', 'consulted', 'pending', 'compactedPending', 'basePrefix', 'compactedAt', 'lastMessageCount', 'consultCounts', 'resolvedCounts', 'signalSeq', 'signalCompactAt', 'compactHookSeen', 'toldUserTier', 'editedSinceCheck', 'lastCheck', 'obligations', 'obligationsTask', 'completionBlocks', 'completionState', 'taskUsd', 'budgetTold', 'rescues', 'rescueBrief', 'editsSeen', 'stopMark', 'baseline', 'watchdogFired', 'stopHeld', 'prefixAtFirstEdit', 'contextHandled', 'priceStepNoted', 'savings', 'taskExp'] as const
 async function restore($: EngineInterface) {
   S.restored = true
   try { S.sessionId = await sid($) } catch {}
@@ -481,6 +489,7 @@ function cacheState(): CacheState {
 function prices() { return rowFor(S.provider) }
 
 // recordsFile is the plugin data folder the engine gives command hooks, else the default location.
+async function rulebookFile($: EngineInterface) { return `${await dataDir($)}/rulebook-${projectKey(S.cwd)}.json` }
 async function learnedFile($: EngineInterface) { return `${await dataDir($)}/learned-${projectKey(S.cwd)}.json` }
 async function loadLearned($: EngineInterface): Promise<Learned> {
   try { return parseLearned(await fsRead($, await learnedFile($))) } catch { return EMPTY_LEARNED }
@@ -494,17 +503,19 @@ async function noteLearned($: EngineInterface, corrected: boolean) {
   const start = seen?.family ?? S.current.family
   const rescued = start !== 'opus' && S.current.family === 'opus' && env.escalations > 0
   const outcome = corrected || rescued ? 'bad' : env.verified ? 'ok' : 'open'
-  S.learned = noteTask(S.learned, { id: env.taskId, bucket: bucketOf(a.hm.tier, a.need?.model), family: start, outcome, at: await now($) })
+  S.learned = noteTask(S.learned, { id: env.taskId, bucket: bucketOf(a.hm.tier, a.need?.model), family: start, outcome, at: await now($), arm: S.taskArm, ...(env.escalations > 0 ? { esc: true } : {}), ...(causeOf(env.failures) ? { cause: causeOf(env.failures) } : {}), kind: kindOf(env.editedPaths), ...(S.taskExp && S.taskExp.taskId === env.taskId ? { exp: { k: S.taskExp.key, a: S.taskExp.arm, b: S.taskExp.bucket } } : {}), ...(S.taskFlipped ? { flipped: true } : {}), ...(S.lastOwner === 'user-override' || S.pinFamily ? { pinned: true } : {}), usd: Math.round((S.taskUsd ?? 0) * 1e4) / 1e4 })
   await fsWrite($, await learnedFile($), JSON.stringify(S.learned)).catch(() => {})
 }
 
+// cfgDir: Claude Code's config folder, where the transcripts (projects/) and the plugin data live.
+export async function cfgDir($: EngineInterface): Promise<string> {
+  try { return (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${await $.env.get('HOME')}/.claude` } catch { return '.' }
+}
 async function dataDir($: EngineInterface): Promise<string> {
   let dir: string | undefined
   try { dir = await $.env.get('CLAUDE_PLUGIN_DATA') } catch {}
   if (!dir) {
-    let home: string | undefined
-    try { home = (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${await $.env.get('HOME')}/.claude` } catch {}
-    dir = `${home ?? '.'}/plugins/data/automode`
+    dir = `${await cfgDir($)}/plugins/data/automode`
   }
   return dir
 }
@@ -1043,6 +1054,18 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
 
   // Steps 3 to 6 are the pure route in lib/auto-route.ts. This function gathers its facts and applies its effects.
   const hm = answer ? { tier: answer.tier, complexity: answer.complexity } : null
+  // Adaptive routing (lib/experiment.ts): a fixed share of eligible tasks start one step cheaper, to learn from this person's own work whether
+  // that does as well. Risk, a pinned or commanded model and a fixed family rule a task out. Chosen once per task and kept.
+  if (S.cfg.adaptive && hm && (!S.taskExp || S.taskExp.taskId !== env.taskId) && !shortcut) {
+    const tier = hm.tier, cx = hm.complexity
+    const eligible = !fixedFamily && !override?.tier && !override?.effort && !S.pinFamily && env.risk.effective === 'none' && tier !== 'T0' && tier !== 'T4'
+    const haikuFits = !(tier === 'T1' && cx !== 'complex') // a simple T1 already starts on Haiku
+    const effortFits = tier === 'T3' || cx === 'complex' // the Sonnet floor is high there
+    const key = pickKey(S.learned, expBucket(tier, cx), [...(haikuFits ? ['haiku' as const] : []), ...(effortFits ? ['effort' as const] : [])], env.taskId, at)
+    const a = key ? assignExp(S.learned, key, expBucket(tier, cx), env.taskId, at, eligible && S.mode === 'auto', focusFor(S.rulebook, key, tier, cx, at)) : null
+    S.taskExp = key && a ? { taskId: env.taskId, key, arm: a.arm, bucket: expBucket(tier, cx), adopted: a.adopted } : { taskId: env.taskId, key: 'haiku', arm: 'hold', bucket: '', adopted: false }
+    if (S.taskExp.bucket === '') S.taskExp = null
+  }
   const packet = `Goal: ${env.spec.text.slice(0, 1500)}\n\nThe person now asks: ${text.slice(0, 600)}\n\nAcceptance: ${env.acceptance.map((a) => a.text).join('; ').slice(0, 400) || 'none stated'}\n\nFiles edited so far: ${env.editedPaths.slice(0, 30).join(', ') || 'none'}`
   const inputFor = (v: Verdicts, second?: Family): AutoRouteInput => ({
     schemaVersion: AUTO_ROUTE_SCHEMA, now: at, allowed, appFamily: appFamily(),
@@ -1054,7 +1077,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
     complexity, stage, previousStage, boundary, riskChanged, planBoundary: req.why.includes('planExited') || req.why.includes('planEntered'), planExited: S.planExited,
     floor: floorFacts(env), current: S.current ? { route: S.current, running: runningEffort()! } : null, usable: usableCurrent(at), appEffort: S.appEffort,
     executor: { on: executorOn(), taskRoute: td && !boundary && !S.compactedPending && cacheFresh(at) ? td : null },
-    reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), ...(execution().start !== 'legacy' ? { start: execution().start } : {}), learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning ? opusBuckets(S.learned, at) : [] },
+    reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), ...(probeFlags() ? { probe: probeFlags() } : {}), ...(execution().start !== 'legacy' ? { start: execution().start } : {}), learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning && !inControl(env.taskId) ? opusBuckets(S.learned, at) : [] },
     votes: S.votes,
     switching: {
       cache: cacheState(), reset: S.resetPending, requestsSinceSwitch: S.requestsSinceSwitch, verifiedSinceSwitch: S.verifiedSinceSwitch, switchesThisTask: S.switchesThisTask, remainingTable: remainingTable(),
@@ -1106,6 +1129,8 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
   const decided = heldBelow ? choice.best : routed
   if (!shortcut && stage !== 'complete' && stage !== 'repo-op' && stage !== 'reconsider') S.taskDecision = { taskId: env.taskId, family: decided.family, effort: decided.effort }
   S.lastAuto = shortcut ? S.lastAuto : { verdicts, need, hm, taskId: env.taskId }
+  // The memory's arm for this task, fixed now at the routing decision: was the bucket already one it starts on Opus, and did this task follow it?
+  if (!shortcut && hm) { S.taskFlipped = !!S.cfg.learning && opusBuckets(S.learned, at).includes(bucketOf(hm.tier, need?.model)); S.taskArm = inControl(env.taskId) ? 'control' : 'memory' }
   S.decidedPlanMode = S.planMode
   S.lastRisk = env.risk.effective
   if (answer) S.lastDemand = demandOf({ ...answer, consequence: env.risk.effective }, S.planMode, substantiveFailures(env))
@@ -1153,7 +1178,7 @@ function reoptimizeAuto(t: Trigger, event: string, at: number, turnId: string | 
   const td = S.taskDecision && S.taskDecision.taskId === env.taskId ? S.taskDecision : null
   const executed = executorInput(executorOn(), S.lastAuto.verdicts, baseFloors, !reset && td && cacheFresh(at) ? td : null)
   const floors = executed?.floors ?? baseFloors
-  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), ...(execution().start !== 'legacy' ? { start: execution().start } : {}), floors, current, cost: autoCost(complexity, at) })
+  const choice = optimizeAuto({ allowed, verdicts: executed?.verdicts ?? S.lastAuto.verdicts, need: S.lastAuto.need, hm: S.lastAuto.hm, consequence: env.risk.effective, reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), ...(probeFlags() ? { probe: probeFlags() } : {}), ...(execution().start !== 'legacy' ? { start: execution().start } : {}), floors, current, cost: autoCost(complexity, at) })
   let floor = mq.tier
   if (t.mandatory) { const lift = tierOf(choice.best.family, choice.best.effort); if (tierRank(lift) > tierRank(floor.tier)) floor = { tier: lift, effort: choice.best.effort, because: [t.reason] } }
   const own = S.current ? choice.candidates.find((c) => c.family === S.current!.family) : undefined
@@ -1803,6 +1828,7 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
   const prevModel = S.current?.model
   // When effort changes are off, the effort that ran is the app's, not the route's: adequacy is judged on what ran.
   const effortOff = S.effortUnsupported || S.thinkingRisk
+  S.lastOwner = r.owner
   S.current = { tier: r.tier, family: r.family, model: r.model, effort: sentEffort ?? (effortOff ? S.current?.effort ?? 'medium' : r.effort) }
   if (prevModel && prevModel !== r.model) {
     S.requestsSinceSwitch = 0
@@ -1829,7 +1855,8 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
     // The first request of a fresh session: its size is the estimate for the next session's first prompt.
     if (!S.cache && !S.firstPrefixSaved) { S.firstPrefixSaved = true; await saveFirstPrefix($, prefix) }
     // The usage settles the cache lifetime that mode.ts only guessed. A lifetime set by the person stands.
-    if (!S.ttlPinned) {
+    // A ping since the last request keeps the cache alive on its own, so a warm return then proves nothing about the lifetime.
+    if (!S.ttlPinned && !(S.lastPingAt > (S.cache?.lastRequestAt ?? 0))) {
       const w = usageOf(u)
       const proved = inferTtl({ input: w.input, cacheRead: w.cacheRead, cacheWrite: w.cacheWrite5m + w.cacheWrite1h, gapMs: S.cache?.lastRequestAt != null ? t - S.cache.lastRequestAt : null, assumedMs: S.ttl, compacted: compactedHere || shrank })
       if (proved && proved !== S.ttl) {
@@ -2457,9 +2484,9 @@ async function readGate($: EngineInterface, input: Record<string, unknown>) {
 
 const extractFailed = (why: string) => ({ result: why, isError: true as const, text: why })
 
-// v4Extract serves the extract tool. A file the person's rules would not let Read run stays unread, and a failure says
+// v4Ext serves the extract tool. A file the person's rules would not let Read run stays unread, and a failure says
 // to read the lines instead, so it never leaves the model without a way forward.
-export async function v4Extract($: EngineInterface, e: any) {
+export async function v4Ext($: EngineInterface, e: any) {
   if (S.cfg.delegation !== 'on') return extractFailed('extract is off. Use Read.')
   const paths = Array.isArray(e.paths) ? [...new Set(e.paths.map(String))] as string[] : []
   const question = String(e.question ?? '').trim()
@@ -2811,9 +2838,9 @@ export async function v4Attachment($: EngineInterface, e: any, next: any) {
   return next(e)
 }
 
-// signalsFile: a fixed path under the config dir, the same one an external signals writer writes. It does not use
+// sigFile: a fixed path under the config dir, the same one an external signals writer writes. It does not use
 // CLAUDE_PLUGIN_DATA: a mod cannot see that variable, and the script's copy of it can name another folder.
-async function signalsFile($: EngineInterface): Promise<string> {
+async function sigFile($: EngineInterface): Promise<string> {
   let home: string | undefined
   // An empty CLAUDE_CONFIG_DIR means the default folder, as in the command hook (`||` there).
   try { home = (await $.env.get('CLAUDE_CONFIG_DIR')) || `${await $.env.get('HOME')}/.claude` } catch {}
@@ -2829,7 +2856,7 @@ async function signalsFile($: EngineInterface): Promise<string> {
 async function syncSignals($: EngineInterface, late?: { turnId: string | undefined }) {
   if (S.mode !== 'auto' || !S.signalsOn || S.sessionId === 'unknown') return
   try {
-    const file = await signalsFile($)
+    const file = await sigFile($)
     if (!(await fsExists($, file))) return
     const sig = JSON.parse(await fsRead($, file))
     // A different seq, not a higher one: a pruned or deleted file starts over at 1. A replay has the same seq.
@@ -2950,9 +2977,47 @@ function noteVerdict(d: Decision) {
 
 // v4Snapshot: the router's state as the UI reads it. Copies; computes nothing.
 // v4CacheView: what the cache-keeper wiring (hooks/cachekeeper.ts) reads. It owns no state of its own about the cache.
-export function v4CacheView() {
-  return { active: S.mode === 'auto', mainRequests: S.mainRequests, model: S.cache?.model ?? null, prefixTokens: S.cache?.prefixTokens ?? 0, lastRequestAt: S.cache?.lastRequestAt ?? null, ttlMs: S.ttl, provider: S.provider, cfg: S.cfg as unknown }
+// probeFlags: what this task's probe changes in the optimizer, or null for a hold or a task outside the experiment.
+function probeFlags(): { haiku?: boolean; sonnetEffort?: 'medium' } | null {
+  const x = S.taskExp
+  if (!x || x.arm !== 'probe' || x.taskId !== S.envelope?.taskId) return null
+  return x.key === 'haiku' ? { haiku: true } : { sonnetEffort: 'medium' }
 }
+export function v4CacheView() {
+  return { asked: /\?\s*$/.test(String(S.lastReply ?? '').trim()), active: S.mode === 'auto', mainRequests: S.mainRequests, model: S.cache?.model ?? null, prefixTokens: S.cache?.prefixTokens ?? 0, lastRequestAt: S.cache?.lastRequestAt ?? null, ttlMs: S.ttl, provider: S.provider, cfg: S.cfg as unknown,
+    // A ping would write a new cache when the live model is not the one that was cached, or the context was compacted since.
+    stale: (!!S.current?.model && !!S.cache?.model && S.current.model !== S.cache.model) || (!!S.compactedAt && S.compactedAt >= (S.cache?.lastRequestAt ?? 0)) }
+}
+// v4TaskRaw: the signals that say whether the work is unfinished (lib/keepgate.ts decides).
+export function v4TaskRaw() {
+  const consult = S.consultLog.at(-1)
+  return {
+    completionState: S.completionState, editedSinceCheck: S.editedSinceCheck, lastCheckPassed: S.lastCheck ? S.lastCheck.passed : null,
+    planMode: S.planMode, workStage: (S.workStage as string | null) ?? null, openObligations: S.obligations.filter((o) => o.status !== 'satisfied').length,
+    consultOpen: !!consult && !(consult as { outcome?: unknown }).outcome, workersRunning: S.workers.size,
+    tier: (S.lastAuto?.hm?.tier ?? null) as Tier | null, family: (S.current?.family ?? null) as Family | null, reachHaiku: (S.cfg as { reachHaiku?: boolean }).reachHaiku === true,
+    pinned: !!S.pinFamily || S.lastOwner === 'user-override',
+  }
+}
+export { dataDir as v4DataDir }
+// v4NotePing: a keepalive ping went out at this time.
+export const v4NotePing = (at: number) => { S.lastPingAt = at }
+export const v4Learned = () => ({ learned: S.learned, learning: !!S.cfg.learning })
+export const v4Rulebook = () => S.rulebook
+export async function v4SetRulebook($: EngineInterface, rb: Rulebook) { S.rulebook = rb; await fsWrite($, await rulebookFile($), JSON.stringify(rb)).catch(() => {}) }
+// v4Reflect asks the learning pass's one cheap question and books its cost as overhead. A failed call is a null, never an error.
+export async function v4Reflect($: EngineInterface, system: string, digest: string): Promise<{ text: string; usd: number } | null> {
+  try {
+    const r = await $.model.complete({ model: S.cfg.compactModel, system, prompt: digest, maxTokens: 420, effort: 'low', timeoutMs: 45_000 })
+    if (!r?.isAnswered) return null
+    const usd = usageUsd(usageOf(r.usage), ANTHROPIC.rates.haiku)
+    noteJudge(usd)
+    S.records.push({ v: 1, kind: 'model-call', purpose: 'learning-pass', at: await now($), sessionId: S.sessionId, ok: true, usd: { value: round6(usd), basis: 'measured', source: `${ANTHROPIC.provider} ${ANTHROPIC.checkedAt}` } })
+    return { text: String(r.text ?? ''), usd }
+  } catch { return null }
+}
+export const v4Config = () => S.cfg as unknown as { reflect: 'auto' | 'manual' | 'off'; reflectIdleMin: number; reflectModel: boolean }
+export async function v4ResetLearned($: EngineInterface) { S.learned = EMPTY_LEARNED; S.rulebook = EMPTY_RULEBOOK; await fsWrite($, await rulebookFile($), JSON.stringify(EMPTY_RULEBOOK)).catch(() => {}); await fsWrite($, await learnedFile($), JSON.stringify(EMPTY_LEARNED)).catch(() => {}) }
 export function v4Rate(model: string | null) { return prices().rates[familyOf(model ?? '') ?? 'sonnet'] }
 export function v4NoteCache(rec: Record<string, unknown>) { S.records.push({ v: 1, sessionId: S.sessionId, ...rec }) }
 
@@ -2995,6 +3060,7 @@ export async function setSessionMode($: EngineInterface, m: Mode | null) {
 // freshSession is the per-session routing state; config, mode, provider and priors are per process.
 function freshSession() {
   return {
+    mainRequests: 0, lastOwner: '', lastPingAt: 0, taskExp: null,
     current: null, pending: null, envelope: null, lastSummary: '', resetPending: true,
     votes: { tier: null, n: 0 }, requestsSinceSwitch: 0, verifiedSinceSwitch: false, cache: null, lastReply: '', lastPromptText: '',
     turnPrompt: new Map(), workers: new Map(), agents: new Map(), lastCheck: null, editedSinceCheck: false,

@@ -20,12 +20,12 @@
 import { fsRead, fsWrite, usageNow, agents, status } from './lib/io.ts'
 import type { EngineInterface, Register } from 'claude-code'
 import { COMPACT_SYSTEM, transcriptOf } from './lib/compact.ts'
-import { guardianPromptSubmit, guardianSessionEnd, guardianSessionStart, guardianSnapshot, guardianStep, guardianToolCall, guardianTurnComplete, guardianTurnStart } from './guardian.ts'
-import { useV4, v4AgentSpawn, v4Append, v4Attachment, v4CommandRun, v4Compact, v4Extract, v4PromptSubmit, v4Start, v4Snapshot, v4Stop, v4ToolCall, v4TurnComplete, v4TurnStep } from './v4.ts'
+import { guardianPromptSubmit, guardianSessionEnd, guardianSessionStart, guardianSnapshot, gStep, guardianToolCall, guardianTurnComplete, guardianTurnStart } from './guardian.ts'
+import { useV4, v4AgentSpawn, v4Append, v4Attachment, v4CommandRun, v4Compact, v4Ext, v4PromptSubmit, v4Start, v4Snapshot, v4Stop, v4ToolCall, v4TurnComplete, v4TurnStep } from './v4.ts'
 import { setOptions } from './options.ts'
 import { setSources } from './ui/publish.ts'
 import { registerUi, uiStart } from './ui/register-ui.tsx'
-import { ckActivity, ckPinging, ckPromptSubmit, ckReset, ckTurn } from './cachekeeper.ts'
+import { ckAfter, ckBefore, ckEnd, ckInit, ckPromptSubmit, ckTurn } from './cachekeeper.ts'
 
 export { COMPACT_SYSTEM, transcriptOf }
 
@@ -292,18 +292,21 @@ export const register: Register = (on, options) => {
   setOptions(options)
   setSources({ router: v4Snapshot, guardian: guardianSnapshot })
   on('session.start', async ($, e, next) => guardianSessionStart($, e, async (e2: any) => {
-    ckReset()
     await load($)
     return (await useV4($)) ? v4Start($, e2, next) : next(e2)
-  }).then(async (res: any) => { await uiStart($); return res }))
+  }).then(async (res: any) => { await uiStart($); await ckInit($); return res }))
 
   // The guardian sees each prompt first (a handoff, am:continue), then the router decides the route.
   on('prompt.submit', async ($, e, next) => ckPromptSubmit($, e, (e1: any) => guardianPromptSubmit($, e1, (e2: any) => routePrompt($, e2, next)))).catch(($, e, next) => next(e))
 
   on('turn.step', async function* ($, e, next) {
-    if (ckPinging()) return yield* next(e) // a keep-alive ping is not a task: no routing, no ledger
-    try { await guardianStep($, e) } catch {} // the guardian counts the request; it never blocks one
-    if (await useV4($)) return yield* v4TurnStep($, e, next)
+    try { await gStep($, e) } catch {} // the guardian counts the request; it never blocks one
+    if (await useV4($)) {
+      const before = await ckBefore($, e)
+      const res = yield* v4TurnStep($, e, next)
+      await ckAfter($, e, before, res)
+      return res
+    }
     if (e.agentId !== undefined || !(await active($))) return yield* next(e)
     // The app's setting rides on every request. A change we did not make is the person's own: from
     // then on their effort stands for this session.
@@ -367,13 +370,13 @@ export const register: Register = (on, options) => {
       .catch(($, e, next) => (next.called ? next(e) : { deny: 'AutoMode guard failed; the call was not run.' }))
   }
 
-  on('tool.call', { tool: 'mcp__automode__extract' }, ($, e) => v4Extract($, e))
+  on('tool.call', { tool: 'mcp__automode__extract' }, ($, e) => v4Ext($, e))
     .catch(() => ({ deny: 'AutoMode extract failed. Read the lines you need with offset and limit.' }))
 
   // Session and cost guardian (hooks/guardian.ts): its own hooks, each falling through to the engine on any error.
   // Off with AUTOMODE_GUARDIAN=off or config.json "guardian": { "mode": "off" }; the router above is unaffected.
   on('classic.Stop', async ($, e, next) => ((await useV4($)) ? v4Stop($, e, next) : next(e))).catch(($, e, next) => next(e))
-  on('session.end', ($, e, next) => guardianSessionEnd($, e, next)).catch(($, e, next) => next(e))
+  on('session.end', async ($, e, next) => { await ckEnd($); return guardianSessionEnd($, e, next) }).catch(($, e, next) => next(e))
   // The presentation layer (hooks/ui): drawings, the /automode command and the controls. It reads the view atom only.
   registerUi(on)
   on('turn.start', ($, e, next) => { ckTurn(e, true); return guardianTurnStart($, e, next) }).catch(($, e, next) => next(e))
