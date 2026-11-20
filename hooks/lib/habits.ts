@@ -87,11 +87,11 @@ const overlap = (lo: number, top: number, a: number, b: number) => Math.max(0, M
 
 // returnProb: the chance that a prompt arrives within `windowMin` minutes, for a chat of this kind that has already been
 // idle `idleMin` minutes. `acted` null pools both kinds. Sessions that ended count as never returning.
-export function returnProb(h: Habits, ctx: CtxBucket, family: Family, acted: boolean | null, idleMin: number, windowMin = 60): { p: number; seen: number } {
+export function returnProb(h: Habits, ctx: CtxBucket, family: Family | null, acted: boolean | null, idleMin: number, windowMin = 60): { p: number; seen: number } {
   let alive = 0, back = 0
   for (const [k, c] of Object.entries(h.cells)) {
     const [kc, kf, ka] = k.split('|')
-    if (kc !== ctx || kf !== family || (acted !== null && ka !== (acted ? 'a' : 'n'))) continue
+    if (kc !== ctx || (family !== null && kf !== family) || (acted !== null && ka !== (acted ? 'a' : 'n'))) continue
     alive += c.ends
     for (let i = 0; i < EDGES.length; i++) {
       alive += c.gaps[i] * overlap(EDGES[i], hi(i), idleMin, Infinity)

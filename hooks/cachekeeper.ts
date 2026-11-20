@@ -4,11 +4,12 @@
 // and never blocks a request.
 // The ideas come from the cache-keeper mod (MIT, github.com/nateherkai/claude-code-mods).
 import type { EngineInterface } from 'claude-code'
-import { v4CacheView, v4NoteCache, v4Rate, v4TaskRaw } from './v4.ts'
+import { v4CacheView, v4Learned, v4NoteCache, v4Rate, v4ResetLearned, v4TaskRaw } from './v4.ts'
 import { habitsLoad, habitsSave, scanPass, scanStart } from './habitsio.ts'
 import { ckConfig } from './lib/cachecfg.ts'
 import { CHOICES, askText, choiceOf, isCold, quote, shouldAsk } from './lib/coldguard.ts'
 import { EMPTY_HABITS, noteKeepalive, optIn, type Habits } from './lib/habits.ts'
+import { learnedText } from './lib/insight.ts'
 import { gate, stateOf } from './lib/keepgate.ts'
 import { KEEP_OFF, TICK_MS, afterPing, clampHours, pingCostUsd, rewriteUsd, startKeepWarm, tick, type KeepWarmState } from './lib/keepwarm.ts'
 import { familyOf } from './lib/prices.ts'
@@ -54,7 +55,7 @@ async function learn($: EngineInterface) {
         st = await scanPass($, st, await clockNow($))
         if (!st.done) { later($, 2_000, step); return }
         H = { ...st.h, kw: H.kw }
-        v4NoteCache({ kind: 'habits', at: await clockNow($), event: 'scan', files: st.files, sessions: H.sessions })
+        v4NoteCache({ kind: 'habits', at: await clockNow($), event: 'scan', files: st.files, listed: st.seen, sessions: H.sessions, err: st.err })
         await habitsSave($, H)
         later($, 3 * 3_600_000, () => { void learn($) })
       } catch {}
@@ -130,6 +131,20 @@ export async function ckPromptSubmit($: EngineInterface, e: any, next: any) {
     }
     return next(e)
   } catch { return next(e) }
+}
+
+// learnedCommand serves `/automode learned [reset]`.
+export async function learnedCommand($: EngineInterface, rest: string): Promise<string> {
+  const c = ckConfig(v4CacheView().cfg)
+  if (rest.trim().toLowerCase() === 'reset') {
+    kw = KEEP_OFF; userOff = false
+    H = EMPTY_HABITS
+    await habitsSave($, H)
+    await v4ResetLearned($)
+    return 'Everything AutoMode learned about your use is reset: idle-time counts, the keep-warm ledger and the route memory. It starts learning again from your history at the next session.'
+  }
+  const { learned, learning } = v4Learned()
+  return learnedText({ habits: H, learned, now: await clockNow($), keepWarm: c.keepWarm, learning, learnFromHistory: c.learnFromHistory })
 }
 
 // keepWarmCommand serves `/automode keepwarm [hours|off|status]`.

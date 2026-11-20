@@ -40,18 +40,31 @@ export function foldTranscript(text: string): Folded {
 const DAY = 86_400_000
 const MIN_PROMPTS = 2 // a one-prompt session is a script or a benchmark run, not a person at a keyboard
 
-// observeFolded adds one session. A gap counts when the request that ended it is newer than the watermark, so a file read
-// again after it grew counts only what is new. The last request counts as an end once it is a day old.
-export function observeFolded(h: Habits, s: Folded, now: number): Habits {
-  if (s.prompts < MIN_PROMPTS || s.reqs.length === 0) return h
-  let out = h
+// Compact is all the habits need from a session: its typed prompts, each idle gap with the request before it, and its last request.
+// scripts/habits-fold.mjs makes the same shape from a huge file without loading it, in the person's own node. A test keeps the two equal.
+export interface Compact { prompts: number; gaps: [endAt: number, gapMin: number, tokens: number, family: Family, acted: boolean][]; last: { at: number; tokens: number; family: Family; acted: boolean } | null }
+export function compactOf(s: Folded): Compact {
+  const gaps: Compact['gaps'] = []
   for (let i = 1; i < s.reqs.length; i++) {
     const a = s.reqs[i - 1], b = s.reqs[i]
-    if (b.at <= h.watermark) continue
-    out = observeGap(out, keyOf(ctxOf(a.tokens), a.family, a.acted), (b.at - a.at) / 60_000)
+    const gapMin = (b.at - a.at) / 60_000
+    if (gapMin >= 3) gaps.push([b.at, gapMin, a.tokens, a.family, a.acted])
   }
-  const last = s.reqs[s.reqs.length - 1]
-  if (now - last.at > DAY && last.at > h.finalsAt) out = observeEnd(out, keyOf(ctxOf(last.tokens), last.family, last.acted))
+  const l = s.reqs[s.reqs.length - 1]
+  return { prompts: s.prompts, gaps, last: l ? { at: l.at, tokens: l.tokens, family: l.family, acted: l.acted } : null }
+}
+
+// observeFolded adds one session. A gap counts when the request that ended it is newer than the watermark, so a file read
+// again after it grew counts only what is new. The last request counts as an end once it is a day old.
+export const observeFolded = (h: Habits, s: Folded, now: number): Habits => observeCompact(h, compactOf(s), now)
+export function observeCompact(h: Habits, c: Compact, now: number): Habits {
+  if (c.prompts < MIN_PROMPTS || !c.last) return h
+  let out = h
+  for (const [endAt, gapMin, tokens, family, acted] of c.gaps) {
+    if (endAt <= h.watermark) continue
+    out = observeGap(out, keyOf(ctxOf(tokens), family, acted), gapMin)
+  }
+  if (now - c.last.at > DAY && c.last.at > h.finalsAt) out = observeEnd(out, keyOf(ctxOf(c.last.tokens), c.last.family, c.last.acted))
   return { ...out, sessions: out.sessions + 1 }
 }
 

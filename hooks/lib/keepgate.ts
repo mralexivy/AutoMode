@@ -14,6 +14,7 @@ export interface TaskRaw {
   completionState: string; editedSinceCheck: boolean; lastCheckPassed: boolean | null
   planMode: boolean; workStage: string | null; openObligations: number; consultOpen: boolean; workersRunning: number
   tier: Tier | null; family: Family | null; reachHaiku: boolean
+  pinned: boolean // the person chose this model (am:, /model): it is what they want, so it is never "above need"
 }
 export interface TaskState { unfinished: boolean; finished: boolean; aboveNeed: boolean }
 
@@ -25,7 +26,7 @@ export function stateOf(r: TaskRaw): TaskState {
   const unfinished = ['failed', 'unverified', 'partially_verified'].includes(r.completionState) || r.editedSinceCheck || r.lastCheckPassed === false
     || r.planMode || r.workStage === 'plan' || r.workStage === 'plan-approved' || r.openObligations > 0 || r.consultOpen || r.workersRunning > 0
   const finished = !unfinished && r.completionState === 'verified'
-  const aboveNeed = !!r.tier && !!r.family && RANK[r.family] > RANK[weakestFor(r.tier, r.reachHaiku)]
+  const aboveNeed = !r.pinned && !!r.tier && !!r.family && RANK[r.family] > RANK[weakestFor(r.tier, r.reachHaiku)]
   return { unfinished, finished, aboveNeed }
 }
 

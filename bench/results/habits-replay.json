@@ -1,0 +1,80 @@
+{
+  "basis": "calculated at the mod price table from recorded usage; counterfactual, not billed",
+  "interactiveSessions": 247,
+  "train": 123,
+  "validation": 62,
+  "test": 62,
+  "testDays": 15.94,
+  "testGaps": 498,
+  "bestSettings": {
+    "minUsd": 0.3,
+    "capHours": 4,
+    "windowMin": 60,
+    "pool": false
+  },
+  "validationTop3": [
+    {
+      "minUsd": 0.3,
+      "capHours": 4,
+      "windowMin": 60,
+      "pool": false,
+      "net": 8.58
+    },
+    {
+      "minUsd": 0.3,
+      "capHours": 4,
+      "windowMin": 60,
+      "pool": true,
+      "net": 8.58
+    },
+    {
+      "minUsd": 0.3,
+      "capHours": 4,
+      "windowMin": 120,
+      "pool": false,
+      "net": 8.58
+    }
+  ],
+  "rows": [
+    {
+      "policy": "none",
+      "gaps": 498,
+      "pings": 0,
+      "pingUsd": 0,
+      "savedUsd": 0,
+      "netUsd": 0,
+      "rewriteUsd": 77.72,
+      "worse": 0
+    },
+    {
+      "policy": "flat 2h",
+      "gaps": 498,
+      "pings": 180,
+      "pingUsd": 6.51,
+      "savedUsd": 53.24,
+      "netUsd": 46.73,
+      "rewriteUsd": 77.72,
+      "worse": 58
+    },
+    {
+      "policy": "flat 4h",
+      "gaps": 498,
+      "pings": 277,
+      "pingUsd": 10.23,
+      "savedUsd": 64.73,
+      "netUsd": 54.49,
+      "rewriteUsd": 77.72,
+      "worse": 51
+    },
+    {
+      "policy": "gated min $0.3 cap 4h window 60m",
+      "gaps": 498,
+      "pings": 177,
+      "pingUsd": 9.17,
+      "savedUsd": 59.09,
+      "netUsd": 49.91,
+      "rewriteUsd": 77.72,
+      "worse": 35
+    }
+  ]
+}

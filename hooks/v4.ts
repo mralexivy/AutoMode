@@ -63,7 +63,7 @@ import type { AgentSnap, Ledger, RouterSnap } from './ui/view.ts'
 import { sid, fsRead, sessionModel, fsWrite, fsExists, fork, proc, sDel, sGet, sKeys, sSet, agents, status } from './lib/io.ts'
 import { BUILD_ASK, FORK_PROMPT, buildHandoff, completeness, forkWorth, parseForkFacts, renderHandoff, withFork } from './lib/handoff.ts'
 import { cacheNote, closeEpisodes, consultOutcome, durationsFrom, effortFirst, episodeBase, openEpisode, patchEpisode, influence, planFiles, priceConsult, RECUR_PRIOR } from './lib/rescue.ts'
-import { EMPTY_LEARNED, bucketOf, noteTask, opusBuckets, parseLearned, type Learned } from './lib/learn.ts'
+import { EMPTY_LEARNED, bucketOf, inControl, noteTask, opusBuckets, parseLearned, type Learned } from './lib/learn.ts'
 import { EXTRACT_MAX_TOKENS, EXTRACT_REPLY_TOKENS, EXTRACT_SYSTEM, EXTRACT_TOOL, GATE_TOKENS, extractPrompt, gateNote, gateRead, gateable, outlineOf, parseEvidence, renderEvidence, tokensOf, verifyEvidence, type DelegationMode } from './lib/delegation.ts'
 
 const V4_DEFAULTS = {
@@ -153,7 +153,7 @@ const S = {
   turnRequests: new Map<string, number>(), // main requests per turn, for outcome records
   stayUp: 0, redoFloor: null as Tier | null, // effortless stay-up after a redo
   heldRoute: null as EffectiveRoute | null,   // a lower route picked mid-turn waits for the turn to end
-  planMode: false, planExited: false, ttlPinned: false, mainRequests: 0,
+  planMode: false, planExited: false, ttlPinned: false, mainRequests: 0, lastOwner: '' as string,
   editLog: [] as { path: string; at: number }[],
   agents: new Map<string, { type: string; effort?: Effort; routed: boolean; judged?: boolean }>(), // every subagent seen, for the ledger
   // Provider errors are scoped to provider and model, and bounded: a model that did not answer BREAKER_FAILURES requests in
@@ -494,7 +494,7 @@ async function noteLearned($: EngineInterface, corrected: boolean) {
   const start = seen?.family ?? S.current.family
   const rescued = start !== 'opus' && S.current.family === 'opus' && env.escalations > 0
   const outcome = corrected || rescued ? 'bad' : env.verified ? 'ok' : 'open'
-  S.learned = noteTask(S.learned, { id: env.taskId, bucket: bucketOf(a.hm.tier, a.need?.model), family: start, outcome, at: await now($) })
+  S.learned = noteTask(S.learned, { id: env.taskId, bucket: bucketOf(a.hm.tier, a.need?.model), family: start, outcome, at: await now($), ...(inControl(env.taskId) ? { control: true } : {}) })
   await fsWrite($, await learnedFile($), JSON.stringify(S.learned)).catch(() => {})
 }
 
@@ -1056,7 +1056,7 @@ async function decideAuto($: EngineInterface, text: string, midTurn: boolean, at
     complexity, stage, previousStage, boundary, riskChanged, planBoundary: req.why.includes('planExited') || req.why.includes('planEntered'), planExited: S.planExited,
     floor: floorFacts(env), current: S.current ? { route: S.current, running: runningEffort()! } : null, usable: usableCurrent(at), appEffort: S.appEffort,
     executor: { on: executorOn(), taskRoute: td && !boundary && !S.compactedPending && cacheFresh(at) ? td : null },
-    reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), ...(execution().start !== 'legacy' ? { start: execution().start } : {}), learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning ? opusBuckets(S.learned, at) : [] },
+    reachHaiku: S.cfg.reachHaiku, opusOnEvidence: S.cfg.opusStart === 'evidence', ...(S.cfg.haikuFirst === 't3' ? { haikuFirst: true } : {}), ...(execution().start !== 'legacy' ? { start: execution().start } : {}), learned: { on: !!S.cfg.learning, opusBuckets: S.cfg.learning && !inControl(env.taskId) ? opusBuckets(S.learned, at) : [] },
     votes: S.votes,
     switching: {
       cache: cacheState(), reset: S.resetPending, requestsSinceSwitch: S.requestsSinceSwitch, verifiedSinceSwitch: S.verifiedSinceSwitch, switchesThisTask: S.switchesThisTask, remainingTable: remainingTable(),
@@ -1805,6 +1805,7 @@ export async function* v4TurnStep($: EngineInterface, e: any, next: any): AsyncG
   const prevModel = S.current?.model
   // When effort changes are off, the effort that ran is the app's, not the route's: adequacy is judged on what ran.
   const effortOff = S.effortUnsupported || S.thinkingRisk
+  S.lastOwner = r.owner
   S.current = { tier: r.tier, family: r.family, model: r.model, effort: sentEffort ?? (effortOff ? S.current?.effort ?? 'medium' : r.effort) }
   if (prevModel && prevModel !== r.model) {
     S.requestsSinceSwitch = 0
@@ -2963,9 +2964,12 @@ export function v4TaskRaw() {
     planMode: S.planMode, workStage: (S.workStage as string | null) ?? null, openObligations: S.obligations.filter((o) => o.status !== 'satisfied').length,
     consultOpen: !!consult && !(consult as { outcome?: unknown }).outcome, workersRunning: S.workers.size,
     tier: (S.lastAuto?.hm?.tier ?? null) as Tier | null, family: (S.current?.family ?? null) as Family | null, reachHaiku: (S.cfg as { reachHaiku?: boolean }).reachHaiku === true,
+    pinned: !!S.pinFamily || S.lastOwner === 'user-override',
   }
 }
 export { dataDir as v4DataDir }
+export const v4Learned = () => ({ learned: S.learned, learning: !!S.cfg.learning })
+export async function v4ResetLearned($: EngineInterface) { S.learned = EMPTY_LEARNED; await fsWrite($, await learnedFile($), JSON.stringify(EMPTY_LEARNED)).catch(() => {}) }
 export function v4Rate(model: string | null) { return prices().rates[familyOf(model ?? '') ?? 'sonnet'] }
 export function v4NoteCache(rec: Record<string, unknown>) { S.records.push({ v: 1, sessionId: S.sessionId, ...rec }) }
 
@@ -3008,6 +3012,7 @@ export async function setSessionMode($: EngineInterface, m: Mode | null) {
 // freshSession is the per-session routing state; config, mode, provider and priors are per process.
 function freshSession() {
   return {
+    mainRequests: 0, lastOwner: '',
     current: null, pending: null, envelope: null, lastSummary: '', resetPending: true,
     votes: { tier: null, n: 0 }, requestsSinceSwitch: 0, verifiedSinceSwitch: false, cache: null, lastReply: '', lastPromptText: '',
     turnPrompt: new Map(), workers: new Map(), agents: new Map(), lastCheck: null, editedSinceCheck: false,

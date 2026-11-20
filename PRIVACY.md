@@ -22,7 +22,10 @@ Everything is in `~/.claude/plugins/data/automode/`, on your machine.
 | `guardian/` | Guardian events: ids, labels, numbers and the paths of saved outputs. | 30 days |
 | `checkpoints/` | The task state for a handoff after `/clear`: the first 500 characters of your request, file paths, check commands, the git branch and the changed files. | 7 days |
 | `outputs/` | The full text of long tool outputs that the guardian shortened. | 3 days |
+| `habits.json` | What your idle time looks like, as counts: for each kind of chat (size, model family, whether the last request called a tool), how long you stayed away, plus how many sessions ended. Also what the keep-warm pings cost and saved. No text, no paths, no times of day. Under 5 KB. | Until you delete it. Counts halve when they pass a cap, so old habits fade. |
 | `first-prefix.json`, `calibration.json` | Prompt cache sizes per project, and your own calibration. | Until you delete them. |
+
+**Reading your history.** After a session starts, AutoMode reads your own Claude Code transcripts (`~/.claude/projects/*/*.jsonl`) in the background, a few files at a time, to fill `habits.json`. From each it takes request times, sizes, the model family, whether a request called a tool, and how many prompts you typed. It never reads out, keeps or sends prompt or reply text, and the numbers never leave your machine. A transcript too large to read whole goes through `scripts/habits-fold.mjs` in your own `node`, which prints only those numbers. Turn it off with `cacheKeeper.learnFromHistory: false` in `config.json`. `/automode learned` shows what was learned, and `/automode learned reset` clears it.
 
 The guardian removes secret-shaped text from checkpoints and from check commands before it stores them. Files in `outputs/` hold the raw output, so they can hold whatever the command printed. AutoMode sets the guardian's records and checkpoints to owner-only access where the system allows it.
 

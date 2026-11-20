@@ -259,6 +259,7 @@ Type `/automode` and a subcommand. With no subcommand, you get the bar as text.
 | `/automode off` | Turn routing off for this session. Your own model and effort run as set. Nothing is written to your settings. |
 | `/automode setup` | A live checklist: mod loaded, router on, activation, routing mode, bar shown. It ends with the one next step. |
 | `/automode settings` | The settings in force, and where to change each one. |
+| `/automode learned` (or `learned reset`) | What AutoMode learned from your own use: your idle-time odds by chat size, what keep-warm pings cost and saved, and the route memory with its control group. `reset` clears it all. |
 | `/automode keepwarm <hours>` (or `off`) | Keep a big chat's cache warm. A small ping before the cache expires reads the cached context and restarts its lifetime. Off by default. It starts at the chat's third request and stops at the time limit (up to 24 hours), when the pings cost more than a cold rewrite, or when pings keep failing. |
 | `/automode debug` | A report to paste into a bug issue. It holds no prompt text, and it masks your home folder. |
 | `/automode help` | The subcommands, the `am:` prompt commands and tips. |
@@ -268,7 +269,13 @@ Type `/automode` and a subcommand. With no subcommand, you get the bar as text.
 
 **Benchmarks run from a terminal,** not from the chat: `node bench/judge-bench-effortless.mts` and `node bench/style-check.mts --dry`. See [Benchmarks](#benchmarks).
 
-**Cache keeper.** Three guards on the prompt cache, set in `config.json` under `cacheKeeper`. `ttl` (`auto`, `5` or `60`) sets the cache lifetime; `auto` measures it from the usage on each request instead of guessing. `guard` (on by default) asks before your own prompt rewrites a context of `guardTokens` (150,000) or more after the cache expired, and shows the price. `/automode keepwarm` is the keepalive above. In one measured pair of runs (Sonnet, 231k tokens, 10.5 minutes idle, 5-minute cache) the cold prompt cost $0.55 and the kept-warm one $0.09, pings included. That is one pair: it shows the mechanism works, not what you will save. How much it saves depends on how often you leave big chats idle and then come back. A replay over interactive sessions on one machine, with scripted runs left out, came out near zero. Figures are calculated from recorded usage, not billed cost.
+**Cache keeper.** Guards on the prompt cache, set in `config.json` under `cacheKeeper`.
+- `ttl` (`auto`, `5` or `60`) sets the cache lifetime. `auto` measures it from the usage on each request instead of guessing.
+- `guard` (on by default) asks before your own prompt rewrites a context of `guardTokens` (150,000) or more after the cache expired. It shows the price and offers send, compact, cancel, or "keep chats like this warm".
+- `keepWarm` is `ask` (default), `auto` or `off`. A ping before the cache expires reads the cached context and restarts its lifetime. In `ask` it starts after you say yes in that dialog or run `/automode keepwarm`. Each ping is gated: the cold start must cost at least `minRewriteUsd` ($0.30), the work must look unfinished (a failing check, edits not yet checked, a plan or consult open) and the model must not be above what the next task needs, your own pinned model counts as wanted, your habits must say you come back, and the session must be under `budgetUsd` ($0.50).
+- `learnFromHistory` (on) reads your own past sessions, locally and as counts, to learn when you come back. Pings that do not pay for you turn themselves off, and the numbers show in `/automode learned`.
+
+One measured run: Sonnet, a 231k-token chat, 8 minutes idle, a 5-minute cache. The next prompt cost $0.55 cold and $0.07 with two pings ($0.05 of pings). That is one run. A replay over your own sessions, trained on the first half and scored on the last quarter, saved a net $50 in 16 days at the shipped gate, against $54 for pinging every chat for 4 hours, with a third fewer pings and fewer losing gaps. That replay cannot see whether work was unfinished, which the live gate uses. All figures are calculated from recorded usage and are not billed cost.
 
 Filing a bug? Run `/automode debug` and paste the result.
 

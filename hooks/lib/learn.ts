@@ -6,7 +6,7 @@
 // holds labels, counts and times, and no prompt text.
 import type { Family } from './types.ts'
 
-export interface LearnedTask { id: string; bucket: string; family: Family; outcome: 'ok' | 'bad' | 'open'; at: number }
+export interface LearnedTask { id: string; bucket: string; family: Family; outcome: 'ok' | 'bad' | 'open'; at: number; control?: boolean }
 export interface Learned { v: 1; tasks: LearnedTask[] }
 
 export const EMPTY_LEARNED: Learned = { v: 1, tasks: [] }
@@ -21,7 +21,7 @@ export function parseLearned(text: string): Learned {
   try {
     const j = JSON.parse(text) as Partial<Learned>
     if (j.v !== 1 || !Array.isArray(j.tasks)) return EMPTY_LEARNED
-    return { v: 1, tasks: j.tasks.filter((t) => typeof t?.id === 'string' && typeof t?.bucket === 'string' && typeof t?.at === 'number' && ['ok', 'bad', 'open'].includes(t?.outcome) && ['haiku', 'sonnet', 'opus'].includes(t?.family)).slice(-KEEP) }
+    return { v: 1, tasks: j.tasks.filter((t) => typeof t?.id === 'string' && typeof t?.bucket === 'string' && typeof t?.at === 'number' && ['ok', 'bad', 'open'].includes(t?.outcome) && ['haiku', 'sonnet', 'opus'].includes(t?.family)).map((t) => (t.control === true ? t : { ...t, control: undefined })).slice(-KEEP) }
   } catch {
     return EMPTY_LEARNED
   }
@@ -30,7 +30,7 @@ export function parseLearned(text: string): Learned {
 // noteTask keeps the family the task started on, and a bad outcome stands. The same task can be noted on every turn.
 export function noteTask(l: Learned, t: LearnedTask): Learned {
   const old = l.tasks.find((x) => x.id === t.id)
-  const merged: LearnedTask = old ? { ...t, family: old.family, outcome: old.outcome === 'bad' ? 'bad' : t.outcome === 'open' ? old.outcome : t.outcome } : t
+  const merged: LearnedTask = old ? { ...t, control: old.control ?? t.control, family: old.family, outcome: old.outcome === 'bad' ? 'bad' : t.outcome === 'open' ? old.outcome : t.outcome } : t
   return { v: 1, tasks: [...l.tasks.filter((x) => x.id !== t.id), merged].slice(-KEEP) }
 }
 
@@ -41,3 +41,22 @@ export function opusFirst(l: Learned, bucket: string, now: number): boolean {
 }
 
 export const opusBuckets = (l: Learned, now: number) => [...new Set(l.tasks.map((t) => t.bucket))].filter((b) => opusFirst(l, b, now))
+
+// A control group keeps the memory honest. One task in ten ignores what was learned and routes as the shipped rules would, so the
+// memory's effect can be read off real tasks instead of assumed. The choice is a fixed function of the task id, so a reload keeps it.
+export const CONTROL_SHARE = 10
+export function inControl(taskId: string): boolean {
+  let h = 2166136261
+  for (let i = 0; i < taskId.length; i++) { h ^= taskId.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0 }
+  return h % CONTROL_SHARE === 0
+}
+
+export interface Lift { bucket: string; applied: { n: number; bad: number }; control: { n: number; bad: number } }
+// liftOf compares, for each bucket the memory now starts on Opus, tasks that started on Opus with the control tasks that did not.
+export function liftOf(l: Learned, now: number): Lift[] {
+  return opusBuckets(l, now).map((bucket) => {
+    const done = l.tasks.filter((t) => t.bucket === bucket && t.outcome !== 'open' && now - t.at <= WINDOW_MS)
+    const count = (xs: LearnedTask[]) => ({ n: xs.length, bad: xs.filter((t) => t.outcome === 'bad').length })
+    return { bucket, applied: count(done.filter((t) => !t.control && t.family === 'opus')), control: count(done.filter((t) => t.control && t.family !== 'opus')) }
+  })
+}

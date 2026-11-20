@@ -103,12 +103,13 @@ test('observeFolded: a one-prompt session is a script and counts for nothing; a 
 test('keepgate: finished work, a model above need and a spent budget stay cold; unfinished big work is kept warm', () => {
   let h = EMPTY_HABITS
   for (let i = 0; i < 20; i++) h = observeGap(h, keyOf('big', 'opus', true), 30)
-  const raw = { completionState: 'none', editedSinceCheck: false, lastCheckPassed: null, planMode: false, workStage: null, openObligations: 0, consultOpen: false, workersRunning: 0, tier: 'T3' as const, family: 'opus' as const, reachHaiku: true }
+  const raw = { completionState: 'none', editedSinceCheck: false, lastCheckPassed: null, planMode: false, workStage: null, openObligations: 0, consultOpen: false, workersRunning: 0, tier: 'T3' as const, family: 'opus' as const, reachHaiku: true, pinned: false }
   const base = { habits: h, prefixTokens: 300_000, family: 'opus' as const, ttlMs: 3_600_000, idleMin: 52, rate: opus, minRewriteUsd: 0.3, sessionPingUsd: 0, budgetUsd: 0.5, capMin: 240 }
   assert.equal(gate({ ...base, state: stateOf({ ...raw, completionState: 'unverified' }) }).allow, true)
   assert.match(gate({ ...base, state: stateOf({ ...raw, completionState: 'verified' }) }).why, /finished/)
   assert.match(gate({ ...base, state: stateOf({ ...raw, tier: 'T1' }) }).why, /above what the next task/)
   assert.equal(gate({ ...base, state: stateOf({ ...raw, tier: 'T1', editedSinceCheck: true }) }).allow, true) // unfinished beats a model above need
+  assert.equal(stateOf({ ...raw, tier: 'T1', pinned: true }).aboveNeed, false) // a model the person pinned is what they want
   assert.match(gate({ ...base, state: stateOf({ ...raw, completionState: 'unverified' }), sessionPingUsd: 0.5 }).why, /budget/)
   assert.match(gate({ ...base, state: stateOf({ ...raw, completionState: 'unverified' }), idleMin: 300 }).why, /horizon/)
   assert.match(gate({ ...base, state: stateOf({ ...raw, completionState: 'unverified' }), prefixTokens: 4_000 }).why, /too little/)
@@ -116,7 +117,7 @@ test('keepgate: finished work, a model above need and a spent budget stay cold; 
 })
 
 test('keepgate: what counts as unfinished, and the weakest model for a tier', () => {
-  const raw = { completionState: 'none', editedSinceCheck: false, lastCheckPassed: null, planMode: false, workStage: null, openObligations: 0, consultOpen: false, workersRunning: 0, tier: null, family: null, reachHaiku: false }
+  const raw = { completionState: 'none', editedSinceCheck: false, lastCheckPassed: null, planMode: false, workStage: null, openObligations: 0, consultOpen: false, workersRunning: 0, tier: null, family: null, reachHaiku: false, pinned: false }
   assert.equal(stateOf(raw).unfinished, false)
   for (const o of [{ lastCheckPassed: false }, { planMode: true }, { workStage: 'plan' }, { openObligations: 1 }, { consultOpen: true }, { workersRunning: 1 }, { completionState: 'failed' }]) assert.equal(stateOf({ ...raw, ...o }).unfinished, true, JSON.stringify(o))
   assert.equal(weakestFor('T0', true), 'haiku')
@@ -137,4 +138,40 @@ test('replay: a policy that pings a session that never returns loses, one that c
   assert.equal(gapsOf([s], 1e15).length, 2)
   const h = train([s], 1e15)
   assert.ok(gated(h, { minUsd: 0.3, capHours: 4, windowMin: 60, pool: false }).name.startsWith('gated'))
+})
+
+import { CONTROL_SHARE, EMPTY_LEARNED, inControl, liftOf, noteTask, parseLearned } from '../hooks/lib/learn.ts'
+import { learnedText } from '../hooks/lib/insight.ts'
+
+test('control group: a fixed one in ten of tasks, by id', () => {
+  const ids = Array.from({ length: 2_000 }, (_, i) => `task-${i}-${i * 7}`)
+  const share = ids.filter(inControl).length / ids.length
+  assert.ok(share > 0.07 && share < 0.13, String(share))
+  assert.equal(inControl('task-1-1'), inControl('task-1-1'))
+  assert.equal(CONTROL_SHARE, 10)
+})
+
+test('lift: Opus-first tasks are compared with control tasks of the same bucket, and control survives a parse', () => {
+  const now = 1_000_000
+  let l = EMPTY_LEARNED
+  const t = (id: string, family: 'sonnet' | 'opus', outcome: 'ok' | 'bad', control?: boolean) => noteTask(l, { id, bucket: 'T2/sonnet', family, outcome, at: now, ...(control ? { control } : {}) })
+  l = t('a', 'sonnet', 'bad'); l = t('b', 'sonnet', 'bad')
+  l = t('c', 'opus', 'ok'); l = t('d', 'opus', 'ok'); l = t('e', 'opus', 'bad')
+  l = t('f', 'sonnet', 'bad', true); l = t('g', 'sonnet', 'ok', true)
+  const [x] = liftOf(parseLearned(JSON.stringify(l)), now)
+  assert.equal(x.bucket, 'T2/sonnet')
+  assert.deepEqual(x.applied, { n: 3, bad: 1 })
+  assert.deepEqual(x.control, { n: 2, bad: 1 })
+})
+
+test('learnedText: says what it read, what pings did, and the control group, with no prompt text', () => {
+  let h = EMPTY_HABITS
+  for (let i = 0; i < 30; i++) h = observeGap(h, keyOf('big', 'opus', true), 30)
+  h = { ...noteKeepalive(h, 1.5, 4), sessions: 30 }
+  const text = learnedText({ habits: h, learned: EMPTY_LEARNED, now: 1, keepWarm: 'ask', learning: true, learnFromHistory: true })
+  assert.match(text, /read 30 of your sessions/)
+  assert.match(text, /chats over 150k tokens: \d+%/)
+  assert.match(text, /cost \$1\.50 and avoided \$4\.00/)
+  assert.match(text, /No kind of task needs a stronger start yet/)
+  assert.match(learnedText({ habits: h, learned: EMPTY_LEARNED, now: 1, keepWarm: 'off', learning: false, learnFromHistory: false }), /Reading your history is off.*\n[\s\S]*Route memory is off/)
 })
