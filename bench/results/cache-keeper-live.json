@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-20",
+  "basis": "real Claude Code 2.1.308 sessions, forced 5-minute cache (FORCE_PROMPT_CACHING_5M), usage fields as recorded; mechanism checks, not a saving claim",
+  "spendUsd": 2,
+  "guard": {
+    "interactive": "the $.ui.ask dialog shows the idle time, the context size and the rewrite price, with Send anyway, Compact first and Cancel",
+    "cancel": { "requestsSent": 0 },
+    "sendAnyway": { "cacheRead": 0, "cacheWrite5m": 56987, "note": "full cold rewrite, as priced" },
+    "compactFirst": { "note": "compaction ran, then the prompt was sent; a 3-message chat cannot shrink" },
+    "priceCheck": { "tokensWritten": 231262, "model": "sonnet", "ttl": "5m", "billedUsd": 0.578, "formulaUsd": 0.578 },
+    "scriptedPrompts": "the guard stays silent for SDK and -p prompts by design"
+  },
+  "keepalive": {
+    "result": "removed from the feature",
+    "evidence": [
+      { "run": "stream-json, routing on", "contextTokens": 35461, "pingCacheRead": 15539, "pingCacheWrite": 19922 },
+      { "run": "stream-json, routing off", "contextTokens": 35461, "pingCacheRead": 15539, "pingCacheWrite": 19922 }
+    ],
+    "why": "the $.model.fork ping reads the system prompt and tools but rewrites the message part under its own key, so it does not restart the chat's cache lifetime, and a failed ping costs a cache write. The next real request after a ping still read only its own earlier cache.",
+    "interactiveNote": "in an interactive run no ping fired in 5 minutes"
+  },
+  "ttlInference": "not verified live: an env switch pins the lifetime, and no run had a real lifetime that differed from the assumed one"
+}

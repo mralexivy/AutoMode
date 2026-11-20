@@ -2,7 +2,7 @@
 // A prompt sent after the cache expired rewrites the whole context at 1.25x or 2x input. On a big chat that is dollars.
 // The guard says when to ask, prices the rewrite, and prices the alternative of compacting first.
 // The idea comes from the cache-keeper mod (MIT, github.com/nateherkai/claude-code-mods).
-import { cacheWriteX, type Rate } from './prices.ts'
+import { cacheWriteX, rateAt, type Rate } from './prices.ts'
 
 export const GUARD_TOKENS = 150_000
 
@@ -22,7 +22,8 @@ export interface ColdQuote { rewriteUsd: number; idleMin: number }
 // quote prices the rewrite a send now pays. A compaction first is not priced as a saving: it sends the cold prefix
 // once to summarise it, so it pays back only when the chat runs on for many more requests.
 export function quote(prefixTokens: number, idleMs: number, ttlMs: number, rate: Rate): ColdQuote {
-  return { rewriteUsd: (prefixTokens * rate.input * cacheWriteX(ttlMs)) / 1e6, idleMin: Math.round(idleMs / 60_000) }
+  // rateAt applies the long-context price (Haiku costs 5x above 100k tokens).
+  return { rewriteUsd: (prefixTokens * rateAt(rate, prefixTokens).input * cacheWriteX(ttlMs)) / 1e6, idleMin: Math.round(idleMs / 60_000) }
 }
 
 export type ColdChoice = 'send' | 'compact' | 'cancel'

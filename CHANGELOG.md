@@ -6,7 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
-- Cache keeper (#170). The cache lifetime is now measured from request usage (5 or 60 minutes) instead of assumed; `cacheKeeper.ttl` in `config.json` or an env switch pins it. A cold-send guard asks before a person's prompt rewrites a context of 150,000 tokens or more after the cache expired, and falls through to send when no dialog can answer. `/automode keepwarm <hours>` is an opt-in, cost-gated keepalive that pings before expiry. Pings never reach the router, the ledger or route learning. Ideas from the cache-keeper mod (MIT). No saving is claimed yet: `bench/cache-opportunity.mts` sizes the ceiling from local transcripts.
+- Cache keeper (#170). The cache lifetime is now measured from request usage (5 or 60 minutes) instead of assumed; `cacheKeeper.ttl` in `config.json` or an env switch pins it. A cold-send guard asks before a person's prompt rewrites a context of 150,000 tokens or more after the cache expired, and offers send, compact first or cancel. It falls through to send when no dialog can answer, and never asks for scripted prompts. Ideas from the cache-keeper mod (MIT). No saving is claimed yet: `bench/cache-opportunity.mts` sizes the ceiling from local transcripts. A keepalive built on `$.model.fork` was tried and left out: its ping does not read the chat's message cache.
 
 ### Changed
 

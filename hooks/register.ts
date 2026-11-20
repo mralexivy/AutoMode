@@ -25,7 +25,7 @@ import { useV4, v4AgentSpawn, v4Append, v4Attachment, v4CommandRun, v4Compact, v
 import { setOptions } from './options.ts'
 import { setSources } from './ui/publish.ts'
 import { registerUi, uiStart } from './ui/register-ui.tsx'
-import { ckActivity, ckPinging, ckPromptSubmit, ckReset, ckTurn } from './cachekeeper.ts'
+import { ckPromptSubmit } from './cachekeeper.ts'
 
 export { COMPACT_SYSTEM, transcriptOf }
 
@@ -292,7 +292,6 @@ export const register: Register = (on, options) => {
   setOptions(options)
   setSources({ router: v4Snapshot, guardian: guardianSnapshot })
   on('session.start', async ($, e, next) => guardianSessionStart($, e, async (e2: any) => {
-    ckReset()
     await load($)
     return (await useV4($)) ? v4Start($, e2, next) : next(e2)
   }).then(async (res: any) => { await uiStart($); return res }))
@@ -301,7 +300,6 @@ export const register: Register = (on, options) => {
   on('prompt.submit', async ($, e, next) => ckPromptSubmit($, e, (e1: any) => guardianPromptSubmit($, e1, (e2: any) => routePrompt($, e2, next)))).catch(($, e, next) => next(e))
 
   on('turn.step', async function* ($, e, next) {
-    if (ckPinging()) return yield* next(e) // a keep-alive ping is not a task: no routing, no ledger
     try { await guardianStep($, e) } catch {} // the guardian counts the request; it never blocks one
     if (await useV4($)) return yield* v4TurnStep($, e, next)
     if (e.agentId !== undefined || !(await active($))) return yield* next(e)
@@ -355,7 +353,7 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => (next.called ? next(e) : { deny: 'AutoMode guard failed; the call was not run.' }))
 
   // V4 only: completions, spawns, worker tools, and the guards on every other tool.
-  on('turn.complete', async ($, e, next) => { ckTurn(e, false); return guardianTurnComplete($, e, async (e2: any) => ((await useV4($)) ? v4TurnComplete($, e2, next) : next(e2))) }).catch(($, e, next) => next(e))
+  on('turn.complete', async ($, e, next) => guardianTurnComplete($, e, async (e2: any) => ((await useV4($)) ? v4TurnComplete($, e2, next) : next(e2)))).catch(($, e, next) => next(e))
   on('agent.spawn', async ($, e, next) => ((await useV4($)) ? v4AgentSpawn($, e, next) : next(e))).catch(($, e, next) => next(e))
   on('prompt.attachment', async ($, e, next) => ((await useV4($)) ? v4Attachment($, e, next) : next(e))).catch(($, e, next) => next(e))
   on('session.append', async ($, e, next) => ((await useV4($)) ? v4Append($, e, next) : next(e))).catch(($, e, next) => next(e))
@@ -376,6 +374,6 @@ export const register: Register = (on, options) => {
   on('session.end', ($, e, next) => guardianSessionEnd($, e, next)).catch(($, e, next) => next(e))
   // The presentation layer (hooks/ui): drawings, the /automode command and the controls. It reads the view atom only.
   registerUi(on)
-  on('turn.start', ($, e, next) => { ckTurn(e, true); return guardianTurnStart($, e, next) }).catch(($, e, next) => next(e))
+  on('turn.start', ($, e, next) => guardianTurnStart($, e, next)).catch(($, e, next) => next(e))
   on('tool.call', ($, e, next) => guardianToolCall($, e, next)).catch(($, e, next) => (next.called ? { deny: 'AutoMode guardian failed after the call; its result is lost. Run it again if needed.' } : next(e)))
 }

@@ -1,9 +1,8 @@
-// The pure cache-keeper modules: measured lifetime, cold-send guard, keepalive rules, and the config reader.
+// The pure cache-keeper modules: measured lifetime, cold-send guard, and the config reader.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { inferTtl, FIVE_MIN, ONE_HOUR } from '../hooks/lib/ttl.ts'
 import { shouldAsk, quote, choiceOf, askText, CHOICES } from '../hooks/lib/coldguard.ts'
-import { KEEP_OFF, startKeepWarm, tick, afterPing, marginMs, rewriteUsd, pingCostUsd, clampHours } from '../hooks/lib/keepwarm.ts'
 import { ckConfig, CK_DEFAULTS } from '../hooks/lib/cachecfg.ts'
 import { ANTHROPIC } from '../hooks/lib/prices.ts'
 
@@ -40,6 +39,10 @@ test('cold guard: prices the rewrite at 2x input on 1h and 1.25x on 5m, and maps
   assert.ok(Math.abs(q1.rewriteUsd - (200_000 * 4 * 2) / 1e6) < 1e-9)
   const q5 = quote(200_000, 20 * MIN, FIVE_MIN, opus)
   assert.ok(Math.abs(q5.rewriteUsd - (200_000 * 4 * 1.25) / 1e6) < 1e-9)
+  // Live, 2026-11-20: a 231,262-token cold rewrite on Sonnet (5m cache) billed $0.578 = 231262 x $2/M x 1.25.
+  assert.ok(Math.abs(quote(231_262, 6 * MIN, FIVE_MIN, ANTHROPIC.rates.sonnet).rewriteUsd - 0.578) < 0.001)
+  // Haiku costs 5x above 100k tokens.
+  assert.ok(Math.abs(quote(200_000, 6 * MIN, FIVE_MIN, ANTHROPIC.rates.haiku).rewriteUsd - (200_000 * 0.1 * 5 * 1.25) / 1e6) < 1e-9)
   assert.equal(choiceOf(CHOICES[0]), 'send')
   assert.equal(choiceOf(CHOICES[1]), 'compact')
   assert.equal(choiceOf(CHOICES[2]), 'cancel')
@@ -47,44 +50,9 @@ test('cold guard: prices the rewrite at 2x input on 1h and 1.25x on 5m, and maps
   assert.match(askText(q1, 200_000), /200k tokens.*\$1\.60/)
 })
 
-const tickIn = (over = {}) => ({ now: 0, lastActivityAt: 0, ttlMs: ONE_HOUR, busy: false, prefixTokens: 300_000, rate: opus, ...over })
-test('keepwarm: pings 8 minutes before a 1h cache expires and 90 s before a 5m one', () => {
-  const s = startKeepWarm(0, 4)
-  assert.equal(tick(s, tickIn({ now: ONE_HOUR - marginMs(ONE_HOUR) - 1 })).action, 'wait')
-  assert.equal(tick(s, tickIn({ now: ONE_HOUR - marginMs(ONE_HOUR) })).action, 'ping')
-  assert.equal(tick(s, tickIn({ now: FIVE_MIN - 90_000, ttlMs: FIVE_MIN })).action, 'ping')
-})
-test('keepwarm: waits while a turn runs or with no prefix, stops at the time limit', () => {
-  const s = startKeepWarm(0, 1)
-  assert.equal(tick(s, tickIn({ now: 55 * MIN, busy: true })).action, 'wait')
-  assert.equal(tick(s, tickIn({ now: 55 * MIN, prefixTokens: 0 })).action, 'wait')
-  assert.deepEqual(tick(s, tickIn({ now: 61 * MIN })), { action: 'stop', reason: 'the keep-warm time ran out' })
-  assert.equal(tick(KEEP_OFF, tickIn({ now: 55 * MIN })).action, 'wait')
-})
-test('keepwarm: stops when the pings so far would cost more than one rewrite', () => {
-  const rw = rewriteUsd(300_000, opus, ONE_HOUR)
-  const per = pingCostUsd(300_000, opus)
-  assert.ok(per < rw / 15) // a 1h-cache ping is about a twentieth of a rewrite
-  const spent = { ...startKeepWarm(0, 24), pingUsd: rw - per / 2 }
-  assert.equal(tick(spent, tickIn({ now: 55 * MIN })).action, 'stop')
-})
-test('keepwarm: a ping that wrote the cache or got no answer turns it off', () => {
-  const s = startKeepWarm(0, 4)
-  assert.equal(afterPing(s, 1, 0.1, { cacheRead: 300_000, cacheWrite: 100 }).on, true)
-  assert.match(afterPing(s, 1, 0.1, { cacheRead: 1000, cacheWrite: 300_000 }).stopped ?? '', /wrote the cache/)
-  assert.match(afterPing(s, 1, 0.1, null).stopped ?? '', /no answer/)
-  assert.equal(afterPing(s, 5, 0.25, { cacheRead: 9, cacheWrite: 0 }).pingUsd, 0.25)
-})
-test('keepwarm: hours are clamped to 24, and junk is zero', () => {
-  assert.equal(clampHours(99), 24)
-  assert.equal(clampHours(-1), 0)
-  assert.equal(clampHours(NaN), 0)
-  assert.equal(startKeepWarm(0, 0).on, false)
-})
-
 test('config: defaults, valid values and junk', () => {
   assert.deepEqual(ckConfig({}), CK_DEFAULTS)
   assert.deepEqual(ckConfig(null), CK_DEFAULTS)
-  assert.deepEqual(ckConfig({ cacheKeeper: { ttl: '5', guard: false, guardTokens: 90000, keepWarmHours: 99 } }), { ttl: '5', guard: false, guardTokens: 90000, keepWarmHours: 24 })
-  assert.deepEqual(ckConfig({ cacheKeeper: { ttl: 'x', guardTokens: 'big', keepWarmHours: -3 } }), CK_DEFAULTS)
+  assert.deepEqual(ckConfig({ cacheKeeper: { ttl: '5', guard: false, guardTokens: 90000 } }), { ttl: '5', guard: false, guardTokens: 90000 })
+  assert.deepEqual(ckConfig({ cacheKeeper: { ttl: 'x', guardTokens: 'big' } }), CK_DEFAULTS)
 })

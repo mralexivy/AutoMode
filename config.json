@@ -49,7 +49,6 @@
   "cacheKeeper": {
     "ttl": "auto",
     "guard": true,
-    "guardTokens": 150000,
-    "keepWarmHours": 0
+    "guardTokens": 150000
   }
 }
