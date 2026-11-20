@@ -1,0 +1,82 @@
+{
+  "date": "2026-11-20",
+  "basis": "real Claude Code 2.1.308 sessions on one machine, forced 5-minute cache (FORCE_PROMPT_CACHING_5M), usage and cost as the engine reported them. One run per arm: a mechanism and money check, not a statistical claim",
+  "spendUsd": 11,
+  "abIdleGap": {
+    "setup": "Sonnet, a 231k-token context built over 3 requests, then 10.5 minutes idle, then one small prompt. Each arm had its own unique text, because two runs with the same text share one server-side cache (a first A/B was contaminated that way and is not used)",
+    "control": {
+      "finalRequest": {
+        "cacheRead": 13165,
+        "cacheWrite": 218487
+      },
+      "costUsd": 0.5476,
+      "note": "cold: the whole context was rewritten"
+    },
+    "keepwarm": {
+      "finalRequest": {
+        "cacheRead": 231748,
+        "cacheWrite": 302
+      },
+      "pings": 3,
+      "costUsd": 0.0938,
+      "note": "includes the 3 pings; the context stayed cached"
+    },
+    "savedUsd": 0.4538,
+    "savedPct": 83
+  },
+  "pingCost": {
+    "contextTokens": 231374,
+    "cacheRead": 231374,
+    "cacheWrite": 0,
+    "usdEach": 0.0232
+  },
+  "measuredTtl": {
+    "assumedMs": 3600000,
+    "measuredMs": 300000,
+    "how": "1.3k-line log, 6 minutes idle, the next request rewrote 109,938 tokens: the mod recorded cache-ttl 1h -> 5m",
+    "verified": true
+  },
+  "guard": {
+    "interactive": "the real $.ui.ask dialog shows the idle time, the context size and the rewrite price, with Send anyway, Compact first and Cancel",
+    "cancel": {
+      "requestsSent": 0
+    },
+    "sendAnyway": {
+      "cacheRead": 0,
+      "cacheWrite5m": 56987
+    },
+    "priceCheck": {
+      "tokensWritten": 231262,
+      "model": "sonnet",
+      "ttl": "5m",
+      "billedUsd": 0.578,
+      "formulaUsd": 0.578
+    },
+    "scriptedPrompts": "the guard stays silent for SDK and -p prompts by design"
+  },
+  "bugsFoundByLiveRuns": [
+    "a ping right after a chat's first request rewrote the message cache (first requests are shaped differently from later ones), so the old stop rule killed keepalive: pings now start at the third request and forgive one write",
+    "the guard quote ignored Haiku's 5x long-context price above 100k tokens"
+  ],
+  "interactiveKeepwarm": {
+    "setup": "real interactive session (pty), Haiku, 3 requests, /automode keepwarm 1, 9 minutes idle, 5-minute cache",
+    "pings": [
+      {
+        "atMin": 4.6,
+        "cacheRead": 57028,
+        "cacheWrite": 0
+      },
+      {
+        "atMin": 8.1,
+        "cacheRead": 57028,
+        "cacheWrite": 0
+      }
+    ],
+    "nextRequest": {
+      "atMin": 10.2,
+      "cacheRead": 57028,
+      "cacheWrite": 160
+    },
+    "result": "the cache stayed warm for 10 minutes on a 5-minute lifetime"
+  }
+}

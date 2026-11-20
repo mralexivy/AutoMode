@@ -45,5 +45,11 @@
     "autoCompact": true,
     "reduceOutputs": true,
     "hardPause": true
+  },
+  "cacheKeeper": {
+    "ttl": "auto",
+    "guard": true,
+    "guardTokens": 150000,
+    "keepWarmHours": 0
   }
 }

@@ -17,14 +17,15 @@
 // Each model keeps its own prompt cache, so a switch rewrites the whole chat into a new cache (effortless measured
 // 5-10x the cost). Inactive sessions (any other
 // model) pass every event straight through: no judge, no context, no state, no files.
-import { fsRead, fsWrite, sessionUsage, agents, status } from './lib/io.ts'
+import { fsRead, fsWrite, usageNow, agents, status } from './lib/io.ts'
 import type { EngineInterface, Register } from 'claude-code'
 import { COMPACT_SYSTEM, transcriptOf } from './lib/compact.ts'
 import { guardianPromptSubmit, guardianSessionEnd, guardianSessionStart, guardianSnapshot, guardianStep, guardianToolCall, guardianTurnComplete, guardianTurnStart } from './guardian.ts'
-import { useV4, v4AgentSpawn, v4Append, v4Attachment, v4CommandRun, v4Compact, v4Extract, v4PromptSubmit, v4SessionStart, v4Snapshot, v4Stop, v4ToolCall, v4TurnComplete, v4TurnStep } from './v4.ts'
+import { useV4, v4AgentSpawn, v4Append, v4Attachment, v4CommandRun, v4Compact, v4Extract, v4PromptSubmit, v4Start, v4Snapshot, v4Stop, v4ToolCall, v4TurnComplete, v4TurnStep } from './v4.ts'
 import { setOptions } from './options.ts'
 import { setSources } from './ui/publish.ts'
-import { registerUi, uiSessionStart } from './ui/register-ui.tsx'
+import { registerUi, uiStart } from './ui/register-ui.tsx'
+import { ckActivity, ckPinging, ckPromptSubmit, ckReset, ckTurn } from './cachekeeper.ts'
 
 export { COMPACT_SYSTEM, transcriptOf }
 
@@ -213,7 +214,7 @@ async function debug($: EngineInterface, entry: Record<string, unknown>) {
 // limitShare is the highest 5-hour or weekly limit share the last response reported, or null.
 async function limitShare($: EngineInterface): Promise<number | null> {
   try {
-    const shares = (await sessionUsage($)).rateLimits.map((r) => r.percentUsed).filter((n) => Number.isFinite(n))
+    const shares = (await usageNow($)).rateLimits.map((r) => r.percentUsed).filter((n) => Number.isFinite(n))
     return shares.length ? Math.max(...shares) : null
   } catch { return null }
 }
@@ -226,7 +227,7 @@ async function coldHint($: EngineInterface): Promise<string | null> {
     const now = await $.clock.now()
     const idleMin = (now - lastAnswerAt) / 60000
     if (idleMin < cfg.cacheTtlMinutes || coldHintAt > lastAnswerAt) return null
-    const usage = await sessionUsage($)
+    const usage = await usageNow($)
     const tokens = usage.context.tokens ?? 0
     if (tokens < cfg.heavyChatTokens) return null
     const live = (await agents($)).filter((a) => a.status === 'pending' || a.status === 'running' || a.status === 'waiting')
@@ -291,14 +292,16 @@ export const register: Register = (on, options) => {
   setOptions(options)
   setSources({ router: v4Snapshot, guardian: guardianSnapshot })
   on('session.start', async ($, e, next) => guardianSessionStart($, e, async (e2: any) => {
+    ckReset()
     await load($)
-    return (await useV4($)) ? v4SessionStart($, e2, next) : next(e2)
-  }).then(async (res: any) => { await uiSessionStart($); return res }))
+    return (await useV4($)) ? v4Start($, e2, next) : next(e2)
+  }).then(async (res: any) => { await uiStart($); return res }))
 
   // The guardian sees each prompt first (a handoff, am:continue), then the router decides the route.
-  on('prompt.submit', async ($, e, next) => guardianPromptSubmit($, e, (e2: any) => routePrompt($, e2, next))).catch(($, e, next) => next(e))
+  on('prompt.submit', async ($, e, next) => ckPromptSubmit($, e, (e1: any) => guardianPromptSubmit($, e1, (e2: any) => routePrompt($, e2, next)))).catch(($, e, next) => next(e))
 
   on('turn.step', async function* ($, e, next) {
+    if (ckPinging()) return yield* next(e) // a keep-alive ping is not a task: no routing, no ledger
     try { await guardianStep($, e) } catch {} // the guardian counts the request; it never blocks one
     if (await useV4($)) return yield* v4TurnStep($, e, next)
     if (e.agentId !== undefined || !(await active($))) return yield* next(e)
@@ -352,7 +355,7 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => (next.called ? next(e) : { deny: 'AutoMode guard failed; the call was not run.' }))
 
   // V4 only: completions, spawns, worker tools, and the guards on every other tool.
-  on('turn.complete', async ($, e, next) => guardianTurnComplete($, e, async (e2: any) => ((await useV4($)) ? v4TurnComplete($, e2, next) : next(e2)))).catch(($, e, next) => next(e))
+  on('turn.complete', async ($, e, next) => { ckTurn(e, false); return guardianTurnComplete($, e, async (e2: any) => ((await useV4($)) ? v4TurnComplete($, e2, next) : next(e2))) }).catch(($, e, next) => next(e))
   on('agent.spawn', async ($, e, next) => ((await useV4($)) ? v4AgentSpawn($, e, next) : next(e))).catch(($, e, next) => next(e))
   on('prompt.attachment', async ($, e, next) => ((await useV4($)) ? v4Attachment($, e, next) : next(e))).catch(($, e, next) => next(e))
   on('session.append', async ($, e, next) => ((await useV4($)) ? v4Append($, e, next) : next(e))).catch(($, e, next) => next(e))
@@ -373,6 +376,6 @@ export const register: Register = (on, options) => {
   on('session.end', ($, e, next) => guardianSessionEnd($, e, next)).catch(($, e, next) => next(e))
   // The presentation layer (hooks/ui): drawings, the /automode command and the controls. It reads the view atom only.
   registerUi(on)
-  on('turn.start', ($, e, next) => guardianTurnStart($, e, next)).catch(($, e, next) => next(e))
+  on('turn.start', ($, e, next) => { ckTurn(e, true); return guardianTurnStart($, e, next) }).catch(($, e, next) => next(e))
   on('tool.call', ($, e, next) => guardianToolCall($, e, next)).catch(($, e, next) => (next.called ? { deny: 'AutoMode guardian failed after the call; its result is lost. Run it again if needed.' } : next(e)))
 }
