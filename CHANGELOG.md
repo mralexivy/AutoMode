@@ -33,6 +33,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
+- Learning is on by default and documented as such: route memory, adaptive routing, the learning pass (`reflect: auto`) and the cache keeper (`keepWarm: ask`). README has a section with the switches to make it manual or turn it off.
 - Live savings on the bar. Once AutoMode runs a prompt on another model than the session's, the bar shows `saved ~$0.38`. Right after a switch, it shows `↺ $0.07 to pay back` while the new model's cache rewrite is paid off. The estimate prices each main-session request's real tokens on the session's model, with that model's own warm cache, minus AutoMode's own judge calls (`hooks/lib/savings.ts`). `/automode details` shows the parts. Hide it by removing `saved` from **Bar metrics**. On the five benchmark sessions it estimated a 56% saving against Opus, where the measured runs showed 52% (`bench/savings-replay.mts`).
 
 ## [0.9.1] - 2026-11-05

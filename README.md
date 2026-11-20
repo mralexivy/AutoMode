@@ -131,6 +131,33 @@ State lives in `~/.claude/plugins/data/automode/`. Delete that folder to remove 
 - **Every mod, one session:** start Claude Code with `--safe-mode`.
 - **Every mod, every session:** set `"disableAllHooks": true` in `~/.claude/settings.json`.
 
+## It learns on its own, and how to turn that off
+
+**By default, AutoMode learns from your own sessions and corrects its own routes. You do nothing.** Four things run without being asked:
+
+1. **Route memory** (`learning`). A kind of task that needed rescue in this project starts on a stronger model next time.
+2. **Adaptive routing** (`adaptive`). A small share of your tasks start on a cheaper model or lower effort. Per kind of task, AutoMode adopts the cheaper start only when your own results show it holds up, and reverts it when it does not. Failures caused by the environment or a flaky test do not count against it. Safety floors, your `/model` and `/effort` pins, commands and critical-risk work are never touched.
+3. **The learning pass** (`reflect`). When you have been away 20 minutes, with three or more new tasks, it summarises what happened, asks Haiku once (about $0.001, capped at $0.02 a pass and $0.20 a week) what to test next, and puts those tests first. The model sees numbers only, never task text.
+4. **Cache keeper** (`cacheKeeper`). It measures your cache lifetime, asks before a cold send of a large chat, and offers to keep a long chat warm (`keepWarm: ask`, so it asks first and pings only after you say yes).
+
+AutoMode does **not** read your past transcripts unless you agree (`/automode learned import`). Everything it learns stays in files on your machine ([PRIVACY.md](PRIVACY.md)). `/automode learned` shows what it learned, and `/automode learned reset` erases it.
+
+To change this, put a `config.json` in the plugin data directory (see Settings), for example:
+
+```json
+{ "reflect": "manual" }
+```
+
+| You want | Set |
+|---|---|
+| The learning pass only when you ask (`/automode learn`) | `"reflect": "manual"` |
+| No learning pass at all | `"reflect": "off"` |
+| A pass that costs nothing (no Haiku call) | `"reflectModel": false` |
+| No cheaper-start experiments | `"adaptive": false` |
+| No route memory | `"learning": false` |
+| No cache keeper prompts or pings | `"cacheKeeper": { "guard": false, "keepWarm": "off" }` |
+| Everything off at once | `AUTOMODE_ROUTER=off` in the environment |
+
 ## The ladder
 
 Every prompt takes the cheapest route that is still adequate. Code sets a floor for risky work, and the judge never lowers it.
@@ -239,6 +266,12 @@ Defaults live in [`config.json`](config.json). To override them, put a `config.j
 | `autoWorkflow` | `false` | `true` lets the router enter the workflow by itself. `am:run` works either way. Decision records show what entry would have done |
 | `reachHaiku` | `true` | T0 to T2 work without critical risk can run on Haiku. `false`: Haiku needs T0 and a Haiku verdict |
 | `learning` | `true` | A kind of task that needed rescue in this project starts on Opus next time. It only raises a route |
+| `adaptive` | `true` | Adaptive routing: on your own tasks, a small share start on a cheaper model or lower effort, and AutoMode adopts what holds up and reverts what does not. `false` stops the experiments |
+| `reflect` | `auto` | The learning pass. `auto`: it runs when you have been away. `manual`: only on `/automode learn`. `off`: never |
+| `reflectIdleMin` | `20` | Minutes away before an automatic learning pass |
+| `reflectModel` | `true` | The pass asks Haiku once, about a tenth of a cent. `false` keeps the pass local and free |
+| `cacheKeeper.keepWarm` | `ask` | Keep a long chat's cache warm. `ask`: asks first. `auto`: pings on its own where it pays. `off`: never |
+| `cacheKeeper.learnFromHistory` | `false` | Read your past transcripts for counts. Off until you consent (`/automode learned import`) |
 | `reviewPolicy` | `risk` | `always` adds a review to every change |
 | `maxConcurrency` | `1` | Workstreams built at once (maximum 2) |
 | `blockGitWritesWhenActive` | `true` | Deny git writes from subagents |
