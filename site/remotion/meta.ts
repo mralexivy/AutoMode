@@ -28,7 +28,7 @@ export const SCENE_META = {
     title: 'Does switching Claude models waste the prompt cache?',
     description: 'AutoMode weighs a model switch against its prompt cache rewrite, holds the model when the switch does not pay, and always switches for a risk floor.',
   },
-  learns: {
+  'learns': {
     frames: 270,
     title: 'How AutoMode learns from your own Claude Code sessions',
     description: 'AutoMode tries a cheaper start on a small share of your tasks, adopts it where your results hold up, reverts it where they do not, and reviews what to test next when you step away.',
