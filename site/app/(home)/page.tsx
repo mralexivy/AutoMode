@@ -92,7 +92,7 @@ const jsonLd = {
       author: { '@type': 'Person', name: 'Alex Ivy', url: 'https://github.com/mralexivy' },
       sameAs: [repoUrl],
     },
-    ...(['terminal-demo', 'benchmark-race', 'workflow-flow', 'cache-check'] as const).map(videoObject),
+    ...(['terminal-demo', 'benchmark-race', 'workflow-flow', 'cache-check', 'learns'] as const).map(videoObject),
     {
       '@type': 'FAQPage',
       mainEntity: FAQ.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
@@ -290,7 +290,8 @@ export default function HomePage() {
         <p className={kicker}>It learns you</p>
         <h2 className={h2}>Tested rules first, then your own results</h2>
         <p className={sub}>On your own tasks, AutoMode tries a cheaper start in a small share of cases. It keeps the cheaper start only where your results show it holds up, and backs out where they do not. When you step away it reviews what happened and picks what to test next. Safety floors and the model you pick are never touched, and nothing leaves your machine.</p>
-        <Link href="/docs/concepts/learning" className="mt-2 inline-block text-fd-primary underline">
+        <Motion id="learns" className="mt-8" />
+        <Link href="/docs/concepts/learning" className="mt-4 inline-block text-fd-primary underline">
           How it learns, and how to turn it off
         </Link>
       </Section>
