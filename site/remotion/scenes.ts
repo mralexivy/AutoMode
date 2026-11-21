@@ -1,5 +1,6 @@
 import { BenchmarkRace, BENCHMARK_FRAMES } from './BenchmarkRace';
 import { CacheCheck, CACHE_FRAMES } from './CacheCheck';
+import { LearnLoop, LEARN_FRAMES } from './LearnLoop';
 import { SCENE_META, type SceneId } from './meta';
 import { TerminalDemo, TERMINAL_FRAMES } from './TerminalDemo';
 import { ROUTE_DEMO_FRAMES, RouteDemo } from './RouteDemo';
@@ -11,6 +12,7 @@ export const SCENES = {
   'route-demo': { ...SCENE_META['route-demo'], component: RouteDemo, frames: ROUTE_DEMO_FRAMES },
   'benchmark-race': { ...SCENE_META['benchmark-race'], component: BenchmarkRace, frames: BENCHMARK_FRAMES },
   'workflow-flow': { ...SCENE_META['workflow-flow'], component: WorkflowFlow, frames: WORKFLOW_FRAMES },
+  learns: { ...SCENE_META.learns, component: LearnLoop, frames: LEARN_FRAMES },
   'cache-check': { ...SCENE_META['cache-check'], component: CacheCheck, frames: CACHE_FRAMES },
 };
 
