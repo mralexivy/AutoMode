@@ -33,6 +33,10 @@ const MAX = 4.14;
 
 const FAQ = [
   {
+    q: 'Does AutoMode learn from how I work?',
+    a: 'Yes, by default, and only on your machine. It starts from tested rules, tries a cheaper start on a small share of your own tasks, keeps it only where your results show it holds up, and backs out where they do not. When you are away it reviews what happened and chooses what to test next. It never changes safety floors or the model you pick. You can make it manual or turn it off in config.json.',
+  },
+  {
     q: 'What is AutoMode?',
     a: 'AutoMode is a free, open source plugin for Claude Code. It picks the model and the effort for each prompt, sets a quality floor for risky work, and runs a plan, build, verify and review workflow for big jobs.',
   },
@@ -278,8 +282,17 @@ export default function HomePage() {
       <Section id="cache">
         <p className={kicker}>Prompt cache</p>
         <h2 className={h2}>No surprise bills from a model switch</h2>
-        <p className={sub}>Each model keeps its own cache. AutoMode prices every switch against the cache rewrite, and holds the model when the switch does not pay.</p>
+        <p className={sub}>Each model keeps its own cache. AutoMode prices every switch against the cache rewrite, and holds the model when the switch does not pay. It also measures how long your cache really lives, asks before a cold send of a big chat, and can keep a long chat warm, after it asks you.</p>
         <Motion id="cache-check" className="mt-8" />
+      </Section>
+
+      <Section id="learns">
+        <p className={kicker}>It learns you</p>
+        <h2 className={h2}>Tested rules first, then your own results</h2>
+        <p className={sub}>On your own tasks, AutoMode tries a cheaper start in a small share of cases. It keeps the cheaper start only where your results show it holds up, and backs out where they do not. When you step away it reviews what happened and picks what to test next. Safety floors and the model you pick are never touched, and nothing leaves your machine.</p>
+        <Link href="/docs/concepts/learning" className="mt-2 inline-block text-fd-primary underline">
+          How it learns, and how to turn it off
+        </Link>
       </Section>
 
       <Section id="demo">

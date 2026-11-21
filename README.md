@@ -31,6 +31,8 @@
 Quick questions stay cheap. Hard jobs get the strongest model. Risky changes always get a review.
 Install it and it starts. You never touch the model or the Effort control again.
 
+**And it learns you.** It starts from tested rules, then tunes itself to your own work. On your own tasks it tries a cheaper start in a small share of cases, keeps it only where your results show it holds up, and backs out where it does not. When you step away it reviews what happened and decides what to test next. It also keeps long chats from going cold on the prompt cache. It never touches safety floors or the model you picked, and nothing leaves your machine. [How it learns](#it-learns-on-its-own-and-how-to-turn-that-off)
+
 <sub>A community project. It is not Claude Code's built-in auto permission mode, and Anthropic does not make it. [See the difference](https://mralexivy.github.io/AutoMode/docs/guides/auto-mode-vs-automode/).</sub>
 
 **Paste these into Claude Code, one at a time, then run `/reload-plugins`:**
@@ -64,7 +66,8 @@ Install it and it starts. You never touch the model or the Effort control again.
 | **Effort** | You set it, and you forget to change it | Two short Haiku judges set it for each prompt, in about a second |
 | **Risky changes** | The same checks as a typo fix | Security, migrations and payments always get an independent review, on Opus when the diff shows critical risk |
 | **Big jobs** | One long chat that does everything | A plan, build, verify and review workflow with six small agents |
-| **Prompt cache** | A cold cache is a surprise bill | A countdown on the bar shows when the cache goes cold |
+| **Prompt cache** | A cold cache is a surprise bill | A countdown on the bar shows when the cache goes cold. It measures your cache lifetime, asks before a cold send of a big chat, and can keep a long chat warm (it asks first) |
+| **Over time** | The same behavior on day 100 as on day 1 | It learns from your own sessions, per project. A cheaper start is adopted only where your results show it holds up, and reverted where it does not. On by default, and you can make it manual or turn it off |
 | **Your setup** | | A login you already have. No key. No server. |
 
 ## Install

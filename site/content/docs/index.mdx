@@ -10,6 +10,8 @@ import { Rocket, Route, Settings, ShieldCheck, ChartColumn, Terminal } from 'luc
 
 It is a Claude Code **mod**: a plugin whose TypeScript registers event handlers. It needs no API key and no server. It runs on the Claude login you already have, and your data stays on your machine.
 
+It also learns from your own sessions, on by default. It starts from tested rules, tries cheaper starts on a small share of your tasks, keeps what your results support and backs out what they do not. [How it learns, and how to turn it off](/docs/concepts/learning).
+
 <div className="am-stats">
   <div><b>−51%</b><span>cost against Claude Code on Opus, in mixed sessions</span></div>
   <div><b>20/20</b><span>steps passed, the same as Opus</span></div>
@@ -58,7 +60,8 @@ It is a Claude Code **mod**: a plugin whose TypeScript registers event handlers.
 | **Effort** | You set it, and you forget to change it | Two short Haiku judges set it for each prompt, in about a second |
 | **Risky changes** | The same checks as a typo fix | Security, migrations and payments always get an independent review |
 | **Big jobs** | One long chat that does everything | A plan, build, verify and review workflow with six small agents |
-| **Prompt cache** | A cold cache is a surprise bill | A countdown on the bar shows when the cache goes cold |
+| **Prompt cache** | A cold cache is a surprise bill | A countdown on the bar shows when the cache goes cold. It measures your cache lifetime, asks before a cold send of a big chat, and can keep a long chat warm (it asks first) |
+| **Over time** | The same behavior on day 100 as on day 1 | It learns from your own sessions. A cheaper start is adopted only where your results show it holds up, and reverted where it does not. See [How AutoMode learns](/docs/concepts/learning) |
 
 <Callout title="Not Claude Code's auto permission mode">
   AutoMode is a community project. It is not the built-in auto permission mode, and Anthropic does not make it. [See the difference](/docs/guides/auto-mode-vs-automode).
